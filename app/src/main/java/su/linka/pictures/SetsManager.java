@@ -1,6 +1,5 @@
 package su.linka.pictures;
 
-import android.Manifest;
 import android.content.res.AssetManager;
 import android.util.Log;
 
@@ -21,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
+
+import su.linka.pictures.activity.MainActivity;
 
 public class SetsManager {
     private static SetsManager instance;

@@ -1,11 +1,14 @@
-package su.linka.pictures;
+package su.linka.pictures.activity;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -13,6 +16,11 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.io.IOException;
+
+import su.linka.pictures.R;
+import su.linka.pictures.SetManifest;
+import su.linka.pictures.SetsManager;
+import su.linka.pictures.components.ParentPasswordDialog;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -47,6 +55,28 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+        getMenuInflater().inflate(R.menu.main_activity_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if(item.getItemId()==R.id.settings){
+            ParentPasswordDialog.showDialog(getWindow().getContext(), new ParentPasswordDialog.OnParentControlResult() {
+                @Override
+                public void onComplete() {
+
+                    Intent intent = new Intent(context, SettingsActivity.class);
+                    startActivity(intent);
+                }
+            });
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void loadSetsList() {

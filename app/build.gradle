@@ -39,6 +39,9 @@ dependencies {
     implementation "com.github.permissions-dispatcher:permissionsdispatcher:4.8.0"
     implementation 'androidx.navigation:navigation-fragment:2.5.3'
     implementation 'androidx.navigation:navigation-ui:2.5.3'
+    implementation 'androidx.preference:preference:1.1.+'
+
+    implementation 'com.afollestad.material-dialogs:input:3.3.0'
     annotationProcessor "com.github.permissions-dispatcher:permissionsdispatcher-processor:4.8.0"
 
     implementation 'net.lingala.zip4j:zip4j:2.11.2'

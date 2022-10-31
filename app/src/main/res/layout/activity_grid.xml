@@ -4,9 +4,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".GridActivity"
+    tools:context=".activity.GridActivity"
     android:orientation="vertical">
     <LinearLayout
+        android:id="@+id/output_line"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"

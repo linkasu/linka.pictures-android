@@ -1,19 +1,12 @@
 package su.linka.pictures.components;
 
-import static su.linka.pictures.MainActivity.getContext;
-
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.util.AttributeSet;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
-import java.util.List;
-
 import su.linka.pictures.Card;
-import su.linka.pictures.R;
 import su.linka.pictures.Set;
 import su.linka.pictures.SetManifest;
 

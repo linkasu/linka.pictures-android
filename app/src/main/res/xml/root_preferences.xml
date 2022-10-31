@@ -1,0 +1,17 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory app:title="@string/parent_control">
+
+        <SwitchPreferenceCompat
+            app:key="parent"
+            app:title="@string/enable_parent_control_title" />
+        <EditTextPreference
+            app:dependency="parent"
+            app:key="parent_password"
+            app:title="@string/parent_password"
+
+            android:inputType="textPassword"/>
+    </PreferenceCategory>
+
+</PreferenceScreen>

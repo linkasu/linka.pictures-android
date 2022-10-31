@@ -9,6 +9,8 @@ import androidx.annotation.StringDef;
 
 import java.lang.annotation.Retention;
 
+import su.linka.pictures.activity.MainActivity;
+
 public class Cookie {
 
     @Retention(SOURCE)

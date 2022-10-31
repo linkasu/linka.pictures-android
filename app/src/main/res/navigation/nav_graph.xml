@@ -6,12 +6,12 @@
     app:startDestination="@id/mainActivity">
     <activity
         android:id="@+id/mainActivity"
-        android:name="su.linka.pictures.MainActivity"
+        android:name="su.linka.pictures.activity.MainActivity"
         android:label="activity_main"
         tools:layout="@layout/activity_main" />
     <activity
         android:id="@+id/gridActivity"
-        android:name="su.linka.pictures.GridActivity"
+        android:name="su.linka.pictures.activity.GridActivity"
         android:label="activity_grid"
         tools:layout="@layout/activity_grid" />
 </navigation>
