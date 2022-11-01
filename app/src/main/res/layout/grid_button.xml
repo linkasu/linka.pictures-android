@@ -6,12 +6,16 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
         android:focusable="true">
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="5">
     <ImageView
         android:id="@+id/image"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="5">
+        android:layout_height="match_parent">
     </ImageView>
+        </RelativeLayout>
 
     <TextView
         android:id="@+id/text"

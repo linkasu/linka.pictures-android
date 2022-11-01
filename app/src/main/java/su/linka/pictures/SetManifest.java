@@ -12,7 +12,7 @@ public class SetManifest {
     private final String version;
     public final int columns;
     public final int rows;
-    private final boolean withoutSpace;
+    public final boolean withoutSpace;
     public final ArrayList< Card> cards;
     protected final File file;
 

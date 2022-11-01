@@ -24,6 +24,7 @@ import su.linka.pictures.R;
 import su.linka.pictures.Set;
 import su.linka.pictures.SetsManager;
 import su.linka.pictures.components.CardGrid;
+import su.linka.pictures.components.OutputLine;
 import su.linka.pictures.components.ParentPasswordDialog;
 
 public class GridActivity extends AppCompatActivity {
@@ -33,7 +34,8 @@ public class GridActivity extends AppCompatActivity {
     private GridSettings gridSettings = new GridSettings();
     private ImageButton nextButton;
     private ImageButton prevButton;
-    private View outputLine;
+    private OutputLine outputLine;
+    private CardGrid grid;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +47,6 @@ public class GridActivity extends AppCompatActivity {
          prevButton = findViewById(R.id.prev_button);
          outputLine = findViewById(R.id.output_line);
 
-         prepareView();
 
         Bundle b = getIntent().getExtras();
         String file = b.getString("file");
@@ -56,29 +57,11 @@ public class GridActivity extends AppCompatActivity {
             set = SetsManager
                     .getInstance()
                     .getSet(file);
-            CardGrid grid = findViewById(R.id.card_grid);
+            outputLine.setSet(set);
+            grid = findViewById(R.id.card_grid);
 
             grid.setSet(set);
-            int pages = grid.getPagesCount();
 
-            if (pages>1) {
-                nextButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        grid.nextPage();
-                    }
-                });
-
-                prevButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        grid.prevPage();
-                    }
-                });
-            } else{
-                nextButton.setVisibility(View.GONE);
-                prevButton.setVisibility(View.GONE);
-            }
             grid.setCardSelectListener(new CardGrid.OnCardSelectListener() {
                 @Override
                 public void onCard(Card card) {
@@ -88,26 +71,13 @@ public class GridActivity extends AppCompatActivity {
         } catch (ZipException e) {
             e.printStackTrace();
         }
+        prepareView();
 
     }
 
 
     private void onCardSelect(Card card) {
-        //set up MediaPlayer
-        Log.d(getClass().getCanonicalName(), "onCardSelect: "+card);
-        MediaPlayer mp = new MediaPlayer();
-
-        try {
-            if(card.audioPath==null) return;
-
-            File file = set.getAudioFile(card.audioPath);
-            mp.setDataSource(file.getAbsolutePath());
-
-            mp.prepare();
-            mp.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        outputLine.addCard(card);
     }
 
     @Override
@@ -171,9 +141,33 @@ public class GridActivity extends AppCompatActivity {
     }
 
     private void prepareView() {
+
+        outputLine.setDirectMode(!gridSettings.isOutput);
+
         outputLine.setVisibility(gridSettings.isOutput?View.VISIBLE:View.GONE);
         prevButton.setVisibility(gridSettings.isPagesButtons?View.VISIBLE:View.GONE);
         nextButton.setVisibility(gridSettings.isPagesButtons?View.VISIBLE:View.GONE);
+        int pages = grid.getPagesCount();
+
+        if (pages>1) {
+            nextButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    grid.nextPage();
+                }
+            });
+
+            prevButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    grid.prevPage();
+                }
+            });
+        } else{
+            nextButton.setVisibility(View.GONE);
+            prevButton.setVisibility(View.GONE);
+        }
+
     }
 
 }

@@ -11,27 +11,21 @@ import su.linka.pictures.Set;
 import su.linka.pictures.SetManifest;
 
 public class CardGrid extends LinearLayout {
-
+    final LayoutParams params;
     private GridButton[] buttons;
     private int rows;
     private int columns;
     int page = 0;
     Set set;
-    private SetManifest manifest;
+    SetManifest manifest;
     private OnCardSelectListener cardSelectListener;
 
     public CardGrid(Context context, AttributeSet set){
 
         super(context, set);
-    }
-    public CardGrid(Context context, Set set) {
-        this(context, set.getManifest().rows, set.getManifest().columns);
-        setSet(set);
-    }
+        params = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        params.weight = 1;
 
-    public CardGrid(Context context, int rows, int columns) {
-        super(context);
-        setGridSize(rows, columns);
     }
 
     private void setGridSize(int rows, int columns) {
@@ -44,8 +38,6 @@ public class CardGrid extends LinearLayout {
 
             LinearLayout row = new LinearLayout(getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
-            LayoutParams params = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-            params.weight = 1;
 
             row.setLayoutParams(params);
             addView(row);
@@ -68,12 +60,14 @@ public class CardGrid extends LinearLayout {
     }
 
     
-    
-    public void setSet(Set set) {
+    public void setSet(Set set){
+        setSet(set, false);
+    }
+    public void setSet(Set set, boolean output) {
         this.set = set;
         manifest = set.getManifest();
         if(rows!=manifest.rows||columns!=manifest.columns){
-            setGridSize(manifest.rows, manifest.columns);
+            setGridSize(output?1:manifest.rows, manifest.columns);
         }
         page = 0;
         render();
@@ -92,12 +86,15 @@ public class CardGrid extends LinearLayout {
         render();
     }
     
-    private void render() {
+    protected void render() {
+
         int count = getPageSize();
         for (int i = 0; i < count; i++) {
             int index = getPageSize()*page+i;
             Card card = null;
+
             if(index<manifest.cards.size()) {
+
                 card = manifest.cards.get(index);
 
             }
@@ -121,6 +118,7 @@ public class CardGrid extends LinearLayout {
     public void setCardSelectListener(OnCardSelectListener cardSelectListener) {
         this.cardSelectListener = cardSelectListener;
     }
+
 
     public static abstract class OnCardSelectListener{
         public abstract void onCard(Card card);

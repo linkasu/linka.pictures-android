@@ -6,41 +6,16 @@
     android:layout_height="match_parent"
     tools:context=".activity.GridActivity"
     android:orientation="vertical">
-    <LinearLayout
-        android:id="@+id/output_line"
+    <su.linka.pictures.components.OutputLine
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="horizontal">
-        <ImageButton
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:src="@drawable/ic_baseline_backspace_24"/>
-            <GridView
-                android:id="@+id/output"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="3"
-                android:orientation="horizontal"
-                android:numColumns="1"
-                />
-        <ImageButton
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:src="@drawable/ic_baseline_record_voice_over_24"/>
-        <ImageButton
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:src="@drawable/ic_baseline_clear_24"/>
-    </LinearLayout>
+        android:id="@+id/output_line"
+       />
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="4"
-        android:orientation="horizontal">
+        android:layout_weight="4">
     <ImageButton
         android:id="@+id/prev_button"
         android:layout_width="0dp"

@@ -31,6 +31,10 @@ public class GridSettingsView extends LinearLayout {
         isPageButtonsSwitch.setChecked(settings.isPagesButtons);
     }
 
+    public GridSettings getSettings() {
+        return settings;
+    }
+
     public void commit() {
         settings.isOutput = isOutputSwitch.isChecked();
         settings.isPagesButtons = isPageButtonsSwitch.isChecked();
