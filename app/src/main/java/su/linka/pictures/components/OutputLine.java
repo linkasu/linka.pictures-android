@@ -1,6 +1,8 @@
 package su.linka.pictures.components;
 
 import android.content.Context;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,6 +12,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import su.linka.pictures.Card;
@@ -17,9 +20,12 @@ import su.linka.pictures.OutputAdapter;
 import su.linka.pictures.R;
 import su.linka.pictures.Set;
 import su.linka.pictures.SetManifest;
+import su.linka.pictures.TTS;
 
 public class OutputLine extends LinearLayout {
 
+    private final TTS tts;
+    private final MediaPlayer mp;
     private Set set;
     private SetManifest manifest;
     private ImageButton backSpaceButton;
@@ -32,21 +38,21 @@ public class OutputLine extends LinearLayout {
 
     private ArrayList<Card> cards = new ArrayList<>();
     private boolean directMode;
+    private int currentPlayCard = 0;
+    private boolean isPlaying = false;
 
 
     public OutputLine(Context context, AttributeSet set){
 
         super(context, set);
         inflate(context);
+        
+        tts = new TTS(context);
+
+        mp = new MediaPlayer();
+
+        mp.setAudioStreamType(AudioManager.STREAM_MUSIC);
     }
-    public OutputLine(Context context) {
-        super(context);
-
-        inflate(context);
-
-
-    }
-
     private void inflate(Context context) {
         LayoutInflater layoutInflater = (LayoutInflater) context
                 .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -79,7 +85,62 @@ public class OutputLine extends LinearLayout {
     }
 
     private void speak() {
+        if(withoutSpace){
+            tts.speak(getText());
+        } else {
+            if (isPlaying) {
+                stop();
+            } else {
+                playCards();
+            }
+        }
+    }
 
+    private void playCards() {
+        if(isPlaying) return;;
+
+        currentPlayCard = 0;
+        isPlaying = true;
+        if(cards.size()>0) {
+            playCard();
+        }
+    }
+
+    private void playCard() {
+        play(cards.get(currentPlayCard), new OnPlayedListener() {
+            @Override
+            public void onPlayed() {
+                if(!isPlaying) return;
+                currentPlayCard++;
+                if(currentPlayCard<cards.size()){
+                    playCard();
+                }
+            }
+        });
+    }
+
+    private void play(Card card, OnPlayedListener onPlayedListener) {
+
+        try {
+            mp.setDataSource(set.getAudioFile(card.audioPath).getAbsolutePath());
+            mp.prepare();
+
+            mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    onPlayedListener.onPlayed();
+                }
+            });
+            mp.start();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stop(){
+        isPlaying=false;
+        mp.stop();
     }
 
     private void clear() {
@@ -128,6 +189,11 @@ public class OutputLine extends LinearLayout {
     }
 
     private void updateText() {
+        
+        textOutputView.setText(getText());
+    }
+
+    private String getText() {
         StringBuilder builder = new StringBuilder();
 
         for (int i = 0; i < cards.size(); i++) {
@@ -139,7 +205,7 @@ public class OutputLine extends LinearLayout {
                 builder.append(' ');
             }
         }
-        textOutputView.setText(builder.toString());
+        return builder.toString();
     }
 
     public void setDirectMode(boolean directMode) {
@@ -148,5 +214,9 @@ public class OutputLine extends LinearLayout {
 
     public boolean getDirectMode() {
         return directMode;
+    }
+
+    public static abstract class OnPlayedListener{
+        public abstract void onPlayed();
     }
 }

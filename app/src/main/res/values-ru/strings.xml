@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">LINKa pictures</string>
+    <string name="app_name">LINKa покажи</string>
+    <string name="title_activity_settings">Настройки</string>
+    <string name="parent_control">Родительский контроль</string>
+    <string name="enable_parent_control_title">Включить родительский контроль (блокировать важные действий)</string>
+    <string name="parent_control">Родительский контроль</string>
+    <string name="parent_password">Пароль</string>
+    <string name="ok">Готово</string>
+    <string name="cancel">Отмена</string>
+    <string name="grid_activity_settings">Настройки вида</string>
+    <string name="show_output_line">Показывать строку вывода</string>
+    <string name="show_page_buttons">Показывать кнопки перемотки страниц</string>
 </resources>
