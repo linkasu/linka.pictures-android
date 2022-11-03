@@ -4,7 +4,6 @@
     <string name="title_activity_settings">Настройки</string>
     <string name="parent_control">Родительский контроль</string>
     <string name="enable_parent_control_title">Включить родительский контроль (блокировать важные действий)</string>
-    <string name="parent_control">Родительский контроль</string>
     <string name="parent_password">Пароль</string>
     <string name="ok">Готово</string>
     <string name="cancel">Отмена</string>
