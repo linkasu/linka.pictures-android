@@ -15,6 +15,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
+
 import java.io.IOException;
 
 import su.linka.pictures.R;
@@ -27,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private static Context context;
     private ListView setsList;
     private ArrayAdapter<SetManifest> adapter;
+    private FirebaseAnalytics mFirebaseAnalytics;
 
     public static Context getContext() {
         return context;
@@ -36,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         context = getApplicationContext();
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
         loadDefaultSets();
 
          setsList = findViewById(R.id.sets_list);
