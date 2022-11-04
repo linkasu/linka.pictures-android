@@ -21,6 +21,7 @@ import net.lingala.zip4j.exception.ZipException;
 import java.io.File;
 
 import su.linka.pictures.Card;
+import su.linka.pictures.Cookie;
 import su.linka.pictures.R;
 import su.linka.pictures.Set;
 import su.linka.pictures.SetsManager;
@@ -31,19 +32,21 @@ import su.linka.pictures.components.ParentPasswordDialog;
 public class GridActivity extends AppCompatActivity {
 
     private Set set;
-    private  int page =0;
     private GridSettings gridSettings = new GridSettings();
     private ImageButton nextButton;
     private ImageButton prevButton;
     private OutputLine outputLine;
     private CardGrid grid;
+    private Cookie cookie;
+    private String file;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_grid);
-
+        cookie = new Cookie(this);
+        SetsManager setsManager = new SetsManager(this);
         getOnBackPressedDispatcher()
                     .addCallback(this, new OnBackPressedCallback(true) {
                         @Override
@@ -57,18 +60,19 @@ public class GridActivity extends AppCompatActivity {
 
 
         Bundle b = getIntent().getExtras();
-        String file = b.getString("file");
+         file = b.getString("file");
         getSupportActionBar().setTitle(file.substring(0, file.length()-5)); // for set actionbar title
         getSupportActionBar().setDisplayHomeAsUpEnabled(true); // for add back arrow in action bar
 
         try {
-            set = SetsManager
-                    .getInstance()
+            set = setsManager
                     .getSet(file);
             outputLine.setSet(set);
             grid = findViewById(R.id.card_grid);
 
             grid.setSet(set);
+
+            gridSettings = GridSettings.fromInt(cookie.getSetSettings(file, 3));
 
             grid.setCardSelectListener(new CardGrid.OnCardSelectListener() {
                 @Override
@@ -138,6 +142,7 @@ public class GridActivity extends AppCompatActivity {
                             public void onClick(DialogInterface dialog,int id) {
                                 /** DO THE METHOD HERE WHEN PROCEED IS CLICKED*/
                                 settingsView.commit();
+                                cookie.setSetSettings(file, gridSettings.toInt());
                                 prepareView();
                                 dialog.dismiss();
                             }

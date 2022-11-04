@@ -2,6 +2,7 @@ package su.linka.pictures;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
+import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -30,12 +31,6 @@ public class Cookie {
 
     }
 
-    public static Cookie getInstance() {
-        if(instance==null){
-            instance = new Cookie(MainActivity.getContext());
-        }
-        return instance;
-    }
     public  boolean get(@FieldName String id, boolean def){
         return preferences.getBoolean(id, def);
     }
@@ -44,5 +39,12 @@ public class Cookie {
                 .putBoolean(id, value)
                 .apply();
     }
-
+    public int getSetSettings(String id, int def) {
+        return preferences.getInt(id, def);
+    }
+    public void setSetSettings(String id, int value){
+        preferences.edit()
+                .putInt(id, value)
+                .apply();
+    }
 }

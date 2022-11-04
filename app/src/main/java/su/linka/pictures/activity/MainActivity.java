@@ -26,32 +26,30 @@ import su.linka.pictures.components.ParentPasswordDialog;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static Context context;
     private ListView setsList;
     private ArrayAdapter<SetManifest> adapter;
     private FirebaseAnalytics mFirebaseAnalytics;
+    private SetsManager setsManager;
 
-    public static Context getContext() {
-        return context;
-    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        context = getApplicationContext();
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+
+        setsManager = new SetsManager(this);
         loadDefaultSets();
 
          setsList = findViewById(R.id.sets_list);
 
-        adapter = new ArrayAdapter<SetManifest>(context, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item);
+        adapter = new ArrayAdapter<SetManifest>(this, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item);
         setsList.setAdapter(adapter);
         loadSetsList();
         setsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 SetManifest manifest = adapter.getItem(position);
-                Intent intent = new Intent(context, GridActivity.class);
+                Intent intent = new Intent(view.getContext(), GridActivity.class);
                 Bundle b = new Bundle();
                 b.putString("file", manifest.toString()); //Your id
                 intent.putExtras(b);
@@ -71,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if(item.getItemId()==R.id.settings){
+            Context context = this;
             ParentPasswordDialog.showDialog(getWindow().getContext(), new ParentPasswordDialog.OnParentControlResult() {
                 @Override
                 public void onComplete() {
@@ -85,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadSetsList() {
 
-        SetManifest[] sets = SetsManager.getInstance()
+        SetManifest[] sets = setsManager
                 .getSets();
         adapter.clear();
         adapter.addAll(sets);
@@ -95,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         try {
-            SetsManager.getInstance().loadDefaultSets();
+            setsManager.loadDefaultSets();
         } catch (IOException e) {
 
             Log.e(getClass().getCanonicalName(), "loadSets: ", e);

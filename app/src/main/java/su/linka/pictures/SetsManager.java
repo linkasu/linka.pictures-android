@@ -1,5 +1,6 @@
 package su.linka.pictures;
 
+import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
@@ -24,17 +25,17 @@ import java.util.UUID;
 import su.linka.pictures.activity.MainActivity;
 
 public class SetsManager {
-    private static SetsManager instance;
 
-    public static SetsManager getInstance() {
-        if(instance==null){
-            instance=new SetsManager();
-        }
-        return instance;
+    private final Cookie cookie;
+    private final Context context;
+
+    public SetsManager(Context context){
+        this.context = context;
+        cookie = new Cookie(context);
     }
 
     public void loadDefaultSets() throws IOException {
-        if(Cookie.getInstance().get(Cookie.ASSETS_LOADER, false)){
+        if(cookie.get(Cookie.ASSETS_LOADER, false)){
             return;
         }
         File sets = getSetsDirectory();
@@ -43,7 +44,7 @@ public class SetsManager {
             String[] list = am.list("sets");
             for (int i = 0; i < list.length; i++) {
                 InputStream in = am.open("sets/"+list[i]);
-                File outFile = new File(sets.getAbsoluteFile(), list[i]);;
+                File outFile = new File(sets.getAbsoluteFile(), list[i]);
 
                 OutputStream out = new FileOutputStream(outFile);
                 byte[] buffer = new byte[1024];
@@ -54,7 +55,7 @@ public class SetsManager {
                 in.close();
                 out.close();
             }
-        Cookie.getInstance().set(Cookie.ASSETS_LOADER, true);
+      cookie.set(Cookie.ASSETS_LOADER, true);
     }
 
     private File getSetsDirectory() {
@@ -64,11 +65,11 @@ public class SetsManager {
 
     private File getRootDirectory(){
         //Create File object for Parent Directory
-        return MainActivity.getContext().getFilesDir();
+        return context.getFilesDir();
     }
 
     private AssetManager getAssetsManager(){
-        return MainActivity.getContext().getAssets();
+        return context.getAssets();
     }
 
     public SetManifest[] getSets() {
@@ -112,7 +113,7 @@ public class SetsManager {
 
     @NonNull
     private File getOutputDir() {
-        return new File(MainActivity.getContext().getCacheDir(), UUID.randomUUID().toString() + "/");
+        return new File(context.getCacheDir(), UUID.randomUUID().toString() + "/");
     }
 
     private String readStringFile(File file){
