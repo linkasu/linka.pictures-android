@@ -1,5 +1,6 @@
 package su.linka.pictures.activity;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -37,12 +38,19 @@ public class GridActivity extends AppCompatActivity {
     private OutputLine outputLine;
     private CardGrid grid;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_grid);
 
-
+        getOnBackPressedDispatcher()
+                    .addCallback(this, new OnBackPressedCallback(true) {
+                        @Override
+                        public void handleOnBackPressed() {
+                            close();
+                        }
+                    });
          nextButton = findViewById(R.id.next_button);
          prevButton = findViewById(R.id.prev_button);
          outputLine = findViewById(R.id.output_line);
@@ -86,18 +94,13 @@ public class GridActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.grid_activity_menu, menu);
         return super.onCreateOptionsMenu(menu);
     }
+
+
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         if(id==android.R.id.home){
-            ParentPasswordDialog
-                    .showDialog(this, new ParentPasswordDialog.OnParentControlResult() {
-                        @Override
-                        public void onComplete() {
-                            finish();
-
-                        }
-                    });
+            close();
         } else if(id==R.id.settings){
             ParentPasswordDialog.showDialog(this, new ParentPasswordDialog.OnParentControlResult() {
                 @Override
@@ -107,6 +110,17 @@ public class GridActivity extends AppCompatActivity {
             });
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void close() {
+        ParentPasswordDialog
+                .showDialog(this, new ParentPasswordDialog.OnParentControlResult() {
+                    @Override
+                    public void onComplete() {
+                        finish();
+
+                    }
+                });
     }
 
     private void showSettings() {

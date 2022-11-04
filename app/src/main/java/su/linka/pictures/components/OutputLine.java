@@ -12,6 +12,8 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
+
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -85,6 +87,8 @@ public class OutputLine extends LinearLayout {
     }
 
     private void speak() {
+
+
         if(withoutSpace){
             tts.speak(getText());
         } else {
@@ -121,7 +125,7 @@ public class OutputLine extends LinearLayout {
         });
     }
 
-    private void play(Card card, OnPlayedListener onPlayedListener) {
+    private void play(Card card, @Nullable OnPlayedListener onPlayedListener) {
 
         try {
             mp.reset();
@@ -131,7 +135,7 @@ public class OutputLine extends LinearLayout {
             mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
-                    onPlayedListener.onPlayed();
+                    if(onPlayedListener!=null) onPlayedListener.onPlayed();
                 }
             });
             mp.start();
@@ -182,6 +186,10 @@ public class OutputLine extends LinearLayout {
     }
 
     public void addCard(Card newCard) {
+        if(directMode){
+            play(newCard, null);
+            return;
+        }
         cards.add(newCard);
         if(withoutSpace){
             updateText();
@@ -213,10 +221,6 @@ public class OutputLine extends LinearLayout {
 
     public void setDirectMode(boolean directMode) {
         this.directMode = directMode;
-    }
-
-    public boolean getDirectMode() {
-        return directMode;
     }
 
     public static abstract class OnPlayedListener{
