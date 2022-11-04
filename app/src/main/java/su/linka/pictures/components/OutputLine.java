@@ -114,6 +114,8 @@ public class OutputLine extends LinearLayout {
                 currentPlayCard++;
                 if(currentPlayCard<cards.size()){
                     playCard();
+                } else {
+                    isPlaying = false;
                 }
             }
         });
@@ -122,6 +124,7 @@ public class OutputLine extends LinearLayout {
     private void play(Card card, OnPlayedListener onPlayedListener) {
 
         try {
+            mp.reset();
             mp.setDataSource(set.getAudioFile(card.audioPath).getAbsolutePath());
             mp.prepare();
 
