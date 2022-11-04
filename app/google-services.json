@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "549213549244",
+    "project_id": "linka-pictures",
+    "storage_bucket": "linka-pictures.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:549213549244:android:41e3340169c0fde49dd6b9",
+        "android_client_info": {
+          "package_name": "su.linka.pictures"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "549213549244-kkatqk8o0dsnpjhlonq9pq3k449sc9ha.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAox_YxwpTuksBktfxpOPupHWt60IvXM_k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "549213549244-kkatqk8o0dsnpjhlonq9pq3k449sc9ha.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
