@@ -152,4 +152,15 @@ public class SetsManager {
     public File getSetFile(String name) {
         return new File(getSetsDirectory(), name);
     }
+
+    public Set createSet(String text) {
+
+        File file = new File(getSetsDirectory().getAbsoluteFile(), text+".json");
+        File folder = getOutputDir();
+        folder.mkdir();
+        SetManifest manifest = new SetManifest(file);
+        Set set = new Set(manifest, folder);
+
+        return set;
+    }
 }

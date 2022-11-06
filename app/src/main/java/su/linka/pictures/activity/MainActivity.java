@@ -1,8 +1,13 @@
 package su.linka.pictures.activity;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -15,10 +20,12 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.analytics.FirebaseAnalytics;
 
 import java.io.IOException;
 
+import su.linka.pictures.Callback;
 import su.linka.pictures.R;
 import su.linka.pictures.SetManifest;
 import su.linka.pictures.SetsManager;
@@ -30,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayAdapter<SetManifest> adapter;
     private FirebaseAnalytics mFirebaseAnalytics;
     private SetsManager setsManager;
+    private ActivityResultLauncher<Intent> activityLauncher ;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +46,17 @@ public class MainActivity extends AppCompatActivity {
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
         setsManager = new SetsManager(this);
+        activityLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if (result.getResultCode() == Activity.RESULT_OK) {
+                            loadSetsList();
+                        }
+                    }
+                });
+
         loadDefaultSets();
 
          setsList = findViewById(R.id.sets_list);
@@ -57,6 +76,30 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+
+        FloatingActionButton fab = findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                createSet();
+            }
+        });
+    }
+
+    private void createSet() {
+        Context context = this;
+        ParentPasswordDialog
+                .showDialog(this, new Callback() {
+                    @Override
+                    public void onDone(Object result) {
+                        Intent intent = new Intent(context, SetEditActivity.class);
+                        activityLauncher.launch(intent);
+                    }
+                    @Override
+                    public void onFail(Exception error) {
+
+                    }
+                });
     }
 
     @Override
@@ -70,12 +113,17 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if(item.getItemId()==R.id.settings){
             Context context = this;
-            ParentPasswordDialog.showDialog(getWindow().getContext(), new ParentPasswordDialog.OnParentControlResult() {
-                @Override
-                public void onComplete() {
+            ParentPasswordDialog.showDialog(getWindow().getContext(), new Callback() {
+                        @Override
+                        public void onDone(Object result) {
 
                     Intent intent = new Intent(context, SettingsActivity.class);
                     startActivity(intent);
+                }
+
+                @Override
+                public void onFail(Exception error) {
+
                 }
             });
         }
@@ -88,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
                 .getSets();
         adapter.clear();
         adapter.addAll(sets);
+        adapter.notifyDataSetChanged();
     }
 
     protected void loadDefaultSets(){

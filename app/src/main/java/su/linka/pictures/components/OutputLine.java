@@ -38,7 +38,7 @@ public class OutputLine extends LinearLayout {
     private boolean withoutSpace;
     private OutputAdapter adapter;
 
-    private ArrayList<Card> cards = new ArrayList<>();
+    private final ArrayList<Card> cards = new ArrayList<>();
     private boolean directMode;
     private int currentPlayCard = 0;
     private boolean isPlaying = false;
@@ -62,7 +62,7 @@ public class OutputLine extends LinearLayout {
         
         backSpaceButton = findViewById(R.id.backspace_button);
         speakButton = findViewById(R.id.speak_button);
-        clearButton = findViewById(R.id.clear_button);;
+        clearButton = findViewById(R.id.clear_button);
         textOutputView = findViewById(R.id.output_text);
         grid = findViewById(R.id.output_grid);
 
@@ -101,7 +101,7 @@ public class OutputLine extends LinearLayout {
     }
 
     private void playCards() {
-        if(isPlaying) return;;
+        if(isPlaying) return;
 
         currentPlayCard = 0;
         isPlaying = true;

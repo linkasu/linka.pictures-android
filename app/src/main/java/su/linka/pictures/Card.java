@@ -1,14 +1,21 @@
 package su.linka.pictures;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.Objects;
 
 public class Card {
     final int id ;
-    public final String imagePath ;
-    public final String title ;
-    public final String audioPath ;
-    public final int cardType ;
+    public String imagePath ;
+    public String title ;
+    public String audioPath ;
+    public int cardType ;
 
+    public Card(int id, int cardType){
+        this.id = id;
+        this.cardType = cardType;
+    }
     public Card(int id, String imagePath, String title, String audioPath, int cardType) {
         this.id = id;
         this.imagePath = imagePath;
@@ -28,5 +35,20 @@ public class Card {
     @Override
     public int hashCode() {
         return Objects.hash(id, imagePath, title, audioPath, cardType);
+    }
+
+    public JSONObject toJSONObject() throws JSONException {
+        JSONObject card = new JSONObject();
+        card.put("id", id)
+                .put("title", title)
+                .put("imagePath", imagePath)
+                .put("audioPath", audioPath)
+                .put("cardType", cardType);
+        return card;
+    }
+
+    @Override
+    public Card clone() throws CloneNotSupportedException {
+        return (Card) super.clone();
     }
 }

@@ -3,6 +3,7 @@ plugins {
     id 'com.google.gms.google-services'
 }
 
+
 android {
     namespace 'su.linka.pictures'
     compileSdk 33
@@ -40,12 +41,15 @@ dependencies {
     implementation "com.github.permissions-dispatcher:permissionsdispatcher:4.8.0"
     implementation 'androidx.navigation:navigation-fragment:2.5.3'
     implementation 'androidx.navigation:navigation-ui:2.5.3'
+    //noinspection GradleDynamicVersion
     implementation 'androidx.preference:preference:1.1.+'
 
     implementation 'com.afollestad.material-dialogs:input:3.3.0'
-    implementation 'com.google.firebase:firebase-analytics:20.1.1'
+    implementation 'com.google.firebase:firebase-analytics:21.2.0'
     annotationProcessor "com.github.permissions-dispatcher:permissionsdispatcher-processor:4.8.0"
 
+
+    implementation 'com.guolindev.permissionx:permissionx:1.7.1'
     implementation 'net.lingala.zip4j:zip4j:2.11.2'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

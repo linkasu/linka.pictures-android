@@ -12,13 +12,13 @@ import su.linka.pictures.SetManifest;
 
 public class CardGrid extends LinearLayout {
     final LayoutParams params;
-    private GridButton[] buttons;
-    private int rows;
-    private int columns;
+    GridButton[] buttons;
+    int rows;
+    int columns;
     int page = 0;
     Set set;
     SetManifest manifest;
-    private OnCardSelectListener cardSelectListener;
+    OnCardSelectListener cardSelectListener;
 
     public CardGrid(Context context, AttributeSet set){
 
@@ -28,7 +28,7 @@ public class CardGrid extends LinearLayout {
 
     }
 
-    private void setGridSize(int rows, int columns) {
+    public void setGridSize(int rows, int columns) {
         removeAllViews();
         this.rows = rows;
         this.columns = columns;
@@ -42,17 +42,26 @@ public class CardGrid extends LinearLayout {
             row.setLayoutParams(params);
             addView(row);
             for (int j = 0; j < columns; j++) {
-
+                final  int id = i * columns + j + (getPageSize() * page);
                 GridButton button = new GridButton(getContext()); // Creating an instance for View Object
-                buttons[i * columns + j + (getPageSize() * page)] = button;
+                buttons[id] = button;
                 button.setLayoutParams(params);
+
+                button.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if(cardSelectListener!=null){
+                            cardSelectListener.onCard(button.getCard(), id);
+                        }
+                    }
+                });
 
                 row.addView(button, j);
             }
         }
      }
 
-    private int getPageSize() {
+    int getPageSize() {
         return rows * columns;
     }
     public int getPagesCount(){
@@ -90,7 +99,7 @@ public class CardGrid extends LinearLayout {
 
         int count = getPageSize();
         for (int i = 0; i < count; i++) {
-            int index = getPageSize()*page+i;
+            int index = count*page+i;
             Card card = null;
 
             if(index<manifest.cards.size()) {
@@ -98,18 +107,11 @@ public class CardGrid extends LinearLayout {
                 card = manifest.cards.get(index);
 
             }
-            buttons[i].setCard(card);
             if(card!=null){
+                buttons[i].setCard(card);
                 if(card.cardType==0) buttons[i].setImage(set.getBitmap(card.imagePath));
                 Card finalCard = card;
-                buttons[i].setOnClickListener(new OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if(cardSelectListener!=null){
-                            cardSelectListener.onCard(finalCard);
-                        }
-                    }
-                });
+
             }
 
         }
@@ -121,6 +123,6 @@ public class CardGrid extends LinearLayout {
 
 
     public static abstract class OnCardSelectListener{
-        public abstract void onCard(Card card);
+        public abstract void onCard(Card card, int position);
     }
 }

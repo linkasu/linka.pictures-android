@@ -10,12 +10,21 @@ import java.util.ArrayList;
 public class SetManifest {
 
     private final String version;
-    public final int columns;
-    public final int rows;
-    public final boolean withoutSpace;
-    public final ArrayList< Card> cards;
+    public int columns;
+    public int rows;
+    public boolean withoutSpace;
+    public ArrayList< Card> cards;
     protected final File file;
 
+    public SetManifest(File file){
+
+        this.file = file;
+        version = "1.0";
+        columns =4;
+        rows=3;
+        withoutSpace = false;
+        cards = new ArrayList<>();
+    }
 
     public SetManifest(File file, JSONObject object) throws JSONException {
         this.file = file;
@@ -40,5 +49,21 @@ public class SetManifest {
     @Override
     public String toString() {
         return file.getName();
+    }
+
+    public JSONObject toJSONObject() throws JSONException {
+        JSONObject o = new JSONObject();
+        o.put("version", version)
+                .put("columns", columns)
+                .put("rows", rows)
+                .put("withoutSpace", withoutSpace);
+        JSONArray array = new JSONArray();
+        for (int i = 0; i < cards.size(); i++) {
+            Card card = cards.get(i);
+            JSONObject jcard = card.toJSONObject();
+            array.put(i, jcard);
+        }
+        o.put("cards", array);
+        return o;
     }
 }

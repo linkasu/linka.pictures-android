@@ -33,8 +33,13 @@ public class GridButton  extends LinearLayout {
                 ((TextView) findViewById(R.id.text)).setText(card.title);
             }
             if(card.cardType==1){
-                ((TextView) findViewById(R.id.text)).setText(' ');
+                ((TextView) findViewById(R.id.text)).setText(" ");
                 ((ImageView) findViewById(R.id.image)).setImageDrawable(getContext().getDrawable(R.drawable.ic_baseline_space_bar_24));
+            }
+            if(card.cardType==3){
+                ((TextView) findViewById(R.id.text)).setText(R.string.create_card   );
+                ((ImageView) findViewById(R.id.image)).setImageDrawable(getContext().getDrawable(R.drawable.ic_baseline_add_24));
+
             }
 
         } else {

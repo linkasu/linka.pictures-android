@@ -20,6 +20,7 @@ import net.lingala.zip4j.exception.ZipException;
 
 import java.io.File;
 
+import su.linka.pictures.Callback;
 import su.linka.pictures.Card;
 import su.linka.pictures.Cookie;
 import su.linka.pictures.R;
@@ -76,7 +77,7 @@ public class GridActivity extends AppCompatActivity {
 
             grid.setCardSelectListener(new CardGrid.OnCardSelectListener() {
                 @Override
-                public void onCard(Card card) {
+                public void onCard(Card card, int position) {
                     onCardSelect(card);
                 }
             });
@@ -106,10 +107,16 @@ public class GridActivity extends AppCompatActivity {
         if(id==android.R.id.home){
             close();
         } else if(id==R.id.settings){
-            ParentPasswordDialog.showDialog(this, new ParentPasswordDialog.OnParentControlResult() {
+            ParentPasswordDialog.showDialog(this, new Callback() {
                 @Override
-                public void onComplete() {
-                    showSettings();
+                public void onDone(Object result) {
+
+                   showSettings();
+                }
+
+                @Override
+                public void onFail(Exception error) {
+
                 }
             });
         }
@@ -118,13 +125,18 @@ public class GridActivity extends AppCompatActivity {
 
     private void close() {
         ParentPasswordDialog
-                .showDialog(this, new ParentPasswordDialog.OnParentControlResult() {
+                .showDialog(this, new Callback() {
                     @Override
-                    public void onComplete() {
+                    public void onDone(Object result) {
                         finish();
+                    }
+
+                    @Override
+                    public void onFail(Exception error) {
 
                     }
-                });
+                }
+                );
     }
 
     private void showSettings() {

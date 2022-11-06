@@ -13,7 +13,7 @@ import su.linka.pictures.Set;
 
 public class OutputGrid extends CardGrid{
 
-    private ArrayList<Card> cards = new ArrayList<>();
+    private final ArrayList<Card> cards = new ArrayList<>();
 
     public OutputGrid(Context context, AttributeSet set) {
         super(context, set);
