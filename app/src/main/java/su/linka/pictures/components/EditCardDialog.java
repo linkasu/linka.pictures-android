@@ -222,7 +222,7 @@ public class EditCardDialog extends Dialog {
         findViewById(R.id.positiveBtn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                boolean result = save();
+                boolean result = save(false);
                 if(result) {
                     dismiss();
                 }
@@ -234,18 +234,39 @@ public class EditCardDialog extends Dialog {
                 dismiss();
             }
         });
-    }
+        findViewById(R.id.delete_button).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ConfirmDialog.showConfirmDialog(getContext(), R.string.delete, new Callback() {
+                    @Override
+                    public void onDone(Object result) {
+                        card = new Card(0, 3);
+                        save(true);
+                        dismiss();
 
-    private boolean save() {
-        boolean res = validate();
+                    }
+
+                    @Override
+                    public void onFail(Exception error) {
+
+                    }
+                });
+            }
+        });
+    }
+    private boolean save(){
+        return save(false);
+    }
+    private boolean save(boolean isDeleting) {
+        boolean res = isDeleting|| validate();
         if(!res) {
             Toast.makeText(getContext(), R.string.card_fields_doesnt, Toast.LENGTH_LONG).show();
             return false;
         }
         int type = getTypeFromRadio();
 
-        card.cardType=type;
-        if(type==0){
+        if(!isDeleting) card.cardType=type;
+        if(card.cardType==0){
             card.title = cardTitleEditText.getText().toString();
             card.imagePath = set.saveBitmap(currentBitmap).getName();
             try {

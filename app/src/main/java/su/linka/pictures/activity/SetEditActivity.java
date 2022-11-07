@@ -248,7 +248,7 @@ public class SetEditActivity extends AppCompatActivity {
 
                             @Override
                             public void onFail(Exception error) {
-
+                                finish();
                             }
                         });
                     }
