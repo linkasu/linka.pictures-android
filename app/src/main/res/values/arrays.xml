@@ -9,4 +9,9 @@
         <item>reply</item>
         <item>reply_all</item>
     </string-array>
+    <string-array name="set_context_actions" >
+        <item>@string/open</item>
+        <item>@string/edit</item>
+        <item>@string/delete</item>
+    </string-array>
 </resources>

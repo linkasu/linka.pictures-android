@@ -61,11 +61,11 @@ public class CardGrid extends LinearLayout {
         }
      }
 
-    int getPageSize() {
+    public int getPageSize() {
         return rows * columns;
     }
     public int getPagesCount(){
-        return manifest.cards.size() / getPageSize();
+    return (int) Math.ceil( (float) manifest.cards.size() / (float) getPageSize());
     }
 
     
@@ -82,11 +82,13 @@ public class CardGrid extends LinearLayout {
         render();
     }
 
-    public void nextPage(){
+    public boolean nextPage(){
         if(page<getPagesCount()-1){
             page++;
+            render();
+            return true;
         }
-        render();
+        return false;
     }
     public void prevPage(){
         if(page>=1){
@@ -119,6 +121,14 @@ public class CardGrid extends LinearLayout {
 
     public void setCardSelectListener(OnCardSelectListener cardSelectListener) {
         this.cardSelectListener = cardSelectListener;
+    }
+
+    public void setPage(int page) {
+        this.page = page;
+    }
+
+    public int getPage() {
+        return page;
     }
 
 

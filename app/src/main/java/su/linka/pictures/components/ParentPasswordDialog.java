@@ -1,13 +1,8 @@
 package su.linka.pictures.components;
 
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.text.InputType;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.widget.EditText;
 
 
 import androidx.preference.PreferenceManager;

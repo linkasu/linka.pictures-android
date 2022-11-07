@@ -2,10 +2,15 @@ package su.linka.pictures;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -56,5 +61,29 @@ public class Set {
             cards.set(pos, result);
         }
 
+    }
+
+    public void writeConfig() {
+        JSONObject object;
+        try {
+            object = manifest.toJSONObject();
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return;
+        }
+        File file = manifest.file;
+
+        try {
+            Writer output = null;
+            output = new BufferedWriter(new FileWriter(file));
+            output.write(object.toString());
+            output.close();
+
+        } catch (Exception e) {
+        }
+    }
+
+    public File getFolder() {
+        return folder;
     }
 }

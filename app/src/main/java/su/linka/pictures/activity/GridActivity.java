@@ -7,18 +7,13 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.ImageButton;
 
 import net.lingala.zip4j.exception.ZipException;
-
-import java.io.File;
 
 import su.linka.pictures.Callback;
 import su.linka.pictures.Card;
@@ -109,7 +104,7 @@ public class GridActivity extends AppCompatActivity {
         } else if(id==R.id.settings){
             ParentPasswordDialog.showDialog(this, new Callback() {
                 @Override
-                public void onDone(Object result) {
+                public void onDone(Object o) {
 
                    showSettings();
                 }
@@ -127,7 +122,7 @@ public class GridActivity extends AppCompatActivity {
         ParentPasswordDialog
                 .showDialog(this, new Callback() {
                     @Override
-                    public void onDone(Object result) {
+                    public void onDone(Object o) {
                         finish();
                     }
 

@@ -1,5 +1,6 @@
 package su.linka.pictures.components;
 
+import android.app.Activity;
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -8,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.GridView;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -42,6 +44,7 @@ public class OutputLine extends LinearLayout {
     private boolean directMode;
     private int currentPlayCard = 0;
     private boolean isPlaying = false;
+    private HorizontalScrollView scrollView;
 
 
     public OutputLine(Context context, AttributeSet set){
@@ -65,6 +68,7 @@ public class OutputLine extends LinearLayout {
         clearButton = findViewById(R.id.clear_button);
         textOutputView = findViewById(R.id.output_text);
         grid = findViewById(R.id.output_grid);
+        scrollView = findViewById(R.id.scroll_grid);
 
         backSpaceButton.setOnClickListener(new OnClickListener() {
             @Override
@@ -174,7 +178,7 @@ public class OutputLine extends LinearLayout {
         manifest =  set.getManifest();
         withoutSpace = manifest.withoutSpace;
 
-        grid.setVisibility(withoutSpace?GONE:VISIBLE);
+        scrollView.setVisibility(withoutSpace?GONE:VISIBLE);
         textOutputView.setVisibility(withoutSpace?VISIBLE:GONE);
 
         grid.setSet(set);
@@ -196,6 +200,22 @@ public class OutputLine extends LinearLayout {
         }else {
 
             grid.addCard(newCard);
+            new Thread (new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    ((Activity) getContext()).runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            scrollView.fullScroll(View.FOCUS_RIGHT);
+                        }
+                    });
+                }
+            }).start();
         }
     }
 

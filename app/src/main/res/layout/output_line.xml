@@ -10,13 +10,19 @@
         android:layout_height="match_parent"
         android:layout_weight="1"
         android:src="@drawable/ic_baseline_backspace_24"/>
-    <su.linka.pictures.components.OutputGrid
-        android:id="@+id/output_grid"
+    <HorizontalScrollView
         android:layout_width="0dp"
         android:layout_height="match_parent"
+        android:id="@+id/scroll_grid"
         android:layout_weight="3"
+        >
+    <su.linka.pictures.components.OutputGrid
+        android:id="@+id/output_grid"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
         android:padding="6dp"
         />
+    </HorizontalScrollView>
     <TextView
         android:id="@+id/output_text"
         android:layout_width="0dp"

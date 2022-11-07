@@ -1,5 +1,9 @@
 package su.linka.pictures.activity;
 
+import static su.linka.pictures.components.SetContextDialog.DELETE;
+import static su.linka.pictures.components.SetContextDialog.EDIT;
+import static su.linka.pictures.components.SetContextDialog.OPEN;
+
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -29,7 +33,9 @@ import su.linka.pictures.Callback;
 import su.linka.pictures.R;
 import su.linka.pictures.SetManifest;
 import su.linka.pictures.SetsManager;
+import su.linka.pictures.components.ConfirmDialog;
 import su.linka.pictures.components.ParentPasswordDialog;
+import su.linka.pictures.components.SetContextDialog;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -68,12 +74,38 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 SetManifest manifest = adapter.getItem(position);
-                Intent intent = new Intent(view.getContext(), GridActivity.class);
-                Bundle b = new Bundle();
-                b.putString("file", manifest.toString()); //Your id
-                intent.putExtras(b);
-                startActivity(intent);
+                openSet( manifest);
 
+            }
+        });
+
+        setsList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                SetManifest manifest = adapter.getItem(position);
+                SetContextDialog
+                        .show(view.getContext(), manifest.toString(), new Callback<Integer>() {
+                            @Override
+                            public void onDone(Integer result) {
+                                switch (result){
+                                    case OPEN:
+                                        openSet(manifest);
+                                        break;
+                                    case EDIT:
+                                        editSet(manifest);
+                                        break;
+                                    case DELETE:
+                                        deleteSet(manifest);
+                                        break;
+                                }
+                            }
+
+                            @Override
+                            public void onFail(Exception error) {
+
+                            }
+                        });
+                return true;
             }
         });
 
@@ -86,12 +118,43 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void deleteSet(SetManifest manifest) {
+        ConfirmDialog
+                .showConfirmDialog(this, R.string.delete, new Callback() {
+                    @Override
+                    public void onDone(Object o) {
+                        setsManager.delete(manifest);
+                        loadSetsList();
+                    }
+
+                    @Override
+                    public void onFail(Exception error) {
+
+                    }
+                });
+    }
+
+    private void openSet(SetManifest manifest) {
+        Intent intent = new Intent(this, GridActivity.class);
+        Bundle b = new Bundle();
+        b.putString("file", manifest.toString()); //Your id
+        intent.putExtras(b);
+        startActivity(intent);
+    }
+    private void editSet(SetManifest manifest) {
+        Intent intent = new Intent(this, SetEditActivity.class);
+        Bundle b = new Bundle();
+        b.putString("file", manifest.toString()); //Your id
+        intent.putExtras(b);
+        startActivity(intent);
+    }
+
     private void createSet() {
         Context context = this;
         ParentPasswordDialog
                 .showDialog(this, new Callback() {
                     @Override
-                    public void onDone(Object result) {
+                    public void onDone(Object o) {
                         Intent intent = new Intent(context, SetEditActivity.class);
                         activityLauncher.launch(intent);
                     }
@@ -115,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
             Context context = this;
             ParentPasswordDialog.showDialog(getWindow().getContext(), new Callback() {
                         @Override
-                        public void onDone(Object result) {
+                        public void onDone(Object o) {
 
                     Intent intent = new Intent(context, SettingsActivity.class);
                     startActivity(intent);

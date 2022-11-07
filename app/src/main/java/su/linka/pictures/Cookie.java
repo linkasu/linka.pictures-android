@@ -14,12 +14,12 @@ import su.linka.pictures.activity.MainActivity;
 
 public class Cookie {
 
-    @Retention(SOURCE)
-    @StringDef({
-            ASSETS_LOADER,
-    })
-    public @interface FieldName {}
-    public static final String ASSETS_LOADER = "ASSETS_LOADER";
+                @Retention(SOURCE)
+                @StringDef({
+                        ASSETS_LOADER,
+                })
+                public @interface FieldName {}
+                public static final String ASSETS_LOADER = "ASSETS_LOADER";
 
 
     private static final String APP_PREFERENCES = "my";

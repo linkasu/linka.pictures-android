@@ -22,8 +22,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
 
-import su.linka.pictures.activity.MainActivity;
-
 public class SetsManager {
 
     private final Cookie cookie;
@@ -153,14 +151,30 @@ public class SetsManager {
         return new File(getSetsDirectory(), name);
     }
 
-    public Set createSet(String text) {
+    public Set createSet() {
 
-        File file = new File(getSetsDirectory().getAbsoluteFile(), text+".json");
         File folder = getOutputDir();
         folder.mkdir();
+        File file = new File(folder, "config.json");
         SetManifest manifest = new SetManifest(file);
-        Set set = new Set(manifest, folder);
+        return new Set(manifest, folder);
+    }
 
-        return set;
+    public void save(Set set, String setName, Callback callback) {
+        set.writeConfig();
+
+        try {
+            Utils.zipFolder(set.getFolder().getAbsolutePath(), new File( getSetsDirectory().getAbsoluteFile(), setName).getAbsolutePath());
+            callback.onDone(null);
+        } catch (IOException e) {
+            e.printStackTrace();
+            callback.onFail(e);
+        }
+
+
+    }
+
+    public void delete(SetManifest manifest) {
+        manifest.file.delete();
     }
 }

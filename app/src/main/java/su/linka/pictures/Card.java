@@ -43,7 +43,7 @@ public class Card {
                 .put("title", title)
                 .put("imagePath", imagePath)
                 .put("audioPath", audioPath)
-                .put("cardType", cardType);
+                .put("cardType", cardType<3?cardType:2);
         return card;
     }
 

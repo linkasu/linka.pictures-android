@@ -12,6 +12,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import net.lingala.zip4j.exception.ZipException;
 
@@ -23,13 +24,13 @@ import su.linka.pictures.Set;
 import su.linka.pictures.SetManifest;
 import su.linka.pictures.SetsManager;
 import su.linka.pictures.components.CardGrid;
+import su.linka.pictures.components.ConfirmDialog;
 import su.linka.pictures.components.EditCardDialog;
 import su.linka.pictures.components.EditCardGrid;
 import su.linka.pictures.components.InputDialog;
 
 public class SetEditActivity extends AppCompatActivity {
 
-    private String file;
     private SetsManager setsManager;
     private Set set;
     private EditText rowsCountEditText;
@@ -38,6 +39,7 @@ public class SetEditActivity extends AppCompatActivity {
     private EditCardGrid grid;
     private ActivityResultListener activityResultListener;
     private EditCardDialog cardDialog;
+    private String setName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,7 +79,9 @@ public class SetEditActivity extends AppCompatActivity {
                         SetManifest manifest = set.getManifest();
                         manifest.rows = Integer.parseInt(rowsCountEditText.getText().toString());
                         manifest.columns = Integer.parseInt(columnsEditText.getText().toString());
+                        grid.setPage(0);
                         grid.setGridSize(manifest.rows, manifest.columns);
+                        grid.refresh();
 
                     }
                 });
@@ -91,28 +95,63 @@ public class SetEditActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.prev_button)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        grid.prevPage();
+                    }
+                });
+        findViewById(R.id.next_button)
+                .setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        boolean result = grid.nextPage();
+                        if(result) return;
+                        ConfirmDialog
+                                .showConfirmDialog(v.getContext(), R.string.confirm_page_creation, new Callback() {
+                                    @Override
+                                    public void onDone(Object p) {
+                                        int nextPageIndex = (grid.getPage()+1)*grid.getPageSize()+1;
+                                        onCardSelected(null, nextPageIndex);
+                                    }
+
+                                    @Override
+                                    public void onFail(Exception error) {
+
+                                    }
+                                });
+                    }
+                });
 
         Bundle b = getIntent().getExtras();
         if(b!=null) {
-            file = b.getString("file");
+            setName =  b.getString("file");
         }
 
-        if(file==null){
+        if(setName==null){
             showEnterTitleDialog();
         } else {
-            loadFromFile(file);
+            loadFromFile();
         }
 
     }
 
-    private void onCardSelected(Card card, int pos) {
+    private void onCardSelected(Card card, int pos ) {
+        onCardSelected(card, pos, false);
 
-        cardDialog.show(set, card.cardType<3? card: null);
+    }
+        private void onCardSelected(Card card, int pos, boolean nextPage ) {
+
+        cardDialog.show(set, (card!=null&& card.cardType<3)? card: null);
 
         cardDialog.setCallback(new Callback<Card>() {
             @Override
             public void onDone(Card result) {
                 addCard(pos, result);
+                if (nextPage){
+                    grid.nextPage();
+                }
             }
 
             @Override
@@ -135,23 +174,26 @@ public class SetEditActivity extends AppCompatActivity {
                 .showDialog(this, R.string.set_name, new Callback<String>() {
                     @Override
                     public void onDone(String result) {
-                        set = setsManager.createSet(result);
+                        setName = result+".linka";
+                        set = setsManager.createSet();
                         loadSet();
                     }
 
                     @Override
                     public void onFail(Exception error) {
-
+                        finish();
                     }
                 });
     }
 
-    private void loadFromFile(String file) {
+    private void loadFromFile() {
 
         try {
-            set = setsManager.getSet(file);
+            set = setsManager.getSet(setName);
         } catch (ZipException e) {
             e.printStackTrace();
+            Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show();
+            finish();
         }
         loadSet();
     }
@@ -191,7 +233,31 @@ public class SetEditActivity extends AppCompatActivity {
 
 
     private void close() {
-        finish();
+        ConfirmDialog
+                .showConfirmDialog(this, R.string.confirm_save_dialog, new Callback() {
+                    @Override
+                    public void onDone(Object o) {
+                        setsManager.save(set, setName, new Callback(){
+
+                            @Override
+                            public void onDone(Object o) {
+                                setResult(RESULT_OK);
+                                finish();
+
+                            }
+
+                            @Override
+                            public void onFail(Exception error) {
+
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onFail(Exception error) {
+
+                    }
+                });
     }
 
 }

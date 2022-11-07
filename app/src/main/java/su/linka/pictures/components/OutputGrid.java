@@ -47,8 +47,7 @@ public class OutputGrid extends CardGrid{
         for (int i = 0; i < count; i++) {
             Card card = cards.get(i);
             if(card.cardType!=0) continue;
-            GridButton button = new GridButton(getContext()); // Creating an instance for View Object
-            button.setLayoutParams(params);
+            GridButton button = new GridButton(getContext(), true); // Creating an instance for View Object
 
             button.setCard(card);
             button.setImage(set.getBitmap(card.imagePath));
