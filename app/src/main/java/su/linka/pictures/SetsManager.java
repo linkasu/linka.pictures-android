@@ -20,6 +20,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.UUID;
 
 public class SetsManager {
@@ -72,10 +74,24 @@ public class SetsManager {
 
     public SetManifest[] getSets() {
 
-        String[] files = getSetsDirectory().list();
+        File[] files = getSetsDirectory().listFiles();
+        Arrays.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File o1, File o2) {
+
+                if (o1.lastModified() > o2.lastModified()) {
+                    return -1;
+                } else if (o1.lastModified() < o2.lastModified()) {
+                    return +1;
+                } else {
+                    return 0;
+                }
+            }
+
+        });
         SetManifest[] manifests = new SetManifest[files.length];
         for (int i = 0; i < files.length; i++) {
-            File file = new File(getSetsDirectory(), files[i]);
+            File file = files[i];
             try {
 
                manifests[i] =  getSetManifest(file);
