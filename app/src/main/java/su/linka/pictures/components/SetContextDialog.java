@@ -17,7 +17,8 @@ import su.linka.pictures.R;
 public class SetContextDialog {
     public static final int OPEN = 0;
     public static final int EDIT = 1;
-    public static final int DELETE= 2;
+    public static final int RENAME = 2;
+    public static final int DELETE= 3;
 
 
     public static void show(Context context, String title, Callback<Integer> callback){

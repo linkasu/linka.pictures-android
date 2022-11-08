@@ -193,4 +193,8 @@ public class SetsManager {
     public void delete(SetManifest manifest) {
         manifest.file.delete();
     }
+
+    public void rename(SetManifest manifest, String result) {
+        manifest.file.renameTo(new File(manifest.file.getParent(), result+".linka"));
+    }
 }

@@ -3,6 +3,7 @@ package su.linka.pictures.activity;
 import static su.linka.pictures.components.SetContextDialog.DELETE;
 import static su.linka.pictures.components.SetContextDialog.EDIT;
 import static su.linka.pictures.components.SetContextDialog.OPEN;
+import static su.linka.pictures.components.SetContextDialog.RENAME;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
@@ -34,6 +35,7 @@ import su.linka.pictures.R;
 import su.linka.pictures.SetManifest;
 import su.linka.pictures.SetsManager;
 import su.linka.pictures.components.ConfirmDialog;
+import su.linka.pictures.components.InputDialog;
 import su.linka.pictures.components.ParentPasswordDialog;
 import su.linka.pictures.components.SetContextDialog;
 
@@ -94,6 +96,9 @@ public class MainActivity extends AppCompatActivity {
                                     case EDIT:
                                         editSet(manifest);
                                         break;
+                                    case RENAME:
+                                        renameSet(manifest);
+                                        break;
                                     case DELETE:
                                         deleteSet(manifest);
                                         break;
@@ -116,6 +121,23 @@ public class MainActivity extends AppCompatActivity {
                 createSet();
             }
         });
+    }
+
+    private void renameSet(SetManifest manifest) {
+        InputDialog
+                .showDialog(this, R.string.rename, new Callback<String>() {
+                    @Override
+                    public void onDone(String result) {
+                        setsManager.rename(manifest, result);
+                        loadSetsList();
+                    }
+
+                    @Override
+                    public void onFail(Exception error) {
+
+                    }
+                });
+
     }
 
     private void deleteSet(SetManifest manifest) {

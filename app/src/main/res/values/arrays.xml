@@ -12,6 +12,7 @@
     <string-array name="set_context_actions" >
         <item>@string/open</item>
         <item>@string/edit</item>
+        <item>@string/rename</item>
         <item>@string/delete</item>
     </string-array>
 </resources>
