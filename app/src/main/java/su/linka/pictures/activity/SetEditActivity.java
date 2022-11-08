@@ -200,6 +200,7 @@ public class SetEditActivity extends AppCompatActivity {
 
     private void loadSet() {
         SetManifest manifest = set.getManifest();
+        withoutSpaceCheckbox.setChecked(manifest.withoutSpace);
         grid.setGridSize(manifest.rows, manifest.columns);
         rowsCountEditText.setText(manifest.rows+"");
         columnsEditText.setText(manifest.columns+"");
@@ -237,6 +238,8 @@ public class SetEditActivity extends AppCompatActivity {
                 .showConfirmDialog(this, R.string.confirm_save_dialog, new Callback() {
                     @Override
                     public void onDone(Object o) {
+                        set.getManifest()
+                                        .withoutSpace =withoutSpaceCheckbox.isChecked();
                         setsManager.save(set, setName, new Callback(){
 
                             @Override
