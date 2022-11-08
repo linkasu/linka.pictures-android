@@ -9,9 +9,12 @@ import android.os.Bundle;
 
 import androidx.annotation.Nullable;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
+
 import java.io.File;
 import java.io.IOException;
 
+import su.linka.pictures.AnalyticsEvents;
 import su.linka.pictures.Callback;
 import su.linka.pictures.R;
 import su.linka.pictures.SetsManager;
@@ -19,10 +22,13 @@ import su.linka.pictures.Utils;
 import su.linka.pictures.components.ConfirmDialog;
 
 public class BroadcastReceiverActivity extends Activity {
+    private FirebaseAnalytics firebaseAnalytics;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        firebaseAnalytics = FirebaseAnalytics.getInstance(this);
 //        setContentView(R.layout.activity_main);
         final Intent intent = getIntent();
         final String action = intent.getAction();
@@ -56,6 +62,8 @@ finish();
             e.printStackTrace();
             finish();
         }
+        firebaseAnalytics.logEvent(AnalyticsEvents.ADD_SET, null);
+
         Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
         finish();

@@ -6,6 +6,9 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.Switch;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
+
+import su.linka.pictures.AnalyticsEvents;
 import su.linka.pictures.R;
 
 public class GridSettingsView extends LinearLayout {
@@ -16,7 +19,6 @@ public class GridSettingsView extends LinearLayout {
 
     public GridSettingsView(Context context) {
         super(context);
-
         layoutInflater = (LayoutInflater) context
                 .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         layoutInflater.inflate(R.layout.grid_settings, this, true);
@@ -38,5 +40,6 @@ public class GridSettingsView extends LinearLayout {
     public void commit() {
         settings.isOutput = isOutputSwitch.isChecked();
         settings.isPagesButtons = isPageButtonsSwitch.isChecked();
+
     }
 }

@@ -14,9 +14,12 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
+
 import net.lingala.zip4j.exception.ZipException;
 
 import su.linka.pictures.ActivityResultListener;
+import su.linka.pictures.AnalyticsEvents;
 import su.linka.pictures.Callback;
 import su.linka.pictures.Card;
 import su.linka.pictures.R;
@@ -40,11 +43,13 @@ public class SetEditActivity extends AppCompatActivity {
     private ActivityResultListener activityResultListener;
     private EditCardDialog cardDialog;
     private String setName;
+    private FirebaseAnalytics mFirebaseAnalytics;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_set_edit);
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
         cardDialog = new EditCardDialog(this);
 
         getOnBackPressedDispatcher()
@@ -82,6 +87,8 @@ public class SetEditActivity extends AppCompatActivity {
                         grid.setPage(0);
                         grid.setGridSize(manifest.rows, manifest.columns);
                         grid.refresh();
+                        mFirebaseAnalytics.logEvent(AnalyticsEvents.RESIZE_GRID, null);
+
 
                     }
                 });
@@ -92,6 +99,8 @@ public class SetEditActivity extends AppCompatActivity {
                 set
                         .getManifest()
                         .withoutSpace = withoutSpaceCheckbox.isChecked();
+                mFirebaseAnalytics.logEvent(AnalyticsEvents.SET_WITHOUT_SPACE, null);
+
             }
         });
 
@@ -164,6 +173,8 @@ public class SetEditActivity extends AppCompatActivity {
     }
 
     private void addCard(int pos, Card result) {
+        mFirebaseAnalytics.logEvent(AnalyticsEvents.ADD_CARD, null);
+
         set.addCard(pos, result);
         grid.refresh();
         grid.setSet(set);

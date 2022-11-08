@@ -13,8 +13,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
+
 import net.lingala.zip4j.exception.ZipException;
 
+import su.linka.pictures.AnalyticsEvents;
 import su.linka.pictures.Callback;
 import su.linka.pictures.Card;
 import su.linka.pictures.Cookie;
@@ -35,12 +38,14 @@ public class GridActivity extends AppCompatActivity {
     private CardGrid grid;
     private Cookie cookie;
     private String file;
+    private FirebaseAnalytics mFirebaseAnalytics;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_grid);
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
         cookie = new Cookie(this);
         SetsManager setsManager = new SetsManager(this);
         getOnBackPressedDispatcher()
@@ -85,6 +90,8 @@ public class GridActivity extends AppCompatActivity {
 
 
     private void onCardSelect(Card card) {
+
+        mFirebaseAnalytics.logEvent(AnalyticsEvents.CARD_SELECT, null);
         outputLine.addCard(card);
     }
 
@@ -105,6 +112,7 @@ public class GridActivity extends AppCompatActivity {
             ParentPasswordDialog.showDialog(this, new Callback() {
                 @Override
                 public void onDone(Object o) {
+                    mFirebaseAnalytics.logEvent(AnalyticsEvents.OPEN_GRID_SETTINGS, null);
 
                    showSettings();
                 }

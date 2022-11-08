@@ -30,6 +30,7 @@ import com.google.firebase.analytics.FirebaseAnalytics;
 
 import java.io.IOException;
 
+import su.linka.pictures.AnalyticsEvents;
 import su.linka.pictures.Callback;
 import su.linka.pictures.R;
 import su.linka.pictures.SetManifest;
@@ -157,6 +158,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void openSet(SetManifest manifest) {
+        mFirebaseAnalytics.logEvent(AnalyticsEvents.OPEN_SET, null);
         Intent intent = new Intent(this, GridActivity.class);
         Bundle b = new Bundle();
         b.putString("file", manifest.toString()); //Your id
@@ -164,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
     private void editSet(SetManifest manifest) {
+        mFirebaseAnalytics.logEvent(AnalyticsEvents.EDIT_SET, null);
         Intent intent = new Intent(this, SetEditActivity.class);
         Bundle b = new Bundle();
         b.putString("file", manifest.toString()); //Your id
@@ -172,6 +175,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createSet() {
+        mFirebaseAnalytics.logEvent(AnalyticsEvents.CREATE_SET, null);
         Context context = this;
         ParentPasswordDialog
                 .showDialog(this, new Callback() {
@@ -201,6 +205,7 @@ public class MainActivity extends AppCompatActivity {
             ParentPasswordDialog.showDialog(getWindow().getContext(), new Callback() {
                         @Override
                         public void onDone(Object o) {
+                            mFirebaseAnalytics.logEvent(AnalyticsEvents.OPEN_SETTINGS, null);
 
                     Intent intent = new Intent(context, SettingsActivity.class);
                     startActivity(intent);
