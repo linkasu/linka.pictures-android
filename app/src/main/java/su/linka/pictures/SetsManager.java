@@ -58,7 +58,7 @@ public class SetsManager {
       cookie.set(Cookie.ASSETS_LOADER, true);
     }
 
-    private File getSetsDirectory() {
+    public File getSetsDirectory() {
         return new File(getRootDirectory(). getAbsoluteFile(), "/sets/");
     }
 
