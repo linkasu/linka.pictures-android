@@ -38,4 +38,6 @@
     <string name="delete">Delete</string>
     <string name="add_set_to_library">Do you want add set to library?</string>
     <string name="rename">Rename</string>
+    <string name="save">Save</string>
+    <string name="confirm_exit_dialog">Confirm exit without save</string>
 </resources>

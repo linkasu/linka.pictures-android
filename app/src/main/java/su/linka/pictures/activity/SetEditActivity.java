@@ -237,6 +237,9 @@ public class SetEditActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
+        if(id==R.id.save_menu_button){
+            save();
+        }
         if(id==android.R.id.home){
             close();
         }
@@ -244,13 +247,13 @@ public class SetEditActivity extends AppCompatActivity {
     }
 
 
-    private void close() {
+    private void save() {
         ConfirmDialog
                 .showConfirmDialog(this, R.string.confirm_save_dialog, new Callback() {
                     @Override
                     public void onDone(Object o) {
                         set.getManifest()
-                                        .withoutSpace =withoutSpaceCheckbox.isChecked();
+                                .withoutSpace =withoutSpaceCheckbox.isChecked();
                         setsManager.save(set, setName, new Callback(){
 
                             @Override
@@ -265,6 +268,23 @@ public class SetEditActivity extends AppCompatActivity {
                                 finish();
                             }
                         });
+                    }
+
+                    @Override
+                    public void onFail(Exception error) {
+
+                    }
+                });
+    }
+
+    private void close() {
+        ConfirmDialog
+                .showConfirmDialog(this, R.string.confirm_exit_dialog, new Callback() {
+                    @Override
+                    public void onDone(Object o) {
+                        setResult(RESULT_OK);
+                        finish();
+
                     }
 
                     @Override

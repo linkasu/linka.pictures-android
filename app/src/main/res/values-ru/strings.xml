@@ -38,4 +38,6 @@
     <string name="delete">Удалить</string>
     <string name="add_set_to_library">Хотите добавить набор в библиотеку?</string>
     <string name="rename">Переименовать</string>
+    <string name="save">Сохранить</string>
+    <string name="confirm_exit_dialog">Выйти из сохранения</string>
 </resources>
