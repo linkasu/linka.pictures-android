@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import net.lingala.zip4j.exception.ZipException;
 
 import java.io.File;
+import java.io.OptionalDataException;
 
 public class SetsAdapter extends ArrayAdapter<SetManifest> {
     private final SetsManager setsManager;
@@ -45,7 +46,8 @@ public class SetsAdapter extends ArrayAdapter<SetManifest> {
             e.printStackTrace();
         }
         ((ImageView) convertView.findViewById(R.id.picture)).setImageBitmap(Utils.readBitmapFromFile(image));
-        ((TextView) convertView.findViewById(R.id.text)).setText(manifest.toString());
+        String title = manifest.toString();
+        ((TextView) convertView.findViewById(R.id.text)).setText(title.substring(0, title.length()-5));
 
 
         return convertView;
