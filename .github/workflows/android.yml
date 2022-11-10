@@ -28,11 +28,12 @@ jobs:
       with:
         name: app-debug
         path: app/build/outputs/apk/debug/app-debug.apk
-    - name: prepare gcloud
-      uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v1'
       with:
-        version: latest
         credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
     - name: gcloud Set up project
       run: |
         gcloud config set project ${{ secrets.PROJECT_ID }}
