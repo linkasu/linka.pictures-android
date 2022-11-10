@@ -24,3 +24,22 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+    - uses: actions/upload-artifact@v3
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
+    - name: prepare gcloud
+      uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+      with:
+        version: latest
+        credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+    - name: gcloud Set up project
+      run: |
+        gcloud config set project ${{ secrets.PROJECT_ID }}
+    - name: Run tests in test lab
+      run: |
+        gcloud firebase test android run \
+          --app app/build/outputs/apk/debug/app-debug.apk \
+          --device model=Nexus6P,version=25,orientation=portrait,locale=ru_RU \
+          --device model=athene,version=23,orientation=portrait,locale=ru_RU \
+          --device model=sailfish,version=26,orientation=portrait,locale=ru_RU
