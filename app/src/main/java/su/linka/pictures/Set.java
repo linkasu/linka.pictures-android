@@ -2,6 +2,7 @@ package su.linka.pictures;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,7 +31,7 @@ public class Set {
     public Bitmap getBitmap(String imagePath) {
         if(imagePath==null) return null;
         File file = new File(folder, imagePath);
-        return BitmapFactory.decodeFile(file.getAbsolutePath());
+        return Utils.readBitmapFromFile(file);
     }
 
     public File getAudioFile(String audioPath) {
@@ -40,6 +41,7 @@ public class Set {
     public File copyAudioFile(File currentAudioFile) throws IOException {
         return Utils.copy(currentAudioFile, new File(folder, currentAudioFile.getName()));
     }
+
 
     public File saveBitmap(Bitmap bm) {
         folder.mkdir();

@@ -197,4 +197,13 @@ public class SetsManager {
     public void rename(SetManifest manifest, String result) {
         manifest.file.renameTo(new File(manifest.file.getParent(), result+".linka"));
     }
+
+    public File getSetImage(SetManifest manifest, String path) throws ZipException {
+        if(path==null) return null;
+        File outputDir = getOutputDir(); // context being the Activity pointer
+        Log.d(getClass().getCanonicalName(), "getSetManifest: "+outputDir.getAbsolutePath());
+        new ZipFile(manifest.file).extractFile(path, outputDir.getAbsolutePath());
+        return new File(outputDir, path);
+
+    }
 }

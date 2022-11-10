@@ -22,6 +22,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.GridView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -34,6 +35,7 @@ import su.linka.pictures.AnalyticsEvents;
 import su.linka.pictures.Callback;
 import su.linka.pictures.R;
 import su.linka.pictures.SetManifest;
+import su.linka.pictures.SetsAdapter;
 import su.linka.pictures.SetsManager;
 import su.linka.pictures.components.ConfirmDialog;
 import su.linka.pictures.components.InputDialog;
@@ -42,8 +44,8 @@ import su.linka.pictures.components.SetContextDialog;
 
 public class MainActivity extends AppCompatActivity {
 
-    private ListView setsList;
-    private ArrayAdapter<SetManifest> adapter;
+    private GridView setsList;
+    private SetsAdapter adapter;
     private FirebaseAnalytics mFirebaseAnalytics;
     private SetsManager setsManager;
     private ActivityResultLauncher<Intent> activityLauncher ;
@@ -70,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
 
          setsList = findViewById(R.id.sets_list);
 
-        adapter = new ArrayAdapter<SetManifest>(this, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item);
+        adapter = new SetsAdapter(this);
         setsList.setAdapter(adapter);
         loadSetsList();
         setsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {

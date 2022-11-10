@@ -46,6 +46,21 @@ public class SetManifest {
         }
     }
 
+
+    public String getDefaultBitmap(){
+        String path = null;
+
+        for (int i = 0; i < cards.size(); i++) {
+            Card card = cards.get(i);
+            path = card.imagePath;
+            if(path!=null) {
+                return path;
+            }
+        }
+
+        return (null);
+    }
+
     @Override
     public String toString() {
         return file.getName();

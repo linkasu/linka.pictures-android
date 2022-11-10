@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -125,5 +126,11 @@ public class Utils {
                 fis.close();
             }
             zos.close();
+    }
+
+    public static Bitmap readBitmapFromFile(File image) {
+        if(image == null) return null;
+        return BitmapFactory.decodeFile(image.getAbsolutePath());
+
     }
 }
