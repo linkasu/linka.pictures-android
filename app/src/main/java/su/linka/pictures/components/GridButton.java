@@ -12,6 +12,7 @@ import android.widget.TextView;
 import androidx.annotation.StringRes;
 
 import com.amulyakhare.textdrawable.TextDrawable;
+import com.bumptech.glide.Glide;
 
 import su.linka.pictures.Card;
 import su.linka.pictures.R;
@@ -86,7 +87,9 @@ public class GridButton  extends LinearLayout {
 
             if(card.cardType==0) {
 
-                ((ImageView) findViewById(R.id.image)).setImageBitmap(image);
+                Glide.with(this)
+                        .load(image)
+                        .into((ImageView) findViewById(R.id.image));
             }
         }
         this.image = image;
