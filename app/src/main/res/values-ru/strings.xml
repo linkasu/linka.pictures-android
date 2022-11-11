@@ -40,4 +40,5 @@
     <string name="rename">Переименовать</string>
     <string name="save">Сохранить</string>
     <string name="confirm_exit_dialog">Выйти из сохранения</string>
+    <string name="your_sets">Ваши наборы</string>
 </resources>

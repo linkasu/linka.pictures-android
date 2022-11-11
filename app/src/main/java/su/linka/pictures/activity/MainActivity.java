@@ -44,7 +44,7 @@ import su.linka.pictures.components.SetContextDialog;
 
 public class MainActivity extends AppCompatActivity {
 
-    private GridView setsList;
+        private GridView setsList;
     private SetsAdapter adapter;
     private FirebaseAnalytics mFirebaseAnalytics;
     private SetsManager setsManager;
@@ -55,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+
+        getSupportActionBar().setTitle(R.string.your_sets);
 
         setsManager = new SetsManager(this);
         activityLauncher = registerForActivityResult(

@@ -40,4 +40,5 @@
     <string name="rename">Rename</string>
     <string name="save">Save</string>
     <string name="confirm_exit_dialog">Confirm exit without save</string>
+    <string name="your_sets">Your sets</string>
 </resources>
