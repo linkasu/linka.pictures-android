@@ -28,9 +28,10 @@ jobs:
       with:
         name: app-debug
         path: app/build/outputs/apk/debug/app-debug.apk
-        
     - name: 'Set up Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v1'
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v1'
       with:
         project_id: ${{ secrets.PROJECT_ID }}
         service_account_key: ${{ secrets.FIREBASE_KEY }}
