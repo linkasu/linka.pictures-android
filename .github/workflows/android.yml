@@ -34,7 +34,7 @@ jobs:
       uses: 'google-github-actions/auth@v1'
       with:
         project_id: ${{ secrets.PROJECT_ID }}
-        service_account_key: ${{ secrets.FIREBASE_KEY }}
+        credentials_json: ${{ secrets.FIREBASE_KEY }}
     - name: gcloud Set up project
       run: |
         gcloud config set project ${{ secrets.PROJECT_ID }}
