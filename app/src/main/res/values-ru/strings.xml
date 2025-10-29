@@ -32,6 +32,7 @@
     <string name="generate_audio_error">Ошибка генерации звука</string>
     <string name="confirm_page_creation">Подтвердить создание страницы</string>
     <string name="confirm_save_dialog">Подтвердить сохранение набора</string>
+    <string name="set_save_error">Ошибка сохранения набора</string>
     <string name="set_open_error">ошибка открытия</string>
     <string name="open">Открыть</string>
     <string name="edit">Изменить</string>
@@ -41,4 +42,5 @@
     <string name="save">Сохранить</string>
     <string name="confirm_exit_dialog">Выйти из сохранения</string>
     <string name="your_sets">Ваши наборы</string>
+    <string name="copy_assets_error">Ошибка копирования наборов</string>
 </resources>

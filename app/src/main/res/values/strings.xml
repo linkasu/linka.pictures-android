@@ -32,7 +32,9 @@
     <string name="generate_audio_error">Generate audio error</string>
     <string name="confirm_page_creation">Confirm page creation</string>
     <string name="confirm_save_dialog">Confirm save set</string>
+    <string name="set_save_error">Set save error</string>
     <string name="set_open_error">Set open error</string>
+    <string name="copy_assets_error">Copy assets error</string>
     <string name="open">Open</string>
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>

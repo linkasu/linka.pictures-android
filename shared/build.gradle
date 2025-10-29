@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.multiplatform'
+}
+
+kotlin {
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = '17'
+            }
+        }
+    }
+    jvmToolchain(17)
+
+    sourceSets {
+        commonMain {
+            dependencies {
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation kotlin('test')
+            }
+        }
+        androidMain {
+            dependencies {
+                implementation 'androidx.annotation:annotation:1.6.0'
+                implementation 'net.lingala.zip4j:zip4j:2.11.2'
+            }
+        }
+    }
+}
+
+android {
+    namespace 'su.linka.pictures.shared'
+    compileSdk 33
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 33
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
