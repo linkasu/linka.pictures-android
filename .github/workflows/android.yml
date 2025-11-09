@@ -76,7 +76,8 @@ jobs:
             --app artifacts/app-debug.apk \
             --test artifacts/app-debug-androidTest.apk \
             --device model=MediumPhone.arm,version=26,orientation=portrait,locale=ru_RU \
-            --device model=walleye,version=28,orientation=portrait,locale=ru_RU \
-            --device model=flame,version=30,orientation=portrait,locale=ru_RU \
+            --device model=Pixel2.arm,version=29,orientation=portrait,locale=ru_RU \
+            --device model=blueline,version=28,orientation=portrait,locale=ru_RU \
+            --device model=redfin,version=30,orientation=portrait,locale=ru_RU \
             --device model=oriole,version=33,orientation=portrait,locale=ru_RU \
             --device model=shiba,version=34,orientation=portrait,locale=ru_RU
