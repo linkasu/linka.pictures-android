@@ -98,8 +98,8 @@ jobs:
       - name: Run Firebase Test Lab instrumentation
         run: |
           gcloud firebase test android run \
-            --app artifacts/android-apks/app/build/outputs/apk/debug/app-debug.apk \
-            --test artifacts/android-apks/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            --app artifacts/debug/app-debug.apk \
+            --test artifacts/androidTest/debug/app-debug-androidTest.apk \
             --device model=MediumPhone.arm,version=26,orientation=portrait,locale=ru_RU \
             --device model=Pixel2.arm,version=29,orientation=portrait,locale=ru_RU \
             --device model=blueline,version=28,orientation=portrait,locale=ru_RU \
