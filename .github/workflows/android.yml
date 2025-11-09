@@ -75,6 +75,13 @@ jobs:
           name: android-apks
           path: artifacts
 
+      - name: Inspect downloaded artifacts
+        run: |
+          echo "Artifacts directory structure:"
+          ls -R artifacts
+          echo "APK files found:"
+          find artifacts -name '*.apk' -print
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v1
