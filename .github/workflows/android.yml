@@ -75,6 +75,8 @@ jobs:
           gcloud firebase test android run \
             --app artifacts/app-debug.apk \
             --test artifacts/app-debug-androidTest.apk \
-            --device model=Nexus10,version=22,orientation=portrait,locale=ru_RU \
-            --device model=Nexus6,version=25,orientation=portrait,locale=ru_RU \
-            --device model=Pixel3,version=30,orientation=portrait,locale=ru_RU
+            --device model=Nexus6,version=23,orientation=portrait,locale=ru_RU \
+            --device model=Pixel2,version=30,orientation=portrait,locale=ru_RU \
+            --device model=Pixel3,version=31,orientation=portrait,locale=ru_RU \
+            --device model=Pixel4,version=33,orientation=portrait,locale=ru_RU \
+            --device model=Pixel6Pro,version=34,orientation=portrait,locale=ru_RU
