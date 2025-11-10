@@ -1,8 +1,8 @@
 package su.linka.pictures.components
 
-import android.content.Context
 import android.content.DialogInterface
 import android.widget.EditText
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlertDialog
+import org.robolectric.shadows.ShadowLooper
 import su.linka.pictures.Callback
 import su.linka.pictures.R
 
@@ -19,11 +20,12 @@ import su.linka.pictures.R
 @Config(sdk = [30])
 class InputDialogTest {
 
-    private lateinit var context: Context
+    private lateinit var context: ContextThemeWrapper
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext()
+        val appContext = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context = ContextThemeWrapper(appContext, R.style.AppTheme)
     }
 
     @Test
@@ -39,10 +41,11 @@ class InputDialogTest {
             }
         })
 
-        val alertDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val alertDialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
         val editText = alertDialog.findViewById<EditText>(R.id.input_prompt)!!
         editText.setText(" value ")
-        alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertEquals("value", captured)
     }
@@ -60,10 +63,11 @@ class InputDialogTest {
             }
         })
 
-        val alertDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val alertDialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
         val editText = alertDialog.findViewById<EditText>(R.id.input_prompt)!!
         editText.setText("   ")
-        alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertTrue(failed)
     }
@@ -81,8 +85,9 @@ class InputDialogTest {
             }
         })
 
-        val alertDialog = ShadowAlertDialog.getLatestAlertDialog()
-        alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
+        val alertDialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
+        alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE).callOnClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertTrue(failed)
     }

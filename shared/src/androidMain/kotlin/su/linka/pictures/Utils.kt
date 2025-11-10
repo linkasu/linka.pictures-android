@@ -65,8 +65,8 @@ object Utils {
             textAlign = Paint.Align.LEFT
         }
         val baseline = -paint.ascent()
-        val width = (paint.measureText(text) + 0.5f).toInt()
-        val height = (baseline + paint.descent() + 0.5f).toInt()
+        val width = ((paint.measureText(text) + 0.5f).toInt()).coerceAtLeast(1)
+        val height = ((baseline + paint.descent() + 0.5f).toInt()).coerceAtLeast(1)
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         Canvas(bitmap).drawText(text, 0f, baseline, paint)
         return bitmap

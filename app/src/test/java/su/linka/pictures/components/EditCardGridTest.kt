@@ -1,8 +1,6 @@
 package su.linka.pictures.components
 
-import android.content.Context
 import android.widget.LinearLayout
-import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -16,16 +14,16 @@ import su.linka.pictures.Card
 @Config(sdk = [30])
 class EditCardGridTest {
 
-    private lateinit var context: Context
+    private lateinit var context: android.content.Context
     private lateinit var workingDir: java.io.File
     private lateinit var set: su.linka.pictures.Set
     private lateinit var grid: EditCardGrid
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext()
         val cards = mutableListOf(Card(0, title = "Hello", cardType = 0))
-        val (_, createdSet, dir) = ComponentTestUtils.createSet(rows = 1, columns = 2, cards = cards)
+        val (createdContext, createdSet, dir) = ComponentTestUtils.createSet(rows = 1, columns = 2, cards = cards)
+        context = createdContext
         set = createdSet
         workingDir = dir
         grid = EditCardGrid(context)

@@ -1,9 +1,7 @@
 package su.linka.pictures.components
 
-import android.content.Context
 import android.view.View
 import android.widget.TextView
-import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -17,14 +15,14 @@ import su.linka.pictures.Card
 @Config(sdk = [30])
 class OutputLineTest {
 
-    private lateinit var context: Context
+    private lateinit var context: android.content.Context
     private lateinit var workingDir: java.io.File
     private lateinit var set: su.linka.pictures.Set
     private lateinit var outputLine: OutputLine
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext()
+        // context provided per-test via ComponentTestUtils
     }
 
     @After
@@ -37,17 +35,18 @@ class OutputLineTest {
     @Test
     fun addCard_withoutSpace_updatesTextOutput() {
         val card = Card(0, title = "Hi", cardType = 0)
-        val (_, createdSet, dir) = ComponentTestUtils.createSet(cards = listOf(card), withoutSpace = true)
+        val (createdContext, createdSet, dir) = ComponentTestUtils.createSet(cards = listOf(card), withoutSpace = true)
+        context = createdContext
         set = createdSet
         workingDir = dir
         outputLine = OutputLine(context)
         outputLine.setSet(set)
 
         val textView = outputLine.findViewById<TextView>(su.linka.pictures.R.id.output_text)
-        val grid = outputLine.findViewById<OutputGrid>(su.linka.pictures.R.id.output_grid)
+        val scrollView = outputLine.findViewById<android.widget.HorizontalScrollView>(su.linka.pictures.R.id.scroll_grid)
 
         assertEquals(View.VISIBLE, textView.visibility)
-        assertEquals(View.GONE, grid.visibility)
+        assertEquals(View.GONE, scrollView.visibility)
 
         outputLine.addCard(card)
         assertEquals("Hi", textView.text.toString())
@@ -65,17 +64,19 @@ class OutputLineTest {
     @Test
     fun addCard_withSpaces_usesGrid() {
         val card = Card(0, title = "Hi", cardType = 0)
-        val (_, createdSet, dir) = ComponentTestUtils.createSet(cards = listOf(card))
+        val (createdContext, createdSet, dir) = ComponentTestUtils.createSet(cards = listOf(card))
+        context = createdContext
         set = createdSet
         workingDir = dir
         outputLine = OutputLine(context)
         outputLine.setSet(set)
 
         val textView = outputLine.findViewById<TextView>(su.linka.pictures.R.id.output_text)
+        val scrollView = outputLine.findViewById<android.widget.HorizontalScrollView>(su.linka.pictures.R.id.scroll_grid)
         val grid = outputLine.findViewById<OutputGrid>(su.linka.pictures.R.id.output_grid)
 
         assertEquals(View.GONE, textView.visibility)
-        assertEquals(View.VISIBLE, grid.visibility)
+        assertEquals(View.VISIBLE, scrollView.visibility)
 
         outputLine.addCard(card)
         assertEquals(1, grid.childCount)
@@ -90,7 +91,8 @@ class OutputLineTest {
     @Test
     fun addCard_inDirectMode_doesNotStoreCard() {
         val card = Card(0, title = "Hi", cardType = 0)
-        val (_, createdSet, dir) = ComponentTestUtils.createSet(cards = listOf(card))
+        val (createdContext, createdSet, dir) = ComponentTestUtils.createSet(cards = listOf(card))
+        context = createdContext
         set = createdSet
         workingDir = dir
         outputLine = OutputLine(context)

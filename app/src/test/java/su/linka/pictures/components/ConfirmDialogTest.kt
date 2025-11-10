@@ -1,8 +1,8 @@
 package su.linka.pictures.components
 
-import android.content.Context
 import android.content.DialogInterface
 import androidx.test.core.app.ApplicationProvider
+import androidx.appcompat.view.ContextThemeWrapper
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -10,6 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlertDialog
+import org.robolectric.shadows.ShadowLooper
 import su.linka.pictures.Callback
 import su.linka.pictures.R
 
@@ -17,11 +18,12 @@ import su.linka.pictures.R
 @Config(sdk = [30])
 class ConfirmDialogTest {
 
-    private lateinit var context: Context
+    private lateinit var context: ContextThemeWrapper
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext()
+        val appContext = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context = ContextThemeWrapper(appContext, R.style.AppTheme)
     }
 
     @Test
@@ -37,8 +39,9 @@ class ConfirmDialogTest {
             }
         })
 
-        val dialog = ShadowAlertDialog.getLatestAlertDialog()
-        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        val dialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertTrue(succeeded)
     }
@@ -56,8 +59,9 @@ class ConfirmDialogTest {
             }
         })
 
-        val dialog = ShadowAlertDialog.getLatestAlertDialog()
-        dialog.getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
+        val dialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
+        dialog.getButton(DialogInterface.BUTTON_NEGATIVE).callOnClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertTrue(failed)
     }

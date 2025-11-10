@@ -1,8 +1,10 @@
 package su.linka.pictures.components
 
 import android.content.Context
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import su.linka.pictures.Card
+import su.linka.pictures.R
 import su.linka.pictures.Set
 import su.linka.pictures.SetManifest
 import java.io.File
@@ -15,7 +17,8 @@ object ComponentTestUtils {
         cards: List<Card> = emptyList(),
         withoutSpace: Boolean = false
     ): Triple<Context, Set, File> {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        val baseContext = ApplicationProvider.getApplicationContext<Context>()
+        val context = ContextThemeWrapper(baseContext, R.style.AppTheme)
         val workingDir = File(context.cacheDir, "components-${System.nanoTime()}").apply {
             deleteRecursively()
             mkdirs()

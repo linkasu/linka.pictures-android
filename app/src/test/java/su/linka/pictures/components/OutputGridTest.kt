@@ -1,7 +1,5 @@
 package su.linka.pictures.components
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -15,16 +13,16 @@ import su.linka.pictures.Card
 @Config(sdk = [30])
 class OutputGridTest {
 
-    private lateinit var context: Context
+    private lateinit var context: android.content.Context
     private lateinit var workingDir: java.io.File
     private lateinit var grid: OutputGrid
     private lateinit var set: su.linka.pictures.Set
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext()
         val card = Card(0, title = "Hello", cardType = 0)
-        val (_, createdSet, dir) = ComponentTestUtils.createSet(rows = 1, columns = 1, cards = listOf(card))
+        val (createdContext, createdSet, dir) = ComponentTestUtils.createSet(rows = 1, columns = 1, cards = listOf(card))
+        context = createdContext
         set = createdSet
         workingDir = dir
         grid = OutputGrid(context)

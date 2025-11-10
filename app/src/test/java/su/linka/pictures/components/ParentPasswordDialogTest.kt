@@ -1,10 +1,10 @@
 package su.linka.pictures.components
 
-import android.content.Context
 import android.content.DialogInterface
 import android.content.SharedPreferences
 import android.widget.EditText
 import androidx.preference.PreferenceManager
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -13,6 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlertDialog
+import org.robolectric.shadows.ShadowLooper
 import su.linka.pictures.Callback
 import su.linka.pictures.R
 
@@ -20,12 +21,13 @@ import su.linka.pictures.R
 @Config(sdk = [30])
 class ParentPasswordDialogTest {
 
-    private lateinit var context: Context
+    private lateinit var context: ContextThemeWrapper
     private lateinit var preferences: SharedPreferences
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext()
+        val appContext = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context = ContextThemeWrapper(appContext, R.style.AppTheme)
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
         preferences.edit().clear().commit()
     }
@@ -60,10 +62,11 @@ class ParentPasswordDialogTest {
             }
         })
 
-        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val dialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
         val input = dialog.findViewById<EditText>(R.id.input_prompt)!!
         input.setText("secret")
-        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertTrue(done)
     }
@@ -82,10 +85,11 @@ class ParentPasswordDialogTest {
             }
         })
 
-        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val dialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
         val input = dialog.findViewById<EditText>(R.id.input_prompt)!!
         input.setText("wrong")
-        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertTrue(failed)
     }

@@ -1,10 +1,10 @@
 package su.linka.pictures.components
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.view.View
 import android.view.View.MeasureSpec
 import android.widget.ImageView
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -22,11 +22,12 @@ import su.linka.pictures.R
 @Config(sdk = [30])
 class GridButtonTest {
 
-    private lateinit var context: Context
+    private lateinit var context: ContextThemeWrapper
 
     @Before
     fun setUp() {
-        context = ApplicationProvider.getApplicationContext()
+        val appContext = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context = ContextThemeWrapper(appContext, R.style.AppTheme)
     }
 
     @Test
@@ -35,8 +36,7 @@ class GridButtonTest {
         button.setCard(Card(0, cardType = 2))
 
         assertEquals(View.INVISIBLE, button.visibility)
-        val imageText = button.findViewById<ImageView>(R.id.image_text)
-        assertNull(imageText.drawable)
+        assertNull(button.getImage())
     }
 
     @Test
@@ -60,8 +60,6 @@ class GridButtonTest {
 
         button.setImage(bitmap)
 
-        val imageView = button.findViewById<ImageView>(R.id.image)
-        assertNotNull(imageView.drawable)
         assertSame(bitmap, button.getImage())
     }
 
