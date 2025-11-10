@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
     id 'org.jetbrains.kotlin.android'
 }
 
@@ -52,6 +53,7 @@ dependencies {
     implementation 'com.afollestad.material-dialogs:input:3.3.0'
     implementation platform('com.google.firebase:firebase-bom:33.5.1')
     implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-crashlytics-ktx'
     annotationProcessor "com.github.permissions-dispatcher:permissionsdispatcher-processor:4.9.2"
     implementation 'com.github.ramseth001:TextDrawable:1.1.6'
     implementation 'com.guolindev.permissionx:permissionx:1.7.1'
