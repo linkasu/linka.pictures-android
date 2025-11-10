@@ -34,12 +34,12 @@ class OutputLine @JvmOverloads constructor(
 
     private var set: Set? = null
     private var manifest: SetManifest? = null
-    private val backSpaceButton: ImageButton
-    private val speakButton: ImageButton
-    private val clearButton: ImageButton
-    private val textOutputView: TextView
-    private val grid: OutputGrid
-    private val scrollView: HorizontalScrollView
+    private lateinit var backSpaceButton: ImageButton
+    private lateinit var speakButton: ImageButton
+    private lateinit var clearButton: ImageButton
+    private lateinit var textOutputView: TextView
+    private lateinit var grid: OutputGrid
+    private lateinit var scrollView: HorizontalScrollView
 
     private val cards = mutableListOf<Card>()
     private var withoutSpace: Boolean = false
