@@ -34,7 +34,7 @@ class GridActivity : AppCompatActivity() {
 
     private var set: Set? = null
     private var gridSettings: GridSettings = GridSettings()
-    private var fileName: String? = null
+    private lateinit var fileName: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,26 +55,27 @@ class GridActivity : AppCompatActivity() {
         outputLine = findViewById(R.id.output_line)
         grid = findViewById(R.id.card_grid)
 
-        fileName = intent?.extras?.getString(EXTRA_FILE)
-        if (fileName == null) {
+        val incomingFileName = intent?.extras?.getString(EXTRA_FILE)
+        if (incomingFileName.isNullOrEmpty()) {
             finish()
             return
         }
+        fileName = incomingFileName
 
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
-            title = fileName!!.removeSuffix(".linka")
+            title = fileName.removeSuffix(".linka")
         }
 
         try {
-            val loadedSet = setsManager.getSet(fileName!!)
+            val loadedSet = setsManager.getSet(fileName)
             set = loadedSet
             outputLine.setSet(loadedSet)
             grid.setSet(loadedSet)
             grid.setCardSelectListener(CardGrid.OnCardSelectListener { card, _ ->
                 onCardSelect(card)
             })
-            gridSettings = GridSettings.fromInt(cookie.getSetSettings(fileName!!, DEFAULT_GRID_SETTINGS))
+            gridSettings = GridSettings.fromInt(cookie.getSetSettings(fileName, DEFAULT_GRID_SETTINGS))
             prepareView()
         } catch (error: ZipException) {
             error.printStackTrace()
@@ -122,6 +123,7 @@ class GridActivity : AppCompatActivity() {
     }
 
     private fun showSettings() {
+        if (!::fileName.isInitialized) return
         val settingsView = GridSettingsView(this)
         settingsView.setSettings(gridSettings.copy())
 
@@ -131,7 +133,7 @@ class GridActivity : AppCompatActivity() {
             .setPositiveButton(R.string.ok) { dialog, _ ->
                 settingsView.commit()
                 gridSettings = settingsView.getSettings()
-                fileName?.let { cookie.setSetSettings(it, gridSettings.toInt()) }
+                cookie.setSetSettings(fileName, gridSettings.toInt())
                 prepareView()
                 dialog.dismiss()
             }

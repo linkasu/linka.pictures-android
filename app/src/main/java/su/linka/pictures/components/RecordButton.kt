@@ -82,17 +82,18 @@ class RecordButton @JvmOverloads constructor(
 
     private fun startRecording() {
         stopRecordingInternal()
-        recordFile = try {
+        val targetFile = try {
             File.createTempFile(UUID.randomUUID().toString(), ".3gpp")
         } catch (error: IOException) {
             onRecordListener?.onFail(error)
             return
         }
+        recordFile = targetFile
         mediaRecorder = MediaRecorder().apply {
             try {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
-                setOutputFile(recordFile!!.absolutePath)
+                setOutputFile(targetFile.absolutePath)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
                 prepare()
                 start()

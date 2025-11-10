@@ -16,6 +16,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.RadioGroup
 import android.widget.Toast
+import androidx.annotation.IdRes
 import su.linka.pictures.Callback
 import su.linka.pictures.Card
 import su.linka.pictures.R
@@ -30,14 +31,14 @@ class EditCardDialog(context: Context) : Dialog(context) {
     private val mediaPlayer = MediaPlayer()
     private val tts = TTS(context)
 
-    private lateinit var cardTypeRadio: RadioGroup
-    private lateinit var cardTitleEditText: EditText
-    private lateinit var imageView: ImageView
-    private lateinit var playAudioButton: Button
-    private lateinit var recordButton: RecordButton
-    private lateinit var generateAudioButton: Button
-    private lateinit var chooseImageButton: Button
-    private lateinit var generateImageButton: Button
+    private val cardTypeRadio: RadioGroup
+    private val cardTitleEditText: EditText
+    private val imageView: ImageView
+    private val playAudioButton: Button
+    private val recordButton: RecordButton
+    private val generateAudioButton: Button
+    private val chooseImageButton: Button
+    private val generateImageButton: Button
 
     private var set: Set? = null
     private var card: Card = Card(0, 0)
@@ -54,7 +55,14 @@ class EditCardDialog(context: Context) : Dialog(context) {
         setContentView(R.layout.edit_card_dialog)
         setTitle(R.string.create_card)
         setCancelable(true)
-        prepareInputs()
+        cardTypeRadio = requireView(R.id.card_type_radiogroup)
+        cardTitleEditText = requireView(R.id.card_title_edittext)
+        imageView = requireView(R.id.image)
+        playAudioButton = requireView(R.id.play_audio_button)
+        recordButton = requireView(R.id.record_audio_button)
+        generateAudioButton = requireView(R.id.generate_audio_button)
+        chooseImageButton = requireView(R.id.choose_image_button)
+        generateImageButton = requireView(R.id.generate_image_button)
         prepareDialogButtons()
         setUpListeners()
     }
@@ -103,27 +111,16 @@ class EditCardDialog(context: Context) : Dialog(context) {
         }
     }
 
-    private fun prepareInputs() {
-        cardTypeRadio = findViewById(R.id.card_type_radiogroup)
-        cardTitleEditText = findViewById(R.id.card_title_edittext)
-        imageView = findViewById(R.id.image)
-        playAudioButton = findViewById(R.id.play_audio_button)
-        recordButton = findViewById(R.id.record_audio_button)
-        generateAudioButton = findViewById(R.id.generate_audio_button)
-        chooseImageButton = findViewById(R.id.choose_image_button)
-        generateImageButton = findViewById(R.id.generate_image_button)
-    }
-
     private fun prepareDialogButtons() {
-        findViewById<View>(R.id.positiveBtn).setOnClickListener {
+        requireView<View>(R.id.positiveBtn).setOnClickListener {
             if (save(false)) {
                 dismiss()
             }
         }
-        findViewById<View>(R.id.cancel_button).setOnClickListener {
+        requireView<View>(R.id.cancel_button).setOnClickListener {
             dismiss()
         }
-        findViewById<View>(R.id.delete_button).setOnClickListener { view ->
+        requireView<View>(R.id.delete_button).setOnClickListener { view ->
             ConfirmDialog.showConfirmDialog(
                 view.context,
                 R.string.delete,
@@ -321,5 +318,10 @@ class EditCardDialog(context: Context) : Dialog(context) {
             R.id.empty_card_radio
         )
         private const val PICK_IMAGE = 0
+    }
+
+    private fun <T : View> requireView(@IdRes id: Int): T {
+        return findViewById<T>(id)
+            ?: throw IllegalStateException("View with id $id not found in EditCardDialog")
     }
 }

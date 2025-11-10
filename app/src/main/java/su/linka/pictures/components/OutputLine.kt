@@ -11,6 +11,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.annotation.IdRes
 import su.linka.pictures.Card
 import su.linka.pictures.R
 import su.linka.pictures.Set
@@ -33,12 +34,12 @@ class OutputLine @JvmOverloads constructor(
 
     private var set: Set? = null
     private var manifest: SetManifest? = null
-    private lateinit var backSpaceButton: ImageButton
-    private lateinit var speakButton: ImageButton
-    private lateinit var clearButton: ImageButton
-    private lateinit var textOutputView: TextView
-    private lateinit var grid: OutputGrid
-    private lateinit var scrollView: HorizontalScrollView
+    private val backSpaceButton: ImageButton
+    private val speakButton: ImageButton
+    private val clearButton: ImageButton
+    private val textOutputView: TextView
+    private val grid: OutputGrid
+    private val scrollView: HorizontalScrollView
 
     private val cards = mutableListOf<Card>()
     private var withoutSpace: Boolean = false
@@ -54,12 +55,12 @@ class OutputLine @JvmOverloads constructor(
         val inflater = LayoutInflater.from(context)
         inflater.inflate(R.layout.output_line, this, true)
 
-        backSpaceButton = findViewById(R.id.backspace_button)
-        speakButton = findViewById(R.id.speak_button)
-        clearButton = findViewById(R.id.clear_button)
-        textOutputView = findViewById(R.id.output_text)
-        grid = findViewById(R.id.output_grid)
-        scrollView = findViewById(R.id.scroll_grid)
+        backSpaceButton = requireView(R.id.backspace_button)
+        speakButton = requireView(R.id.speak_button)
+        clearButton = requireView(R.id.clear_button)
+        textOutputView = requireView(R.id.output_text)
+        grid = requireView(R.id.output_grid)
+        scrollView = requireView(R.id.scroll_grid)
 
         backSpaceButton.setOnClickListener { backspace() }
         clearButton.setOnClickListener { clear() }
@@ -217,5 +218,10 @@ class OutputLine @JvmOverloads constructor(
         } else {
             scrollView.post(runnable)
         }
+    }
+
+    private fun <T : View> requireView(@IdRes id: Int): T {
+        return findViewById<T>(id)
+            ?: throw IllegalStateException("View with id $id not found in OutputLine")
     }
 }
