@@ -99,14 +99,7 @@ jobs:
         run: |
           gcloud firebase test android run \
             --app artifacts/debug/app-debug.apk \
-            --test artifacts/androidTest/debug/app-debug-androidTest.apk \
-            --device model=MediumPhone.arm,version=26,orientation=portrait,locale=ru_RU \
-            --device model=Pixel2.arm,version=29,orientation=portrait,locale=ru_RU \
-            --device model=blueline,version=28,orientation=portrait,locale=ru_RU \
-            --device model=redfin,version=30,orientation=portrait,locale=ru_RU \
-            --device model=oriole,version=33,orientation=portrait,locale=ru_RU \
-            --device model=shiba,version=34,orientation=portrait,locale=ru_RU
-
+            --test artifacts/androidTest/debug/app-debug-androidTest.apk 
   bundle-release:
     runs-on: ubuntu-latest
     needs: firebase-test
