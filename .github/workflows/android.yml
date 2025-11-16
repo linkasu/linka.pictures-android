@@ -57,13 +57,17 @@ jobs:
       - name: Assemble app and androidTest APKs
         run: ./gradlew assembleDebug assembleDebugAndroidTest
 
+      - name: Prepare artifacts for upload
+        run: |
+          mkdir -p artifacts/debug artifacts/androidTest/debug
+          cp app/build/outputs/apk/debug/app-debug.apk artifacts/debug/
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk artifacts/androidTest/debug/
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-apks
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          path: artifacts
 
   firebase-test:
     runs-on: ubuntu-latest
