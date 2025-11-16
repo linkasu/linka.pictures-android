@@ -73,6 +73,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -102,8 +105,19 @@ jobs:
       - name: Run Firebase Test Lab instrumentation
         run: |
           gcloud firebase test android run \
+            --type instrumentation \
             --app artifacts/debug/app-debug.apk \
-            --test artifacts/androidTest/debug/app-debug-androidTest.apk 
+            --test artifacts/androidTest/debug/app-debug-androidTest.apk \
+            --device model=redfin,version=33,locale=en,orientation=portrait
+
+      - name: Run Firebase Robo scripted UI test
+        run: |
+          gcloud firebase test android run \
+            --type robo \
+            --app artifacts/debug/app-debug.apk \
+            --robo-script MainActivity_robo_script.json \
+            --device model=redfin,version=33,locale=en,orientation=portrait \
+            --timeout 5m
   bundle-release:
     runs-on: ubuntu-latest
     needs: firebase-test
