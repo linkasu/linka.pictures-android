@@ -60,7 +60,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/previous"
                 android:scaleType="centerInside"
-                android:tint="@color/colorPrimary"
+                app:tint="@color/colorPrimary"
                 android:src="@drawable/ic_baseline_skip_previous_24" />
 
             <LinearLayout
@@ -84,7 +84,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/next"
                 android:scaleType="centerInside"
-                android:tint="@color/colorPrimary"
+                app:tint="@color/colorPrimary"
                 android:src="@drawable/ic_baseline_skip_next_24" />
         </LinearLayout>
     </LinearLayout>
