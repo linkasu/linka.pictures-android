@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import net.lingala.zip4j.exception.ZipException
 import su.linka.pictures.AnalyticsEvents
@@ -43,6 +44,9 @@ class GridActivity : AppCompatActivity() {
         analytics = FirebaseAnalytics.getInstance(this)
         cookie = Cookie(this)
         setsManager = SetsManager(this)
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -61,11 +65,7 @@ class GridActivity : AppCompatActivity() {
             return
         }
         fileName = incomingFileName
-
-        supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-            title = fileName.removeSuffix(".linka")
-        }
+        supportActionBar?.title = fileName.removeSuffix(".linka")
 
         try {
             val loadedSet = setsManager.getSet(fileName)

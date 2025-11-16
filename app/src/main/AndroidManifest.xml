@@ -38,6 +38,7 @@ android:screenOrientation="landscape"
         <activity
             android:name=".activity.GridActivity"
             android:screenOrientation="landscape"
+            android:theme="@style/AppTheme.NoActionBar"
             android:exported="false">
             <meta-data
                 android:name="android.app.lib_name"
