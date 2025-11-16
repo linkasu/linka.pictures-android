@@ -7,6 +7,7 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import net.lingala.zip4j.exception.ZipException
 import su.linka.pictures.AnalyticsEvents
@@ -37,6 +38,9 @@ class SetEditActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_set_edit)
+
+        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
         analytics = FirebaseAnalytics.getInstance(this)
         cardDialog = EditCardDialog(this)

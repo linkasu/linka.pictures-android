@@ -1,56 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activity.GridActivity"
-    android:orientation="vertical">
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
+    android:fitsSystemWindows="true"
+    tools:context=".activity.GridActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="wrap_content"
         android:background="?attr/colorPrimary"
-        android:theme="@style/AppTheme.AppBarOverlay"
-        app:popupTheme="@style/AppTheme.PopupOverlay" />
-    <su.linka.pictures.components.OutputLine
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:id="@+id/output_line"
-       />
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/colorPrimary" />
+        android:fitsSystemWindows="true"
+        android:theme="@style/AppTheme.AppBarOverlay">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@android:color/transparent"
+            app:popupTheme="@style/AppTheme.PopupOverlay"
+            app:titleTextColor="@android:color/white" />
+    </com.google.android.material.appbar.AppBarLayout>
+
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="4">
-    <ImageButton
-        android:id="@+id/prev_button"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:src="@drawable/ic_baseline_skip_previous_24"/>
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="4"
-            android:layout_margin="5dp">
-    <su.linka.pictures.components.CardGrid
+        android:id="@+id/grid_content_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/card_grid"
-        />
-    </LinearLayout>
-        <ImageButton
-            android:id="@+id/next_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="8dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <su.linka.pictures.components.OutputLine
+            android:id="@+id/output_line"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:src="@drawable/ic_baseline_skip_next_24"/>
+            android:layout_marginBottom="8dp" />
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/colorPrimary" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="4"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/prev_button"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/previous"
+                android:scaleType="centerInside"
+                android:tint="@color/colorPrimary"
+                android:src="@drawable/ic_baseline_skip_previous_24" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginHorizontal="8dp"
+                android:layout_weight="4"
+                android:orientation="vertical">
+
+                <su.linka.pictures.components.CardGrid
+                    android:id="@+id/card_grid"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/next_button"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/next"
+                android:scaleType="centerInside"
+                android:tint="@color/colorPrimary"
+                android:src="@drawable/ic_baseline_skip_next_24" />
+        </LinearLayout>
     </LinearLayout>
 
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

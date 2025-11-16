@@ -9,7 +9,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import net.lingala.zip4j.exception.ZipException
 import su.linka.pictures.AnalyticsEvents
@@ -44,7 +44,7 @@ class GridActivity : AppCompatActivity() {
         analytics = FirebaseAnalytics.getInstance(this)
         cookie = Cookie(this)
         setsManager = SetsManager(this)
-        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 

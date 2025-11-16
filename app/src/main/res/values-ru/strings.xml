@@ -43,4 +43,6 @@
     <string name="confirm_exit_dialog">Выйти из сохранения</string>
     <string name="your_sets">Ваши наборы</string>
     <string name="copy_assets_error">Ошибка копирования наборов</string>
+    <string name="previous">Предыдущая страница</string>
+    <string name="next">Следующая страница</string>
 </resources>

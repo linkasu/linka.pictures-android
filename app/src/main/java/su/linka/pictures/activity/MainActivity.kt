@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.analytics.FirebaseAnalytics
 import su.linka.pictures.AnalyticsEvents
@@ -44,6 +45,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
         analytics = FirebaseAnalytics.getInstance(this)
         supportActionBar?.setTitle(R.string.your_sets)

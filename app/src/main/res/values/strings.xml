@@ -43,4 +43,6 @@
     <string name="save">Save</string>
     <string name="confirm_exit_dialog">Confirm exit without save</string>
     <string name="your_sets">Your sets</string>
+    <string name="previous">Previous page</string>
+    <string name="next">Next page</string>
 </resources>

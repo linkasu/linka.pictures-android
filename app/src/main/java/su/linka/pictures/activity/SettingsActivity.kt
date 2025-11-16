@@ -3,6 +3,7 @@ package su.linka.pictures.activity
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.appbar.MaterialToolbar
 import androidx.preference.PreferenceFragmentCompat
 import su.linka.pictures.R
 
@@ -11,6 +12,9 @@ class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings_activity)
+        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setTitle(R.string.title_activity_settings)
         if (savedInstanceState == null) {
             supportFragmentManager
                 .beginTransaction()

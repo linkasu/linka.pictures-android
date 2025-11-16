@@ -1,76 +1,118 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activity.SetEditActivity"
-    android:orientation="vertical">
+    android:fitsSystemWindows="true"
+    tools:context=".activity.SetEditActivity">
 
-    <LinearLayout
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/set_edit_app_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
-        <CheckBox
-            android:id="@+id/without_space_checkbox"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/without_space"/>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-            <EditText
-                android:id="@+id/rows_count"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:inputType="number"
-                android:layout_height="wrap_content"
-                />
-            <EditText
-                android:id="@+id/columns_count"
-            android:inputType="number"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            />
-            <Button
-                android:id="@+id/change_grid_size_button"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="@string/change_grid_size"
-                />
-        </LinearLayout>
+        android:background="?attr/colorPrimary"
+        android:fitsSystemWindows="true"
+        android:theme="@style/AppTheme.AppBarOverlay">
 
-    </LinearLayout>
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@android:color/transparent"
+            app:popupTheme="@style/AppTheme.PopupOverlay"
+            app:titleTextColor="@android:color/white" />
+    </com.google.android.material.appbar.AppBarLayout>
 
     <LinearLayout
+        android:id="@+id/set_edit_content"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="4" android:orientation="horizontal">
-        <ImageButton
-            android:id="@+id/prev_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:src="@drawable/ic_baseline_skip_previous_24"/>
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="4"
-            android:layout_margin="5dp">
-            <su.linka.pictures.components.EditCardGrid
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="8dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <CheckBox
+                android:id="@+id/without_space_checkbox"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/without_space" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:id="@+id/card_grid"
-                />
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:weightSum="3">
+
+                <EditText
+                    android:id="@+id/rows_count"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:inputType="number" />
+
+                <EditText
+                    android:id="@+id/columns_count"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:inputType="number" />
+
+                <Button
+                    android:id="@+id/change_grid_size_button"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/change_grid_size" />
+            </LinearLayout>
         </LinearLayout>
-        <ImageButton
-            android:id="@+id/next_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:src="@drawable/ic_baseline_skip_next_24"/>
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/prev_button"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/previous"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_baseline_skip_previous_24"
+                android:tint="@color/colorPrimary" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="4"
+                android:layout_marginHorizontal="8dp">
+
+                <su.linka.pictures.components.EditCardGrid
+                    android:id="@+id/card_grid"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/next_button"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/next"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_baseline_skip_next_24"
+                android:tint="@color/colorPrimary" />
+        </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
