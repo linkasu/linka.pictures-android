@@ -108,7 +108,7 @@ jobs:
             --type instrumentation \
             --app artifacts/debug/app-debug.apk \
             --test artifacts/androidTest/debug/app-debug-androidTest.apk \
-            --device model=redfin,version=33,locale=en,orientation=portrait
+            --device model=redfin,version=30,locale=en,orientation=portrait
 
       - name: Run Firebase Robo scripted UI test
         run: |
@@ -116,7 +116,7 @@ jobs:
             --type robo \
             --app artifacts/debug/app-debug.apk \
             --robo-script MainActivity_robo_script.json \
-            --device model=redfin,version=33,locale=en,orientation=portrait \
+            --device model=redfin,version=30,locale=en,orientation=portrait \
             --timeout 5m
   bundle-release:
     runs-on: ubuntu-latest
