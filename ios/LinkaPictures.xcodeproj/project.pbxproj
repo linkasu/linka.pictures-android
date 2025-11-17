@@ -12,6 +12,11 @@
 		A10005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10004 /* Assets.xcassets */; };
 		A10010 /* shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10009 /* shared.framework */; };
 		A10011 /* shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A10009 /* shared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A10041 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10040 /* MainView.swift */; };
+		A10043 /* MainViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10042 /* MainViewModel.swift */; };
+		A10045 /* SetItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10044 /* SetItemView.swift */; };
+		A10047 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A10046 /* Localizable.strings */; };
+		A10060 /* sets in Resources */ = {isa = PBXBuildFile; fileRef = A10059 /* sets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -35,6 +40,12 @@
 		A10006 /* LinkaPictures.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LinkaPictures.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10009 /* shared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = shared.framework; path = ../shared/build/bin/iosSimulatorArm64/debugFramework/shared.framework; sourceTree = "<group>"; };
 		A10013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10040 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		A10042 /* MainViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewModel.swift; sourceTree = "<group>"; };
+		A10044 /* SetItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetItemView.swift; sourceTree = "<group>"; };
+		A10048 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A10049 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A10059 /* sets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = sets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,7 +73,9 @@
 			isa = PBXGroup;
 			children = (
 				A10018 /* App */,
+				A10050 /* ViewModels */,
 				A10019 /* Views */,
+				A10051 /* Resources */,
 				A10004 /* Assets.xcassets */,
 				A10013 /* Info.plist */,
 			);
@@ -96,9 +109,36 @@
 		A10019 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				A10040 /* MainView.swift */,
 				A10002 /* ContentView.swift */,
+				A10052 /* Components */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		A10050 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A10042 /* MainViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A10051 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A10046 /* Localizable.strings */,
+				A10059 /* sets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A10052 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				A10044 /* SetItemView.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -163,6 +203,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10005 /* Assets.xcassets in Resources */,
+				A10047 /* Localizable.strings in Resources */,
+				A10060 /* sets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -195,12 +237,27 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10041 /* MainView.swift in Sources */,
+				A10043 /* MainViewModel.swift in Sources */,
+				A10045 /* SetItemView.swift in Sources */,
 				A10003 /* ContentView.swift in Sources */,
 				A10001 /* LinkaPicturesApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		A10046 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A10048 /* en */,
+				A10049 /* ru */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		A10027 /* Debug */ = {
@@ -257,7 +314,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -316,7 +373,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -347,6 +404,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -382,6 +440,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

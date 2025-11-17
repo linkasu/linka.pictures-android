@@ -1,0 +1,25 @@
+/* Main Screen */
+"your_sets" = "Your sets";
+"create_set" = "Create set";
+"settings" = "Settings";
+
+/* Actions */
+"open" = "Open";
+"edit" = "Edit";
+"delete" = "Delete";
+"rename" = "Rename";
+"cancel" = "Cancel";
+"ok" = "OK";
+"save" = "Save";
+
+/* Errors */
+"set_open_error" = "Set open error";
+"copy_assets_error" = "Copy assets error";
+"set_save_error" = "Set save error";
+
+/* Dialogs */
+"confirm_delete" = "Confirm delete";
+"delete_confirmation_message" = "Are you sure you want to delete this set?";
+"rename_set" = "Rename set";
+"enter_new_name" = "Enter new name";
+

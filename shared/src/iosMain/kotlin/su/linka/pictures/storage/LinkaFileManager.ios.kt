@@ -20,7 +20,7 @@ actual class LinkaFileManager {
     }
     
     private companion object {
-        const val ASSETS_LOADER_KEY = "ASSETS_LOADER"
+        const val ASSETS_LOADER_KEY = "ASSETS_LOADER_V2"
     }
     
     actual fun loadDefaultSets() {
@@ -33,19 +33,27 @@ actual class LinkaFileManager {
         val resourcePath = bundle.resourcePath ?: return
         
         val bundleSetsPath = "$resourcePath/sets"
+        println("LinkaFileManager: Checking bundleSetsPath: $bundleSetsPath")
+        println("LinkaFileManager: Exists: ${fileSystem.fileExists(bundleSetsPath)}")
+        
         if (!fileSystem.fileExists(bundleSetsPath)) {
+            println("LinkaFileManager: sets directory not found in bundle")
             return
         }
         
         val files = fileSystem.listFiles(bundleSetsPath)
+        println("LinkaFileManager: Found ${files.size} files in bundle")
+        
         for (filePath in files) {
             val fileName = fileSystem.getFileName(filePath)
             if (fileName.endsWith(".linka")) {
                 val destPath = fileSystem.joinPath(setsDir, fileName)
+                println("LinkaFileManager: Copying $fileName to $destPath")
                 fileSystem.copyFile(filePath, destPath)
             }
         }
         
+        println("LinkaFileManager: Setting ASSETS_LOADER_KEY to true")
         userDefaults.setBool(true, forKey = ASSETS_LOADER_KEY)
     }
     

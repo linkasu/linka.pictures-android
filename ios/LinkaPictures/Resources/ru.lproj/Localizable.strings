@@ -1,0 +1,25 @@
+/* Main Screen */
+"your_sets" = "Ваши наборы";
+"create_set" = "Создать набор";
+"settings" = "Настройки";
+
+/* Actions */
+"open" = "Открыть";
+"edit" = "Изменить";
+"delete" = "Удалить";
+"rename" = "Переименовать";
+"cancel" = "Отмена";
+"ok" = "Готово";
+"save" = "Сохранить";
+
+/* Errors */
+"set_open_error" = "ошибка открытия";
+"copy_assets_error" = "Ошибка копирования наборов";
+"set_save_error" = "Ошибка сохранения набора";
+
+/* Dialogs */
+"confirm_delete" = "Подтвердить удаление";
+"delete_confirmation_message" = "Вы уверены, что хотите удалить этот набор?";
+"rename_set" = "Переименовать набор";
+"enter_new_name" = "Введите новое имя";
+

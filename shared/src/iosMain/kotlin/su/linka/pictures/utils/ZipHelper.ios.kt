@@ -16,7 +16,7 @@ actual class ZipHelper {
             error = null
         )
         
-        val command = "unzip -o -q '$zipPath' -d '$destinationPath'"
+        val command = "/usr/bin/unzip -o -q '$zipPath' -d '$destinationPath'"
         val exitCode = executeShellCommand(command)
         
         if (exitCode != 0) {
@@ -33,7 +33,7 @@ actual class ZipHelper {
             error = null
         )
         
-        val command = "unzip -o -q '$zipPath' '$fileInZip' -d '$destinationPath'"
+        val command = "/usr/bin/unzip -o -q '$zipPath' '$fileInZip' -d '$destinationPath'"
         val exitCode = executeShellCommand(command)
         
         if (exitCode != 0) {
@@ -56,7 +56,7 @@ actual class ZipHelper {
             fileManager.removeItemAtPath(zipPath, null)
         }
         
-        val command = "cd '$sourcePath' && zip -r -q '$zipPath' ."
+        val command = "cd '$sourcePath' && /usr/bin/zip -r -q '$zipPath' ."
         val exitCode = executeShellCommand(command)
         
         if (exitCode != 0) {
@@ -93,6 +93,7 @@ actual class ZipHelper {
             
             val buffer = allocArray<ByteVar>(4096)
             while (fgets(buffer, 4096, pipe) != null) {
+                // Read output (for debugging if needed)
             }
             
             val status = pclose(pipe)
@@ -100,4 +101,3 @@ actual class ZipHelper {
         }
     }
 }
-
