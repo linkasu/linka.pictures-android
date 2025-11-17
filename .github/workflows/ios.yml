@@ -1,0 +1,161 @@
+name: iOS CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'dev/**'
+  pull_request:
+    branches:
+      - main
+      - 'dev/**'
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-shared:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Build shared framework
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 :shared:linkDebugFrameworkIosArm64
+
+      - name: Run shared module tests
+        run: ./gradlew :shared:testDebugUnitTest
+
+  build-ios:
+    runs-on: macos-latest
+    needs: build-shared
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Build shared framework for simulator
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+
+      - name: Build iOS app
+        run: |
+          cd ios
+          xcodebuild \
+            -project LinkaPictures.xcodeproj \
+            -scheme LinkaPictures \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            clean build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Run iOS tests
+        run: |
+          cd ios
+          xcodebuild \
+            -project LinkaPictures.xcodeproj \
+            -scheme LinkaPictures \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            test \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+  build-ios-release:
+    runs-on: macos-latest
+    needs: build-ios
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Build shared framework for device
+        run: ./gradlew :shared:linkReleaseFrameworkIosArm64
+
+      - name: Build iOS archive
+        run: |
+          cd ios
+          xcodebuild \
+            -project LinkaPictures.xcodeproj \
+            -scheme LinkaPictures \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath ${{ github.workspace }}/build/LinkaPictures.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload iOS archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-archive
+          path: build/LinkaPictures.xcarchive
+
