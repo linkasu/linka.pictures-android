@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		41954A830E4AFF641EDA6B0B /* CardGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34DD287483C79905A42FA97D /* CardGridView.swift */; };
+		62653A07BC205EEAEA27258C /* CardButtonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4BAC0745AA3AB298D44E247 /* CardButtonView.swift */; };
 		A10001 /* LinkaPicturesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000 /* LinkaPicturesApp.swift */; };
 		A10003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10002 /* ContentView.swift */; };
 		A10005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10004 /* Assets.xcassets */; };
@@ -17,6 +19,11 @@
 		A10045 /* SetItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10044 /* SetItemView.swift */; };
 		A10047 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A10046 /* Localizable.strings */; };
 		A10060 /* sets in Resources */ = {isa = PBXBuildFile; fileRef = A10059 /* sets */; };
+		B5919D660A0274E446EFAC31 /* OutputLineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01764651D0F85CBD7EB3F0B9 /* OutputLineView.swift */; };
+		C8B6E90438EB09B8671BFDFB /* GridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCED28E974B949B9CFFFD342 /* GridView.swift */; };
+		DD9C270D88F1AEF5E7F631F1 /* GridSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1DFB04F0ACEAEA63218D7E9 /* GridSettingsView.swift */; };
+		DE40FA48801279D68A305131 /* GridViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 149394916406BBC7D7BD96A7 /* GridViewModel.swift */; };
+		EFE2980082C20EA2F2AB9096 /* OutputGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39C0104BFA14C0E1DC349DF /* OutputGridView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -34,6 +41,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		01764651D0F85CBD7EB3F0B9 /* OutputLineView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OutputLineView.swift; sourceTree = "<group>"; };
+		149394916406BBC7D7BD96A7 /* GridViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GridViewModel.swift; sourceTree = "<group>"; };
+		34DD287483C79905A42FA97D /* CardGridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardGridView.swift; sourceTree = "<group>"; };
 		A10000 /* LinkaPicturesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaPicturesApp.swift; sourceTree = "<group>"; };
 		A10002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A10004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -46,6 +56,10 @@
 		A10048 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A10049 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A10059 /* sets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = sets; sourceTree = "<group>"; };
+		A39C0104BFA14C0E1DC349DF /* OutputGridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OutputGridView.swift; sourceTree = "<group>"; };
+		B4BAC0745AA3AB298D44E247 /* CardButtonView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CardButtonView.swift; sourceTree = "<group>"; };
+		F1DFB04F0ACEAEA63218D7E9 /* GridSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GridSettingsView.swift; sourceTree = "<group>"; };
+		FCED28E974B949B9CFFFD342 /* GridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GridView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +74,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+	53AA83E9DFCE48B9D13EF012 /* Dialogs */ = {
+		isa = PBXGroup;
+		children = (
+			F1DFB04F0ACEAEA63218D7E9 /* GridSettingsView.swift */,
+		);
+		name = Dialogs;
+		path = Dialogs;
+		sourceTree = "<group>";
+	};
 		A10014 = {
 			isa = PBXGroup;
 			children = (
@@ -112,6 +135,8 @@
 				A10040 /* MainView.swift */,
 				A10002 /* ContentView.swift */,
 				A10052 /* Components */,
+				53AA83E9DFCE48B9D13EF012 /* Dialogs */,
+				FCED28E974B949B9CFFFD342 /* GridView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -120,6 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				A10042 /* MainViewModel.swift */,
+				149394916406BBC7D7BD96A7 /* GridViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -137,6 +163,10 @@
 			isa = PBXGroup;
 			children = (
 				A10044 /* SetItemView.swift */,
+				B4BAC0745AA3AB298D44E247 /* CardButtonView.swift */,
+				A39C0104BFA14C0E1DC349DF /* OutputGridView.swift */,
+				34DD287483C79905A42FA97D /* CardGridView.swift */,
+				01764651D0F85CBD7EB3F0B9 /* OutputLineView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -242,6 +272,13 @@
 				A10045 /* SetItemView.swift in Sources */,
 				A10003 /* ContentView.swift in Sources */,
 				A10001 /* LinkaPicturesApp.swift in Sources */,
+				C8B6E90438EB09B8671BFDFB /* GridView.swift in Sources */,
+				62653A07BC205EEAEA27258C /* CardButtonView.swift in Sources */,
+				EFE2980082C20EA2F2AB9096 /* OutputGridView.swift in Sources */,
+				41954A830E4AFF641EDA6B0B /* CardGridView.swift in Sources */,
+				B5919D660A0274E446EFAC31 /* OutputLineView.swift in Sources */,
+				DD9C270D88F1AEF5E7F631F1 /* GridSettingsView.swift in Sources */,
+				DE40FA48801279D68A305131 /* GridViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

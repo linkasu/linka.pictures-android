@@ -23,3 +23,11 @@
 "rename_set" = "Переименовать набор";
 "enter_new_name" = "Введите новое имя";
 
+/* Grid Viewer */
+"create_card" = "Создать";
+"grid_activity_settings" = "Настройки";
+"show_output_line" = "Показать строку вывода";
+"show_output_line_description" = "Если выключено, карточки озвучиваются сразу";
+"show_page_buttons" = "Показать кнопки страниц";
+"show_page_buttons_description" = "Переключение между страницами карточек";
+

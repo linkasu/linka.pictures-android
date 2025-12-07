@@ -23,3 +23,11 @@
 "rename_set" = "Rename set";
 "enter_new_name" = "Enter new name";
 
+/* Grid Viewer */
+"create_card" = "Create";
+"grid_activity_settings" = "Settings";
+"show_output_line" = "Show output line";
+"show_output_line_description" = "If disabled, cards will play immediately";
+"show_page_buttons" = "Show page buttons";
+"show_page_buttons_description" = "Navigate between card pages";
+

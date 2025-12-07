@@ -28,13 +28,13 @@ struct MainView: View {
           ScrollView {
             LazyVGrid(columns: columns, spacing: 8) {
               ForEach(viewModel.sets, id: \.name) { manifest in
-                SetItemView(
-                  manifest: manifest,
-                  imagePath: viewModel.getImagePath(for: manifest)
-                )
-                .onTapGesture {
-                  openSet(manifest)
+                NavigationLink(destination: GridView(manifest: manifest)) {
+                  SetItemView(
+                    manifest: manifest,
+                    imagePath: viewModel.getImagePath(for: manifest)
+                  )
                 }
+                .buttonStyle(PlainButtonStyle())
                 .contextMenu {
                   Button {
                     openSet(manifest)
@@ -134,8 +134,7 @@ struct MainView: View {
   }
   
   private func openSet(_ manifest: SetManifest) {
-    // TODO: Navigate to GridView
-    print("Open set: \(manifest.name)")
+    // Navigation is handled by NavigationLink
   }
   
   private func editSet(_ manifest: SetManifest) {
