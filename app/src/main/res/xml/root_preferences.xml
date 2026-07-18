@@ -14,4 +14,19 @@
             android:inputType="textPassword"/>
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/privacy_settings_title">
+        <SwitchPreferenceCompat
+            app:key="telemetry_analytics"
+            app:persistent="false"
+            app:summary="@string/privacy_analytics_summary"
+            app:title="@string/privacy_analytics_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/local_data_title">
+        <Preference
+            app:selectable="false"
+            app:summary="@string/local_data_backup_summary"
+            app:title="@string/local_data_backup_title" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

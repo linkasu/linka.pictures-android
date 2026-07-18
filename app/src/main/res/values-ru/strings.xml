@@ -45,4 +45,14 @@
     <string name="copy_assets_error">Ошибка копирования наборов</string>
     <string name="previous">Предыдущая страница</string>
     <string name="next">Следующая страница</string>
+    <string name="privacy_notice_title">Конфиденциальность</string>
+    <string name="privacy_notice_message">Необязательная аналитика использования выключена. Её можно разрешить сейчас, оставить выключенной или решить позже в настройках.</string>
+    <string name="privacy_analytics_option">Разрешить аналитику использования</string>
+    <string name="privacy_not_now">Не сейчас</string>
+    <string name="privacy_settings_title">Конфиденциальность</string>
+    <string name="privacy_analytics_title">Аналитика использования</string>
+    <string name="privacy_analytics_summary">Отправлять события об использовании без рекламных идентификаторов</string>
+    <string name="local_data_title">Данные на этом устройстве</string>
+    <string name="local_data_backup_title">Резервное копирование и перенос Android выключены</string>
+    <string name="local_data_backup_summary">Родительский пароль, наборы (.linka), изображения и аудио остаются на этом устройстве. При необходимости экспортируйте наборы вручную.</string>
 </resources>

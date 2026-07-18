@@ -3,9 +3,12 @@ package su.linka.pictures.activity
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.appbar.MaterialToolbar
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
+import com.google.android.material.appbar.MaterialToolbar
 import su.linka.pictures.R
+import su.linka.pictures.Telemetry
+import su.linka.pictures.TelemetryCollectionState
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -35,6 +38,19 @@ class SettingsActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
+
+            val privacyState = Telemetry.privacyState()
+            findPreference<SwitchPreferenceCompat>(KEY_ANALYTICS)?.apply {
+                isChecked = privacyState == TelemetryCollectionState.ENABLED
+                setOnPreferenceChangeListener { _, newValue ->
+                    Telemetry.setAnalyticsEnabled(newValue as Boolean)
+                    true
+                }
+            }
+        }
+
+        companion object {
+            private const val KEY_ANALYTICS = "telemetry_analytics"
         }
     }
 }

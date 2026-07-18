@@ -51,8 +51,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
 
-      - name: Run lint and unit tests
-        run: ./gradlew lint testDebugUnitTest
+      - name: Run lint, all unit variants, and release privacy checks
+        run: ./gradlew lint test verifyReleasePrivacy
 
       - name: Assemble app and androidTest APKs
         run: ./gradlew assembleDebug assembleDebugAndroidTest
@@ -163,8 +163,8 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: Build signed release bundle
-        run: ./gradlew bundleRelease
+      - name: Verify privacy gate and build signed release bundle
+        run: ./gradlew verifyReleasePrivacy bundleRelease
         env:
           ANDROID_KEYSTORE_PATH: ${{ format('{0}/ci-release.jks', github.workspace) }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

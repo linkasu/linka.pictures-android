@@ -4,11 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import com.google.firebase.analytics.FirebaseAnalytics
 import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
 import su.linka.pictures.R
 import su.linka.pictures.SetsManager
+import su.linka.pictures.Telemetry
 import su.linka.pictures.Utils
 import su.linka.pictures.components.ConfirmDialog
 import java.io.File
@@ -16,11 +16,8 @@ import java.io.IOException
 
 class BroadcastReceiverActivity : Activity() {
 
-    private lateinit var analytics: FirebaseAnalytics
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        analytics = FirebaseAnalytics.getInstance(this)
         val action = intent?.action
         if (Intent.ACTION_VIEW == action) {
             val uri = intent.data
@@ -62,7 +59,7 @@ class BroadcastReceiverActivity : Activity() {
             finish()
             return
         }
-        analytics.logEvent(AnalyticsEvents.ADD_SET, null)
+        Telemetry.logEvent(AnalyticsEvents.ADD_SET, null)
         startActivity(Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
         })

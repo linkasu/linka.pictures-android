@@ -8,20 +8,23 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
+import android.widget.CheckBox
 import android.widget.GridView
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.analytics.FirebaseAnalytics
 import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
 import su.linka.pictures.R
 import su.linka.pictures.SetManifest
 import su.linka.pictures.SetsAdapter
 import su.linka.pictures.SetsManager
+import su.linka.pictures.Telemetry
+import su.linka.pictures.TelemetryCollectionState
 import su.linka.pictures.components.InputDialog
 import su.linka.pictures.components.ParentPasswordDialog
 import su.linka.pictures.components.SetContextDialog
@@ -31,8 +34,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var setsList: GridView
     private lateinit var adapter: SetsAdapter
-    private lateinit var analytics: FirebaseAnalytics
     private lateinit var setsManager: SetsManager
+    private var privacyDialog: AlertDialog? = null
+    private var pendingAnalyticsChoice = false
 
     private val activityLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -44,13 +48,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingAnalyticsChoice = savedInstanceState?.getBoolean(KEY_PENDING_ANALYTICS_CHOICE)
+            ?: (Telemetry.privacyState() == TelemetryCollectionState.ENABLED)
         setContentView(R.layout.activity_main)
 
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
 
-        analytics = FirebaseAnalytics.getInstance(this)
         supportActionBar?.setTitle(R.string.your_sets)
+        showPrivacyNoticeIfNeeded()
 
         setsManager = SetsManager(this)
         adapter = SetsAdapter(this)
@@ -94,11 +100,16 @@ class MainActivity : AppCompatActivity() {
         return super.onCreateOptionsMenu(menu)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(KEY_PENDING_ANALYTICS_CHOICE, pendingAnalyticsChoice)
+        super.onSaveInstanceState(outState)
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return if (item.itemId == R.id.settings) {
             ParentPasswordDialog.showDialog(this, object : Callback<Any?>() {
                 override fun onDone(result: Any?) {
-                    analytics.logEvent(AnalyticsEvents.OPEN_SETTINGS, null)
+                    Telemetry.logEvent(AnalyticsEvents.OPEN_SETTINGS, null)
                     startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
                 }
 
@@ -138,7 +149,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openSet(manifest: SetManifest) {
-        analytics.logEvent(AnalyticsEvents.OPEN_SET, null)
+        Telemetry.logEvent(AnalyticsEvents.OPEN_SET, null)
         val intent = Intent(this, GridActivity::class.java).apply {
             putExtra(GridActivity.EXTRA_FILE, manifest.name)
         }
@@ -146,7 +157,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun editSet(manifest: SetManifest) {
-        analytics.logEvent(AnalyticsEvents.EDIT_SET, null)
+        Telemetry.logEvent(AnalyticsEvents.EDIT_SET, null)
         val intent = Intent(this, SetEditActivity::class.java).apply {
             putExtra(SetEditActivity.EXTRA_FILE, manifest.name)
         }
@@ -154,7 +165,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createSet() {
-        analytics.logEvent(AnalyticsEvents.CREATE_SET, null)
+        Telemetry.logEvent(AnalyticsEvents.CREATE_SET, null)
         ParentPasswordDialog.showDialog(this, object : Callback<Any?>() {
             override fun onDone(result: Any?) {
                 val intent = Intent(this@MainActivity, SetEditActivity::class.java)
@@ -179,6 +190,35 @@ class MainActivity : AppCompatActivity() {
             error.printStackTrace()
             Toast.makeText(this, R.string.copy_assets_error, Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun showPrivacyNoticeIfNeeded() {
+        val privacyState = Telemetry.privacyState()
+        if (!privacyState.requiresNotice || privacyDialog?.isShowing == true) return
+
+        val content = layoutInflater.inflate(R.layout.telemetry_privacy_dialog, null, false)
+        val analyticsChoice = content.findViewById<CheckBox>(R.id.telemetry_analytics_choice)
+        analyticsChoice.isChecked = pendingAnalyticsChoice
+        analyticsChoice.setOnCheckedChangeListener { _, isChecked ->
+            pendingAnalyticsChoice = isChecked
+        }
+
+        privacyDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.privacy_notice_title)
+            .setView(content)
+            .setPositiveButton(R.string.save) { _, _ ->
+                Telemetry.setAnalyticsEnabled(pendingAnalyticsChoice)
+            }
+            .setNegativeButton(R.string.privacy_not_now, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnDismissListener { privacyDialog = null }
+                dialog.show()
+            }
+    }
+
+    companion object {
+        private const val KEY_PENDING_ANALYTICS_CHOICE = "pending_analytics_choice"
     }
 
 }

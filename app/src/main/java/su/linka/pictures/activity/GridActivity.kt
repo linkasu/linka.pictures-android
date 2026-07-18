@@ -10,7 +10,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.firebase.analytics.FirebaseAnalytics
 import net.lingala.zip4j.exception.ZipException
 import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
@@ -19,6 +18,7 @@ import su.linka.pictures.Cookie
 import su.linka.pictures.R
 import su.linka.pictures.Set
 import su.linka.pictures.SetsManager
+import su.linka.pictures.Telemetry
 import su.linka.pictures.components.CardGrid
 import su.linka.pictures.components.OutputLine
 import su.linka.pictures.components.ParentPasswordDialog
@@ -31,7 +31,6 @@ class GridActivity : AppCompatActivity() {
     private lateinit var nextButton: ImageButton
     private lateinit var prevButton: ImageButton
     private lateinit var cookie: Cookie
-    private lateinit var analytics: FirebaseAnalytics
 
     private var set: Set? = null
     private var gridSettings: GridSettings = GridSettings()
@@ -41,7 +40,6 @@ class GridActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_grid)
 
-        analytics = FirebaseAnalytics.getInstance(this)
         cookie = Cookie(this)
         setsManager = SetsManager(this)
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
@@ -98,7 +96,7 @@ class GridActivity : AppCompatActivity() {
             R.id.settings -> {
                 ParentPasswordDialog.showDialog(this, object : Callback<Any?>() {
                     override fun onDone(result: Any?) {
-                        analytics.logEvent(AnalyticsEvents.OPEN_GRID_SETTINGS, null)
+                        Telemetry.logEvent(AnalyticsEvents.OPEN_GRID_SETTINGS, null)
                         showSettings()
                     }
 
@@ -117,7 +115,7 @@ class GridActivity : AppCompatActivity() {
 
     private fun onCardSelect(card: Card?) {
         if (card != null) {
-            analytics.logEvent(AnalyticsEvents.CARD_SELECT, null)
+            Telemetry.logEvent(AnalyticsEvents.CARD_SELECT, null)
             outputLine.addCard(card)
         }
     }

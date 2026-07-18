@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.firebase.analytics.FirebaseAnalytics
 import net.lingala.zip4j.exception.ZipException
 import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
@@ -16,6 +15,7 @@ import su.linka.pictures.Card
 import su.linka.pictures.R
 import su.linka.pictures.Set
 import su.linka.pictures.SetsManager
+import su.linka.pictures.Telemetry
 import su.linka.pictures.components.CardGrid
 import su.linka.pictures.components.ConfirmDialog
 import su.linka.pictures.components.EditCardDialog
@@ -30,7 +30,6 @@ class SetEditActivity : AppCompatActivity() {
     private lateinit var columnsEditText: EditText
     private lateinit var withoutSpaceCheckbox: CheckBox
     private lateinit var cardDialog: EditCardDialog
-    private lateinit var analytics: FirebaseAnalytics
 
     private var set: Set? = null
     private var setName: String? = null
@@ -42,7 +41,6 @@ class SetEditActivity : AppCompatActivity() {
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
 
-        analytics = FirebaseAnalytics.getInstance(this)
         cardDialog = EditCardDialog(this)
         setsManager = SetsManager(this)
 
@@ -74,12 +72,12 @@ class SetEditActivity : AppCompatActivity() {
             grid.jumpToPage(0)
             grid.setSet(currentSet)
             grid.refresh()
-            analytics.logEvent(AnalyticsEvents.RESIZE_GRID, null)
+            Telemetry.logEvent(AnalyticsEvents.RESIZE_GRID, null)
         }
 
         withoutSpaceCheckbox.setOnClickListener {
             set?.getManifest()?.withoutSpace = withoutSpaceCheckbox.isChecked
-            analytics.logEvent(AnalyticsEvents.SET_WITHOUT_SPACE, null)
+            Telemetry.logEvent(AnalyticsEvents.SET_WITHOUT_SPACE, null)
         }
 
         findViewById<android.view.View>(R.id.prev_button).setOnClickListener {
@@ -149,7 +147,7 @@ class SetEditActivity : AppCompatActivity() {
 
     private fun addCard(pos: Int, card: Card) {
         val currentSet = set ?: return
-        analytics.logEvent(AnalyticsEvents.ADD_CARD, null)
+        Telemetry.logEvent(AnalyticsEvents.ADD_CARD, null)
         currentSet.addCard(pos, card)
         grid.refresh()
         grid.setSet(currentSet)

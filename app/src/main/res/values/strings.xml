@@ -45,4 +45,14 @@
     <string name="your_sets">Your sets</string>
     <string name="previous">Previous page</string>
     <string name="next">Next page</string>
+    <string name="privacy_notice_title">Privacy choices</string>
+    <string name="privacy_notice_message">Optional usage analytics is off. You can allow it now, leave it off, or decide later in Settings.</string>
+    <string name="privacy_analytics_option">Allow usage analytics</string>
+    <string name="privacy_not_now">Not now</string>
+    <string name="privacy_settings_title">Privacy</string>
+    <string name="privacy_analytics_title">Usage analytics</string>
+    <string name="privacy_analytics_summary">Send app usage events without advertising identifiers</string>
+    <string name="local_data_title">Data on this device</string>
+    <string name="local_data_backup_title">Android backup and device transfer are disabled</string>
+    <string name="local_data_backup_summary">The parent password, sets (.linka), images, and audio stay on this device. Export sets manually when you need a copy.</string>
 </resources>
