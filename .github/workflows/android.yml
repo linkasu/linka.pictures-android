@@ -46,10 +46,10 @@ jobs:
           cache: gradle
 
       - name: Gradle wrapper validation
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/actions/wrapper-validation@v4
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Run lint, all unit variants, and release privacy checks
         run: ./gradlew lint test verifyReleasePrivacy
@@ -152,10 +152,10 @@ jobs:
           cache: gradle
 
       - name: Gradle wrapper validation
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/actions/wrapper-validation@v4
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Decode keystore
         run: |
