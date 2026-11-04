@@ -4,16 +4,22 @@
 `fix/audit-issue-*`) и push в `main`. Общий `android-verify.yml` проверяет один
 неизменяемый SHA на Ubuntu 24.04 / Temurin **21.0.13+9**:
 
-- `:shared:jvmTest`, `:app:lint`, `:app:testDebugUnitTest`,
+- `:shared:jvmTest`, `:app:lintDebug`, `:app:lintRelease`, `:app:testDebugUnitTest`,
   `:app:testReleaseUnitTest`, `:app:verifyReleasePrivacy`, `:app:verifyReleasePolicy`;
 - `:app:assembleDebug`, `:app:assembleDebugAndroidTest`;
 - instrumentation на эмуляторах API **24 и 36**, используя именно APK из build.
   Требуется хотя бы один выполненный тест; ошибки runner и тестов блокируют gate.
+- После instrumentation — `.github/tests/process_death.py`: открывает встроенную
+  клавиатуру, составляет фразу, выполняет HOME → `am kill` → launcher restore и
+  проверяет новый PID и сохранённую фразу. Скрипт разрешён только на свежем CI
+  emulator; не очищает данные и не активирует микрофон/речь.
 
 PR не требуют Firebase, signing или Play secrets. Firebase Test Lab/Robo заменены
 эмуляторами; это не заявление об эквивалентном покрытии Robo. Device gate тестирует
-**debug**, не release APK/AAB. Release покрывается unit/privacy/lint gates;
-миграция UI instrumentation на Compose — зависимость от issue #12.
+**debug**, не release APK/AAB. Instrumentation проверяет файловую целостность и
+подключение Compose в реальной launcher Activity. Release покрывается
+unit/privacy/lint gates. Физический микрофон, разные TTS-движки и ручная навигация
+TalkBack требуют отдельной аппаратной проверки.
 
 ## Production
 

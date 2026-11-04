@@ -34,6 +34,14 @@ def run_script(step_body):
 
 
 class WorkflowContract(unittest.TestCase):
+    def test_tracked_bundled_sets_have_no_case_fold_collisions(self):
+        paths = subprocess.check_output(
+            ["git", "ls-files", "-z", "--", "app/src/main/assets/sets"],
+            cwd=WORKFLOWS.parents[1]).decode().split("\0")
+        names = [Path(path).name for path in paths if path]
+        self.assertEqual(len(names), len({name.casefold() for name in names}), names)
+        self.assertEqual(len(names), 6)
+
     def test_all_pr_bases_and_main_push(self):
         triggers = CI.split("\npermissions:", 1)[0]
         self.assertRegex(triggers, r"push:\n    branches: \[main\]")
