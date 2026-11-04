@@ -80,3 +80,20 @@ AGP8.5.2 оказался ниже actual AAR metadata minimum8.6.0 у Android C
 - [Android35 runtime](android-platform-runtime.md) прошёл на выделенном tablet: Unicode/апостроф SQLite readback, native callback, focus/IME/clearFocus. API21/armv7 runtime, iOS14 и physical/AAC остаются недоступными. Проверены лишь конкретные newer weak imports, не полная динамическая API availability.
 
 **G1 OPEN:** отсутствие minimum-runtime доказательств не разрешает P02 по принятому порядку. Это конечное описание текущей границы проверки, не утверждение, что приложение уже поддерживает обе минимальные ОС.
+
+## Уточнение по скачиваемым образам после вопроса пользователя
+
+Host фактически `arm64`, macOS27.0.1 (26A434). Важно различать «не установлено» и «нельзя скачать»: предыдущая инвентаризация доказывала первое, не второе.
+
+Read-only проверены официальные Google repository indexes:
+
+- `https://dl.google.com/android/repository/sys-img/android/sys-img2-3.xml`: присутствуют `system-images;android-21;default;arm64-v8a` (`arm64-v8a-21_r04.zip`, 211426314 bytes) и `system-images;android-21;default;armeabi-v7a` (`armeabi-v7a-21_r04.zip`, 187163871 bytes), а также x86/x86_64.
+- `https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml`: присутствуют API21 Google APIs arm64 и ARMv7, соответственно 297671829 и 290282953 bytes.
+- Официальная [документация Emulator acceleration](https://developer.android.com/studio/run/emulator-acceleration) указывает ARM64 images API21+ для ARM64 host. Следующий предметный шаг — разрешённая установка/пробный запуск отдельного API21 ARM64 AVD, а не обязательное ожидание физического Android для любого API21 smoke. Сам факт наличия ZIP ещё не доказывает совместимость конкретного старого kernel/image с установленным Emulator; запуск пока не выполнялся.
+- ARM64 AVD не подменяет ARMv7 runtime. ZIP ARMv7 доступен, но его запуск/32-bit guest support на текущем Apple Silicon Emulator отдельно не доказаны; наличие ARMv7 ELF в APK также недостаточно.
+
+Официальная [таблица Xcode support](https://developer.apple.com/support/xcode/) в эту дату указывает для установленного Xcode27.2 simulator support iOS17+, deployment targets iOS15+. В таблице Xcode14.3.1 поддерживает simulator13.7–16.4 на macOSVentura13.x; Xcode15.0.x — simulator14.0.1–17 на macOSVentura13.5/Sonoma14.x. Старый runtime iOS14 нельзя считать штатно совместимым с текущим macOS27/Xcode27 просто после скачивания. Нужны согласованная старая host/toolchain среда или выделенное физическое устройство/удалённая разрешённая среда с подтверждённой версией ОС.
+
+Дополнительный открытый риск: полученный minos14 executable доказывает успешную компиляцию, но не означает официально поддерживаемый Apple deployment14 pipeline на Xcode27.2. Эта граница и требования будущей store SDK-приёмки должны быть проверены отдельно, не замаскированы plist/линкерным флагом.
+
+Образы/новые SDK/Xcode в рамках этого уточнения **не скачивались и не устанавливались**, лицензии не принимались. Пользователь попросил объяснение возможности скачивания; изменения порядка gates этим не разрешены.
