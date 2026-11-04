@@ -28,6 +28,9 @@ import su.linka.pictures.awaitHostWork
 import su.linka.pictures.awaitWork
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import su.linka.pictures.ActivityWork
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
@@ -268,6 +271,7 @@ class EditorStateRestoreTest {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test fun pickerResultBeforeAsyncDraftRestoreIsDeliveredToTheNewDialog() {
         val manager = SetsManager(context)
         val name = "early-picker-${System.nanoTime()}.linka"
@@ -282,20 +286,29 @@ class EditorStateRestoreTest {
         val requestCode = field<Int>(dialog, "imageRequestCode")
         val state = Bundle()
         first.saveInstanceState(state).pause().stop().destroy()
-        val second = Robolectric.buildActivity(SetEditActivity::class.java, intent).create(state)
+        // Hold restoration until the picker callback, independent of disk and runner speed.
+        val dispatcher = StandardTestDispatcher()
+        val second = Robolectric.buildActivity(SetEditActivity::class.java, intent)
+        setField(second.get(), "work", ActivityWork(second.get(), dispatcher))
+        val scope = checkNotNull(second.get().lifecycleScope.coroutineContext[Job])
         try {
+            second.create(state)
             assertNull(second.get().document)
             SetEditActivity::class.java.getDeclaredMethod("onActivityResult", Int::class.javaPrimitiveType,
                 Int::class.javaPrimitiveType, Intent::class.java).apply { isAccessible = true }
                 .invoke(second.get(), requestCode, android.app.Activity.RESULT_CANCELED, null)
+            awaitWork {
+                dispatcher.scheduler.runCurrent()
+                second.get().document != null
+            }
             second.start().resume().visible()
-            awaitHostWork(second.get())
             val restored = field<EditCardDialog>(second.get(), "cardDialog")
             assertTrue(restored.isShowing)
             assertFalse(field(restored, "pendingImage"))
         } finally {
             SetEditActivity::class.java.getDeclaredMethod("discardDraft").apply { isAccessible = true }.invoke(second.get())
             second.pause().stop().destroy()
+            awaitWork { dispatcher.scheduler.runCurrent(); scope.children.none() }
             source.close()
             manager.getSetFile(name).delete()
         }

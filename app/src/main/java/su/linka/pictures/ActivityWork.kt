@@ -8,7 +8,10 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.*
 
 /** One operation per host. Started IO finishes; destroyed hosts never receive its result. */
-class ActivityWork(private val activity: ComponentActivity) {
+class ActivityWork(
+    private val activity: ComponentActivity,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) {
     var busy by mutableStateOf(false)
         private set
 
@@ -22,7 +25,7 @@ class ActivityWork(private val activity: ComponentActivity) {
             var delivered = false
             try {
                 // Cancellation must not interrupt an atomic commit or leak a newly opened workspace.
-                withContext(Dispatchers.IO + NonCancellable) {
+                withContext(ioDispatcher + NonCancellable) {
                     result = work()
                     completed = true
                 }
@@ -41,7 +44,7 @@ class ActivityWork(private val activity: ComponentActivity) {
             } finally {
                 if (completed && !delivered) {
                     @Suppress("UNCHECKED_CAST")
-                    withContext(Dispatchers.IO + NonCancellable) { abandoned(result as T) }
+                    withContext(ioDispatcher + NonCancellable) { abandoned(result as T) }
                 }
             }
         }
