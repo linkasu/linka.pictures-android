@@ -400,3 +400,36 @@ Python проверил signature, lengths, CRC32 всех PNG chunks, IEND и �
 | android35-final03-read-clearfocus.png | 2560×1600 / 13 | `1e2c448d0450c9f26ff7d80f04258d58c6bdc8ec911bf44196d9856f39bff935` |
 
 Final focused checks: base006371f byte-prefix сохранён, включая прежние FA/c9 sections; только report append + эти шесть разрешённых PNG; report links существуют; diff-checks перед commit. Actual results/final commit возвращаются в handoff. **G1 совокупно не PASS:** настоящее ARMv7/zygote32 не получено, P00/codecs/physical/AAC и принятие остальных UI checks принадлежат COORD. Новых provisioning/tooling writes/builds/source fixes/делегации/push эта роль не выполняла.
+
+## Дополнение: единственный разрешённый classic comparison — final ARMv7 blocker
+
+Base **`94e5e5a42a6ef69ffacfabf73f1f8934b71196e3`**, branch `implementation/p01-android-runtime`, исходно чистый worktree. COORD отдельно разрешил **один** documented frontend comparison `-engine classic` в том же установленном Emulator и том же task-owned AVD; это новое разрешение после прежнего STOP, не скрытый повтор прежней конфигурации.
+
+Первое действие — native MCP list_devices: только прежние `emulator-5554` (own ARM64, transport13) и `emulator-5556` (tablet, transport11), **32-bit device нет**. Никаких state changes на них не выполнялось. `emulator -version` повторно → **37.2.12.0 / build16428233**. Read-only `emulator -help-engine` подтвердил `auto / classic / qemu2`, documented classic engine и рекомендацию использовать опцию только debugging/comparison.
+
+AVD перед launch: **linka_platform_probe_api21_armv7**, declared ABI **armeabi-v7a**, CPU arch **arm**, Nexus5, targetandroid-21, `image.sysdir.1=system-images/android-21/default/armeabi-v7a/`. SHA256 generated `config.ini` **до и после comparison одинаков**: `bf99e1a89d135209893c802f602dba23c2e3077b1e338b96072bf3880578ff10`. Image/kernel/AVDconfig не патчились, SDK/tool versions не менялись.
+
+**Единственная** новая boot-команда:
+
+```sh
+/Users/aacidov/Library/Android/sdk/emulator/emulator \
+  -avd linka_platform_probe_api21_armv7 -engine classic -no-window -no-audio \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-armv7-classic-comparison.log 2>&1
+```
+
+Background automatic completed notification сообщил **exit1**. Лог прочитан только после notification, без polling; полный stdout/stderr:
+
+```text
+WARNING: engine selection is deprecated.
+INFO         | Android emulator version 37.2.12.0 (build_id 16428233) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+FATAL        | CPU Architecture 'arm' is not supported by the QEMU2 emulator, (the classic engine is deprecated!)
+```
+
+Log SHA256: **`e8fb721782b1b34a5ec503db23067fd7bfde670fdc8b2416cf615e6bf0c70b18`**. Хотя CLI help по-прежнему перечисляет classic, actual invocation этой версии заканчивается QEMU2 unsupported-arm fatal; отдельная рабочая classic-engine implementation из help **не доказывается**. Это фактический blocker штатного launcher, не app failure.
+
+Повторный MCP list_devices после exit снова показал **только 5554/5556** с прежними transport IDs. Новый serial **отсутствует**; actual API21/primaryABI/abilist/zygote32/boot_completed получить не удалось. **Counts этого comparison: launch attempts 1, guest boots 0, app installs 0, app launches 0, UI actions 0, screenshots 0.** Exit наступил до необходимости bounded native boot wait до10мин; fixed sleeps и background-log polling не использовались. APK886 не устанавливался в несуществующий guest; прежние quick64 результаты выше не выдаются за ARMv7 proof.
+
+**Авторизованный comparison исчерпан, STOP.** Другие engine/versions, direct qemu, SIP/Rosetta, CPU/kernel/image substitutions, `-accel off`, permission overrides не пробовались. Новых download/license/auth/nativepermission действий не было. Старые AVD не reset/kill/reboot/clear; task-owned ARMv7 AVD сохранён, процесс сам завершился exit1. Новых PNG нет.
+
+Изменение только append этого раздела; перед local commit проверяются byte-prefix base/FA/c9, неизменность прочих tracked artifacts, report links, `git diff --check`/staged check. **G1 не PASS:** 32-bit runtime остаётся недоступен в проверенных разрешённых конфигурациях этого host/toolchain; physical/AAC/P00/codecs и общий acceptance остаются COORD. No source/root configs/builds/push/delegation.
