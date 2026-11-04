@@ -5,6 +5,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import su.linka.pictures.shared.BoardLimits
+import su.linka.pictures.shared.GridDimensions
 
 object BoardCodec {
     private val json = Json {
@@ -21,7 +23,7 @@ object BoardCodec {
 
     fun encode(document: BoardDocument): String {
         validate(document)
-        // The legacy format persists editor placeholders (and higher types) as empty cards.
+        // The legacy format persists editor placeholders as empty cards.
         val persisted = document.copy(cards = document.cards.map {
             normalizeMediaPaths(if (it.cardType >= 3) it.copy(cardType = 2) else it)
         })
@@ -33,11 +35,14 @@ object BoardCodec {
         audioPath = card.audioPath?.takeUnless { it.isEmpty() }
     )
 
-    internal fun validate(document: BoardDocument) {
+    fun validate(document: BoardDocument) {
         validateVersion(document.version)
+        GridDimensions(document.rows, document.columns)
+        BoardLimits.validateCardCount(document.cards.size)
         document.cards.forEach { card ->
-            validateMediaPath(card.imagePath)
-            validateMediaPath(card.audioPath)
+            BoardLimits.validateCardType(card.cardType)
+            card.imagePath?.takeIf { it.isNotEmpty() }?.let(BoardLimits::validateMediaPath)
+            card.audioPath?.takeIf { it.isNotEmpty() }?.let(BoardLimits::validateMediaPath)
         }
     }
 
@@ -47,11 +52,4 @@ object BoardCodec {
         }
     }
 
-    private fun validateMediaPath(path: String?) {
-        if (path.isNullOrEmpty()) return
-        require(!path.startsWith('/') && !path.contains('\\') && !path.contains(':') &&
-            !path.contains('\u0000') && path.split('/').none { it == ".." }) {
-            "Unsafe board media path: $path"
-        }
-    }
 }

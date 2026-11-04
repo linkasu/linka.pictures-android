@@ -2,14 +2,11 @@ package su.linka.pictures
 
 import android.content.Context
 import android.content.res.AssetManager
-import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
-import java.io.FileReader
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -106,15 +103,11 @@ class SetsManager(private val context: Context) {
 
     @Throws(IOException::class)
     private fun readStringFile(file: File): String {
-        val text = StringBuilder()
-        BufferedReader(FileReader(file)).use { reader ->
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                text.append(line)
-                text.append('\n')
-            }
+        val output = java.io.ByteArrayOutputStream()
+        file.inputStream().use { input ->
+            BoundedStreams.copy(input, output, ArchiveLimits().maxConfigBytes)
         }
-        return text.toString()
+        return output.toString("UTF-8")
     }
 
     @Throws(ZipException::class)
@@ -123,12 +116,14 @@ class SetsManager(private val context: Context) {
     @Throws(ZipException::class)
     private fun getSet(setFile: File): Set {
         val outputDir = createWorkspace()
-        ZipFile(setFile).extractAll(outputDir.absolutePath)
         val manifest = try {
+            ArchiveReader().extract(setFile, outputDir)
             parseManifest(setFile, File(outputDir, CONFIG_FILE_NAME))
         } catch (error: JSONException) {
+            outputDir.deleteRecursively()
             throw ZipException(error)
         } catch (error: IOException) {
+            outputDir.deleteRecursively()
             throw ZipException(error)
         }
         return Set(manifest, outputDir)
@@ -182,11 +177,19 @@ class SetsManager(private val context: Context) {
     fun getSetImage(manifest: SetManifest, path: String?): File? {
         if (path == null) return null
         val archive = manifest.archiveFile ?: return null
+        try {
+            su.linka.pictures.shared.BoardLimits.validateMediaPath(path)
+        } catch (error: IllegalArgumentException) {
+            throw ZipException(error)
+        }
         val previewDir = ensurePreviewDir(archive, manifest.cacheKey)
         val image = File(previewDir, path)
         if (!image.exists()) {
-            image.parentFile?.mkdirs()
-            ZipFile(archive).extractFile(path, previewDir.absolutePath)
+            try {
+                ArchiveReader().extract(archive, previewDir, path)
+            } catch (error: IOException) {
+                throw ZipException(error)
+            }
         }
         return image
     }
@@ -195,10 +198,11 @@ class SetsManager(private val context: Context) {
     private fun extractManifestConfig(file: File): File {
         val previewDir = ensurePreviewDir(file)
         val config = File(previewDir, CONFIG_FILE_NAME)
-        if (config.exists()) {
-            config.delete()
+        try {
+            ArchiveReader().extract(file, previewDir, CONFIG_FILE_NAME)
+        } catch (error: IOException) {
+            throw ZipException(error)
         }
-        ZipFile(file).extractFile(CONFIG_FILE_NAME, previewDir.absolutePath)
         return config
     }
 

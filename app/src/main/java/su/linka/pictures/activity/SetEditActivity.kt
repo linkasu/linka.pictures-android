@@ -21,6 +21,7 @@ import su.linka.pictures.components.ConfirmDialog
 import su.linka.pictures.components.EditCardDialog
 import su.linka.pictures.components.EditCardGrid
 import su.linka.pictures.components.InputDialog
+import su.linka.pictures.shared.GridDimensions
 
 class SetEditActivity : AppCompatActivity() {
 
@@ -65,8 +66,12 @@ class SetEditActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.change_grid_size_button).setOnClickListener {
             val currentSet = set ?: return@setOnClickListener
             val manifest = currentSet.getManifest()
-            val rows = rowsCountEditText.text.toString().toIntOrNull() ?: manifest.rows
-            val columns = columnsEditText.text.toString().toIntOrNull() ?: manifest.columns
+            val rows = rowsCountEditText.text.toString().toIntOrNull()
+            val columns = columnsEditText.text.toString().toIntOrNull()
+            if (rows == null || columns == null || runCatching { GridDimensions(rows, columns) }.isFailure) {
+                Toast.makeText(this, R.string.invalid_grid_dimensions, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
             manifest.rows = rows
             manifest.columns = columns
             grid.jumpToPage(0)
@@ -142,6 +147,10 @@ class SetEditActivity : AppCompatActivity() {
 
     private fun onCardSelected(card: Card?, pos: Int, nextPage: Boolean) {
         val currentSet = set ?: return
+        if (pos !in 0 until su.linka.pictures.shared.BoardLimits.MAX_CARDS) {
+            Toast.makeText(this, R.string.card_limit_reached, Toast.LENGTH_LONG).show()
+            return
+        }
         cardDialog.show(currentSet, if (card != null && card.cardType < 3) card else null)
         cardDialog.setCallback(object : Callback<Card>() {
             override fun onDone(result: Card) {

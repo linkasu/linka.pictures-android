@@ -10,6 +10,8 @@ import su.linka.pictures.Callback
 import su.linka.pictures.R
 import su.linka.pictures.SetsManager
 import su.linka.pictures.Telemetry
+import su.linka.pictures.ArchiveLimits
+import su.linka.pictures.BoundedStreams
 import su.linka.pictures.Utils
 import su.linka.pictures.components.ConfirmDialog
 import su.linka.pictures.resolveImportedSetFile
@@ -49,7 +51,7 @@ class BroadcastReceiverActivity : Activity() {
         try {
             val destination = resolveImportedSetFile(SetsManager(this).getSetsDirectory(), uri.lastPathSegment)
             contentResolver.openInputStream(uri)?.use { input ->
-                Utils.copy(input, destination)
+                Utils.copy(BoundedStreams.limit(input, ArchiveLimits().maxInputBytes), destination)
             } ?: throw IOException("Unable to open input stream")
         } catch (error: Exception) {
             if (error !is IOException && error !is SecurityException && error !is IllegalArgumentException) {

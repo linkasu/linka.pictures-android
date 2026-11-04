@@ -40,11 +40,47 @@ class BoardCodecTest {
     @Test
     fun placeholdersPersistAsEmptyCardsWithoutMutatingEditorState() {
         val card = Card(1, 3)
-        val document = BoardDocument(cards = listOf(card, Card(2, 4)))
-        assertEquals(listOf(2, 2), BoardCodec.decode(BoardCodec.encode(document)).cards.map { it.cardType })
+        val document = BoardDocument(cards = listOf(card))
+        assertEquals(listOf(2), BoardCodec.decode(BoardCodec.encode(document)).cards.map { it.cardType })
         assertEquals(3, card.cardType)
         assertEquals(card, card.clone())
         assertNotSame(card, card.clone())
+    }
+
+    @Test
+    fun dimensionsAndCardCountsCannotBypassLimitsThroughEitherCodecDirection() {
+        for (invalid in listOf(Int.MIN_VALUE, -1, 0, 33, Int.MAX_VALUE)) {
+            for (document in listOf(BoardDocument(rows = invalid), BoardDocument(columns = invalid))) {
+                assertFailsWith<IllegalArgumentException> { BoardCodec.validate(document) }
+                assertFailsWith<IllegalArgumentException> { BoardCodec.encode(document) }
+                assertFailsWith<IllegalArgumentException> {
+                    BoardCodec.decode("""{"rows":${document.rows},"columns":${document.columns}}""")
+                }
+            }
+        }
+        for (document in listOf(BoardDocument(rows = 4, columns = 12), BoardDocument(rows = 32, columns = 32))) {
+            assertEquals(document, BoardCodec.decode(BoardCodec.encode(document)))
+        }
+        val boundary = BoardDocument(cards = List(10_000) { Card(it) })
+        assertEquals(boundary, BoardCodec.decode(BoardCodec.encode(boundary)))
+        val oversized = boundary.copy(cards = boundary.cards + Card(10_000))
+        assertFailsWith<IllegalArgumentException> { BoardCodec.validate(oversized) }
+        assertFailsWith<IllegalArgumentException> { BoardCodec.encode(oversized) }
+        assertFailsWith<IllegalArgumentException> {
+            BoardCodec.decode("""{"cards":[${List(10_001) { """{"id":$it}""" }.joinToString(",")}]}""")
+        }
+    }
+
+    @Test
+    fun invalidCardTypesCannotBeSilentlyNormalizedByEncode() {
+        for (type in listOf(Int.MIN_VALUE, -1, 4, Int.MAX_VALUE)) {
+            val document = BoardDocument(cards = listOf(Card(1, type)))
+            assertFailsWith<IllegalArgumentException> { BoardCodec.validate(document) }
+            assertFailsWith<IllegalArgumentException> { BoardCodec.encode(document) }
+            assertFailsWith<IllegalArgumentException> {
+                BoardCodec.decode("""{"cards":[{"id":1,"cardType":$type}]}""")
+            }
+        }
     }
 
     @Test
@@ -59,9 +95,17 @@ class BoardCodecTest {
     @Test
     fun absoluteAndTraversalMediaPathsAreRejectedForBothMediaFields() {
         for (path in listOf("/tmp/image.png", "../image.png", "images/../../image.png",
-            "C:/image.png", "C:\\image.png", "\\\\server\\image.png", "images\\..\\image.png", "a\u0000b")) {
+            "C:/image.png", "C:\\image.png", "\\\\server\\image.png", "images\\..\\image.png", "a\u0000b",
+            "images//image.png", "images/./image.png", "images/", "a\nb")) {
             for (card in listOf(Card(1, imagePath = path), Card(1, audioPath = path))) {
                 assertFailsWith<IllegalArgumentException> { BoardCodec.encode(BoardDocument(cards = listOf(card))) }
+                assertFailsWith<IllegalArgumentException> { BoardCodec.validate(BoardDocument(cards = listOf(card))) }
+            }
+            val escaped = path.replace("\\", "\\\\").replace("\u0000", "\\u0000").replace("\n", "\\n")
+            for (field in listOf("imagePath", "audioPath")) {
+                assertFailsWith<IllegalArgumentException> {
+                    BoardCodec.decode("""{"cards":[{"id":1,"$field":"$escaped"}]}""")
+                }
             }
         }
         for (field in listOf("imagePath", "audioPath")) {

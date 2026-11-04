@@ -54,6 +54,8 @@ class Set(
     }
 
     fun addCard(pos: Int, card: Card) {
+        require(pos in 0 until su.linka.pictures.shared.BoardLimits.MAX_CARDS) { "Card position exceeds limit" }
+        su.linka.pictures.shared.BoardLimits.validateCardCount(manifest.cards.size)
         val cards = manifest.cards
         if (pos >= cards.size) {
             while (cards.size < pos) {

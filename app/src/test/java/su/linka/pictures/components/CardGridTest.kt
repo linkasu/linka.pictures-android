@@ -53,6 +53,14 @@ class CardGridTest {
     }
 
     @Test
+    fun invalidDimensionsLeaveExistingGridUntouched() {
+        val firstRow = grid.getChildAt(0)
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) { grid.setGridSize(Int.MAX_VALUE, 2) }
+        assertEquals(2, grid.getPageSize())
+        org.junit.Assert.assertSame(firstRow, grid.getChildAt(0))
+    }
+
+    @Test
     fun nextPage_advancesUntilLastPage() {
         assertTrue(grid.nextPage())
         assertFalse(grid.nextPage())

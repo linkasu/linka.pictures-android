@@ -64,7 +64,7 @@ class SetManifest(
 
     companion object {
         private fun decodeDocument(jsonObject: JSONObject): BoardDocument = try {
-            BoardCodec.decode(jsonObject.toString())
+            BoardCodec.decode(jsonObject.toString()).also { ManifestValidation.validate(jsonObject) }
         } catch (error: IllegalArgumentException) {
             throw JSONException(error.message ?: "Invalid board document")
         }
