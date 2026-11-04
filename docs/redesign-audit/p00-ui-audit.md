@@ -2,7 +2,9 @@
 
 ## Текущий итог: focused follow-up выполнен частично, не G0/G1 PASS
 
-После первого сбора пользователь явно разрешил: «Да, отменить эти черновики» — только несохранённые `Audit14д` на phone и current new-board на tablet. Разрешение использовано; выполнен один ограниченный обход собственных новых несохранённых форм. Actual editor, форма карточки, генерация текстовой картинки, системный image picker/cancel и discard confirmation наблюдены на обоих размерах. Итоговые сохранения/публикации не выполнялись; save confirmation остаётся UNKNOWN. Подробности и новые evidence — в разделе «Продолжение после разрешения» ниже.
+Финальный узкий сбор: на tablet проверены space/empty radios, title+image, explicit synthetic TTS submit, Tab-доступ к action buttons, добавление карточки и save confirmation. **Новый собственный `P00TabletSave` сохранён и оставлен: библиотека tablet теперь содержит 7 наборов вместо 6.** Исходные шесть не редактировались/удалялись. Phone отключился во время ввода имени; новые phone radio/save проверки BLOCKED средой. G0/G1 в целом не PASS; physical/minimum OS UNKNOWN. Подробности — в разделе «Финальный узкий сбор».
+
+История предыдущего follow-up: после первого сбора пользователь явно разрешил: «Да, отменить эти черновики» — только несохранённые `Audit14д` на phone и current new-board на tablet. Разрешение использовано; выполнен один ограниченный обход собственных новых несохранённых форм. Actual editor, форма карточки, генерация текстовой картинки, системный image picker/cancel и discard confirmation наблюдены на обоих размерах. На том этапе итоговые сохранения/публикации не выполнялись; save confirmation оставался UNKNOWN. Подробности и evidence — в разделе «Продолжение после разрешения» ниже.
 
 ## История первого сбора: BLOCKED, не PASS
 
@@ -128,3 +130,50 @@ Phone: Back скрыл fullscreen IME, «ОТМЕНА» (1600,660) закрыл 
 Оба устройства оставлены в библиотеке. Список шести видимых сохранённых наборов совпал до/после обхода по XML labels (порядок между phone/tablet отличается). Saved boards не редактировались и final save не нажимался. Byte-level сравнение private app storage не выполнялось; возможные служебные временные файлы генерации отдельно не проверены.
 
 Проверка артефактов продолжения: все 20 PNG первого и второго сбора визуально прочитаны; PNG signature/chunk CRC/zlib/IEND и размеры проверены программно, все ссылки существуют. `git diff --check` и staged diff check без ошибок. За пределами этого отчёта и новых follow-up PNG tracked изменений нет; прежние PNG неизменны. Product build/tests не запускались, исходники не менялись.
+
+## Финальный узкий сбор
+
+Base: `71b17cd7f2b4a8ec752f6db0e0558ca430fb3109`, та же ветка `implementation/p00-ui-followup` и worktree. Пользователь дополнительно разрешил сохранить **только новые собственные** `P00PhoneSave`/`P00TabletSave`, не удаляя результат. Это разрешение не распространялось на изменение прежних шести наборов, настройки ОС или микрофон.
+
+### Подтверждение устройств и phone blocker
+
+Перед вводом снова выполнены `adb.list_devices()`, `emu avd name`, диагностическая команда OS/API/size/density/package и `dump_ui_hierarchy`, везде явные serial. Подтверждены `emulator-5554` → `linka_audit_phone`, `emulator-5556` → `linka_audit_tablet`; Android 15/API35, версия 1.4/5, геометрия прежняя. Оба устройства сначала показывали библиотеку с исходными шестью наборами.
+
+После FAB (phone 943,2260; tablet 2456,1496) отправлен параллельный `type_text` с `P00PhoneSave`/`P00TabletSave`. MCP вернул **`MCP tool "type_text" on server "adb" failed: Request timed out`**. Проверочный `dump_ui_hierarchy` вернул **`error: closed`**. Повторный `list_devices()` показал только `emulator-5556`. Состояние phone после ввода неизвестно; автоматического повтора, перезапуска, shell adb fallback, очистки или сохранения не было. Phone radio types/title/audio/save проверки в этом сборе **BLOCKED средой**, а не доказанным багом приложения. Новых phone PNG получить не удалось. На tablet повторно подтверждено имя AVD и в диалоге наблюдён ровно `P00TabletSave`, поэтому ввод не дублировался.
+
+### Tablet: точные действия и actual outcomes
+
+Все дальнейшие действия через adb MCP на `emulator-5556`, viewport 2560×1600 landscape / 320 dpi; координаты физические. Источники и UI hierarchy не модифицировались.
+
+1. Имя собственного набора: `tap_screen(1720,550)` («ГОТОВО»), первая плитка `tap_screen(650,650)`.
+2. Space radio: `tap_screen(1320,510)` → [11-space-card-type.png](screenshots/p00-followup/tablet/11-space-card-type.png). Визуально выбран «Карточка пробел», остальные controls формы остаются видны.
+3. Empty radio: `tap_screen(1580,510)` → [12-empty-card-type.png](screenshots/p00-followup/tablet/12-empty-card-type.png). Визуально выбран «Пустая карточка», остальные controls остаются. Это проверка переключения/форм, не сохранения семантики этих типов.
+4. Standard radio `tap_screen(1000,510)`; title `tap_screen(1200,600)`, `type_text("P00 TEST")`; Back (`execute_shell_command`, `input keyevent 4`) скрыл IME. Генерация картинки: `tap_screen(1500,810)`, `type_text("P00 TEST")`, «ГОТОВО» `tap_screen(1720,550)` → [13-standard-title-and-image.png](screenshots/p00-followup/tablet/13-standard-title-and-image.png). Видны standard radio, title и image preview `P00 TEST`.
+5. Синтетическое TTS: явная кнопка `tap_screen(1280,970)`, `type_text("P00 TEST")` → [14-synthetic-tts-input.png](screenshots/p00-followup/tablet/14-synthetic-tts-input.png). Затем «ГОТОВО» `tap_screen(1720,550)` → [15-after-tts-playback-enabled.png](screenshots/p00-followup/tablet/15-after-tts-playback-enabled.png). Диалог закрылся, playback button стала активной (визуально teal, XML `enabled="true"`, ранее false), ошибок/запросов скачивания или network voice не появилось. **UI-level success**, не проверка качества/содержимого аудиофайла. Play/record/микрофон не нажимались, autoplay агентом не инициировался. Установки голосов/сети не менялись. Read-only `dumpsys texttospeech` и `get_logcat` с фильтром `TextToSpeech:V TTS:V GoogleTTS:V *:S`, limit 50, были пусты; конкретный engine/voice и offline-only характер синтеза независимо не подтверждены. Offline/audio validity остаются UNKNOWN, а не заявленный PASS.
+6. **Ровно две bounded попытки action buttons:**
+   - Scroll: `swipe_screen({x1:1100,y1:1070,x2:1100,y2:600,duration:450})` → [16-after-bounded-scroll.png](screenshots/p00-followup/tablet/16-after-bounded-scroll.png). Ничего не прокрутилось, нижние «ОТМЕНА»/«ГОТОВО» по-прежнему не видны.
+   - Keyboard: 8 одиночных `execute_shell_command({serial:"emulator-5556",command:"input keyevent 61"})` (Tab) с проверкой `focused="true"` после каждого. Порядок: choose image → generate image → play audio → generate audio → record audio → delete → cancel → positiveBtn. Record/delete только получили фокус, **не активировались**. На 7-м Tab `cancel_button` сфокусирована, на 8-м — `positiveBtn` («ГОТОВО»). [17-tab-focus-card-done.png](screenshots/p00-followup/tablet/17-tab-focus-card-done.png) визуально показывает появившуюся при фокусе бледную кнопку «ГОТОВО». Затем `input keyevent 66` (Enter) активировал только её. Карточка добавилась в новый черновик → [18-pre-save-board-with-card.png](screenshots/p00-followup/tablet/18-pre-save-board-with-card.png), первая плитка содержит title и текстовую картинку. Координатных нажатий по невидимым action buttons, кликов за viewport, injection в hierarchy или модификации приложения не было.
+7. Разрешённое сохранение **нового** набора: toolbar save `tap_screen(2496,112)` → [19-new-board-save-confirmation.png](screenshots/p00-followup/tablet/19-new-board-save-confirmation.png). Визуально «Подтвердить сохранение набора», «ОТМЕНА»/«ГОТОВО». После фиксации нажато «ГОТОВО» `tap_screen(1720,835)` → [20-library-after-new-board-save.png](screenshots/p00-followup/tablet/20-library-after-new-board-save.png). В библиотеке видны **`P00TabletSave` + исходные шесть**. Новый набор оставлен, не удалён и не переименован; повторное открытие и проигрывание карточки не выполнялись.
+8. Узкая проверка доступности document import: library overflow `tap_screen(2500,110)` показал только «Настройки»; import item не обнаружен. Меню закрыто Back, настройки не открывались, системный document picker не запускался. Image picker из предыдущего сбора не считается проверкой импорта набора.
+
+Каждый новый PNG 11–20 визуально открыт через `read`, имена сами по себе не использованы как доказательство. Абсолютный префикс сохранения: `/Users/aacidov/.local/share/opencode/worktree/67846f/pokazhi-p00-ui-audit/docs/redesign-audit/screenshots/p00-followup/tablet/`.
+
+### Конечная матрица checked / blocked / unknown
+
+| Остаток | Phone | Tablet | Ограничение / expected vs actual |
+|---|---|---|---|
+| Actual editor + standard card form | CHECKED предыдущим сбором | CHECKED | Новые данные не подменяют старую историю |
+| Space/empty radio forms | BLOCKED: AVD disconnected | CHECKED: PNG 11/12 | Expected выбранный radio; actual выбран, controls формы сохраняются. Сохранение типов не тестировалось |
+| Title `P00 TEST` + image | BLOCKED в финальном сборе; image был проверен ранее | CHECKED: PNG 13/18 | Title и preview видны; карточка добавлена в новый draft |
+| Bottom actions, штатный scroll | BLOCKED: AVD disconnected | CHECKED: scroll не помогает | Визуальная проблема воспроизведена, baseline не исправлялся |
+| Bottom actions, Tab/Enter | BLOCKED: AVD disconnected | CHECKED: Tab достигает cancel/done, Enter добавляет карточку | Не «полностью недоступны»: есть keyboard workaround, touch discoverability остаётся проблемой |
+| Synthetic TTS submit | BLOCKED: AVD disconnected | CHECKED UI-level: playback enabled, ошибок не показано | Engine/voice/offline-only, качество/длительность/факт корректного audio UNKNOWN; playback не запускался |
+| Save confirmation / новый saved set | BLOCKED: phone save не выполнялся | CHECKED: PNG 19/20, `P00TabletSave` оставлен | Tablet library сознательно изменена 6 → 7, не скрыто. Saved board after restart не проверялся |
+| Discard | CHECKED предыдущим сбором | CHECKED предыдущим сбором | В финальном сборе tablet сохранён, не удалён |
+| Document picker/cancel | NOT CHECKED | BLOCKED: из library menu видны только настройки | Нет broad поиска или открытия настроек; пользовательские файлы не выбирались |
+| App empty library / real import / forced error | UNKNOWN | UNKNOWN | Не создавались destructive действиями; отсутствие photos в picker не равно empty library |
+| Physical / minimum OS / общий G0/G1 | UNKNOWN | UNKNOWN | Не объявлять PASS |
+
+Итоговое состояние: tablet на library с новым `P00TabletSave` и исходными шестью наборами; phone отсутствует в последнем полученном `list_devices`, состояние его несохранённого имени неизвестно. Исходные сохранённые наборы не открывались для изменения, не переименовывались/overwrite/delete. Продуктовый код, пароль и ОС не менялись. Возможные служебные файлы TTS/image и byte-level private storage не проверялись.
+
+Артефакты финального сбора: только этот отчёт + 10 новых PNG tablet/11–20; старые PNG неизменны. PNG signature/CRC/zlib/IEND, размеры и все ссылки проверены, `git diff --check` / staged check без ошибок. Build/tests не запускались: продуктовый код не менялся. Никаких других агентов.
