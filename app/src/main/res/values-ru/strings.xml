@@ -3,6 +3,9 @@
     <string name="card_limit_reached">В наборе может быть не более 10000 карточек</string>
     <string name="invalid_grid_dimensions">Число строк и столбцов должно быть от 1 до 32</string>
     <string name="confirm_replace_set">Набор с таким именем уже существует. Заменить его?</string>
+    <string name="export_set">Экспортировать файл .linka</string>
+    <string name="set_export_success">Набор экспортирован</string>
+    <string name="set_export_error">Не удалось экспортировать набор. В месте назначения мог остаться неполный файл.</string>
     <string name="app_name">LINKa покажи</string>
     <string name="title_activity_settings">Настройки</string>
     <string name="parent_control">Родительский контроль</string>

@@ -21,6 +21,7 @@ import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
 import su.linka.pictures.R
 import su.linka.pictures.SetManifest
+import su.linka.pictures.SetExportController
 import su.linka.pictures.SetsAdapter
 import su.linka.pictures.SetsManager
 import su.linka.pictures.Telemetry
@@ -37,6 +38,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var setsManager: SetsManager
     private var privacyDialog: AlertDialog? = null
     private var pendingAnalyticsChoice = false
+    private val exportController = SetExportController(this,
+        onSuccess = { Toast.makeText(this, R.string.set_export_success, Toast.LENGTH_LONG).show() },
+        onError = { Toast.makeText(this, R.string.set_export_error, Toast.LENGTH_LONG).show() })
 
     private val activityLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -48,6 +52,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        exportController.restoreState(savedInstanceState)
         pendingAnalyticsChoice = savedInstanceState?.getBoolean(KEY_PENDING_ANALYTICS_CHOICE)
             ?: (Telemetry.privacyState() == TelemetryCollectionState.ENABLED)
         setContentView(R.layout.activity_main)
@@ -82,6 +87,7 @@ class MainActivity : AppCompatActivity() {
                         SetContextDialog.EDIT -> editSet(manifest)
                         SetContextDialog.RENAME -> renameSet(manifest)
                         SetContextDialog.DELETE -> deleteSet(manifest)
+                        SetContextDialog.EXPORT -> exportController.export(manifest)
                     }
                 }
 
@@ -102,6 +108,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean(KEY_PENDING_ANALYTICS_CHOICE, pendingAnalyticsChoice)
+        exportController.saveState(outState)
         super.onSaveInstanceState(outState)
     }
 

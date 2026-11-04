@@ -196,6 +196,44 @@ class SetsManager(private val context: Context) {
         }
     }
 
+    /** Builds a complete snapshot without writing to the source workspace or library archive. */
+    @Throws(IOException::class)
+    fun prepareExport(set: Set): File {
+        val root = File(context.cacheDir, "exports")
+        if (!root.isDirectory && !root.mkdirs()) throw IOException("Cannot create export directory")
+        val token = UUID.randomUUID().toString()
+        val staging = File(root, "$token.work")
+        val archive = File(root, "$token.linka")
+        try {
+            if (!staging.mkdir()) throw IOException("Cannot create export workspace")
+            if (set.getManifest().cards.any { it.imagePath == CONFIG_FILE_NAME || it.audioPath == CONFIG_FILE_NAME }) {
+                throw IOException("Config cannot be exported as card media")
+            }
+            File(staging, CONFIG_FILE_NAME).writeText(set.getManifest().toJSONObject().toString())
+            val source = set.getFolder().canonicalFile
+            val paths = set.referencedPaths()
+            for (path in paths - CONFIG_FILE_NAME) {
+                val media = File(source, path).canonicalFile
+                val target = File(staging, path).canonicalFile
+                if (!media.path.startsWith(source.path + File.separator) ||
+                    !target.path.startsWith(staging.canonicalPath + File.separator) ||
+                    target == File(staging, CONFIG_FILE_NAME).canonicalFile || !media.isFile) {
+                    throw IOException("Invalid export media path")
+                }
+                target.parentFile?.mkdirs()
+                media.copyTo(target)
+            }
+            Utils.zipFolder(staging.absolutePath, archive.absolutePath, paths)
+            validateArchive(archive)
+            return archive
+        } catch (error: Exception) {
+            archive.delete()
+            throw if (error is IOException) error else IOException("Cannot prepare export snapshot", error)
+        } finally {
+            staging.deleteRecursively()
+        }
+    }
+
     fun delete(manifest: SetManifest) {
         manifest.archiveFile?.let {
             if (it.exists()) {

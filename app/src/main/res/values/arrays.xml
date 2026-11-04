@@ -14,5 +14,6 @@
         <item>@string/edit</item>
         <item>@string/rename</item>
         <item>@string/delete</item>
+        <item>@string/export_set</item>
     </string-array>
 </resources>

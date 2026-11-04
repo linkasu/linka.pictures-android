@@ -16,6 +16,7 @@ import su.linka.pictures.R
 import su.linka.pictures.Set
 import su.linka.pictures.SetAlreadyExistsException
 import su.linka.pictures.SetsManager
+import su.linka.pictures.SetExportController
 import su.linka.pictures.Telemetry
 import su.linka.pictures.EditorDraftStore
 import org.json.JSONObject
@@ -43,9 +44,13 @@ class SetEditActivity : AppCompatActivity() {
     private var editedPosition = 0
     private var editedNextPage = false
     private var draftFinished = false
+    private val exportController = SetExportController(this,
+        onSuccess = { Toast.makeText(this, R.string.set_export_success, Toast.LENGTH_LONG).show() },
+        onError = { Toast.makeText(this, R.string.set_export_error, Toast.LENGTH_LONG).show() })
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        exportController.restoreState(savedInstanceState)
         setContentView(R.layout.activity_set_edit)
 
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
@@ -172,6 +177,10 @@ class SetEditActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.export_menu_button -> {
+                if (set != null) exportController.export(setName ?: "set.linka") { checkNotNull(set) }
+                true
+            }
             R.id.save_menu_button -> {
                 save()
                 true
@@ -332,6 +341,7 @@ class SetEditActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        exportController.saveState(outState)
         captureDraft()
         draftToken?.takeUnless { draftFinished }?.let { outState.putString(DRAFT_TOKEN, it) }
         super.onSaveInstanceState(outState)
