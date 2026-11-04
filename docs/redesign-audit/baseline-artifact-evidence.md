@@ -27,7 +27,7 @@
 
 Существовавший APK скопирован без изменения в `baseline-v1.4-debug.apk` рядом со snapshot. Хеш копии проверен. Затем `./gradlew :app:assembleDebug --no-daemon` прошёл: **BUILD SUCCESSFUL**, 59 tasks, 5 executed / 54 up-to-date. Хеш APK после сборки совпадает с сохранённым. Это не clean-room/CI доказательство воспроизводимости.
 
-`git diff v1.4 -- app shared build.gradle settings.gradle gradle gradle.properties .github` пуст: исходники/сборочные файлы не изменены. Сборка сообщает предупреждения совместимости KMP/AGP, compileSdk35/AGP8.5.2 и deprecated `MediaRecorder()`. Это baseline-предупреждения, не исправления.
+Перед добавлением новых characterization tests `git diff v1.4 -- app shared build.gradle settings.gradle gradle gradle.properties .github` был пуст: исходники/сборочные файлы baseline не изменены. Сборка сообщает предупреждения совместимости KMP/AGP, compileSdk35/AGP8.5.2 и deprecated `MediaRecorder()`. Это baseline-предупреждения, не исправления.
 
 `aapt dump badging` подтвердил package/версию/SDK/debuggable. `apksigner verify --print-certs` успешно проверил сертификат; утилита предупреждает о не защищённых JAR-подписью META-INF metadata. Эти предупреждения не скрываются и не исправлялись изменением baseline. `main.jks`, production signing и его секреты не использовались.
 

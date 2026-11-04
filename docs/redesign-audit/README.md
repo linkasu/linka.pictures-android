@@ -24,5 +24,9 @@
 
 - [Сохранённая исходная работа, локальный baseline APK и checksums Git fixtures](baseline-artifact-evidence.md).
 - [Предварительные платформенные блокеры G1 и manifests Compose artifacts](platform-preflight.md).
+- [Карта legacy-хранилищ, настроек и writers Android1.4](legacy-storage-inventory.md).
+- [Фактический standard-контракт Electron, звук и ZIP fixtures](electron-standard-contract-evidence.md).
+- [UI-follow-up P00](p00-ui-audit.md).
+- [Журнал исполнения всего плана и открытые gates](../development/implementation-status.md).
 
 Это частичные результаты P00/preflight, не завершённый аудит и не доказательство готовности целевого приложения. Исходные документы/скриншоты сохранены в Git до запуска независимых worktrees; `docs/c4/` пока не приводилась к новому контракту P02.

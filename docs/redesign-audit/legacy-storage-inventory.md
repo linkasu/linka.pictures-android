@@ -171,3 +171,17 @@ Manifest title/name не хранится отдельным полем конт
 - Нет корпуса пользовательских `.linka` и private preferences из реальных установок: фактические версии/неизвестные поля/paths/коррупция/дубликаты имён/пустые или Unicode password states и распределение значений **недоступны**. Assets не заменяют такой корпус.
 - Не проверены AndroidX EditTextPreference writer semantics для empty/Unicode, реальный runtime charset/temp path, Unicode code-point trim matrix, OEM backup/transfer, provider-specific lastPathSegment и renameTo collision behavior. Нет прибора/эмулятора в рамках этой задачи, не выполнялись fault-injection и process-death проверки.
 - Не сделаны новые migration/security/product решения: не выбирались новый формат, normalization/хеширование пароля, recovery, новый backup policy, правила разрешения коллизий, приоритет cache или маппинг старых настроек в новую систему. Наличие старого writer/reader описывает данные, но само по себе не доказывает совместимость будущей реализации.
+
+## 9. Уточнение COORD после интеграции
+
+Gate-ID определены во внешнем принятом плане, а не в исходных `docs/c4`; [журнал исполнения](../development/implementation-status.md) сопоставляет пакеты с ними. Отсутствие определений в обследованном baseline не делает gate необязательным.
+
+Для конкретного пробела writer прочитан официальный source artifact `https://dl.google.com/dl/android/maven2/androidx/preference/preference/1.2.1/preference-1.2.1-sources.jar`, SHA-256 `e5c16f4ce8afacb66bbbb34837cc070a5c6a7ca07ae1a8ff9c4c80c8e6edbf1f`:
+
+- `androidx/preference/EditTextPreferenceDialogFragmentCompat.java:145–151`: positive close берёт `mEditText.getText().toString()`, вызывает change listener и передаёт значение `setText`, без trim/NFC normalization.
+- `androidx/preference/EditTextPreference.java:76–88`: `setText` сохраняет переданный текст через `persistString`, без преобразования.
+- В `SettingsActivity.kt:38–49` listener назначен только аналитике; для `parent_password` дополнительного listener нет. `root_preferences.xml:9–14` использует этот EditTextPreference.
+
+Это закрывает статический вопрос о наличии writer-side trim: его нет в этой зависимости/приложении. Новые `ParentPasswordDialogTest` characterization checks проверяют actual preference persistence пустых/пробельных/Unicode synthetic значений и старый verification dialog для missing/empty/Unicode/trim/NFC-difference случаев. Native IME и полный AndroidX dialog lifecycle на физическом устройстве этим не проверяются. Новая migration/access policy по-прежнему не реализована; существующий непригодный для входа пароль нельзя молча сбрасывать при обновлении.
+
+Actual focused command: `./gradlew :app:testDebugUnitTest --tests su.linka.pictures.components.ParentPasswordDialogTest --no-daemon`. Первый запуск: 4/5 passed, один старый тест упал **до application setup** при загрузке Robolectric `android-all-instrumented:15-robolectric-12650502-i7` (`MavenArtifactFetcher`, cause `java.net.SocketException: Connection reset`). Оба новых теста уже прошли. Повтор ровно той же команды без изменения исходников: **BUILD SUCCESSFUL**, 5 tests, 0 skipped/failures/errors; результат подтверждён XML test report. Это infrastructure fetch failure, не обнаруженная ошибка verifier и не повод отключать regression test.
