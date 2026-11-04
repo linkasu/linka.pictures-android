@@ -224,10 +224,7 @@ class SetEditActivity : AppCompatActivity() {
         val currentSet = set ?: return
         Telemetry.logEvent(AnalyticsEvents.ADD_CARD, null)
         currentSet.addCard(pos, card)
-        val page = grid.currentPage()
         grid.refresh()
-        grid.setSet(currentSet)
-        grid.jumpToPage(page)
     }
 
     private fun showEnterTitleDialog() {

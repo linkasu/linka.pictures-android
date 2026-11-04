@@ -175,7 +175,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, SetEditActivity::class.java).apply {
             putExtra(SetEditActivity.EXTRA_FILE, manifest.name)
         }
-        startActivity(intent)
+        activityLauncher.launch(intent)
     }
 
     private fun createSet() {
