@@ -101,6 +101,13 @@ class CoreContractsTest {
         assertEquals(null, TransferState(id, TransferPhase.CANCELLED).problem)
         assertEquals(ProblemCode.IO_FAILURE,
             TransferState(id, TransferPhase.FAILED, problem = Problem(ProblemCode.IO_FAILURE)).problem?.code)
+        val uncertain: OperationResult<Unit> = OperationResult.UnconfirmedCommit
+        assertIs<OperationResult.UnconfirmedCommit>(uncertain)
+        assertFailsWith<IllegalArgumentException> {
+            TransferState(id, TransferPhase.UNCONFIRMED, problem = Problem(ProblemCode.IO_FAILURE))
+        }
+        assertEquals(ProblemCode.COMMIT_OUTCOME_UNKNOWN,
+            TransferState(id, TransferPhase.UNCONFIRMED, problem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN)).problem?.code)
         assertFailsWith<IllegalArgumentException> { SnapshotCounts(0, 0, 0, -1, 0) }
         assertFailsWith<IllegalArgumentException> { WritePermit(-1) { OperationResult.Completed(Unit) } }
     }

@@ -1,9 +1,10 @@
 package su.linka.pictures.application.portability
 
 import su.linka.pictures.application.Problem
+import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.domain.OperationId
 
-enum class TransferPhase { VALIDATING, PREPARING, AWAITING_CONFIRMATION, WRITING, COMPLETED, CANCELLED, FAILED }
+enum class TransferPhase { VALIDATING, PREPARING, AWAITING_CONFIRMATION, WRITING, COMPLETED, CANCELLED, FAILED, UNCONFIRMED }
 
 data class TransferState(
     val id: OperationId,
@@ -14,6 +15,7 @@ data class TransferState(
 ) {
     init {
         require(processedEntries >= 0 && processedBytes >= 0)
-        require((phase == TransferPhase.FAILED) == (problem != null))
+        require((phase == TransferPhase.FAILED || phase == TransferPhase.UNCONFIRMED) == (problem != null))
+        require(phase != TransferPhase.UNCONFIRMED || problem?.code == ProblemCode.COMMIT_OUTCOME_UNKNOWN)
     }
 }

@@ -6,6 +6,7 @@ enum class ProblemCode {
     LIMIT_EXCEEDED, UNAUTHORIZED, OWNER_VERIFICATION_UNAVAILABLE, PERMISSION_DENIED,
     VOICE_UNAVAILABLE, INTERRUPTED, UNFINISHED_FORM, RECOVERY_UNAVAILABLE, STALE_REQUEST,
     MISSING_ASSET, INTEGRITY_FAILURE, SPEECH_UNAVAILABLE, SPEECH_MATERIALIZATION_REQUIRED,
+    COMMIT_OUTCOME_UNKNOWN,
 }
 
 // Structured diagnostics deliberately cannot carry message text, passwords, paths or raw exceptions.
@@ -20,5 +21,6 @@ data class Problem(
 sealed interface OperationResult<out T> {
     data class Completed<T>(val value: T) : OperationResult<T>
     data object Cancelled : OperationResult<Nothing>
+    data object UnconfirmedCommit : OperationResult<Nothing>
     data class Failed(val problem: Problem) : OperationResult<Nothing>
 }

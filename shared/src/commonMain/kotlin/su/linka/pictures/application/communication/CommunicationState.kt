@@ -4,7 +4,7 @@ import su.linka.pictures.application.Problem
 import su.linka.pictures.application.ports.AudioState
 import su.linka.pictures.domain.*
 
-enum class MessageSavePhase { LOADING, SAVING, SAVED, FAILED }
+enum class MessageSavePhase { LOADING, SAVING, SAVED, FAILED, UNCONFIRMED }
 
 data class CommunicationState(
     val message: MessageDraft = MessageDraft(),
