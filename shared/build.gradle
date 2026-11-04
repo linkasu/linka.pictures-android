@@ -1,9 +1,23 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.multiplatform'
+    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'org.jetbrains.compose'
 }
 
 kotlin {
+    jvm {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+    [iosArm64(), iosSimulatorArm64()].each { target ->
+        target.binaries.framework {
+            baseName = 'Shared'
+            isStatic = true
+        }
+    }
     androidTarget {
         compilations.all {
             kotlinOptions {
@@ -15,18 +29,26 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation compose.runtime
+                implementation compose.foundation
+                implementation compose.material
+                implementation 'androidx.sqlite:sqlite-bundled:2.5.2'
+                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
+                implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+                implementation 'com.squareup.okio:okio:3.10.2'
             }
         }
         commonTest {
             dependencies {
                 implementation kotlin('test')
+                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
             }
         }
         androidMain {
             dependencies {
                 implementation 'androidx.annotation:annotation:1.8.1'
                 implementation 'net.lingala.zip4j:zip4j:2.11.5'
-                implementation platform('com.google.firebase:firebase-bom:33.5.1')
+                implementation project.dependencies.platform('com.google.firebase:firebase-bom:33.5.1')
                 implementation 'com.google.firebase:firebase-analytics'
             }
         }
@@ -35,7 +57,7 @@ kotlin {
 
 android {
     namespace 'su.linka.pictures.shared'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         minSdk 21

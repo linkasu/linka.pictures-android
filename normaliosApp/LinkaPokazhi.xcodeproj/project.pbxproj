@@ -1,0 +1,113 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {};
+    objectVersion = 56;
+    objects = {
+        B00000000000000000000001 = {
+            isa = PBXProject;
+            attributes = { LastUpgradeCheck = 2720; };
+            buildConfigurationList = B00000000000000000000002;
+            compatibilityVersion = "Xcode 14.0";
+            developmentRegion = en;
+            knownRegions = (en, Base);
+            mainGroup = B00000000000000000000003;
+            productRefGroup = B00000000000000000000004;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (B00000000000000000000005);
+        };
+        B00000000000000000000002 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (B00000000000000000000006);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        B00000000000000000000003 = {
+            isa = PBXGroup;
+            children = (B00000000000000000000007, B0000000000000000000000D, B00000000000000000000004);
+            sourceTree = "<group>";
+        };
+        B00000000000000000000004 = {
+            isa = PBXGroup;
+            children = (B00000000000000000000008);
+            name = Products;
+            sourceTree = "<group>";
+        };
+        B00000000000000000000005 = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = B00000000000000000000009;
+            buildPhases = (B0000000000000000000000A);
+            buildRules = ();
+            dependencies = ();
+            name = LinkaPokazhi;
+            productName = LinkaPokazhi;
+            productReference = B00000000000000000000008;
+            productType = "com.apple.product-type.application";
+        };
+        B00000000000000000000006 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CLANG_ENABLE_MODULES = YES;
+                CODE_SIGNING_ALLOWED = NO;
+                DEAD_CODE_STRIPPING = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+                SDKROOT = iphoneos;
+                SWIFT_VERSION = 5.0;
+            };
+            name = Debug;
+        };
+        B00000000000000000000007 = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.swift;
+            path = main.swift;
+            sourceTree = "<group>";
+        };
+        B00000000000000000000008 = {
+            isa = PBXFileReference;
+            explicitFileType = wrapper.application;
+            includeInIndex = 0;
+            path = LinkaPokazhi.app;
+            sourceTree = BUILT_PRODUCTS_DIR;
+        };
+        B00000000000000000000009 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (B0000000000000000000000B);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        B0000000000000000000000A = {
+            isa = PBXSourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (B0000000000000000000000C);
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+        B0000000000000000000000B = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/$(KOTLIN_FRAMEWORK_TARGET)/debugFramework");
+                INFOPLIST_FILE = Info.plist;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphoneos*]" = iosArm64;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphonesimulator*]" = iosSimulatorArm64;
+                OTHER_LDFLAGS = ("$(inherited)", "-framework", Shared, "-lsqlite3");
+                PRODUCT_BUNDLE_IDENTIFIER = su.linka.pictures.development;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+        B0000000000000000000000C = {
+            isa = PBXBuildFile;
+            fileRef = B00000000000000000000007;
+        };
+        B0000000000000000000000D = {
+            isa = PBXFileReference;
+            lastKnownFileType = text.plist.xml;
+            path = Info.plist;
+            sourceTree = "<group>";
+        };
+    };
+    rootObject = B00000000000000000000001;
+}
