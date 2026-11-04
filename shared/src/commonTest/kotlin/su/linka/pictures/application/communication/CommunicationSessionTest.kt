@@ -1,0 +1,354 @@
+package su.linka.pictures.application.communication
+
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.*
+import kotlin.test.*
+import su.linka.pictures.application.*
+import su.linka.pictures.application.ports.*
+import su.linka.pictures.domain.*
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class CommunicationSessionTest {
+    private class Fixture(val test: TestScope) {
+        val media = FakeMedia()
+        val messages = FakeMessages()
+        val library = FakeLibrary(media)
+        val audio = FakeAudio()
+        private var serial = 0
+        fun id() = CommandId("command-${serial++}")
+        lateinit var session: CommunicationSession
+        init {
+            media.roots = { messages.stored.draft.assetIds() + library.boards.values.flatMap { it.document.assetIds() } }
+        }
+        fun start() {
+            session = CommunicationSession(library, messages, media, audio, IdSource { "id-${serial++}" }, test.backgroundScope)
+            test.runCurrent()
+        }
+        fun send(command: CommunicationCommand) {
+            session.dispatch(command)
+            test.runCurrent()
+        }
+        fun board(name: String, label: String, style: InputStyle = InputStyle.CARDS, speech: SpeechSource = SpeechSource.Tts(label), mode: InteractionMode = InteractionMode.COMPOSE): PublishedBoard {
+            val result = PublishedBoard(BoardDocument(BoardId(name), name, listOf(BoardPage(PageId(name), 1, 3, listOf(
+                BoardCell(0, CellKind.CONTENT, CardDocument(CardId("card-$name"), label, speech = speech)),
+                BoardCell(1, CellKind.SPACE), BoardCell(2, CellKind.EMPTY),
+            ))), BoardBehavior(mode, style)), 1)
+            library.boards[result.document.id] = result
+            media.existing += result.document.assetIds()
+            return result
+        }
+        fun open(name: String) = send(CommunicationCommand.OpenBoard(id(), BoardId(name)))
+        fun select(name: String, position: Int = 0, command: CommandId = id()) = send(CommunicationCommand.Select(command, PageId(name), position))
+        fun text(text: String) = send(CommunicationCommand.InsertText(id(), text))
+        fun close() {
+            session.close()
+            test.runCurrent()
+        }
+    }
+
+    @Test fun crossBoardSnapshotAndConsciousRepeatAreIndependentOfSources() = runTest {
+        val f = Fixture(this)
+        f.board("want", "Хочу")
+        f.board("food", "кашу")
+        f.start()
+        f.open("want")
+        val delivery = f.id()
+        f.select("want", command = delivery)
+        f.select("want", command = delivery)
+        assertEquals("Хочу", f.session.state.value.renderedText)
+        f.open("food")
+        f.select("food")
+        assertEquals("Хочу кашу", f.session.state.value.renderedText)
+        val first = assertIs<MessagePart.Card>(f.session.state.value.message.parts.first())
+        f.library.boards[BoardId("want")] = f.library.boards.getValue(BoardId("want")).let { old ->
+            old.copy(revision = 2, document = old.document.copy(pages = old.document.pages.map { page ->
+                page.copy(cells = page.cells.map { cell -> if (cell.card == null) cell else cell.copy(card = cell.card.copy(label = "Изменено")) })
+            }))
+        }
+        f.open("want")
+        assertEquals(first, f.session.state.value.message.parts.first())
+        f.library.boards.clear()
+        f.send(CommunicationCommand.Speak(f.id()))
+        assertEquals("Хочу кашу", f.audio.played.single().plan.renderedText)
+        f.close()
+    }
+
+    @Test fun literalRunsSurviveNavigationAndGraphemeBackspace() = runTest {
+        val f = Fixture(this)
+        f.board("want", "Хочу")
+        f.board("keyboard", "м", InputStyle.LITERAL)
+        f.start()
+        f.open("want"); f.select("want")
+        f.open("keyboard"); f.select("keyboard")
+        f.text("ё")
+        f.open("want"); f.text("д")
+        assertEquals("Хочу мёд", f.session.state.value.renderedText)
+        assertEquals(2, f.session.state.value.message.parts.size)
+        for (grapheme in listOf("е\u0301", "👩🏽‍💻", "🇷🇺", "क्ष")) {
+            f.text(grapheme)
+            f.send(CommunicationCommand.Backspace(f.id()))
+            assertEquals("Хочу мёд", f.session.state.value.renderedText)
+        }
+        f.send(CommunicationCommand.Backspace(f.id()))
+        assertEquals("Хочу мё", f.session.state.value.renderedText)
+        f.close()
+    }
+
+    @Test fun directKeepsDraftAndLatestRequestWinsWithNoHiddenClear() = runTest {
+        val f = Fixture(this)
+        f.board("want", "Хочу")
+        f.start(); f.open("want"); f.select("want"); f.select("want")
+        assertEquals("Хочу Хочу", f.session.state.value.renderedText)
+        f.send(CommunicationCommand.SetMode(f.id(), InteractionMode.DIRECT))
+        val draft = f.session.state.value.message.parts
+        f.select("want")
+        val old = f.audio.played.last()
+        f.select("want")
+        val latest = f.audio.played.last()
+        f.audio.callback(old, AudioPhase.COMPLETED); runCurrent()
+        assertEquals(latest.id, f.session.state.value.audio.requestId)
+        f.send(CommunicationCommand.Backspace(f.id()))
+        f.send(CommunicationCommand.Clear(f.id()))
+        f.text("не вставлять")
+        f.send(CommunicationCommand.Speak(f.id()))
+        assertEquals(draft, f.session.state.value.message.parts)
+        f.send(CommunicationCommand.SetMode(f.id(), InteractionMode.COMPOSE))
+        assertEquals("Хочу Хочу", f.session.state.value.renderedText)
+        f.close()
+    }
+
+    @Test fun navigationContinuesActualPlaybackButMutationsAndExitStop() = runTest {
+        val f = Fixture(this)
+        f.board("a", "Хочу"); f.board("b", "кашу")
+        f.start(); f.open("a"); f.select("a")
+        f.send(CommunicationCommand.Speak(f.id()))
+        val playback = f.audio.played.single()
+        val stopCount = f.audio.stopped.size
+        f.open("b")
+        f.send(CommunicationCommand.ChangePage(f.id(), PageId("b")))
+        assertEquals(stopCount, f.audio.stopped.size)
+        assertEquals(playback.id, f.session.state.value.audio.requestId)
+        assertEquals("Хочу", playback.plan.renderedText)
+        f.select("b")
+        assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase)
+        f.send(CommunicationCommand.Speak(f.id()))
+        f.session.interrupt(); runCurrent()
+        assertEquals("Хочу кашу", f.session.state.value.renderedText)
+        f.audio.callback(playback, AudioPhase.PLAYING); runCurrent()
+        assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase)
+        f.send(CommunicationCommand.Speak(f.id()))
+        f.send(CommunicationCommand.CloseBoard(f.id()))
+        assertNull(f.session.state.value.board)
+        assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase)
+        assertEquals("Хочу кашу", f.session.state.value.renderedText)
+        f.close()
+    }
+
+    @Test fun delayedSaveNeverBlocksUiAndOldSuccessCannotHideLatestFailure() = runTest {
+        val f = Fixture(this)
+        f.start()
+        f.messages.delayed = true
+        f.text("Хочу")
+        val first = f.messages.pending.last()
+        f.text(" кашу")
+        val second = f.messages.pending.last()
+        assertEquals("Хочу кашу", f.session.state.value.renderedText)
+        assertEquals(MessageSavePhase.SAVING, f.session.state.value.savePhase)
+        second.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))); runCurrent()
+        first.result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(MessageSavePhase.FAILED, f.session.state.value.savePhase)
+        assertEquals(ProblemCode.IO_FAILURE, f.session.state.value.problem?.code)
+        f.text("!")
+        f.messages.pending.last().result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(MessageSavePhase.SAVED, f.session.state.value.savePhase)
+        f.close()
+    }
+
+    @Test fun clearHasOneUndoAndPersistentResumeNeverAutoplays() = runTest {
+        val f = Fixture(this)
+        f.start(); f.text("Привет")
+        f.send(CommunicationCommand.Clear(f.id()))
+        assertEquals("", renderMessage(f.messages.stored.draft))
+        assertTrue(f.session.state.value.canUndoClear)
+        f.send(CommunicationCommand.UndoClear(f.id()))
+        assertEquals("Привет", f.session.state.value.renderedText)
+        assertFalse(f.session.state.value.canUndoClear)
+        f.text("!")
+        f.send(CommunicationCommand.UndoClear(f.id()))
+        assertEquals("Привет!", f.session.state.value.renderedText)
+        f.send(CommunicationCommand.Speak(f.id()))
+        f.close(); f.start()
+        assertEquals("Привет!", f.session.state.value.renderedText)
+        assertEquals(1, f.audio.played.size)
+        assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase)
+        f.send(CommunicationCommand.Clear(f.id()))
+        f.close(); f.start()
+        assertEquals("", f.session.state.value.renderedText)
+        assertFalse(f.session.state.value.canUndoClear)
+        f.close()
+    }
+
+    @Test fun gcPinsSurviveSourceDeletionClearUndoFailedSaveAndCloseUntilPendingSaveEnds() = runTest {
+        val f = Fixture(this)
+        val asset = AssetId("a".repeat(64))
+        f.board("a", "Хочу", speech = SpeechSource.Recording(asset))
+        f.start(); f.open("a")
+        f.messages.delayed = true
+        f.select("a")
+        val selectedSave = f.messages.pending.last()
+        f.send(CommunicationCommand.CloseBoard(f.id()))
+        f.library.boards.clear()
+        f.media.collectGarbage()
+        assertTrue(asset in f.media.existing)
+        f.send(CommunicationCommand.Clear(f.id()))
+        f.media.collectGarbage()
+        assertTrue(asset in f.media.existing)
+        f.send(CommunicationCommand.UndoClear(f.id()))
+        f.messages.pending.last().result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))); runCurrent()
+        assertEquals(MessageSavePhase.FAILED, f.session.state.value.savePhase)
+        f.close()
+        f.media.collectGarbage()
+        assertTrue(asset in f.media.existing)
+        for (pending in f.messages.pending) pending.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)))
+        selectedSave.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)))
+        runCurrent()
+        f.media.collectGarbage()
+        assertFalse(asset in f.media.existing)
+        assertTrue(f.media.refs.values.all { it == 0 })
+    }
+
+    @Test fun epochSwitchRejectsLateSaveAndCannotResurrectOrSpeakOldMessage() = runTest {
+        val f = Fixture(this)
+        f.start(); f.messages.delayed = true; f.text("старое")
+        val old = f.messages.pending.single()
+        f.messages.stored = StoredMessage(1, 0, MessageDraft())
+        f.library.listing.value = LibraryListing(1, 1, emptyList()); runCurrent()
+        old.result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(ProblemCode.STALE_REQUEST, f.session.state.value.problem?.code)
+        f.text("новое")
+        f.send(CommunicationCommand.Speak(f.id()))
+        assertTrue(f.audio.played.isEmpty())
+        assertEquals(StoredMessage(1, 0, MessageDraft()), f.messages.stored)
+        f.close(); f.start()
+        assertEquals("", f.session.state.value.renderedText)
+        f.close()
+    }
+
+    @Test fun unavailableSpeechAndOverflowPreserveWholeVisibleMessage() = runTest {
+        val f = Fixture(this)
+        f.board("none", "не озвучено", speech = SpeechSource.None)
+        f.start(); f.text("начало"); f.open("none"); f.select("none")
+        val before = f.session.state.value.message
+        f.send(CommunicationCommand.Speak(f.id()))
+        assertEquals(ProblemCode.SPEECH_UNAVAILABLE, f.session.state.value.problem?.code)
+        assertTrue(f.audio.played.isEmpty())
+        assertEquals(before, f.session.state.value.message)
+        f.text("x".repeat(65536))
+        assertEquals(before, f.session.state.value.message)
+        assertEquals(ProblemCode.LIMIT_EXCEEDED, f.session.state.value.problem?.code)
+        f.close()
+    }
+
+    @Test fun navigationGenerationAndInitialDefaultModeDoNotOverrideExistingSession() = runTest {
+        val f = Fixture(this)
+        f.board("slow", "a")
+        f.board("direct", "b", mode = InteractionMode.DIRECT)
+        val delay = CompletableDeferred<Unit>()
+        f.library.delayed[BoardId("slow")] = delay
+        f.library.ignoresCancellation += BoardId("slow")
+        f.start(); f.open("slow"); f.open("direct")
+        delay.complete(Unit); runCurrent()
+        assertEquals(BoardId("direct"), f.session.state.value.board?.document?.id)
+        assertEquals(InteractionMode.DIRECT, f.session.state.value.message.mode)
+        f.send(CommunicationCommand.SetMode(f.id(), InteractionMode.COMPOSE))
+        f.open("direct")
+        assertEquals(InteractionMode.COMPOSE, f.session.state.value.message.mode)
+        f.close()
+    }
+
+    @Test fun boundedDeliveryWindowAndEmptySpaceCells() = runTest {
+        val f = Fixture(this)
+        f.board("literal", "a", InputStyle.LITERAL)
+        f.start(); f.open("literal")
+        f.select("literal", 2)
+        assertEquals("", f.session.state.value.renderedText)
+        f.select("literal", 1)
+        assertEquals(" ", f.session.state.value.renderedText)
+        val old = f.id()
+        f.send(CommunicationCommand.InsertText(old, "a"))
+        repeat(1024) { f.text("b") }
+        f.send(CommunicationCommand.InsertText(old, "a"))
+        assertEquals(" a" + "b".repeat(1024) + "a", f.session.state.value.renderedText)
+        f.close()
+    }
+
+    @Test fun loadFailureNeverOverwritesStoredMessage() = runTest {
+        val f = Fixture(this)
+        f.messages.loadFailure = Problem(ProblemCode.IO_FAILURE)
+        f.start(); f.text("не заменять")
+        assertEquals(MessageSavePhase.FAILED, f.session.state.value.savePhase)
+        assertTrue(f.messages.attempts.isEmpty())
+        f.close()
+    }
+
+    @Test fun composePlayingMutationMatrixAndDirectLiteral() = runTest {
+        for (action in listOf("backspace", "clear", "mode", "text", "stop")) {
+            val f = Fixture(this)
+            f.board("a", "Хочу")
+            f.start(); f.open("a"); f.select("a")
+            f.send(CommunicationCommand.Speak(f.id()))
+            val played = f.audio.played.single()
+            val command = when (action) {
+                "backspace" -> CommunicationCommand.Backspace(f.id())
+                "clear" -> CommunicationCommand.Clear(f.id())
+                "mode" -> CommunicationCommand.SetMode(f.id(), InteractionMode.DIRECT)
+                "text" -> CommunicationCommand.InsertText(f.id(), ", мир")
+                else -> CommunicationCommand.Stop(f.id())
+            }
+            f.send(command)
+            assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase, action)
+            assertTrue(played.id in f.audio.stopped, action)
+            assertEquals(when (action) { "backspace", "clear" -> ""; "text" -> "Хочу, мир"; else -> "Хочу" }, f.session.state.value.renderedText)
+            f.audio.callback(played, AudioPhase.COMPLETED); runCurrent()
+            assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase)
+            f.close()
+        }
+        val f = Fixture(this)
+        f.board("literal", "мёд", InputStyle.LITERAL, mode = InteractionMode.DIRECT)
+        f.start(); f.open("literal"); f.select("literal")
+        assertEquals("мёд", f.audio.played.single().plan.renderedText)
+        assertEquals("", f.session.state.value.renderedText)
+        f.select("literal", 2)
+        assertEquals(1, f.audio.played.size)
+        f.close()
+    }
+
+    @Test fun closedStateCannotBeChangedBySuccessfulSaveOrLateAudioCallback() = runTest {
+        val f = Fixture(this)
+        f.start(); f.messages.delayed = true; f.text("фраза")
+        f.send(CommunicationCommand.Speak(f.id()))
+        val audio = f.audio.played.single()
+        f.close()
+        val closed = f.session.state.value
+        f.messages.pending.single().result.complete(OperationResult.Completed(Unit))
+        f.audio.callback(audio, AudioPhase.PLAYING); runCurrent()
+        assertEquals(closed, f.session.state.value)
+        assertEquals("фраза", renderMessage(f.messages.stored.draft))
+        assertTrue(f.media.refs.values.all { it == 0 })
+    }
+
+    @Test fun explicitTextBeforeOpeningBoardKeepsComposeAndPartLimitDoesNotTruncate() = runTest {
+        val f = Fixture(this)
+        f.board("direct", "a", mode = InteractionMode.DIRECT)
+        f.start(); f.text("Хочу"); f.open("direct")
+        assertEquals(InteractionMode.COMPOSE, f.session.state.value.message.mode)
+        repeat(4095) { f.select("direct") }
+        val before = f.session.state.value.message
+        assertEquals(4096, before.parts.size)
+        f.select("direct")
+        assertEquals(before, f.session.state.value.message)
+        assertEquals(ProblemCode.LIMIT_EXCEEDED, f.session.state.value.problem?.code)
+        f.close()
+    }
+}
