@@ -3,6 +3,9 @@
 
     <string name="title_activity_settings">Settings</string>
     <string name="parent_control">Parent Control</string>
+    <string name="parent_password_required">Set a non-empty password before enabling parent control. The password cannot be cleared while parent control is enabled.</string>
+    <string name="parent_password_recovery">Set a parent password in Settings to restore protected actions. Your sets will be kept.</string>
+    <string name="parent_password_invalid">Incorrect parent password</string>
     <string name="enable_parent_control_title">Enable parent control</string>
     <string name="parent_password">Parent\'s password</string>
     <string name="ok">OK</string>

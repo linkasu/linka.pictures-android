@@ -46,7 +46,8 @@ object InputDialog {
             .setView(promptsView)
             .setTitle(title)
             .setPositiveButton(R.string.ok) { dialogInterface, _ ->
-                val text = userInput.text?.toString()?.trim().orEmpty()
+                val raw = userInput.text?.toString().orEmpty()
+                val text = if (type and InputType.TYPE_MASK_VARIATION == InputType.TYPE_TEXT_VARIATION_PASSWORD) raw else raw.trim()
                 if (text.isNotEmpty()) {
                     listener.onDone(text)
                 } else {

@@ -107,14 +107,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return if (item.itemId == R.id.settings) {
-            ParentPasswordDialog.showDialog(this, object : Callback<Any?>() {
-                override fun onDone(result: Any?) {
-                    Telemetry.logEvent(AnalyticsEvents.OPEN_SETTINGS, null)
-                    startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-                }
-
-                override fun onFail(error: Exception?) = Unit
-            })
+            Telemetry.logEvent(AnalyticsEvents.OPEN_SETTINGS, null)
+            startActivity(Intent(this, SettingsActivity::class.java))
             true
         } else {
             super.onOptionsItemSelected(item)
@@ -126,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         adapter.shutdown()
     }
 
-    private fun renameSet(manifest: SetManifest) {
+    private fun renameSet(manifest: SetManifest) = ParentPasswordDialog.run(this) {
         InputDialog.showDialog(this, R.string.rename, object : Callback<String>() {
             override fun onDone(result: String) {
                 setsManager.rename(manifest, result)
@@ -137,7 +131,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun deleteSet(manifest: SetManifest) {
+    private fun deleteSet(manifest: SetManifest) = ParentPasswordDialog.run(this) {
         su.linka.pictures.components.ConfirmDialog.showConfirmDialog(this, R.string.delete, object : Callback<Any?>() {
             override fun onDone(result: Any?) {
                 setsManager.delete(manifest)
@@ -156,7 +150,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun editSet(manifest: SetManifest) {
+    private fun editSet(manifest: SetManifest) = ParentPasswordDialog.run(this) {
         Telemetry.logEvent(AnalyticsEvents.EDIT_SET, null)
         val intent = Intent(this, SetEditActivity::class.java).apply {
             putExtra(SetEditActivity.EXTRA_FILE, manifest.name)

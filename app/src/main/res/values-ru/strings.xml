@@ -3,6 +3,9 @@
     <string name="app_name">LINKa покажи</string>
     <string name="title_activity_settings">Настройки</string>
     <string name="parent_control">Родительский контроль</string>
+    <string name="parent_password_required">Задайте непустой пароль перед включением родительского контроля. Пока контроль включён, очистить пароль нельзя.</string>
+    <string name="parent_password_recovery">Задайте родительский пароль в настройках для доступа к защищённым действиям. Ваши наборы сохранятся.</string>
+    <string name="parent_password_invalid">Неверный родительский пароль</string>
     <string name="enable_parent_control_title">Включить родительский контроль (блокировать важные действий)</string>
     <string name="parent_password">Пароль</string>
     <string name="ok">Готово</string>

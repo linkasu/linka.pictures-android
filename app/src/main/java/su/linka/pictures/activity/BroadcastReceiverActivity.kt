@@ -13,6 +13,7 @@ import su.linka.pictures.Telemetry
 import su.linka.pictures.Utils
 import su.linka.pictures.components.ConfirmDialog
 import su.linka.pictures.resolveImportedSetFile
+import su.linka.pictures.components.ParentPasswordDialog
 import java.io.IOException
 
 class BroadcastReceiverActivity : Activity() {
@@ -23,7 +24,7 @@ class BroadcastReceiverActivity : Activity() {
         if (Intent.ACTION_VIEW == action) {
             val uri = intent.data
             if (uri != null) {
-                askCopy(uri)
+                ParentPasswordDialog.run(this, onDenied = { finish() }) { askCopy(uri) }
             } else {
                 finish()
             }
