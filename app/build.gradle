@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
-    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 def envOrProperty = { String key ->
@@ -25,26 +25,26 @@ def keyPasswordValue = envOrProperty("ANDROID_KEY_PASSWORD")?.toString() ?: keys
 def hasReleaseSigningConfig = keystoreFile?.exists() && keystorePassword && keyAliasValue && keyPasswordValue
 
 android {
-    namespace 'su.linka.pictures'
-    compileSdk 35
+    namespace = 'su.linka.pictures'
+    compileSdk = 36
 
     defaultConfig {
-        applicationId "su.linka.pictures"
-        minSdk 21
-        targetSdk 35
-        versionCode 5
-        versionName "1.4"
+        applicationId = "su.linka.pictures"
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 5
+        versionName = "1.4"
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
         release {
             if (hasReleaseSigningConfig) {
-                storeFile keystoreFile
-                storePassword keystorePassword
-                keyAlias keyAliasValue
-                keyPassword keyPasswordValue
+                storeFile = keystoreFile
+                storePassword = keystorePassword
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
             }
         }
     }
@@ -55,30 +55,42 @@ android {
         }
         release {
             buildConfigField "boolean", "TELEMETRY_COLLECTION_ALLOWED", "true"
-            minifyEnabled false
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (hasReleaseSigningConfig) {
-                signingConfig signingConfigs.release
+                signingConfig = signingConfigs.release
             }
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
-        buildConfig true
-        viewBinding true
+        buildConfig = true
+        viewBinding = true
+        compose = true
     }
     testOptions {
         unitTests.includeAndroidResources = true
+        unitTests.all {
+            // Robolectric's SDK 36 FileDescriptor interceptor accesses SharedSecrets on JDK 21.
+            jvmArgs '--add-exports=java.base/jdk.internal.access=ALL-UNNAMED'
+        }
     }
-    kotlinOptions {
-        jvmTarget = '17'
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
 dependencies {
+
+    implementation 'androidx.activity:activity-compose:1.13.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.10.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
 
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
@@ -98,12 +110,12 @@ dependencies {
 
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.robolectric:robolectric:4.14.1'
-    testImplementation 'androidx.test:core:1.6.1'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test:runner:1.6.2'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
-    androidTestImplementation 'androidx.test:core-ktx:1.6.1'
+    testImplementation 'org.robolectric:robolectric:4.17'
+    testImplementation 'androidx.test:core:1.7.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+    androidTestImplementation 'androidx.test:core-ktx:1.7.0'
 }
 
 tasks.register('verifyReleasePrivacy') {

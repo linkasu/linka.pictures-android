@@ -1,48 +1,52 @@
 plugins {
-    id 'com.android.library'
     id 'org.jetbrains.kotlin.multiplatform'
+    id 'com.android.kotlin.multiplatform.library'
+    id 'org.jetbrains.compose'
+    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+}
+
+compose.resources {
+    packageOfResClass = 'su.linka.pictures.shared.generated.resources'
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = '17'
-            }
+    jvmToolchain(17)
+    android {
+        namespace = 'su.linka.pictures.shared'
+        compileSdk = 36
+        minSdk = 24
+        androidResources {
+            enable = true
         }
+        withHostTestBuilder {}.configure {}
+        withDeviceTestBuilder { sourceSetTreeName = 'test' }
     }
+    jvm()
 
     sourceSets {
         commonMain {
             dependencies {
+                implementation compose.runtime
+                implementation compose.foundation
+                implementation compose.material3
+                implementation compose.ui
+                implementation compose.components.resources
+                implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0'
             }
         }
         commonTest {
             dependencies {
-                implementation kotlin('test')
+                implementation 'org.jetbrains.kotlin:kotlin-test:2.4.21'
             }
         }
         androidMain {
             dependencies {
                 implementation 'androidx.annotation:annotation:1.8.1'
                 implementation 'net.lingala.zip4j:zip4j:2.11.5'
-                implementation platform('com.google.firebase:firebase-bom:33.5.1')
+                implementation project.dependencies.platform('com.google.firebase:firebase-bom:33.5.1')
                 implementation 'com.google.firebase:firebase-analytics'
             }
         }
-    }
-}
-
-android {
-    namespace 'su.linka.pictures.shared'
-    compileSdk 34
-
-    defaultConfig {
-        minSdk 21
-        targetSdk 34
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
     }
 }

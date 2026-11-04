@@ -84,17 +84,20 @@ android:screenOrientation="landscape"
             <!-- needed for properly formatted email messages -->
             <data
                 android:scheme="content"
+                android:host="*"
                 android:mimeType="application/vnd.linka"
                 android:pathPattern=".*\\.linka" />
             <!-- needed for mangled email messages -->
             <data
                 android:scheme="content"
+                android:host="*"
 
                 android:mimeType="application/linkaapp"
                 android:pathPattern=".*\\.linka" />
             <!-- needed for mangled email messages -->
             <data
                 android:scheme="content"
+                android:host="*"
                 android:mimeType="application/octet-stream"
                 android:pathPattern=".*\\.linka" />
 
