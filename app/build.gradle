@@ -4,25 +4,55 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
-def envOrProperty = { String key ->
-    return System.getenv(key) ?: (project.hasProperty(key) ? project.property(key) : null)
-}
-
-File keystoreFile = null
-def keystorePathFromEnv = envOrProperty("ANDROID_KEYSTORE_PATH")?.toString()
-if (keystorePathFromEnv) {
-    keystoreFile = file(keystorePathFromEnv)
-} else {
-    def defaultFile = rootProject.file("main.jks")
-    if (defaultFile.exists()) {
-        keystoreFile = defaultFile
+def parseVersionCode = { String value ->
+    if (value == null) return 6
+    if (!(value ==~ /[1-9][0-9]*/) || value.length() > 10 ||
+        value.toLong() > 2100000000L) {
+        throw new GradleException('releaseVersionCode / ANDROID_VERSION_CODE must be an integer from 1 to 2100000000')
     }
+    return value.toInteger()
 }
+def versionCodeInput = project.hasProperty('releaseVersionCode') ?
+    project.property('releaseVersionCode').toString() : System.getenv('ANDROID_VERSION_CODE')
+def appVersionCode = parseVersionCode(versionCodeInput)
 
-def keystorePassword = envOrProperty("ANDROID_KEYSTORE_PASSWORD")?.toString()
-def keyAliasValue = envOrProperty("ANDROID_KEY_ALIAS")?.toString() ?: "key0"
-def keyPasswordValue = envOrProperty("ANDROID_KEY_PASSWORD")?.toString() ?: keystorePassword
-def hasReleaseSigningConfig = keystoreFile?.exists() && keystorePassword && keyAliasValue && keyPasswordValue
+def signingKeys = ['ANDROID_KEYSTORE_PATH', 'ANDROID_KEYSTORE_PASSWORD',
+                   'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD']
+def signingValues = signingKeys.collectEntries { [(it): System.getenv(it)] }
+def signingProblems = { Map values ->
+    def problems = signingKeys.findAll { key ->
+        def value = values[key]
+        !value || value.trim().isEmpty() || (value =~ /\p{Cntrl}/).find()
+    }
+    if (!problems.contains('ANDROID_KEYSTORE_PATH')) {
+        try {
+            def store = file(values.ANDROID_KEYSTORE_PATH)
+            if (!store.isFile() || !store.canRead() || store.length() == 0) {
+                problems.add('ANDROID_KEYSTORE_PATH')
+            }
+        } catch (Exception ignored) {
+            // Gradle path-conversion errors can echo the supplied value; report only the variable name.
+            problems.add('ANDROID_KEYSTORE_PATH')
+        }
+    }
+    return problems
+}
+def requireReleaseSigning = { Map values, String code ->
+    def problems = signingProblems(values)
+    if (!problems.isEmpty()) {
+        throw new GradleException("Release signing requires valid environment variables: ${problems.join(', ')}")
+    }
+    if (code == null) {
+        throw new GradleException('Release requires explicit -PreleaseVersionCode or ANDROID_VERSION_CODE; choose a code greater than all previous Play uploads')
+    }
+    parseVersionCode(code)
+}
+def signingGate = providers.gradleProperty('verifyReleaseSigning').orNull
+if (signingGate != null && !(signingGate in ['true', 'false'])) {
+    throw new GradleException('verifyReleaseSigning must be true or false')
+}
+if (signingGate == 'true') requireReleaseSigning(signingValues, versionCodeInput)
+def hasReleaseSigningConfig = signingProblems(signingValues).isEmpty()
 
 android {
     namespace = 'su.linka.pictures'
@@ -32,8 +62,8 @@ android {
         applicationId = "su.linka.pictures"
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = appVersionCode
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,10 +71,10 @@ android {
     signingConfigs {
         release {
             if (hasReleaseSigningConfig) {
-                storeFile = keystoreFile
-                storePassword = keystorePassword
-                keyAlias = keyAliasValue
-                keyPassword = keyPasswordValue
+                storeFile = file(signingValues.ANDROID_KEYSTORE_PATH)
+                storePassword = signingValues.ANDROID_KEYSTORE_PASSWORD
+                keyAlias = signingValues.ANDROID_KEY_ALIAS
+                keyPassword = signingValues.ANDROID_KEY_PASSWORD
             }
         }
     }
@@ -80,9 +110,132 @@ android {
     }
 }
 
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) { variantBuilder ->
+        // AGP 9 enables host unit tests only for the tested (debug) build type by default.
+        variantBuilder.hostTests.get(com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE).enable = true
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+tasks.register('verifyReleaseSigning') {
+    group = 'verification'
+    description = 'Validate explicit release version and signing inputs without opening the keystore.'
+    doLast { requireReleaseSigning(signingValues, versionCodeInput) }
+}
+
+def requireReleaseManifest = { Map actual, String code ->
+    def expected = [packageName: 'su.linka.pictures', versionCode: parseVersionCode(code),
+                    minSdk: 24, targetSdk: 36]
+    if (actual != expected) {
+        throw new GradleException('Release AAB manifest does not match the expected package, versionCode or SDK policy')
+    }
+}
+
+tasks.register('verifyReleaseBundle') {
+    group = 'verification'
+    description = 'Check package, versionCode and SDKs from the actual release AAB protobuf manifest.'
+    dependsOn 'bundleRelease'
+    doLast {
+        def bundle = layout.buildDirectory.file('outputs/bundle/release/app-release.aab').get().asFile
+        new java.util.zip.ZipFile(bundle).withCloseable { archive ->
+            def entry = archive.getEntry('base/manifest/AndroidManifest.xml')
+            if (entry == null) throw new GradleException('Release AAB is missing its base manifest')
+            // Bundletool and the protobuf schema are already supplied by the Android Gradle plugin.
+            def manifest = archive.getInputStream(entry).withCloseable { stream ->
+                com.android.tools.build.bundletool.model.AndroidManifest.create(
+                    com.android.aapt.Resources.XmlNode.parseFrom(stream))
+            }
+            requireReleaseManifest([packageName: manifest.packageName,
+                                    versionCode: manifest.versionCode.orElse(-1),
+                                    minSdk: manifest.minSdkVersion.orElse(-1),
+                                    targetSdk: manifest.targetSdkVersion.orElse(-1)], versionCodeInput)
+        }
+    }
+}
+
+def needsReleaseSigning = { String name ->
+    name in ['verifyReleaseSigning', 'verifyReleaseBundle', 'assembleRelease', 'bundleRelease', 'packageRelease',
+             'packageReleaseBundle', 'packageReleaseUniversalApk', 'signReleaseBundle', 'validateSigningRelease']
+}
+// Check the resolved graph, including abbreviated CLI names and aggregate assemble/build tasks.
+// shortcut: no configuration cache; replace taskGraph hook with an AGP variant gate if enabling it.
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.project == project && needsReleaseSigning(it.name) }) {
+        requireReleaseSigning(signingValues, versionCodeInput)
+    }
+}
+
+tasks.register('verifyReleasePolicy') {
+    group = 'verification'
+    description = 'Self-test the actual release version/signing policy, without production secrets.'
+    doLast {
+        assert parseVersionCode(null) == 6
+        assert parseVersionCode('1') == 1
+        assert parseVersionCode('2100000000') == 2100000000
+        def manifest = [packageName: 'su.linka.pictures', versionCode: 7, minSdk: 24, targetSdk: 36]
+        requireReleaseManifest(manifest, '7')
+        [packageName: 'other.package', versionCode: 5, minSdk: 21, targetSdk: 35].each { key, value ->
+            try {
+                requireReleaseManifest(manifest + [(key): value], '7')
+                throw new AssertionError("Unexpected release manifest ${key} accepted")
+            } catch (GradleException expected) { }
+        }
+        ['0', '-1', '+1', '01', '', ' ', '1.0', '1\n', '2100000001', '99999999999999999999'].each { value ->
+            try {
+                parseVersionCode(value)
+                throw new AssertionError('Invalid version code accepted')
+            } catch (GradleException expected) { }
+        }
+        def fixture = new File(temporaryDir, 'policy-fixture.jks')
+        fixture.parentFile.mkdirs()
+        fixture.text = 'Not a keystore; tests only filesystem/input validation.'
+        try {
+            def valid = [ANDROID_KEYSTORE_PATH: fixture.absolutePath,
+                         ANDROID_KEYSTORE_PASSWORD: 'fixture-password',
+                         ANDROID_KEY_ALIAS: 'fixture-alias', ANDROID_KEY_PASSWORD: 'fixture-key-password']
+            assert signingProblems(valid).isEmpty()
+            requireReleaseSigning(valid, '7')
+            [null, '', '0'].each { code ->
+                try {
+                    requireReleaseSigning(valid, code)
+                    throw new AssertionError('Missing/invalid release version accepted')
+                } catch (GradleException expected) { }
+            }
+            signingKeys.each { key ->
+                [null, '', ' ', 'value\n'].each { value ->
+                    assert signingProblems(valid + [(key): value]).contains(key)
+                    try {
+                        requireReleaseSigning(valid + [(key): value], '7')
+                        throw new AssertionError('Invalid signing input accepted')
+                    } catch (GradleException expected) {
+                        assert expected.message.contains(key)
+                        assert !expected.message.contains('fixture-password')
+                    }
+                }
+            }
+            assert signingProblems(valid + [ANDROID_KEYSTORE_PATH: temporaryDir.absolutePath]) == ['ANDROID_KEYSTORE_PATH']
+            assert signingProblems(valid + [ANDROID_KEYSTORE_PATH: new File(temporaryDir, 'missing.jks').absolutePath]) == ['ANDROID_KEYSTORE_PATH']
+            assert signingProblems(valid + [ANDROID_KEYSTORE_PATH: 'https://invalid.example/fixture']) == ['ANDROID_KEYSTORE_PATH']
+            fixture.text = ''
+            assert signingProblems(valid) == ['ANDROID_KEYSTORE_PATH']
+        } finally {
+            fixture.delete()
+        }
+        ['verifyReleaseSigning', 'verifyReleaseBundle', 'assembleRelease', 'bundleRelease', 'packageRelease',
+         'packageReleaseBundle', 'packageReleaseUniversalApk', 'signReleaseBundle', 'validateSigningRelease'].each {
+            assert needsReleaseSigning(it)
+        }
+        ['assembleDebug', 'testReleaseUnitTest', 'assembleReleaseUnitTest', 'packageReleaseUnitTestForUnitTest',
+         'bundleReleaseClassesToCompileJar', 'packageReleaseResources',
+         'generateReleaseBuildConfig', 'processReleaseManifest'].each {
+            assert !needsReleaseSigning(it)
+        }
     }
 }
 
@@ -95,15 +248,10 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation "com.github.permissions-dispatcher:permissionsdispatcher:4.9.2"
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.7'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.7.7'
     implementation 'androidx.preference:preference-ktx:1.2.1'
 
-    implementation 'com.afollestad.material-dialogs:input:3.3.0'
     implementation platform('com.google.firebase:firebase-bom:33.5.1')
     implementation 'com.google.firebase:firebase-analytics'
-    annotationProcessor "com.github.permissions-dispatcher:permissionsdispatcher-processor:4.9.2"
     implementation 'com.guolindev.permissionx:permissionx:1.7.1'
     implementation 'net.lingala.zip4j:zip4j:2.11.5'
     implementation project(':shared')
@@ -159,5 +307,5 @@ tasks.register('verifyReleasePrivacy') {
 }
 
 tasks.named('check').configure {
-    dependsOn 'verifyReleasePrivacy'
+    dependsOn 'verifyReleasePrivacy', 'verifyReleasePolicy'
 }
