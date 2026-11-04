@@ -13,8 +13,8 @@
 
 | Пакет | Фактический статус |
 |---|---|
-| P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. Focused UI-follow-up интегрирован, оставшиеся безопасные формы проверяются отдельно. Play provenance и физические устройства не доказаны |
-| P01 / G1 | Не принят. CMP1.12.2 отвергнут по Android min23; изолированный Kotlin2.4.21 probe линковался, но отвергнут по iOS minimum15. Следующий согласованный кандидат2.2.21 проверяется без подключения к библиотеке |
+| P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
+| P01 / G1 | Не принят. CMP1.12.2 отвергнут по Android min23; Kotlin2.4.21 — по iOS minimum15. Кандидат2.2.21 линкует framework minimum14; higher-min ICU members оказались data-only по review COORD. Итоговый executable/UI/SQLite smoke ещё проверяются |
 | P02 / G2 | Не начат: входные G0/G1 не закрыты, code-contracts/SQLite schema/access policy не заморожены |
 | P03–P14 / G3–G5 | Не начаты: независимые implementation-lanes до G2 не запускаются |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
@@ -26,8 +26,8 @@
 |---|---|---|
 | Android P00 | `pokazhi-p00-android` / `implementation/p00-android-inventory` | Коммит `ce26641`, интегрирован как `890abe6`: [карта writers/readers/settings](../redesign-audit/legacy-storage-inventory.md) |
 | Electron P00 | `pokazhi-p00-peer` / `implementation/p00-electron-contract` | Коммит `49f0a1d`, интегрирован как `3dc46d6`: [standard/audio/ZIP/fixtures evidence](../redesign-audit/electron-standard-contract-evidence.md) |
-| UI P00 | `pokazhi-p00-ui-audit` / `implementation/p00-ui-followup` | `2604991`→`d7c1532`, продолжение `71b17cd`→`b2a15a4`: [evidence](../redesign-audit/p00-ui-audit.md), 20 просмотренных PNG; финальная bounded проверка оставшихся типов/доступности сохранения отдельно |
-| Platform preflight | `pokazhi-p01-platform-smoke` / `implementation/p01-platform-probe` | `15dad5d`: SQLite artifact checks и iOS link; acceptance assert minimum14 FAILED при фактическом15. Изолированный эксперимент не интегрирован, следующий кандидат2.2.21 отдельно |
+| UI P00 | `pokazhi-p00-ui-audit` / `implementation/p00-ui-followup` | `2604991`→`d7c1532`, `71b17cd`→`b2a15a4`, `47c6c79`→`74246db`: [evidence](../redesign-audit/p00-ui-audit.md), 30 просмотренных новых PNG; tablet types/TTS-submit/Tab+Enter/save проверены, phone disconnected |
+| Platform preflight | `pokazhi-p01-platform-smoke` / `implementation/p01-platform-probe` | `15dad5d`: minimum15 FAILED; `8d14b6d`: Kotlin2.2.21 framework minimum14, ICU data-only attribution. Эксперимент не интегрирован; app smoke/compatibility proof продолжаются |
 
 Все эти worktrees созданы штатным OpenCode tool под `/Users/aacidov/.local/share/opencode/worktree/67846f/`. Tool создал P00 worktrees с detached HEAD; завершённые Android/Electron commits дополнительно закреплены именованными ветками. Чужие существовавшие worktrees/ветки не изменяются. Вложенной делегации нет.
 
@@ -40,6 +40,9 @@
 - [Платформенный preflight](../redesign-audit/platform-preflight.md): фактические AAR manifests проверены; доступное окружение инвентаризировано. Android21/armv7 и iOS14 runtime не подменены современными эмуляторами.
 - Новые characterization tests legacy password writer/verification используют только synthetic Robolectric preferences. Они не меняют защиту приложения или настройки устройств и не являются P08.
 - Focused `:app:testDebugUnitTest --tests su.linka.pictures.components.ParentPasswordDialogTest`: итог 5/5, 0 skipped. Первый запуск имел один infrastructure fetch failure (`Connection reset` до application setup); повтор той же команды без code changes прошёл. Сценарии не отключались.
+- Та же focused class в `:app:testReleaseUnitTest`: **BUILD SUCCESSFUL**, 5/5, 0 skipped/failures/errors по XML. Production signing/key не использовались.
+- Tablet test library намеренно дополнена новым `P00TabletSave` (6→7), исходные шесть наборов не открывались для изменения. COORD просмотрел save confirmation/library PNG; новый набор оставлен, не удаляется. Качество/валидность TTS-аудио и offline-only voice не доказаны UI success.
+- Phone `emulator-5554` отключился при вводе имени собственного тестового набора; timeout/`error: closed`, повторный ADB MCP list показывает только tablet. Автоповтора ввода/перезапуска/очистки не было, несохранённое состояние phone неизвестно.
 
 ## Следующий переход
 

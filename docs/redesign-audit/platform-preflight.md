@@ -59,3 +59,11 @@ P01/G1 остаются открытыми. По действующему пла
 - UI/SQLite behavior smoke, Android probe APK и runtime не выполнены: агент остановился до их реализации, не подменив G1 успешной линковкой.
 
 COORD принял следующий конкретный кандидат для изолированной проверки: Kotlin/KMP/compiler **2.2.21**, остальные версии без изменения. Нужны собственный Native minimum, attribution object17.2, повторная линковка и actual smoke. Это решение о следующем эксперименте, **не** готовая lock-таблица и не разрешение P02.
+
+## Kotlin2.2.21: compiler blocker снят, проверка итогового приложения продолжается
+
+Экспериментальный commit `8d14b6d` в той же probe-ветке: неизменённая Native distribution имеет minVersion.ios12; simulator framework успешно линкуется с Xcode27.2 и содержит plist minimum14. Два higher-min object атрибутированы по dependency graph и SHA-256 к CMP1.9.3 → Skiko0.9.22.2 → `libicu.a`/`libskunicode_icu.a` → `libicu.icudtl_dat.o`, а не SQLite. Их SHA-256 совпадает: `a05864b10cb096e35bc318de76cecdb748b97e19485f1821abf12302106a2780`.
+
+COORD отдельно проверил actual `otool -l` и `nm -m` extracted object: `__text` size0, `__data` size0, единственная непустая секция `__TEXT,__const` size0x6014e0; все reloc counts0, undefined symbols0, внешний символ только `_icudt_skiko74_dat`. Таким образом, поле minos17.2 здесь относится к data-only object и само по себе не доказывает наличие iOS17 кода/API. Метаданные/библиотеки не переписаны, предупреждения не подавляются.
+
+Диагностический assert «максимум minos всех членов static archive <=14» оставлен в истории как FAILED; он строже нормативного контракта deployment/runtime и не подменяет проверку исполняемого приложения. COORD разрешил продолжить только изолированный probe с проверяемым data-only assert для обоих точных объектов, инспекцией **финального executable** minimum/API и реальным UI/SQLite smoke. Любой другой higher-min executable object — blocker. Runtime14, весь G1 и интеграция по-прежнему не приняты.
