@@ -51,6 +51,8 @@ class EditCardDialog(context: Context) : Dialog(context) {
     private var existingAudioPath: String? = null
     private var imageDirty = false
     private var audioDirty = false
+    private var audioGenerating = false
+    private var audioGeneration = 0L
 
     init {
         setContentView(R.layout.edit_card_dialog)
@@ -69,6 +71,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     fun show(set: Set, inputCard: Card?) {
+        cancelAudioGeneration()
         this.set = set
         this.card = inputCard?.clone() ?: Card(0, 0)
         populateCardData()
@@ -102,6 +105,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     fun validate(): Boolean {
+        if (audioGenerating) return false
         return when (getSelectedType()) {
             0 -> {
                 val text = cardTitleEditText.text.toString()
@@ -141,12 +145,14 @@ class EditCardDialog(context: Context) : Dialog(context) {
     private fun setUpListeners() {
         recordButton.setOnRecordListener(object : Callback<File>() {
             override fun onDone(result: File) {
+                cancelAudioGeneration()
                 currentAudio = result
                 audioDirty = true
                 playAudioButton.isEnabled = true
             }
 
             override fun onFail(error: Exception?) {
+                cancelAudioGeneration()
                 playAudioButton.isEnabled = false
                 currentAudio = null
             }
@@ -195,6 +201,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     private fun playAudio() {
+        if (audioGenerating) return
         val audioFile = currentAudio ?: return
         try {
             mediaPlayer.reset()
@@ -208,27 +215,54 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     private fun generateAudio() {
+        val session = audioGeneration
         InputDialog.showDialog(
             context,
             R.string.generate_audio,
             object : Callback<String>() {
                 override fun onDone(result: String) {
-                    try {
-                        currentAudio = tts.speakToBuffer(result)
-                        audioDirty = true
-                        playAudioButton.isEnabled = true
-                    } catch (error: Exception) {
-                        Toast.makeText(
-                            context,
-                            R.string.generate_audio_error,
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    if (session != audioGeneration || !isShowing) return
+                    cancelAudioGeneration()
+                    val generation = audioGeneration
+                    audioGenerating = true
+                    currentAudio = null
+                    audioDirty = false
+                    playAudioButton.isEnabled = false
+                    recordButton.isEnabled = false
+                    requireView<View>(R.id.positiveBtn).isEnabled = false
+                    tts.synthesize(result, object : Callback<File>() {
+                        override fun onDone(result: File) {
+                            if (generation != audioGeneration || !isShowing) return
+                            finishAudioGeneration()
+                            currentAudio = result
+                            audioDirty = true
+                            playAudioButton.isEnabled = true
+                        }
+
+                        override fun onFail(error: Exception?) {
+                            if (generation != audioGeneration || !isShowing) return
+                            finishAudioGeneration()
+                            Toast.makeText(context, R.string.generate_audio_error, Toast.LENGTH_LONG).show()
+                        }
+                    })
                 }
 
                 override fun onFail(error: Exception?) = Unit
             }
         )
+    }
+
+    private fun finishAudioGeneration() {
+        audioGenerating = false
+        recordButton.isEnabled = true
+        requireView<View>(R.id.positiveBtn).isEnabled = true
+    }
+
+    // Invalidate both input prompts and engine callbacks before the dialog is reused.
+    private fun cancelAudioGeneration() {
+        audioGeneration++
+        tts.cancelSynthesis()
+        finishAudioGeneration()
     }
 
     private fun generateImage() {
@@ -316,6 +350,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     fun onHostStop() {
+        cancelAudioGeneration()
         recordButton.onDestroy()
         if (!released) mediaPlayer.reset()
     }
