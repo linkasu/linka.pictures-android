@@ -14,6 +14,9 @@ internal fun <T> unexpected(): T = error("Unexpected port operation in communica
 internal class FakeMedia : MediaStore {
     val existing = mutableSetOf<AssetId>()
     val refs = mutableMapOf<AssetId, Int>()
+    var openLeases = 0
+        private set
+    var onRetain: (() -> Unit)? = null
     var roots: () -> Set<AssetId> = { emptySet() }
     override suspend fun acquire(assets: Set<AssetId>): OperationResult<MediaLease> =
         if (existing.containsAll(assets)) OperationResult.Completed(Lease(assets))
@@ -21,14 +24,20 @@ internal class FakeMedia : MediaStore {
 
     inner class Lease(override val assets: Set<AssetId>) : MediaLease {
         private var closed = false
-        init { assets.forEach { refs[it] = (refs[it] ?: 0) + 1 } }
+        init {
+            openLeases++
+            assets.forEach { refs[it] = (refs[it] ?: 0) + 1 }
+        }
         override fun retain(assets: Set<AssetId>): OperationResult<MediaLease> {
             check(!closed && this.assets.containsAll(assets) && existing.containsAll(assets))
-            return OperationResult.Completed(Lease(assets))
+            val lease = Lease(assets)
+            onRetain?.invoke()
+            return OperationResult.Completed(lease)
         }
         override fun close() {
             if (!closed) {
                 closed = true
+                openLeases--
                 assets.forEach { refs[it] = refs.getValue(it) - 1 }
             }
         }
@@ -100,6 +109,7 @@ internal class FakeLibrary(private val media: FakeMedia) : LibraryStore {
     val boards = mutableMapOf<BoardId, PublishedBoard>()
     val delayed = mutableMapOf<BoardId, CompletableDeferred<Unit>>()
     val ignoresCancellation = mutableSetOf<BoardId>()
+    var beforeReadResult: (() -> Unit)? = null
     override suspend fun board(id: BoardId): OperationResult<LeasedBoard> {
         if (id in ignoresCancellation) return withContext(NonCancellable) { readBoard(id) }
         return readBoard(id)
@@ -108,9 +118,13 @@ internal class FakeLibrary(private val media: FakeMedia) : LibraryStore {
         delayed[id]?.await()
         val board = boards[id] ?: return OperationResult.Failed(Problem(ProblemCode.NOT_FOUND))
         return when (val lease = media.acquire(board.document.assetIds())) {
-            is OperationResult.Completed -> OperationResult.Completed(LeasedBoard(listing.value.epoch, board, lease.value))
+            is OperationResult.Completed -> {
+                beforeReadResult?.invoke()
+                OperationResult.Completed(LeasedBoard(listing.value.epoch, board, lease.value))
+            }
             is OperationResult.Failed -> lease
             OperationResult.Cancelled -> OperationResult.Cancelled
+            OperationResult.UnconfirmedCommit -> OperationResult.UnconfirmedCommit
         }
     }
     override suspend fun draft(id: DraftId): OperationResult<LeasedDraft> = unexpected()

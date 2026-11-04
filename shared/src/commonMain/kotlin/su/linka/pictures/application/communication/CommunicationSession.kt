@@ -26,7 +26,9 @@ class CommunicationSession(
     private val mutableState = MutableStateFlow(CommunicationState())
     val state: StateFlow<CommunicationState> = mutableState.asStateFlow()
     private val seen = linkedSetOf<CommandId>()
-    private val saves = mutableSetOf<Job>()
+    private data class PendingSave(val value: StoredMessage, val lease: MediaLease)
+    private var activeSave: Job? = null
+    private var pendingSave: PendingSave? = null
     private var boardLease: MediaLease? = null
     private var messageLease: MediaLease = MessageLease(emptyList())
     private var undo: MessageDraft? = null
@@ -38,6 +40,7 @@ class CommunicationSession(
     private var ready = false
     private var closing = false
     private var stale = false
+    private var unconfirmed = false
     private var modeChosen = false
 
     init {
@@ -48,6 +51,7 @@ class CommunicationSession(
             } finally {
                 closing = true
                 ready = false
+                discardPendingSave()
                 events.close()
                 while (true) (events.tryReceive().getOrNull() ?: break).invoke()
                 audio.stop(owner)
@@ -70,7 +74,8 @@ class CommunicationSession(
         sessionScope.launch {
             library.listing.collect { listing ->
                 events.trySend {
-                    if (!closing && ready && listing.epoch != state.value.stamp.epoch) invalidateEpoch()
+                    if (listing.refreshProblem?.code == ProblemCode.COMMIT_OUTCOME_UNKNOWN) freezeUnconfirmed()
+                    else if (ready) checkLibrary()
                 }
             }
         }
@@ -78,8 +83,8 @@ class CommunicationSession(
 
     fun dispatch(command: CommunicationCommand) {
         events.trySend {
-            if (ready && !closing && library.listing.value.epoch != state.value.stamp.epoch) invalidateEpoch()
-            if (!closing && ready && !stale && seen.add(command.id)) {
+            if (ready && !closing) checkLibrary()
+            if (!closing && ready && !stale && !unconfirmed && seen.add(command.id)) {
                 if (seen.size > 1024) seen.remove(seen.first())
                 reduce(command)
             }
@@ -93,15 +98,12 @@ class CommunicationSession(
     fun close() {
         events.trySend {
             if (!closing) {
+                checkLibrary()
                 closing = true
                 navigation++
                 boardJob?.cancel()
                 stop()
-                val pending = saves.toList()
-                sessionScope.launch {
-                    pending.joinAll()
-                    events.trySend { events.close() }
-                }
+                finishClosingIfIdle()
             }
         }
     }
@@ -120,24 +122,29 @@ class CommunicationSession(
                         )
                         ready = true
                         modeChosen = stored.version != 0L || stored.draft != MessageDraft()
-                        if (stored.epoch != library.listing.value.epoch) invalidateEpoch()
-                        else stored.draft.cursor?.let { open(it.boardId, it.pageId) }
+                        checkLibrary()
+                        if (!stale && !unconfirmed) stored.draft.cursor?.let { open(it.boardId, it.pageId) }
                     }
                     is OperationResult.Failed -> failLoad(acquired.problem)
                     OperationResult.Cancelled -> failLoad(Problem(ProblemCode.INTERRUPTED))
+                    OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
                 }
             }
             is OperationResult.Failed -> failLoad(loaded.problem)
             OperationResult.Cancelled -> failLoad(Problem(ProblemCode.INTERRUPTED))
+            OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
         }
     }
 
     private fun failLoad(problem: Problem) {
-        mutableState.value = state.value.copy(savePhase = MessageSavePhase.FAILED, problem = problem)
+        checkLibrary()
+        if (!unconfirmed) mutableState.value = state.value.copy(savePhase = MessageSavePhase.FAILED, problem = problem)
     }
 
     private fun invalidateEpoch() {
+        if (unconfirmed) return
         stale = true
+        discardPendingSave()
         navigation++
         boardJob?.cancel()
         stop()
@@ -150,6 +157,35 @@ class CommunicationSession(
             board = null, canUndoClear = false, savePhase = MessageSavePhase.FAILED,
             problem = Problem(ProblemCode.STALE_REQUEST),
         )
+    }
+
+    private fun checkLibrary() {
+        if (unconfirmed) return
+        val listing = library.listing.value
+        if (listing.refreshProblem?.code == ProblemCode.COMMIT_OUTCOME_UNKNOWN) freezeUnconfirmed()
+        else if (!closing && ready && listing.epoch != state.value.stamp.epoch) invalidateEpoch()
+    }
+
+    private fun freezeUnconfirmed() {
+        if (unconfirmed) return
+        unconfirmed = true
+        navigation++
+        boardJob?.cancel()
+        stop()
+        discardPendingSave()
+        mutableState.value = state.value.copy(
+            canUndoClear = false, savePhase = MessageSavePhase.UNCONFIRMED,
+            problem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN),
+        )
+    }
+
+    private fun discardPendingSave() {
+        pendingSave?.lease?.close()
+        pendingSave = null
+    }
+
+    private fun finishClosingIfIdle() {
+        if (closing && activeSave == null && pendingSave == null) events.close()
     }
 
     private fun reduce(command: CommunicationCommand) {
@@ -216,7 +252,8 @@ class CommunicationSession(
             try {
                 ensureActive()
                 transferred = events.trySend {
-                    if (closing || stale || generation != navigation) {
+                    checkLibrary()
+                    if (closing || stale || unconfirmed || generation != navigation) {
                         if (result is OperationResult.Completed) result.value.lease.close()
                     } else when (result) {
                         is OperationResult.Completed -> {
@@ -232,11 +269,16 @@ class CommunicationSession(
                                 mutableState.value = state.value.copy(board = value.board)
                                 val mode = if (modeChosen) state.value.message.mode else value.board.document.behavior.defaultMode
                                 modeChosen = true
-                                change(state.value.message.copy(cursor = BoardCursor(id, page.id), mode = mode))
+                                val previous = state.value.message.cursor
+                                val firstCell = previous?.takeIf {
+                                    it.boardId == id && it.pageId == page.id && it.firstCell < page.capacity
+                                }?.firstCell ?: 0
+                                change(state.value.message.copy(cursor = BoardCursor(id, page.id, firstCell), mode = mode))
                             }
                         }
                         is OperationResult.Failed -> report(result.problem)
                         OperationResult.Cancelled -> Unit
+                        OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
                     }
                 }.isSuccess
             } finally {
@@ -294,6 +336,7 @@ class CommunicationSession(
             }
             is OperationResult.Failed -> report(retained.problem)
             OperationResult.Cancelled -> Unit
+            OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
         }
     }
 
@@ -320,44 +363,66 @@ class CommunicationSession(
             }
             is OperationResult.Failed -> report(retained.problem)
             OperationResult.Cancelled -> Unit
+            OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
         }
         return false
     }
 
     private fun save(stored: StoredMessage) {
         val retained = messageLease.retain(stored.draft.assetIds())
+        if (retained is OperationResult.UnconfirmedCommit) {
+            freezeUnconfirmed()
+            return
+        }
         if (retained !is OperationResult.Completed) {
             mutableState.value = state.value.copy(savePhase = MessageSavePhase.FAILED)
             if (retained is OperationResult.Failed) report(retained.problem)
             return
         }
-        val lease = retained.value
-        val job = sessionScope.launch(start = CoroutineStart.LAZY) {
-            try {
-                val result = operation { messages.saveMessage(stored) }
-                events.trySend {
-                    if (!closing && !stale && stored.stamp == state.value.stamp) when (result) {
-                        is OperationResult.Completed -> mutableState.value = state.value.copy(savePhase = MessageSavePhase.SAVED)
-                        is OperationResult.Failed -> {
-                            if (result.problem.code == ProblemCode.STALE_REQUEST) invalidateEpoch()
-                            else mutableState.value = state.value.copy(savePhase = MessageSavePhase.FAILED, problem = result.problem)
-                        }
-                        OperationResult.Cancelled -> mutableState.value = state.value.copy(
-                            savePhase = MessageSavePhase.FAILED, problem = Problem(ProblemCode.INTERRUPTED),
-                        )
-                    }
-                }
-            } finally {
-                lease.close()
-            }
+        val save = PendingSave(stored, retained.value)
+        if (activeSave == null) startSave(save)
+        else {
+            discardPendingSave()
+            pendingSave = save
         }
-        saves += job
+    }
+
+    private fun startSave(save: PendingSave) {
+        var result: OperationResult<Unit> = OperationResult.Cancelled
+        val job = sessionScope.launch(start = CoroutineStart.LAZY) {
+            result = operation { messages.saveMessage(save.value) }
+        }
+        activeSave = job
         job.invokeOnCompletion {
-            // Also covers cancellation before the lazy coroutine enters its try/finally.
-            lease.close()
-            events.trySend { saves.remove(job) }
+            // Completion also owns cleanup if cancellation occurs before the coroutine starts.
+            save.lease.close()
+            events.trySend { saved(save.value, result) }
         }
         job.start()
+    }
+
+    private fun saved(stored: StoredMessage, result: OperationResult<Unit>) {
+        activeSave = null
+        checkLibrary()
+        // Unknown durability is session-wide, even when a newer visible version superseded this save.
+        if (result == OperationResult.UnconfirmedCommit) freezeUnconfirmed()
+        else if (!closing && !stale && !unconfirmed && stored.stamp == state.value.stamp) when (result) {
+            is OperationResult.Completed -> mutableState.value = state.value.copy(savePhase = MessageSavePhase.SAVED)
+            is OperationResult.Failed -> {
+                if (result.problem.code == ProblemCode.STALE_REQUEST) invalidateEpoch()
+                else mutableState.value = state.value.copy(savePhase = MessageSavePhase.FAILED, problem = result.problem)
+            }
+            OperationResult.Cancelled -> mutableState.value = state.value.copy(
+                savePhase = MessageSavePhase.FAILED, problem = Problem(ProblemCode.INTERRUPTED),
+            )
+            OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
+        }
+        val next = pendingSave
+        pendingSave = null
+        if (next != null) {
+            if (stale || unconfirmed) next.lease.close() else startSave(next)
+        }
+        finishClosingIfIdle()
     }
 
     private fun play(message: MessageDraft, lease: MediaLease, purpose: AudioPurpose) {
@@ -373,9 +438,11 @@ class CommunicationSession(
                 }
                 is OperationResult.Failed -> report(retained.problem)
                 OperationResult.Cancelled -> Unit
+                OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
             }
             is OperationResult.Failed -> report(planned.problem)
             OperationResult.Cancelled -> Unit
+            OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
         }
     }
 

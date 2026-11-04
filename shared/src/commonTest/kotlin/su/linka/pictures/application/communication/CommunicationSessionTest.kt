@@ -2,6 +2,9 @@ package su.linka.pictures.application.communication
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.*
 import kotlin.test.*
 import su.linka.pictures.application.*
@@ -21,8 +24,8 @@ class CommunicationSessionTest {
         init {
             media.roots = { messages.stored.draft.assetIds() + library.boards.values.flatMap { it.document.assetIds() } }
         }
-        fun start() {
-            session = CommunicationSession(library, messages, media, audio, IdSource { "id-${serial++}" }, test.backgroundScope)
+        fun start(scope: CoroutineScope = test.backgroundScope) {
+            session = CommunicationSession(library, messages, media, audio, IdSource { "id-${serial++}" }, scope)
             test.runCurrent()
         }
         fun send(command: CommunicationCommand) {
@@ -152,11 +155,13 @@ class CommunicationSessionTest {
         f.text("Хочу")
         val first = f.messages.pending.last()
         f.text(" кашу")
-        val second = f.messages.pending.last()
         assertEquals("Хочу кашу", f.session.state.value.renderedText)
         assertEquals(MessageSavePhase.SAVING, f.session.state.value.savePhase)
-        second.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))); runCurrent()
         first.result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(MessageSavePhase.SAVING, f.session.state.value.savePhase)
+        val second = f.messages.pending.last()
+        assertNotSame(first, second)
+        second.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))); runCurrent()
         assertEquals(MessageSavePhase.FAILED, f.session.state.value.savePhase)
         assertEquals(ProblemCode.IO_FAILURE, f.session.state.value.problem?.code)
         f.text("!")
@@ -205,13 +210,16 @@ class CommunicationSessionTest {
         f.media.collectGarbage()
         assertTrue(asset in f.media.existing)
         f.send(CommunicationCommand.UndoClear(f.id()))
+        selectedSave.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))); runCurrent()
         f.messages.pending.last().result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))); runCurrent()
         assertEquals(MessageSavePhase.FAILED, f.session.state.value.savePhase)
+        f.media.collectGarbage()
+        assertTrue(asset in f.media.existing)
+        f.send(CommunicationCommand.SetMode(f.id(), InteractionMode.COMPOSE))
         f.close()
         f.media.collectGarbage()
         assertTrue(asset in f.media.existing)
         for (pending in f.messages.pending) pending.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)))
-        selectedSave.result.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)))
         runCurrent()
         f.media.collectGarbage()
         assertFalse(asset in f.media.existing)
@@ -350,5 +358,215 @@ class CommunicationSessionTest {
         assertEquals(before, f.session.state.value.message)
         assertEquals(ProblemCode.LIMIT_EXCEEDED, f.session.state.value.problem?.code)
         f.close()
+    }
+
+    @Test fun slowSaveCoalescesFiveHundredKeysIntoOneLatestWriteAndBoundedPins() = runTest {
+        val f = Fixture(this)
+        val asset = AssetId("a".repeat(64))
+        f.board("a", "Хочу", speech = SpeechSource.Recording(asset))
+        f.start(); f.open("a")
+        f.messages.attempts.clear()
+        f.messages.delayed = true
+        f.select("a")
+        repeat(500) {
+            f.text("x")
+            assertTrue(f.media.refs.getValue(asset) <= 4, "Only board/current/active/latest may pin the asset")
+        }
+        val latest = f.session.state.value.message
+        assertEquals("Хочу " + "x".repeat(500), f.session.state.value.renderedText)
+        assertEquals(1, f.messages.attempts.size)
+        assertEquals(1, f.messages.pending.size)
+        f.messages.pending.single().result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(2, f.messages.attempts.size)
+        assertEquals(latest, f.messages.attempts.last().draft)
+        assertTrue(f.messages.attempts.last().version - f.messages.attempts.first().version >= 500)
+        assertEquals(MessageSavePhase.SAVING, f.session.state.value.savePhase)
+        f.messages.pending.last().result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(latest, f.messages.stored.draft)
+        assertEquals(MessageSavePhase.SAVED, f.session.state.value.savePhase)
+        f.close()
+        assertEquals(0, f.media.openLeases)
+    }
+
+    @Test fun unconfirmedSaveFreezesEvenSupersededVersionWithoutSendingPendingOrReplaying() = runTest {
+        for (superseded in listOf(false, true)) {
+            val f = Fixture(this)
+            val asset = AssetId("a".repeat(64))
+            f.board("a", "Хочу", speech = SpeechSource.Recording(asset))
+            f.start(); f.open("a")
+            f.messages.attempts.clear()
+            f.messages.delayed = true
+            f.select("a")
+            if (superseded) {
+                f.send(CommunicationCommand.CloseBoard(f.id()))
+                f.text("мёд")
+            }
+            val latest = f.session.state.value.message
+            f.send(CommunicationCommand.Speak(f.id()))
+            val playing = f.audio.played.single()
+            f.library.boards.clear()
+            f.messages.pending.single().result.complete(OperationResult.UnconfirmedCommit); runCurrent()
+            val frozen = f.session.state.value
+            assertEquals(MessageSavePhase.UNCONFIRMED, frozen.savePhase)
+            assertEquals(ProblemCode.COMMIT_OUTCOME_UNKNOWN, frozen.problem?.code)
+            assertEquals(latest, frozen.message)
+            assertEquals(AudioPhase.IDLE, frozen.audio.phase)
+            assertFalse(frozen.canUndoClear)
+            assertEquals(if (superseded) 1 else 2, f.media.refs.getValue(asset))
+            f.media.collectGarbage()
+            assertTrue(asset in f.media.existing)
+            f.text("запрещено")
+            f.send(CommunicationCommand.Clear(f.id()))
+            f.send(CommunicationCommand.UndoClear(f.id()))
+            f.send(CommunicationCommand.SetMode(f.id(), InteractionMode.DIRECT))
+            f.send(CommunicationCommand.OpenBoard(f.id(), BoardId("a")))
+            f.send(CommunicationCommand.Speak(f.id()))
+            f.audio.callback(playing, AudioPhase.PLAYING); runCurrent()
+            assertEquals(frozen, f.session.state.value)
+            assertEquals(1, f.messages.attempts.size)
+            assertEquals(1, f.audio.played.size)
+            f.close()
+            assertEquals(0, f.media.openLeases)
+            assertEquals(1, f.messages.attempts.size)
+        }
+    }
+
+    @Test fun listingQuarantineWithoutEpochChangeFreezesUndoAndOldSuccessCannotUnfreeze() = runTest {
+        val f = Fixture(this)
+        f.start(); f.text("фраза")
+        f.messages.delayed = true
+        f.send(CommunicationCommand.Clear(f.id()))
+        f.text("новая")
+        assertTrue(f.session.state.value.canUndoClear)
+        val latest = f.session.state.value.message
+        val attempts = f.messages.attempts.size
+        f.send(CommunicationCommand.Speak(f.id()))
+        f.library.listing.value = f.library.listing.value.copy(refreshProblem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+        runCurrent()
+        assertEquals(MessageSavePhase.UNCONFIRMED, f.session.state.value.savePhase)
+        assertEquals(latest, f.session.state.value.message)
+        assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase)
+        assertFalse(f.session.state.value.canUndoClear)
+        f.messages.pending.single().result.complete(OperationResult.Completed(Unit)); runCurrent()
+        f.library.listing.value = f.library.listing.value.copy(refreshProblem = null); runCurrent()
+        f.text("не продолжать")
+        f.send(CommunicationCommand.UndoClear(f.id()))
+        f.send(CommunicationCommand.Speak(f.id()))
+        assertEquals(MessageSavePhase.UNCONFIRMED, f.session.state.value.savePhase)
+        assertEquals(ProblemCode.COMMIT_OUTCOME_UNKNOWN, f.session.state.value.problem?.code)
+        assertEquals(latest, f.session.state.value.message)
+        assertEquals(attempts, f.messages.attempts.size)
+        assertEquals(1, f.audio.played.size)
+        f.close()
+        assertEquals(0, f.media.openLeases)
+    }
+
+    @Test fun closeFlushesOnlyActiveAndLatestPendingThenReleasesAllPins() = runTest {
+        val f = Fixture(this)
+        f.start(); f.messages.delayed = true
+        f.text("a")
+        repeat(500) { f.text("b") }
+        val latest = f.session.state.value.message
+        f.close()
+        val closed = f.session.state.value
+        assertEquals(1, f.messages.attempts.size)
+        f.messages.pending.single().result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(2, f.messages.attempts.size)
+        f.messages.pending.last().result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(latest, f.messages.stored.draft)
+        assertEquals(closed, f.session.state.value)
+        assertEquals(0, f.media.openLeases)
+        f.text("после close")
+        assertEquals(2, f.messages.attempts.size)
+    }
+
+    @Test fun unconfirmedDuringCloseDiscardsLatestPendingAndReleasesPins() = runTest {
+        val f = Fixture(this)
+        f.start(); f.messages.delayed = true
+        f.text("a"); f.text("b")
+        f.close()
+        f.messages.pending.single().result.complete(OperationResult.UnconfirmedCommit); runCurrent()
+        assertEquals(MessageSavePhase.UNCONFIRMED, f.session.state.value.savePhase)
+        assertEquals("ab", f.session.state.value.renderedText)
+        assertEquals(1, f.messages.attempts.size)
+        assertEquals(0, f.media.openLeases)
+    }
+
+    @Test fun cancellationBeforeSaveCoroutineStartsReleasesRetainWithoutWriting() = runTest {
+        val f = Fixture(this)
+        val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        f.board("a", "Хочу", speech = SpeechSource.Recording(AssetId("a".repeat(64))))
+        f.start(scope); f.open("a"); f.select("a")
+        f.messages.attempts.clear()
+        var retained = 0
+        f.media.onRetain = { if (++retained == 2) scope.cancel() }
+        f.text("мёд")
+        assertEquals(2, retained)
+        assertEquals(0, f.media.openLeases)
+        assertTrue(f.messages.attempts.isEmpty())
+    }
+
+    @Test fun parentCancellationWithActiveAndPendingReleasesBothAndIgnoresLateResult() = runTest {
+        val f = Fixture(this)
+        val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        f.start(scope); f.messages.delayed = true
+        f.text("a"); f.text("b")
+        scope.cancel(); runCurrent()
+        assertEquals(0, f.media.openLeases)
+        val closed = f.session.state.value
+        f.messages.pending.single().result.complete(OperationResult.Completed(Unit)); runCurrent()
+        assertEquals(closed, f.session.state.value)
+        assertEquals(1, f.messages.attempts.size)
+    }
+
+    @Test fun restoredCursorKeepsValidFirstCellButRejectsOutOfRangeOrDifferentPage() = runTest {
+        for ((pageId, firstCell, expected) in listOf(Triple("a", 1, 1), Triple("a", 3, 0), Triple("deleted", 1, 0))) {
+            val f = Fixture(this)
+            f.board("a", "Хочу")
+            f.messages.stored = StoredMessage(0, 7, MessageDraft(cursor = BoardCursor(BoardId("a"), PageId(pageId), firstCell)))
+            f.start()
+            assertEquals(BoardCursor(BoardId("a"), PageId("a"), expected), f.session.state.value.message.cursor)
+            assertTrue(f.audio.played.isEmpty())
+            f.close()
+        }
+    }
+
+    @Test fun startupQuarantineIsUnconfirmedEvenIfMessageReadFails() = runTest {
+        for (readFails in listOf(false, true)) {
+            val f = Fixture(this)
+            f.board("a", "Хочу")
+            val message = MessageDraft(
+                parts = listOf(MessagePart.Text(MessagePartId("text"), "фраза")),
+                cursor = BoardCursor(BoardId("a"), PageId("a"), 1),
+            )
+            f.messages.stored = StoredMessage(0, 7, message)
+            if (readFails) f.messages.loadFailure = Problem(ProblemCode.IO_FAILURE)
+            f.library.listing.value = f.library.listing.value.copy(refreshProblem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+            f.start()
+            assertEquals(MessageSavePhase.UNCONFIRMED, f.session.state.value.savePhase)
+            assertEquals(ProblemCode.COMMIT_OUTCOME_UNKNOWN, f.session.state.value.problem?.code)
+            assertNull(f.session.state.value.board)
+            assertTrue(f.messages.attempts.isEmpty())
+            assertTrue(f.audio.played.isEmpty())
+            if (!readFails) assertEquals(message, f.session.state.value.message)
+            f.close()
+            assertEquals(0, f.media.openLeases)
+        }
+    }
+
+    @Test fun boardResultCannotPublishOrSaveWhileQuarantineObserverEventIsStillQueued() = runTest {
+        val f = Fixture(this)
+        f.board("a", "Хочу")
+        f.start()
+        f.library.beforeReadResult = {
+            f.library.listing.value = f.library.listing.value.copy(refreshProblem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+        }
+        f.open("a")
+        assertEquals(MessageSavePhase.UNCONFIRMED, f.session.state.value.savePhase)
+        assertNull(f.session.state.value.board)
+        assertNull(f.session.state.value.message.cursor)
+        assertTrue(f.messages.attempts.isEmpty())
+        f.close()
+        assertEquals(0, f.media.openLeases)
     }
 }

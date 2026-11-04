@@ -38,6 +38,10 @@ internal class MessageLease(private val leases: List<MediaLease>) : MediaLease {
                         owned.forEach { it.close() }
                         return OperationResult.Cancelled
                     }
+                    OperationResult.UnconfirmedCommit -> {
+                        owned.forEach { it.close() }
+                        return OperationResult.UnconfirmedCommit
+                    }
                 }
                 remaining = remaining - subset
             }
