@@ -12,6 +12,17 @@ import kotlin.io.extension
 import kotlin.io.nameWithoutExtension
 
 class SetTest {
+    @org.junit.Test
+    fun rejectsOutOfRangePositionsBeforeGrowingCards() {
+        val manifest = SetManifest(java.io.File("config.json"))
+        val set = Set(manifest, java.io.File("."))
+        for (position in listOf(-1, 10_000, Int.MAX_VALUE)) {
+            org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+                set.addCard(position, Card(0))
+            }
+            org.junit.Assert.assertTrue(manifest.cards.isEmpty())
+        }
+    }
 
     private lateinit var workingDir: File
     private lateinit var manifest: SetManifest

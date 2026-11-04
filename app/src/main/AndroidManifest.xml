@@ -17,6 +17,12 @@
         tools:node="remove" />
 
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".LinkaPicturesApp"
         android:allowBackup="true"
@@ -40,7 +46,7 @@
             android:value="false" />
         <activity
             android:name=".activity.SetEditActivity"
-android:screenOrientation="landscape"
+            android:screenOrientation="landscape"
             android:exported="false">
             <meta-data
                 android:name="android.app.lib_name"
@@ -84,17 +90,20 @@ android:screenOrientation="landscape"
             <!-- needed for properly formatted email messages -->
             <data
                 android:scheme="content"
+                android:host="*"
                 android:mimeType="application/vnd.linka"
                 android:pathPattern=".*\\.linka" />
             <!-- needed for mangled email messages -->
             <data
                 android:scheme="content"
+                android:host="*"
 
                 android:mimeType="application/linkaapp"
                 android:pathPattern=".*\\.linka" />
             <!-- needed for mangled email messages -->
             <data
                 android:scheme="content"
+                android:host="*"
                 android:mimeType="application/octet-stream"
                 android:pathPattern=".*\\.linka" />
 

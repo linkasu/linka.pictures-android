@@ -14,7 +14,6 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
-import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -23,30 +22,19 @@ object Utils {
     @JvmStatic
     @Throws(IOException::class)
     fun copy(input: InputStream, destination: File): File {
-        var output: OutputStream? = null
+        var temporary: File? = null
         try {
-            output = FileOutputStream(destination)
-            val buffer = ByteArray(1024)
-            while (true) {
-                val length = input.read(buffer)
-                if (length <= 0) break
-                output.write(buffer, 0, length)
+            input.use { source ->
+                val staged = File.createTempFile("copy-", ".tmp", destination.absoluteFile.parentFile)
+                temporary = staged
+                FileOutputStream(staged).use { output ->
+                    source.copyTo(output)
+                }
             }
-        } catch (error: Exception) {
-            error.printStackTrace()
+            return replaceFile(temporary!!, destination)
         } finally {
-            try {
-                output?.close()
-            } catch (closeError: IOException) {
-                closeError.printStackTrace()
-            }
-            try {
-                input.close()
-            } catch (closeError: IOException) {
-                closeError.printStackTrace()
-            }
+            temporary?.delete()
         }
-        return destination
     }
 
     @JvmStatic
@@ -73,6 +61,7 @@ object Utils {
     }
 
     @JvmStatic
+    @Throws(IOException::class)
     fun saveBitmapToFile(
         dir: File,
         fileName: String,
@@ -81,20 +70,24 @@ object Utils {
         quality: Int
     ): File {
         val imageFile = File(dir, fileName)
-        var outputStream: FileOutputStream? = null
+        val temporary = File.createTempFile("bitmap-", ".tmp", dir)
         try {
-            outputStream = FileOutputStream(imageFile)
-            bitmap.compress(format, quality, outputStream)
-        } catch (error: IOException) {
-            error.printStackTrace()
-        } finally {
-            try {
-                outputStream?.close()
-            } catch (closeError: IOException) {
-                closeError.printStackTrace()
+            FileOutputStream(temporary).use { output ->
+                if (!bitmap.compress(format, quality, output)) {
+                    throw IOException("Unable to compress bitmap")
+                }
             }
+            return replaceFile(temporary, imageFile)
+        } finally {
+            temporary.delete()
         }
-        return imageFile
+    }
+
+    private fun replaceFile(temporary: File, destination: File): File {
+        if (!temporary.renameTo(destination)) {
+            throw IOException("Unable to save $destination")
+        }
+        return destination
     }
 
     @JvmStatic
@@ -107,24 +100,37 @@ object Utils {
     }
 
     @JvmStatic
+    @JvmOverloads
     @Throws(IOException::class)
-    fun zipFolder(inputFolderPath: String, outZipPath: String) {
+    fun zipFolder(inputFolderPath: String, outZipPath: String, includePaths: kotlin.collections.Set<String>? = null) {
+        val source = File(inputFolderPath).absoluteFile.normalize()
+        val root = source.canonicalFile
+        val unlinkedSource = source.parentFile?.let { File(it.canonicalFile, source.name) } ?: source
+        if (root != unlinkedSource || !root.isDirectory) {
+            throw IOException("Archive source must be a regular directory: $inputFolderPath")
+        }
+        val destination = File(outZipPath).canonicalFile
         FileOutputStream(outZipPath).use { fos ->
             ZipOutputStream(fos).use { zos ->
-                val srcDir = File(inputFolderPath)
-                val files = srcDir.listFiles() ?: return
-                val buffer = ByteArray(1024)
-                for (file in files) {
-                    FileInputStream(file).use { fis ->
-                        zos.putNextEntry(ZipEntry(file.name))
-                        while (true) {
-                            val length = fis.read(buffer)
-                            if (length <= 0) break
-                            zos.write(buffer, 0, length)
+                fun addDirectory(directory: File) {
+                    val files = directory.listFiles()
+                        ?: throw IOException("Cannot list archive directory: $directory")
+                    for (file in files) {
+                        val canonical = file.canonicalFile
+                        if (canonical != file || canonical == destination ||
+                            !canonical.path.startsWith(root.path + File.separator)) continue
+                        if (file.isDirectory) {
+                            addDirectory(file)
+                        } else if (file.isFile) {
+                            val path = file.relativeTo(root).invariantSeparatorsPath
+                            if (includePaths != null && path !in includePaths) continue
+                            zos.putNextEntry(ZipEntry(path))
+                            FileInputStream(file).use { it.copyTo(zos) }
+                            zos.closeEntry()
                         }
-                        zos.closeEntry()
                     }
                 }
+                addDirectory(root)
             }
         }
     }

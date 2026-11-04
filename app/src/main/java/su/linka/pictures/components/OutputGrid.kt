@@ -42,10 +42,10 @@ class OutputGrid @JvmOverloads constructor(
     override fun render() {
         removeAllViews()
         val currentSet = activeSet ?: return
-        cards.forEachIndexed { index, card ->
-            if (card.cardType != 0) return@forEachIndexed
+        cards.forEach { card ->
+            if (card.cardType != 0) return@forEach
             val button = GridButton(context, card, currentSet.getBitmap(card.imagePath), true)
-            addView(button, index)
+            addView(button)
         }
     }
 }

@@ -10,6 +10,7 @@ object SetContextDialog {
     const val EDIT = 1
     const val RENAME = 2
     const val DELETE = 3
+    const val EXPORT = 4
 
     fun show(context: Context, title: String, callback: Callback<Int>) {
         AlertDialog.Builder(context)

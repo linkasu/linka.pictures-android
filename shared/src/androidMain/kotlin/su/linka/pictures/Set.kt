@@ -2,16 +2,34 @@ package su.linka.pictures
 
 import android.graphics.Bitmap
 import org.json.JSONException
-import java.io.BufferedWriter
+import java.io.ByteArrayInputStream
 import java.io.File
-import java.io.FileWriter
 import java.io.IOException
 import java.util.UUID
 
 class Set(
     private val manifest: SetManifest,
-    private val folder: File
-) {
+    private val folder: File,
+    private val ownsWorkspace: Boolean = false
+) : AutoCloseable {
+    private var closed = false
+
+    /** Durable drafts and caller-provided folders are released only by their explicit owner. */
+    override fun close() {
+        if (!ownsWorkspace || closed) return
+        closed = true
+        folder.deleteRecursively()
+    }
+
+    fun referencedPaths(): kotlin.collections.Set<String> {
+        val root = folder.canonicalFile
+        return (listOf("config.json") + manifest.cards.flatMap { listOfNotNull(it.imagePath, it.audioPath) })
+            .map { path ->
+                val file = File(root, path).canonicalFile
+                require(file.path.startsWith(root.path + File.separator)) { "Media outside workspace" }
+                file.relativeTo(root).invariantSeparatorsPath
+            }.toSet()
+    }
 
     fun getManifest(): SetManifest = manifest
 
@@ -42,6 +60,7 @@ class Set(
         return Utils.copy(source, target)
     }
 
+    @Throws(IOException::class)
     fun saveBitmap(bitmap: Bitmap): File {
         folder.mkdirs()
         return Utils.saveBitmapToFile(
@@ -54,6 +73,8 @@ class Set(
     }
 
     fun addCard(pos: Int, card: Card) {
+        require(pos in 0 until su.linka.pictures.shared.BoardLimits.MAX_CARDS) { "Card position exceeds limit" }
+        su.linka.pictures.shared.BoardLimits.validateCardCount(manifest.cards.size)
         val cards = manifest.cards
         if (pos >= cards.size) {
             while (cards.size < pos) {
@@ -65,21 +86,16 @@ class Set(
         }
     }
 
+    @Throws(IOException::class)
     fun writeConfig() {
         val json = try {
             manifest.toJSONObject()
         } catch (error: JSONException) {
-            error.printStackTrace()
-            return
+            throw IOException("Unable to serialize set config", error)
         }
         val configFile = manifest.configFile
         configFile.parentFile?.mkdirs()
-        try {
-            BufferedWriter(FileWriter(configFile)).use { writer ->
-                writer.write(json.toString())
-            }
-        } catch (_: Exception) {
-        }
+        Utils.copy(ByteArrayInputStream(json.toString().toByteArray(Charsets.UTF_8)), configFile)
     }
 
     fun getFolder(): File = folder

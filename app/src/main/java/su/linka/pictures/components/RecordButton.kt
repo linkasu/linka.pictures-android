@@ -8,6 +8,7 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
 import com.permissionx.guolindev.PermissionX
 import com.permissionx.guolindev.callback.RequestCallback
 import su.linka.pictures.Callback
@@ -26,6 +27,7 @@ class RecordButton @JvmOverloads constructor(
     private var isRecording = false
     private var recordFile: File? = null
     private var onRecordListener: Callback<File>? = null
+    private var permissionRequest = 0
 
     init {
         setOnClickListener(this)
@@ -45,16 +47,13 @@ class RecordButton @JvmOverloads constructor(
     }
 
     fun onDestroy() {
-        if (isRecording) {
-            try {
-                mediaRecorder?.stop()
-            } catch (_: Exception) {
-            }
-        }
-        mediaRecorder?.release()
-        mediaRecorder = null
-        isRecording = false
-        refreshView()
+        permissionRequest++
+        stopRecordingInternal()?.delete()
+    }
+
+    override fun onDetachedFromWindow() {
+        onDestroy()
+        super.onDetachedFromWindow()
     }
 
     private fun startRecordingWithPermission() {
@@ -63,6 +62,7 @@ class RecordButton @JvmOverloads constructor(
             return
         }
 
+        val request = ++permissionRequest
         PermissionX.init(activity)
             .permissions(Manifest.permission.RECORD_AUDIO)
             .request(object : RequestCallback {
@@ -71,6 +71,10 @@ class RecordButton @JvmOverloads constructor(
                     grantedList: MutableList<String>,
                     deniedList: MutableList<String>
                 ) {
+                    if (request != permissionRequest || !isAttachedToWindow ||
+                        activity.isFinishing || activity.isDestroyed ||
+                        !activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+                    ) return
                     if (allGranted) {
                         startRecording()
                     } else {
@@ -81,16 +85,18 @@ class RecordButton @JvmOverloads constructor(
     }
 
     private fun startRecording() {
-        stopRecordingInternal()
+        onDestroy()
         val targetFile = try {
-            File.createTempFile(UUID.randomUUID().toString(), ".3gpp")
+            File.createTempFile(UUID.randomUUID().toString(), ".3gpp", context.cacheDir)
         } catch (error: IOException) {
             onRecordListener?.onFail(error)
             return
         }
         recordFile = targetFile
-        mediaRecorder = MediaRecorder().apply {
-            try {
+        try {
+            val recorder = MediaRecorder()
+            mediaRecorder = recorder
+            recorder.apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
                 setOutputFile(targetFile.absolutePath)
@@ -99,42 +105,45 @@ class RecordButton @JvmOverloads constructor(
                 start()
                 isRecording = true
                 refreshView()
-            } catch (error: Exception) {
-                release()
-                mediaRecorder = null
-                recordFile?.delete()
-                recordFile = null
-                onRecordListener?.onFail(error)
             }
+        } catch (error: Exception) {
+            onDestroy()
+            onRecordListener?.onFail(error)
         }
     }
 
     private fun stopRecording() {
-        val file = recordFile
-        stopRecordingInternal()
+        val file = stopRecordingInternal()
         if (file != null) {
-            onRecordListener?.onDone(file)
+            val listener = onRecordListener
+            if (listener != null) listener.onDone(file) else file.delete()
         } else {
             onRecordListener?.onFail(Exception("Recording failed"))
         }
     }
 
-    private fun stopRecordingInternal() {
+    private fun stopRecordingInternal(): File? {
+        val recorder = mediaRecorder
+        val file = recordFile
+        var succeeded = isRecording && recorder != null
         try {
-            mediaRecorder?.apply {
-                try {
-                    stop()
-                } catch (error: RuntimeException) {
-                    recordFile?.delete()
-                }
-                release()
-            }
+            if (isRecording) recorder?.stop()
         } catch (_: Exception) {
+            succeeded = false
         } finally {
+            try {
+                recorder?.release()
+            } catch (_: Exception) {
+                succeeded = false
+            }
             mediaRecorder = null
+            recordFile = null
             isRecording = false
             refreshView()
         }
+        if (succeeded && file != null && file.isFile && file.length() > 0) return file
+        file?.delete()
+        return null
     }
 
     private fun refreshView() {

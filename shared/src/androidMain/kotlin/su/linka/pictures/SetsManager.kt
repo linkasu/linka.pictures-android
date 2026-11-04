@@ -2,17 +2,12 @@ package su.linka.pictures
 
 import android.content.Context
 import android.content.res.AssetManager
-import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.BufferedReader
 import java.io.File
-import java.io.FileOutputStream
-import java.io.FileReader
 import java.io.IOException
 import java.io.InputStream
-import java.io.OutputStream
 import java.util.ArrayList
 import java.util.UUID
 
@@ -21,19 +16,19 @@ class SetsManager(private val context: Context) {
     private val cookie = Cookie(context)
 
     @Throws(IOException::class)
-    fun loadDefaultSets() {
+    fun loadDefaultSets() = synchronized(AtomicSetFile.lock) {
         if (cookie.get(Cookie.ASSETS_LOADER, false)) {
-            return
+            return@synchronized
         }
         val sets = getSetsDirectory()
         val assetManager = getAssetsManager()
-        val list = assetManager.list("sets") ?: emptyArray()
+        val list = assetManager.list("sets") ?: throw IOException("Cannot list bundled sets")
         for (name in list) {
+            val destination = AtomicSetFile.resolve(sets, name)
+            // A retry after an interrupted first launch must not replace an already edited set.
+            if (destination.exists()) continue
             assetManager.open("sets/$name").use { input ->
-                val outFile = File(sets, name)
-                FileOutputStream(outFile).use { output ->
-                    copyStream(input, output)
-                }
+                importSet(input, name)
             }
         }
         cookie.set(Cookie.ASSETS_LOADER, true)
@@ -63,7 +58,7 @@ class SetsManager(private val context: Context) {
         val manifests = ArrayList<SetManifest>(files.size)
         for (file in files) {
             try {
-                if (file.isFile) {
+                if (file.isFile && file.name.endsWith(".linka")) {
                     manifests.add(getSetManifest(file))
                 }
             } catch (error: IOException) {
@@ -97,24 +92,17 @@ class SetsManager(private val context: Context) {
     private fun createWorkspace(): File {
         val root = getWorkspaceRoot()
         val folder = File(root, UUID.randomUUID().toString())
-        if (folder.exists()) {
-            folder.deleteRecursively()
-        }
-        folder.mkdirs()
+        if (!folder.mkdirs()) throw IOException("Cannot create workspace")
         return folder
     }
 
     @Throws(IOException::class)
     private fun readStringFile(file: File): String {
-        val text = StringBuilder()
-        BufferedReader(FileReader(file)).use { reader ->
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                text.append(line)
-                text.append('\n')
-            }
+        val output = java.io.ByteArrayOutputStream()
+        file.inputStream().use { input ->
+            BoundedStreams.copy(input, output, ArchiveLimits().maxConfigBytes)
         }
-        return text.toString()
+        return output.toString("UTF-8")
     }
 
     @Throws(ZipException::class)
@@ -122,39 +110,136 @@ class SetsManager(private val context: Context) {
 
     @Throws(ZipException::class)
     private fun getSet(setFile: File): Set {
-        val outputDir = createWorkspace()
-        ZipFile(setFile).extractAll(outputDir.absolutePath)
-        val manifest = try {
-            parseManifest(setFile, File(outputDir, CONFIG_FILE_NAME))
-        } catch (error: JSONException) {
-            throw ZipException(error)
+        val outputDir = try {
+            createWorkspace()
         } catch (error: IOException) {
             throw ZipException(error)
         }
-        return Set(manifest, outputDir)
+        try {
+            ArchiveReader().extract(setFile, outputDir)
+            val manifest = parseManifest(setFile, File(outputDir, CONFIG_FILE_NAME))
+            validateMedia(manifest, outputDir)
+            return Set(manifest, outputDir, ownsWorkspace = true)
+        } catch (error: Exception) {
+            outputDir.deleteRecursively()
+            throw ZipException(error)
+        }
     }
 
     fun getSetFile(name: String): File = File(getSetsDirectory(), name)
 
     fun createSet(): Set {
         val folder = createWorkspace()
-        folder.mkdirs()
-        val file = File(folder, CONFIG_FILE_NAME)
-        val manifest = SetManifest(file)
-        return Set(manifest, folder)
+        try {
+            val file = File(folder, CONFIG_FILE_NAME)
+            val manifest = SetManifest(file)
+            return Set(manifest, folder, ownsWorkspace = true)
+        } catch (error: Exception) {
+            folder.deleteRecursively()
+            throw error
+        }
     }
 
     fun save(set: Set, setName: String, callback: Callback<Any?>) {
-        set.writeConfig()
+        save(set, setName, false, callback)
+    }
+
+    fun save(set: Set, setName: String, replaceExisting: Boolean, callback: Callback<Any?>) {
         try {
-            val destination = File(getSetsDirectory(), setName)
-            Utils.zipFolder(set.getFolder().absolutePath, destination.absolutePath)
-            set.getManifest().archiveFile = destination
-            clearPreview(set.getManifest().cacheKey)
-            callback.onDone(null)
-        } catch (error: IOException) {
+            synchronized(AtomicSetFile.lock) {
+                val destination = AtomicSetFile.resolve(getSetsDirectory(), setName)
+                val manifest = set.getManifest()
+                val owned = manifest.archiveFile?.canonicalFile == destination
+                AtomicSetFile.write(destination, replaceExisting || owned) { staged ->
+                    set.writeConfig()
+                    Utils.zipFolder(set.getFolder().absolutePath, staged.absolutePath, set.referencedPaths())
+                    validateArchive(staged)
+                }
+                val previousKey = manifest.cacheKey
+                manifest.archiveFile = destination
+                clearPreview(previousKey)
+                clearPreview(manifest.cacheKey)
+            }
+        } catch (error: Exception) {
+            if (error !is IOException && error !is IllegalArgumentException) throw error
             error.printStackTrace()
-            callback.onFail(error)
+            callback.onFail(if (error is IOException) error else IOException("Invalid set config", error))
+            return
+        }
+        callback.onDone(null)
+    }
+
+    @Throws(IOException::class)
+    fun importSet(input: InputStream, name: String, replaceExisting: Boolean = false): File =
+        synchronized(AtomicSetFile.lock) {
+            val destination = AtomicSetFile.resolve(getSetsDirectory(), name)
+            AtomicSetFile.write(destination, replaceExisting) { staged ->
+                staged.outputStream().use { output ->
+                    BoundedStreams.copy(input, output, ArchiveLimits().maxInputBytes)
+                }
+                validateArchive(staged)
+            }
+            clearPreview(destination.nameWithoutExtension)
+            destination
+        }
+
+    private fun validateArchive(archive: File) {
+        val workspace = createWorkspace()
+        try {
+            ArchiveReader().extract(archive, workspace)
+            validateMedia(parseManifest(archive, File(workspace, CONFIG_FILE_NAME)), workspace)
+        } catch (error: JSONException) {
+            throw IOException(error)
+        } finally {
+            workspace.deleteRecursively()
+        }
+    }
+
+    private fun validateMedia(manifest: SetManifest, workspace: File) {
+        for (card in manifest.cards) {
+            for (path in listOfNotNull(card.imagePath, card.audioPath)) {
+                if (path == CONFIG_FILE_NAME || !File(workspace, path).isFile) {
+                    throw IOException("Missing or invalid card media: $path")
+                }
+            }
+        }
+    }
+
+    /** Builds a complete snapshot without writing to the source workspace or library archive. */
+    @Throws(IOException::class)
+    fun prepareExport(set: Set): File {
+        val root = File(context.cacheDir, "exports")
+        if (!root.isDirectory && !root.mkdirs()) throw IOException("Cannot create export directory")
+        val token = UUID.randomUUID().toString()
+        val staging = File(root, "$token.work")
+        val archive = File(root, "$token.linka")
+        try {
+            if (!staging.mkdir()) throw IOException("Cannot create export workspace")
+            if (set.getManifest().cards.any { it.imagePath == CONFIG_FILE_NAME || it.audioPath == CONFIG_FILE_NAME }) {
+                throw IOException("Config cannot be exported as card media")
+            }
+            File(staging, CONFIG_FILE_NAME).writeText(set.getManifest().toJSONObject().toString())
+            val source = set.getFolder().canonicalFile
+            val paths = set.referencedPaths()
+            for (path in paths - CONFIG_FILE_NAME) {
+                val media = File(source, path).canonicalFile
+                val target = File(staging, path).canonicalFile
+                if (!media.path.startsWith(source.path + File.separator) ||
+                    !target.path.startsWith(staging.canonicalPath + File.separator) ||
+                    target == File(staging, CONFIG_FILE_NAME).canonicalFile || !media.isFile) {
+                    throw IOException("Invalid export media path")
+                }
+                target.parentFile?.mkdirs()
+                media.copyTo(target)
+            }
+            Utils.zipFolder(staging.absolutePath, archive.absolutePath, paths)
+            validateArchive(archive)
+            return archive
+        } catch (error: Exception) {
+            archive.delete()
+            throw if (error is IOException) error else IOException("Cannot prepare export snapshot", error)
+        } finally {
+            staging.deleteRecursively()
         }
     }
 
@@ -167,14 +252,17 @@ class SetsManager(private val context: Context) {
         clearPreview(manifest.cacheKey)
     }
 
-    fun rename(manifest: SetManifest, result: String) {
-        val archive = manifest.archiveFile ?: return
-        val cacheKey = manifest.cacheKey
-        val parent = archive.parentFile ?: return
-        val target = File(parent, "$result.linka")
-        if (archive.renameTo(target)) {
+    fun rename(manifest: SetManifest, result: String, replaceExisting: Boolean = false) {
+        synchronized(AtomicSetFile.lock) {
+            val archive = manifest.archiveFile ?: return
+            val cacheKey = manifest.cacheKey
+            val target = AtomicSetFile.resolve(getSetsDirectory(), "$result.linka")
+            if (archive.canonicalFile == target) return
+            if (target.exists() && !replaceExisting) throw SetAlreadyExistsException(target.name)
+            if (!archive.renameTo(target)) throw IOException("Cannot rename set archive")
             clearPreview(cacheKey)
             manifest.archiveFile = target
+            clearPreview(manifest.cacheKey)
         }
     }
 
@@ -182,11 +270,19 @@ class SetsManager(private val context: Context) {
     fun getSetImage(manifest: SetManifest, path: String?): File? {
         if (path == null) return null
         val archive = manifest.archiveFile ?: return null
+        try {
+            su.linka.pictures.shared.BoardLimits.validateMediaPath(path)
+        } catch (error: IllegalArgumentException) {
+            throw ZipException(error)
+        }
         val previewDir = ensurePreviewDir(archive, manifest.cacheKey)
         val image = File(previewDir, path)
         if (!image.exists()) {
-            image.parentFile?.mkdirs()
-            ZipFile(archive).extractFile(path, previewDir.absolutePath)
+            try {
+                ArchiveReader().extract(archive, previewDir, path)
+            } catch (error: IOException) {
+                throw ZipException(error)
+            }
         }
         return image
     }
@@ -195,10 +291,11 @@ class SetsManager(private val context: Context) {
     private fun extractManifestConfig(file: File): File {
         val previewDir = ensurePreviewDir(file)
         val config = File(previewDir, CONFIG_FILE_NAME)
-        if (config.exists()) {
-            config.delete()
+        try {
+            ArchiveReader().extract(file, previewDir, CONFIG_FILE_NAME)
+        } catch (error: IOException) {
+            throw ZipException(error)
         }
-        ZipFile(file).extractFile(CONFIG_FILE_NAME, previewDir.absolutePath)
         return config
     }
 
@@ -241,15 +338,6 @@ class SetsManager(private val context: Context) {
             root.mkdirs()
         }
         return root
-    }
-
-    private fun copyStream(input: InputStream, output: OutputStream) {
-        val buffer = ByteArray(1024)
-        while (true) {
-            val read = input.read(buffer)
-            if (read == -1) break
-            output.write(buffer, 0, read)
-        }
     }
 
     companion object {

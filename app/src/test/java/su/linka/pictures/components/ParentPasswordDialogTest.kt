@@ -93,4 +93,40 @@ class ParentPasswordDialogTest {
 
         assertTrue(failed)
     }
+
+    @Test
+    fun cancellationNeverRunsProtectedAction() {
+        preferences.edit().putBoolean("parent", true).putString("parent_password", "secret").commit()
+        var denied = false
+        ParentPasswordDialog.run(context, onDenied = { denied = true }) { error("Must not run") }
+        requireNotNull(ShadowAlertDialog.getLatestAlertDialog()).cancel()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+        assertTrue(denied)
+    }
+
+    @Test
+    fun passwordWithSurroundingSpacesIsComparedExactly() {
+        preferences.edit().putBoolean("parent", true).putString("parent_password", " secret ").commit()
+        var done = false
+        ParentPasswordDialog.run(context) { done = true }
+        val dialog = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
+        dialog.findViewById<EditText>(R.id.input_prompt)!!.setText(" secret ")
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+        assertTrue(done)
+    }
+
+    @Test
+    fun legacyEmptyPasswordDeniesProtectedActionButAllowsSettingsRecovery() {
+        preferences.edit().putBoolean("parent", true).putString("parent_password", "").commit()
+        var denied = false
+        ParentPasswordDialog.run(context, onDenied = { denied = true }) { error("Must not run") }
+        assertTrue(denied)
+        var recovered = false
+        ParentPasswordDialog.showDialog(context, object : Callback<Any?>() {
+            override fun onDone(result: Any?) { recovered = true }
+            override fun onFail(error: Exception?) = error("Recovery must be available")
+        }, allowRecovery = true)
+        assertTrue(recovered)
+    }
 }

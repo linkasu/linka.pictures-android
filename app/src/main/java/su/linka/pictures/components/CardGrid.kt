@@ -7,6 +7,7 @@ import android.widget.LinearLayout
 import su.linka.pictures.Card
 import su.linka.pictures.Set
 import su.linka.pictures.SetManifest
+import su.linka.pictures.shared.GridDimensions
 import kotlin.math.ceil
 import kotlin.math.max
 
@@ -31,11 +32,12 @@ open class CardGrid @JvmOverloads constructor(
     }
 
     fun setGridSize(rows: Int, columns: Int) {
+        val dimensions = GridDimensions(rows, columns)
         removeAllViews()
         this.rows = rows
         this.columns = columns
 
-        val pageSize = getPageSize()
+        val pageSize = dimensions.cellCount
         buttons = MutableList(pageSize) { index ->
             GridButton(context).apply {
                 layoutParams = cellLayoutParams()
@@ -76,13 +78,15 @@ open class CardGrid @JvmOverloads constructor(
     }
 
     open fun setSet(set: Set, output: Boolean) {
-        this.activeSet = set
         val manifest = set.getManifest()
-        this.manifest = manifest
         val desiredRows = if (output) 1 else manifest.rows
+        GridDimensions(manifest.rows, manifest.columns)
+        su.linka.pictures.shared.BoardLimits.validateCardCount(manifest.cards.size)
         if (rows != desiredRows || columns != manifest.columns || buttons.isEmpty()) {
             setGridSize(desiredRows, manifest.columns)
         }
+        this.activeSet = set
+        this.manifest = manifest
         pageIndex = 0
         render()
     }

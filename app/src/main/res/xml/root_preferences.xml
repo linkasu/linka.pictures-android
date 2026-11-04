@@ -7,7 +7,6 @@
             app:key="parent"
             app:title="@string/enable_parent_control_title" />
         <EditTextPreference
-            app:dependency="parent"
             app:key="parent_password"
             app:title="@string/parent_password"
 

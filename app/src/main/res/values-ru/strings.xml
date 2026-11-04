@@ -1,8 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="speech_not_ready">Речевой движок ещё запускается. Нажмите «Произнести» немного позже.</string>
+    <string name="speech_unavailable">Речь недоступна. Проверьте настройки синтеза речи на устройстве.</string>
+    <string name="card_limit_reached">В наборе может быть не более 10000 карточек</string>
+    <string name="invalid_grid_dimensions">Число строк и столбцов должно быть от 1 до 32</string>
+    <string name="confirm_replace_set">Набор с таким именем уже существует. Заменить его?</string>
+    <string name="export_set">Экспортировать файл .linka</string>
+    <string name="set_export_success">Набор экспортирован</string>
+    <string name="set_export_error">Не удалось экспортировать набор. В месте назначения мог остаться неполный файл.</string>
     <string name="app_name">LINKa покажи</string>
     <string name="title_activity_settings">Настройки</string>
     <string name="parent_control">Родительский контроль</string>
+    <string name="parent_password_required">Задайте непустой пароль перед включением родительского контроля. Пока контроль включён, очистить пароль нельзя.</string>
+    <string name="parent_password_recovery">Задайте родительский пароль в настройках для доступа к защищённым действиям. Ваши наборы сохранятся.</string>
+    <string name="parent_password_invalid">Неверный родительский пароль</string>
     <string name="enable_parent_control_title">Включить родительский контроль (блокировать важные действий)</string>
     <string name="parent_password">Пароль</string>
     <string name="ok">Готово</string>

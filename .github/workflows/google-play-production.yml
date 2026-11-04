@@ -6,60 +6,109 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Git tag or commit to publish
+        description: Commit or tag reachable from origin/main
         required: true
-        default: v1.4
+        type: string
+      version_code:
+        description: Unique Play version code (1..2100000000)
+        required: true
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: google-play-production-${{ github.event.release.tag_name || inputs.ref }}
+  group: google-play-production
   cancel-in-progress: false
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      version_code: ${{ steps.resolve.outputs.version_code }}
     steps:
-      - name: Checkout release
-        uses: actions/checkout@v4
+      - name: Checkout trusted main history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.ref }}
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: "17"
-          distribution: temurin
-          cache: gradle
-
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Decode signing keystore
+          ref: main
+          fetch-depth: 0
+      - name: Resolve and authorize immutable release source
+        id: resolve
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          RELEASE_REF: ${{ github.event.release.tag_name || inputs.ref }}
+          VERSION_CODE: ${{ inputs.version_code || vars.ANDROID_VERSION_CODE }}
         run: |
           set -euo pipefail
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
-          chmod 600 "$RUNNER_TEMP/release.keystore"
+          [[ "$VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]] || exit 1
+          test "$VERSION_CODE" -le 2100000000
+          test -n "$RELEASE_REF"
+          if ! [[ "$RELEASE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            RELEASE_REF="refs/tags/${RELEASE_REF#refs/tags/}"
+            git check-ref-format "$RELEASE_REF"
+          fi
+          git fetch --no-tags origin "$RELEASE_REF"
+          SHA=$(git rev-parse 'FETCH_HEAD^{commit}')
+          git merge-base --is-ancestor "$SHA" origin/main
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
-      - name: Verify and build signed AAB
+  verify:
+    needs: resolve
+    uses: ./.github/workflows/android-verify.yml
+    with:
+      sha: ${{ needs.resolve.outputs.sha }}
+      release: true
+      version_code: ${{ needs.resolve.outputs.version_code }}
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+  publish:
+    needs: [resolve, verify]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check verified SHA and artifact digest recorded by GitHub
         env:
-          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew lint test verifyReleasePrivacy bundleRelease
-
-      - name: Publish to Google Play production
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXPECTED_SHA: ${{ needs.resolve.outputs.sha }}
+          VERIFIED_SHA: ${{ needs.verify.outputs.sha }}
+          ARTIFACT_ID: ${{ needs.verify.outputs.artifact_id }}
+          ARTIFACT_DIGEST: ${{ needs.verify.outputs.artifact_digest }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          test "$VERIFIED_SHA" = "$EXPECTED_SHA"
+          test -n "$ARTIFACT_ID"
+          test -n "$ARTIFACT_DIGEST"
+          test "$(gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID" --jq '.workflow_run.id')" = "$RUN_ID"
+          test "$(gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID" --jq '.digest')" = "sha256:$ARTIFACT_DIGEST"
+          echo "Verified commit: $VERIFIED_SHA; artifact: $ARTIFACT_ID; SHA-256: $ARTIFACT_DIGEST" >> "$GITHUB_STEP_SUMMARY"
+      - name: Download only the gated artifact from this run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.verify.outputs.artifact_id }}
+          path: verified-release
+          merge-multiple: true
+      - name: Check exact bundle identity before publication
+        env:
+          EXPECTED_SHA: ${{ needs.resolve.outputs.sha }}
+          VERSION_CODE: ${{ needs.resolve.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          cd verified-release
+          test "$(cat commit.txt)" = "$EXPECTED_SHA"
+          test "$(cat version-code.txt)" = "$VERSION_CODE"
+          sha256sum --check SHA256SUMS
+      - name: Publish verified AAB to Google Play production
         uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: su.linka.pictures
-          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          releaseFiles: verified-release/app-release.aab
           track: production
           status: completed

@@ -1,6 +1,5 @@
 package su.linka.pictures
 
-import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
@@ -16,24 +15,21 @@ class SetManifest(
     var archiveFile: File? = null
 ) {
 
+    init {
+        BoardCodec.validate(toDocument())
+    }
+
     constructor(configFile: File, jsonObject: JSONObject, archiveFile: File? = null) : this(
+        configFile, decodeDocument(jsonObject), archiveFile
+    )
+
+    constructor(configFile: File, document: BoardDocument, archiveFile: File? = null) : this(
         configFile = configFile,
-        version = jsonObject.optString("version", "1.0"),
-        columns = jsonObject.optInt("columns", 4),
-        rows = jsonObject.optInt("rows", 3),
-        withoutSpace = jsonObject.optBoolean("withoutSpace", false),
-        cards = ArrayList<Card>(jsonObject.optJSONArray("cards")?.length() ?: 0).apply inner@{
-            val array = jsonObject.optJSONArray("cards") ?: return@inner
-            for (index in 0 until array.length()) {
-                val obj = array.optJSONObject(index) ?: continue
-                val id = obj.optInt("id")
-                val cardType = obj.optInt("cardType")
-                val title = if (obj.isNull("title")) null else obj.optString("title")
-                val audioPath = if (obj.isNull("audioPath")) null else obj.optString("audioPath")
-                val imagePath = if (obj.isNull("imagePath")) null else obj.optString("imagePath")
-                add(Card(id, imagePath, title, audioPath, cardType))
-            }
-        },
+        version = document.version,
+        columns = document.columns,
+        rows = document.rows,
+        withoutSpace = document.withoutSpace,
+        cards = ArrayList(document.cards.map { it.clone() }),
         archiveFile = archiveFile
     )
 
@@ -59,17 +55,18 @@ class SetManifest(
 
     override fun toString(): String = name
 
+    fun toDocument(): BoardDocument = BoardDocument(
+        version, columns, rows, withoutSpace, cards.map { it.clone() }
+    )
+
     @Throws(JSONException::class)
-    fun toJSONObject(): JSONObject {
-        val array = JSONArray()
-        cards.forEachIndexed { index, card ->
-            array.put(index, card.toJSONObject())
+    fun toJSONObject(): JSONObject = JSONObject(BoardCodec.encode(toDocument()))
+
+    companion object {
+        private fun decodeDocument(jsonObject: JSONObject): BoardDocument = try {
+            BoardCodec.decode(jsonObject.toString()).also { ManifestValidation.validate(jsonObject) }
+        } catch (error: IllegalArgumentException) {
+            throw JSONException(error.message ?: "Invalid board document")
         }
-        return JSONObject()
-            .put("version", version)
-            .put("columns", columns)
-            .put("rows", rows)
-            .put("withoutSpace", withoutSpace)
-            .put("cards", array)
     }
 }

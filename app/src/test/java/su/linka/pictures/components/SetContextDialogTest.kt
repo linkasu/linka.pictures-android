@@ -11,6 +11,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlertDialog
 import su.linka.pictures.Callback
+import su.linka.pictures.R
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
@@ -21,6 +22,16 @@ class SetContextDialogTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+    }
+
+    @Test
+    fun exportIsAnAccessibleContextActionWithoutChangingExistingOrdinals() {
+        val actions = context.resources.getStringArray(R.array.set_context_actions)
+        assertEquals(context.getString(R.string.open), actions[SetContextDialog.OPEN])
+        assertEquals(context.getString(R.string.edit), actions[SetContextDialog.EDIT])
+        assertEquals(context.getString(R.string.rename), actions[SetContextDialog.RENAME])
+        assertEquals(context.getString(R.string.delete), actions[SetContextDialog.DELETE])
+        assertEquals(context.getString(R.string.export_set), actions[SetContextDialog.EXPORT])
     }
 
     @Test
