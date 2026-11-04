@@ -301,6 +301,39 @@ class EditorStateRestoreTest {
         }
     }
 
+    @Test fun destroyedEditorReclaimsANewDraftWhoseTokenWasNeverPublished() {
+        org.robolectric.shadows.ShadowChoreographer.setPaused(true)
+        val source = SetsManager(context).createSet()
+        val root = File(context.noBackupFilesDir, "editor-drafts").apply { mkdirs() }
+        val before = root.list()!!.toSet()
+        val owner = Robolectric.buildActivity(SetEditActivity::class.java).setup()
+        val activity = owner.get()
+        awaitHostWork(activity)
+        org.robolectric.shadows.ShadowDialog.getLatestDialog()?.dismiss()
+        setField(activity, "setName", "unpublished.linka")
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val scope = checkNotNull(activity.lifecycleScope.coroutineContext[Job])
+        val load: () -> Set = {
+            entered.countDown()
+            check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            source
+        }
+        try {
+            SetEditActivity::class.java.getDeclaredMethod("openDraft", Function0::class.java)
+                .apply { isAccessible = true }.invoke(activity, load)
+            assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            owner.pause().stop().destroy()
+            release.countDown()
+            awaitWork { scope.children.none() }
+            assertEquals(before, root.list()!!.toSet())
+        } finally {
+            release.countDown()
+            if (!activity.isDestroyed) owner.pause().stop().destroy()
+            source.close()
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun <T> field(owner: Any, name: String): T {
         awaitHostWork(owner)

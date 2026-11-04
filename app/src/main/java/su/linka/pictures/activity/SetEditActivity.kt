@@ -201,14 +201,21 @@ class SetEditActivity : AppCompatActivity() {
         work.run({
             val loaded = source()
             try {
-                draftStore.create(loaded).also { draftStore.capture(it.token, it.set, state) }
+                val draft = draftStore.create(loaded)
+                try {
+                    draftStore.capture(draft.token, draft.set, state)
+                    draft
+                } catch (error: Exception) {
+                    draftStore.discard(draft.token)
+                    throw error
+                }
             } finally { loaded.close() }
         }, { draft ->
             draftToken = draft.token
             set = draft.set
             refreshDocument()
             deliverPendingMediaResult()
-        }, { openFailed() }, abandoned = { it.set.close() })
+        }, { openFailed() }, abandoned = { draftStore.discard(it.token) })
     }
 
     private fun openFailed() {

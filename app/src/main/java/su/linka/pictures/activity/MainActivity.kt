@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var setsManager: SetsManager
     private val work = ActivityWork(this)
     private var previews by mutableStateOf<Map<String, java.io.File?>>(emptyMap())
+    private var previewRevision by mutableLongStateOf(0)
     private var privacyDialog: AlertDialog? = null
     private var pendingAnalyticsChoice = false
     private val exportController = SetExportController(this,
@@ -62,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         setContent {
             PicturesTheme {
                 LibraryScreen(sets, work.busy || exportController.isPending, null, ::onAction, image = { summary, modifier ->
-                    SetImage(previews[summary.name], modifier)
+                    SetImage(previews[summary.name], modifier, previewRevision)
                 }, optionsFor = optionsFor)
             }
         }
@@ -176,6 +177,7 @@ class MainActivity : AppCompatActivity() {
         }, { (loaded, images, defaultsError) ->
             manifests = loaded
             previews = images
+            previewRevision++
             sets = loaded.map { SetSummary(it.name, it.getDefaultBitmap()) }
             if (defaultsError != null) Toast.makeText(this, R.string.copy_assets_error, Toast.LENGTH_LONG).show()
         }, { error ->

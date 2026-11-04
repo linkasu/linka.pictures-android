@@ -27,7 +27,7 @@ import java.io.File
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class SetImageTest {
-    @Test fun changedFileAtSamePathGetsNewBitmapAndDisposalClearsRequest() {
+    @Test fun revisedFileAtSamePathAndTimestampGetsNewBitmapAndDisposalClearsRequest() {
         val owner = Robolectric.buildActivity(AppCompatActivity::class.java).setup()
         val clock = ComposeHostClock()
         val activity = owner.get()
@@ -36,6 +36,7 @@ class SetImageTest {
         fun write(color: Int) {
             val bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply { eraseColor(color) }
             file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+            java.io.RandomAccessFile(file, "rw").use { it.setLength(4096) }
             bitmap.recycle()
         }
         fun image(view: View): ImageView? = when (view) {
@@ -45,13 +46,13 @@ class SetImageTest {
         }
         try {
             write(Color.RED)
-            activity.setContent { SetImage(file, Modifier.testTag(if (refresh.value) "changed" else "initial")) }
+            activity.setContent { SetImage(file, Modifier.testTag("preview"), if (refresh.value) 1 else 0) }
             composeNodes(activity)
             val target = checkNotNull(image(activity.findViewById(android.R.id.content)))
             awaitWork { (target.drawable as? BitmapDrawable)?.bitmap?.getPixel(0, 0) == Color.RED }
             val modified = file.lastModified()
             write(Color.BLUE)
-            check(file.setLastModified(modified + 2000))
+            check(file.setLastModified(modified))
             refresh.value = true
             composeNodes(activity)
             awaitWork {
