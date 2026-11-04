@@ -67,3 +67,16 @@ COORD принял следующий конкретный кандидат дл
 COORD отдельно проверил actual `otool -l` и `nm -m` extracted object: `__text` size0, `__data` size0, единственная непустая секция `__TEXT,__const` size0x6014e0; все reloc counts0, undefined symbols0, внешний символ только `_icudt_skiko74_dat`. Таким образом, поле minos17.2 здесь относится к data-only object и само по себе не доказывает наличие iOS17 кода/API. Метаданные/библиотеки не переписаны, предупреждения не подавляются.
 
 Диагностический assert «максимум minos всех членов static archive <=14» оставлен в истории как FAILED; он строже нормативного контракта deployment/runtime и не подменяет проверку исполняемого приложения. COORD разрешил продолжить только изолированный probe с проверяемым data-only assert для обоих точных объектов, инспекцией **финального executable** minimum/API и реальным UI/SQLite smoke. Любой другой higher-min executable object — blocker. Runtime14, весь G1 и интеграция по-прежнему не приняты.
+
+## Compile blockers устранены, minimum-runtime gate остаётся открытым
+
+Следующие согласованные probe commits: `595061a` (common UI/SQLite/JVM test и настоящий Swift executable), `c7eb3a2` (AGP8.6.1 и shared compileSdk35), `dedb578` (native iOS runtime harness/evidence). Main product build пока не изменён.
+
+AGP8.5.2 оказался ниже actual AAR metadata minimum8.6.0 у Android Compose1.9.4. Официальные [AGP8.6 release notes](https://developer.android.com/build/releases/past-releases/agp-8-6-0-release-notes) подтверждают Gradle8.7/JDK17/compileSdk35; принято обновление только до8.6.1 и compileSdk35 без изменения minSdk21.
+
+- Android APK SHA256 `19ed34181dafd0127a71fc9c97d8ddf7d5b0d6c586091a0811cfac51d48274c4`; packaged manifest `.platformprobe`, min21; ELF32 ARM и ELF64 AARCH64 проверены у обеих native libraries/SQLite. APK собран, не подменён AAR inspection.
+- iOS framework и финальный Swift MH_EXECUTE minos14 собраны, отдельные assertions проходят. Все unknown higher-min objects отвергаются; исключение ограничено двумя точными ICU data-only SHA, без переписывания metadata.
+- Общий SQLite JVM test: 1 passed, 0 skipped. [iOS26.5 startup/native SQLite runtime](ios-platform-runtime.md) подтверждены отдельно; это не iOS14 evidence.
+- Android35 runtime проверяется отдельно на выделенном tablet. API21/armv7 runtime, iOS14 и physical/AAC остаются недоступными. Проверены лишь конкретные newer weak imports, не полная динамическая API availability.
+
+**G1 OPEN:** отсутствие minimum-runtime доказательств не разрешает P02 по принятому порядку. Это конечное описание текущей границы проверки, не утверждение, что приложение уже поддерживает обе минимальные ОС.

@@ -28,5 +28,6 @@
 - [Фактический standard-контракт Electron, звук и ZIP fixtures](electron-standard-contract-evidence.md).
 - [UI-follow-up P00](p00-ui-audit.md).
 - [Журнал исполнения всего плана и открытые gates](../development/implementation-status.md).
+- [Изолированный iOS startup и native SQLite smoke на iOS26.5](ios-platform-runtime.md).
 
 Это частичные результаты P00/preflight, не завершённый аудит и не доказательство готовности целевого приложения. Исходные документы/скриншоты сохранены в Git до запуска независимых worktrees; `docs/c4/` пока не приводилась к новому контракту P02.
