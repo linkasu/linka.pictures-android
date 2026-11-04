@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="card_limit_reached">В наборе может быть не более 10000 карточек</string>
+    <string name="invalid_grid_dimensions">Число строк и столбцов должно быть от 1 до 32</string>
     <string name="app_name">LINKa покажи</string>
     <string name="title_activity_settings">Настройки</string>
     <string name="parent_control">Родительский контроль</string>
