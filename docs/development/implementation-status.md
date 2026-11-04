@@ -21,7 +21,7 @@
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
 | P01 / G1 | Не принят целиком. Android21 ARM64 и API35 прошли SQL/callback/focus/IME на final APK886 после root-focus fix и согласования D8. iOS17.0 через Chrome/MCP установлен, native SQLite и public UI XCTest прошли. ARMv7 guest не загрузился в текущем Emulator даже с classic; codec candidates проверяются отдельно |
 | P02 / G2 | **Зафиксирован:** normal bootstrap `bb4f920`→`a371877`, `iosApp/`, модели/команды/ports, streaming snapshots, schema/epoch/ownership handoff, C4. JVM14/14 и Native iOS17 14/14, Unicode16 1093 вектора, Android/оба frameworks/unsigned iOS builds успешны. Это не реализация P03–P14 и не G1 PASS |
-| P03–P14 / G3–G5 | **P03/P04/P05 запущены параллельно от frozen `0816394`** в отдельных worktrees; результаты ещё не приняты/не интегрированы. P06–P14 пока не начаты. Root/ports не меняются исполнителями без COORD; fake runtime не заменяет native-приёмку |
+| P03–P14 / G3–G5 | **P03 интегрирован** после review исправлений: `38a34d6`/`9cd6a0d`, JVM41/41 и Native iOS17 41/41. P04/P05 в работе после разрешённых blockers; общий аудиокоординатор готовится отдельным пакетом. Native adapters/UI/реальные данные ещё не подключены; G3–G5 не приняты целиком |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
 | P16 / G7 | Не начат; внешние review/signing/store permissions отдельно, публикация не разрешена |
 
@@ -35,7 +35,7 @@
 | Platform preflight | `pokazhi-p01-platform-smoke` / `implementation/p01-platform-probe` | `15dad5d`→`8d14b6d`→`595061a`→`c7eb3a2`: отклонённые кандидаты и успешные final builds; `dedb578`: native iOS runtime. Эксперимент не интегрирован, minimum-runtime proof отсутствует |
 | Android runtime | `pokazhi-p00-android` / `implementation/p01-android-runtime` | `a4dd51d`→`13bb635`: [API35 ARM64 UI/focus/SQLite/callback evidence](../redesign-audit/android-platform-runtime.md), 5 просмотренных PNG; baseline не затронут |
 | Foundation P02 | `pokazhi-p02-foundation` / `implementation/p02-foundation` | `bb4f920`→`a371877`, normal bootstrap, результаты расширены G2 `0816394` |
-| D / P03 | `pokazhi-p03-communication` / `implementation/p03-communication` | В работе от `0816394`: общий message, команды, reducer/effects/leases, focused tests |
+| D / P03 | `pokazhi-p03-communication` / `implementation/p03-communication` | `ce76a873`→`38a34d6`, review corrections `d54acecb`→`9cd6a0d`; integrated common state machine, bounded saves/quarantine, JVM и iOS17 41/41 |
 | S / P04 | `pokazhi-p04-storage` / `implementation/p04-storage` | В работе от `0816394`: SQL/media/drafts/snapshot/recovery, fault tests; safety review COORD до любых реальных данных |
 | P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | В работе от `0816394`: wire DTO/ZIP boundary/semantic fixtures, trust review COORD |
 
@@ -45,6 +45,12 @@
 - S остановил незакоммиченный draft после **двух воспроизводимых real SQLite safety-регрессий**: чтение writer-ом своей незакоммиченной revision давало ложный Completed; exception после actual COMMIT и недоступная проверка давали ложный Failed. Draft **не интегрировать**. COORD принял fail-closed протокол `OperationResult.UnconfirmedCommit`/quarantine, независимую bounded reconciliation после закрытия writer, запрет writes/GC/автоповторов до explicit reopen. Exact declarations/семантика: `01e2adb`; S исправляет оба сохранённых теста без сужения fault гарантий.
 - P вернул docs-only stop `ba11871d` о классификации active/passive unknown fields. Пользователь явно выбрал **«Да, явные поля функций»**: reserved direct root/page/card action(s)/command(s)/event(s)/script(s)/navigation отвергают whole archive; вложенные opaque metadata не сканируются и не исполняются. COORD зафиксировал конечное правило+UNSUPPORTED_FEATURE в `601291e`; P продолжает реальную codec-реализацию, не docs-only acceptance.
 - После additive frozen updates main `:shared:jvmTest :shared:compileKotlinIosSimulatorArm64` прошли; Native execution/full linked artifacts будут перепроверены после интеграции исправленных lane results. Все три исполнителя получили одинаковые updates; конфликтные draft/реальные данные не затрагивались.
+
+### P03 integration acceptance
+
+COORD reviewed точный delta `ce76a873..d54acecb` по save lifetime/quarantine/closing/cursor и regression tests; frozen signatures не менялись исполнителем. Основная ветка интегрирует только собственные implementation commits D, не дублирует cherry-picked COORD updates. Проверено в main `9cd6a0d`: `:shared:jvmTest :shared:linkDebugTestIosSimulatorArm64 :shared:linkDebugFrameworkIosSimulatorArm64 :shared:linkDebugFrameworkIosArm64 :app:assembleDebug`, **BUILD SUCCESSFUL**,44s. JVM XML:41 tests,0 failures/errors/skipped. Native executable запущен на подтверждённом owned iOS17.0 UDID: **41/41 PASS**,23009ms;4096-part boundary stress занял22159ms, не скрыт как мгновенный runtime.
+
+Это принимает common communication implementation, включая controlled seam fakes, а не физические audio/storage/UI/device функции. Нормальный APK не устанавливался, sandbox/legacy/защита не подключены. Общие P06/P07 audio sequencing можно реализовать независимо по AudioPort/NativeAudioBackend; codec/OS evidence остаётся OPEN.
 
 Дополнения Android21: `fa17623d`→`d44723b` сохраняет успешную загрузку SDK и первоначальный tools-root blocker; `c9a32601`→`5a35201` подтверждает его исправление co-located cmdline-tools20.0, новый API21 ARM64 AVD и SQL/callback runtime, но честно фиксирует clearFocus/IME FAIL.
 

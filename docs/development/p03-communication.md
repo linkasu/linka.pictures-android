@@ -37,3 +37,16 @@ Focused tests прошли до coherent-diff correctness review. Review доп�
 Финальный gate после review: та же команда и окружение, `:shared:jvmTest` без filters — **41/41 PASS, 0 skipped** (25 session + 2 rendering/plan + исходные 14 с Unicode16 corpus). `:shared:compileKotlinIosSimulatorArm64` — **PASS**. BUILD SUCCESSFUL (6s), `git diff --check` чистый. Дополнительных runtime/device/IO-интеграционных доказательств этот gate не даёт.
 
 Не проверены реальные storage/GC/audio implementations, голоса/кодеки, device lifecycle и интеграция shells: их принимают отдельные пакеты и COORD. Данные пользователя, сеть, permissions, CI/push/signing и установки приложения не затрагивались.
+
+## COORD integration verification
+
+Main integration: `ce76a873` → `38a34d6`, `d54acecb` → `9cd6a0d`.
+После просмотра review delta и новых tests общий main gate прошёл: JVM41/41,
+Native test link, оба static Shared.framework и Android debug assembly;
+BUILD SUCCESSFUL in44s. Native common suite выполнен через public simctl spawn
+на проверенном owned iOS17.0/21A328, UDID
+`DD0F9A3F-DC32-4373-BA08-400FECE3A1CC`: **41/41 PASS**,23009ms.
+Из них4096-part stress test22159ms; это не проверка latency реального UI
+на ARMv7 и не повод отключать boundary regression. Нового системного
+разрешения/normal app install не требовалось. Storage/audio остаются controlled
+seam fakes, а не доказательством работы ещё не интегрированных адаптеров.
