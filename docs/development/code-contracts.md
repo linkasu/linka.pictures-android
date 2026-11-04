@@ -1,0 +1,140 @@
+# P02: контракты ядра и handoff
+
+Статус: **G2 зафиксирован 5 ноября 2026 года**, не готовая библиотека. Модельные/Unicode контракты проходят JVM и Native iOS17 (14/14), Android и оба frameworks/unsigned iOS shells собираются; [evidence](verification.md#p02-contract-freeze--5-november-2026). Условные P02–P14 разрешены пользователем; G0/G1, ARMv7, codec/physical и выпускные проверки не становятся PASS. Авторизация и миграция остаются у COORD; реальные данные до G4 не подключаются.
+
+## Источник истины и границы
+
+- Поведение: K1–K9 в согласованном `linka-pokazhi-contracts.md`; исправленные `docs/c4/`.
+- Точные типы: `shared/src/commonMain/kotlin/su/linka/pictures/domain/`, `application/ports/`, `application/communication/`, `application/portability/`.
+- `OperationResult.Completed`, `Cancelled`, `Failed(Problem)` различаются. Coroutine cancellation не превращается в IO_FAILURE; cleanup выполняется и исключение отмены распространяется. Команда отмены пользователем возвращает Cancelled. Не передавать тексты сообщения, пароль, путь или исключение в Problem/logs.
+- Wire JSON `.linka` и backup не сериализует внутренний BoardDocument напрямую. `extensionsJson` — пассивный JSON object, проверяемый codec до публикации; он не может переопределить известные поля, включить активный mode или содержать локальные URI.
+- Domain не импортирует платформу, Compose, filesystem или JSON DOM. Сериализация моделей — внутренняя schema, а не совместимость с Electron.
+- `LocalFile` — sandbox handle, не постоянные данные. Только `TemporaryFile` разрешён для `discard`; immutable media нельзя удалить cleanup picker-а.
+
+## Модели и режимы
+
+ID не равны имени. AssetId — lowercase SHA256 фактических bytes; другие IDs генерирует `IdSource` (случайные UUID на платформах). Внешние numeric/повторяющиеся IDs хранятся пассивно; новые внутренние IDs выдаются один раз на import, не на каждый save.
+
+BoardPage: 1..64 rows/columns, sparse BoardCell.position в `[0, capacity)`, позиции уникальны. Отсутствующая позиция — пусто. CONTENT имеет CardDocument; SPACE/EMPTY не имеют его. CardId уникален в документе; PageId уникален. Внутренний документ имеет 1..256 страниц. Layout-нормализация переносит overflow на дополнительные страницы, не отбрасывает карточки; превышение предела — явный отказ всего набора.
+
+SpeechSource — Recording(assetId, audioText/audioVoice), Tts(text, languageTag), None. Параметры редакторского синтеза не являются fallback записи. Snapshot выбранной карточки содержит происхождение и собственные label/image/speech, не перечитывает источник после edit/delete.
+
+Один MessageDraft на процесс/библиотеку, а не на доску. Режим COMPOSE/DIRECT хранится вместе с фразой; текущие focus/audio/request/capability/undo не сохраняются.
+
+| Контекст | Select / текст | Навигация | Speak / Backspace / Clear |
+|---|---|---|---|
+| COMPOSE idle | Добавить snapshot или дополнить последний literal run | Сохранить фразу | Speak снимок; backspace карточку целиком или одну графему; clear с одним undo |
+| COMPOSE playing | Stop перед изменением фразы | Тот же playback snapshot продолжает звучать | Speak = Stop; изменение сначала Stop |
+| DIRECT | Новый explicit выбор заменяет direct playback, фразу не меняет | Фраза остаётся | Не произносить/очищать общую фразу неявно |
+| Редактор / фон / закрытие | Нет выбора как коммуникации | Stop при выходе из общения | Preview отдельный owner, поздний callback не захватывает звук |
+
+SetMode останавливает речь и сохраняет фразу. OpenBoard не применяет defaultMode поверх уже существующего сеанса; defaultMode используется при первом выборе режима для новой пустой установки. InsertText действует только в COMPOSE; DIRECT выбирает буквальные клетки как отдельный direct-запрос. SPACE добавляет явный пробел, EMPTY ничего не делает. Литеральная последовательность не разрывается при смене страницы/доски. Повтор CommandId игнорируется в ограниченном окне сеанса; новый ID допускает осознанный повтор содержимого.
+
+Автоматический разделитель применяется только на границе смысловых фрагментов: «Хочу» + «мёд» → «Хочу мёд»; ведущие пробелы и пунктуация literal не получают дополнительный пробел; внутри literal ничего не схлопывается. `text/GraphemeBoundaries.kt` закрепляет extended graphemes Unicode16, а не UTF16/code points.
+
+## Handoff P03: CommunicationSession
+
+D реализует `application/communication/CommunicationSession.kt` с конструктором `(library: LibraryStore, messages: MessageStore, media: MediaStore, audio: AudioPort, ids: IdSource, scope: CoroutineScope)`, `val state: StateFlow<CommunicationState>`, `fun dispatch(command: CommunicationCommand)`, `fun interrupt()`, `fun close()`.
+
+Команды и state уже объявлены COORD; сигнатуры изменяет только COORD. Session сериализует reducer в одном coroutine actor. Restore сообщения не вызывает речь. Select читает уже открытый leased board; диск/платформенный callback не задерживает немедленное изменение отображаемой фразы. OpenBoard имеет request generation; поздний ответ не меняет новую навигацию. Версии saves возрастают, старый save не откатывает новое state. Ошибка save остаётся видна и удерживает media текущего состояния. Close/interrupt останавливают звук, close освобождает leases после завершения собственных pending saves, не удаляет сообщение.
+
+Локальные чистые функции D: `renderMessage(MessageDraft): String`, `speechPlan(MessageDraft): OperationResult<SpeechPlan>`. Plan immutable, последовательный, без recording+TTS дубля одной карточки. None не превращается сам в TTS: если смысловой фрагмент не может быть произнесён, возвращается SPEECH_UNAVAILABLE, а не успешная частичная фраза. Копия фразы не зависит от lifecycle источника. Undo удерживает собственную lease; один clear-context, освобождение на следующем clear/close, не persisted. CommandId dedup ограничен последними 1024 командами; это защита повторной доставки в текущем сеансе, не вечный журнал. Сообщение ограничено 65536 UTF16 units отображаемого текста/4096 parts; превышение даёт LIMIT_EXCEEDED без изменения/обрезки прежнего сообщения.
+
+## Ownership файлов и аудио
+
+MediaStore.prepare потребляет и закрывает Source на всех путях, вычисляет hash по потоку, проверяет лимит и сохраняет immutable bytes. Completed передаёт caller-у PreparedMedia.lease; metadata без lease не гарантирует наличие файла. `acquire` — all-or-nothing; `retain` создаёт независимый ref, а не тот же close-handle. `close` lease идемпотентен; file/source разрешены только пока id входит в открытую lease. Source закрывает получатель.
+
+Доска/draft read возвращает document+lease атомарно относительно GC. PreparedBoard владеет своей lease; публикация не потребляет её, caller закрывает после завершения/отказа. Успешный commit создаёт постоянные refs до освобождения staging leases. Failed/cancelled не публикуют частичный document.
+
+AudioPort.play **забирает** PlaybackRequest.lease, в том числе при отказе/замене/пустом плане; освобождает по терминальному исходу. Caller передаёт retain, не единственную message lease. Preflight проверяет все media и локальные voices до первого звука. Shared AudioCoordinator владеет очередью и NativeAudioBackend; платформы не создают вторую очередь. Native методы suspend до терминального callback и не запускают звук после cancellation. Один owner/request на процесс, новый запрос сначала останавливает старый. Фон/interrupt не включает autoreplay. Synthesize/record Completed передаёт caller-у TemporaryFile; на ошибке незавершённый файл удаляет backend. Ready означает фактический валидный готовый файл, не разрешение микрофона.
+
+## SQLite schema v1 (только новая библиотека)
+
+S реализует `storage/StorageRuntime.kt`: `companion object { suspend fun open(root: okio.Path, fileSystem: okio.FileSystem, driver: androidx.sqlite.SQLiteDriver): OperationResult<StorageRuntime> }`, свойства `library: LibraryStore`, `messages: MessageStore`, `media: MediaStore`, `suspend fun close()`. Root передаёт shell, он не выводится из пользовательского JSON. Для tests инъецируются реальные временные директории/контролируемые FileSystem и SQLiteDriver с fault injection; новая production-конфигурация/глобальный singleton в common не вводятся. Close завершает принятые операции и закрывает собственные DB handles, не удаляет библиотеку; после него новые операции отклоняются. Shell держит один runtime на процесс; точные sandbox roots Android/iOS остаются COORD startup binding P14.
+
+Реализация P04: bundled SQLite2.5.2, Okio filesystem. `PRAGMA user_version=1`, `foreign_keys=ON`, `journal_mode=WAL`, `synchronous=FULL`. Все значения bound parameters; нет dynamic SQL из внешних имён. До создания схемы читается user_version: 0 в новой/пустой DB — создать новую, 1 — проверить обязательные таблицы и открыть, больше 1 — NEWER_SCHEMA без записи/delete/fallback. Непустая неизвестная DB с version0 или неполная schema1 — INVALID_DATA, не пересоздание. Проверять версию до смены journal mode. Не менять legacy 1.4 файлы.
+
+Минимальная логическая схема (имена столбцов обязательны, вспомогательные индексы допускаются):
+
+| Таблица | Столбцы / constraints |
+|---|---|
+| library_meta | singleton INTEGER PK CHECK=1, epoch INTEGER>=0, revision INTEGER>=0, settings_json TEXT NOT NULL |
+| entries | id TEXT PK, name TEXT, kind TEXT BOARD/RETAINED_ARCHIVE, revision INTEGER>0, order_index INTEGER UNIQUE, payload_json TEXT NOT NULL |
+| drafts | id TEXT PK, board_id TEXT NULL, base_revision INTEGER NULL, version INTEGER>0, payload_json TEXT NOT NULL |
+| message | singleton INTEGER PK CHECK=1, epoch INTEGER>=0, version INTEGER>=0, payload_json TEXT NOT NULL |
+| assets | id TEXT PK, kind TEXT, media_type TEXT, byte_count INTEGER>=0 |
+| asset_refs | owner_kind TEXT, owner_id TEXT, asset_id TEXT REFERENCES assets(id), PK(owner_kind,owner_id,asset_id) |
+| recovery | singleton INTEGER PK CHECK=1, id TEXT UNIQUE, created_at INTEGER, library_revision INTEGER, settings_json TEXT |
+| recovery_entries | id TEXT PK, name TEXT, kind TEXT, revision INTEGER, order_index INTEGER UNIQUE, payload_json TEXT |
+| recovery_drafts | id TEXT PK, board_id TEXT NULL, base_revision INTEGER NULL, version INTEGER, payload_json TEXT |
+
+Payload entries = BoardDocument или RetainedArchive по kind; draft = EditorDraft; message = MessageDraft. JSON включает defaults и имеет явную внутреннюю schema v1, не unknown-field ignore для опасного изменения схемы. Draft board_id НЕ FK на entries: удаление исходной доски не удаляет работу редактора. Message provenance тоже не FK. Card counters считаются по CONTENT всех pages, у retained cardCount=null, не 0.
+
+asset_refs owner_kind: BOARD, DRAFT, MESSAGE, RECOVERY_BOARD, RECOVERY_DRAFT, RETAINED, RECOVERY_RETAINED. owner_id — соответствующий внутренний id; у MESSAGE — singleton. Ref-набор всегда полностью заменяется той же транзакцией, что payload. Recovery не включает message/undo/секреты. Staging/playback/undo используют process leases, а не бессрочные SQL roots. Путь файла выводится из hash (`media/<first2>/<hash>`), никогда не берётся из JSON.
+
+## Писатели, порядок lock и atomicity
+
+Единственный StorageRuntime на sandbox, на него ссылаются LibraryStore, MessageStore и MediaStore. Multi-window — те же writer/leases; separate Android process/extension не создаётся. Schema/open/миграции новых schema — storage writer, auth DB/legacy migration — отдельная COORD область.
+
+1. Validate/копирование/хэширование/decoder/file picker/TTS — вне writer lock.
+2. Immutable файл полностью записать/flush через FileHandle и закрыть в staging. Короткая финализация prepare под writer lock: атомарно переименовать в hash-path на той же FS и зарегистрировать metadata+lease **до** освобождения lock. Существующие bytes сверить и не перезаписывать; GC не может вклиниться между rename и lease. Ошибка до этого — нет публикации.
+3. Serialized writer lock → SQLite BEGIN IMMEDIATE → проверить epoch/expected revision → вызвать permit.check прямо перед mutation → проверить media+refs → обновить payload/refs/счётчики → повторить guard перед COMMIT. Последний успешный guard — точка авторизации; последующий отзыв не отменяет уже разрешённый commit. До неё отзыв даёт ROLLBACK.
+4. Только после commit обновить StateFlow и вернуть Completed. Callback guard синхронный, не берёт storage lock, не ждёт OS prompt и не вызывает storage. Нет обратного lock-order.
+5. Cleanup после commit отдельно. Ошибка GC не отменяет успешный commit и не выдаётся за failed publication. До commit error/cancel → ROLLBACK, старые refs/file untouched. Ошибка результата после успешного commit не должна побуждать слепой повтор: перечитать revision/id.
+
+GC под тем же writer lock выбирает только отсутствие persistent refs **и** process lease. Сначала удаляет только проверенный owned hash-file; затем metadata. Ошибка удаления оставляет metadata для повторного cleanup и считает failedAssets. Staging отдельна от media, startup удаляет только распознаваемые свои незавершённые temp-объекты; не обходит произвольные пути/чужие файлы. Media.assetIds closure обязателен для board, draft document+open form, message и recovery.
+
+`expectedVersion=null` — создание draft только при отсутствии id; иначе CONFLICT. SaveDraft версия +1; PublishDraft проверяет draft version, baseRevision/target revision, отсутствие unfinished form; меняет board+refs и удаляет именно применённый draft одной транзакцией. Конфликт не теряет draft. AddBoard только новый ID. Replace/Rename/Delete проверяют revision; удаление board не удаляет snapshots или черновики.
+
+## Epoch, message и restore
+
+`WritePermit.epoch` проверяется для **каждого** library mutation. Любое полное переключение повышает epoch монотонно; board/draft revision может совпасть с прежней после restore, поэтому одной revision недостаточно. Stale epoch → STALE_REQUEST без guard/mutation. Внутри одного epoch library revision возрастает на каждый mutation (включая draft/settings), message version отдельно.
+
+SaveMessage: epoch должен совпасть с meta/message; новая version строго больше сохранённой, gaps допустимы (coalescing). Совпавшие epoch/version/value — idempotent Completed; та же версия с другим payload или меньшая версия — CONFLICT. Обновление message и его refs одной транзакцией writer-а. Caller удерживает lease до завершения save. Старый pending save после restore получает STALE_REQUEST, не оживляет старую фразу.
+
+SnapshotReader — собственный repeatable immutable staging-снимок metadata+lease, revision+epoch захвачены одним consistent read. Большие библиотеки читаются по одному документу/asset row, не через giant JSON. Settings/counts без message и секретов. Flow при чтении повреждённого/недоступного staging бросает SnapshotReadException(Problem); получатель превращает в Failed, не пропускает остаток. close идемпотентно освобождает staging/lease; повторное чтение после close запрещено.
+
+SnapshotBuilder.add* принимает готовые immutable объекты, проверяет уникальные IDs/лимиты, pin-ит каждый addAsset до возврата Completed. seal проверяет точное равенство media manifest и transitive roots boards/drafts/retained (без message-exclusive), размеры/hash/существование assets и counts; возвращает reader с переданным владением staging. Failed seal не отдаёт полуснимок; close builder очищает незавершённое. Общего агрегата всех документов/медиа в памяти нет: runtime использует только reader/builder, а BackupManifest содержит только заголовок/настройки/счётчики. Тест заголовка не считается доказательством runtime closure — это обязательный P04/P12 contract test.
+
+ReplaceLibrary требует expectedLibraryRevision, expectedMessage stamp и permit epoch; staged reader полностью валиден до writer. Если уже есть recovery — CONFLICT: пользователь сначала явно удаляет его либо возвращается, без тихого overwrite. В одной SQL-транзакции: сохранить предыдущие entries/drafts/settings+refs как recovery, установить staged library+refs, повысить epoch и library revision, очистить message с version=0 нового epoch и удалить старые message refs. Lock/пароль/voice device preference не трогать. Не удалось recovery/commit → старая библиотека и фраза остаются. Cancellation до commit не меняет live; после commit результат — Completed, не Cancelled.
+
+ReturnToRecovery с теми же checks атомарно меняет current/recovery местами и очищает message/повышает epoch. Старый current становится единственным новым recovery, бесконечной цепочки нет. DeleteRecovery — собственное protected+confirmed действие, убирает только recovery roots, GC отдельно. Переключение сеанса в новый epoch на UI — отдельный explicit reload без speech и без переноса undo.
+
+Совместимость: SQLite v1 не открывается исходным Android1.4; безопасный binary downgrade не обещан. Legacy source/recovery не является актуальным rollback после новой работы. Будущие версии сохраняют monotonic epoch; unknown schema блокируется без destructive fallback. P04 не меняет startup/реальную библиотеку. Migration copy/validate/publish/marker и старый password — P09/COORD после safety review.
+
+## Handoff P05: LinkaCodec и wire policy
+
+P реализует `portability/linka/LinkaCodec.kt` с конструктором `(media: MediaStore, files: PlatformFilesPort, inspection: MediaInspectionPort, ids: IdSource)`, методами `suspend fun read(file: LocalFile, name: String): OperationResult<PreparedBoard>` и `suspend fun write(board: PublishedBoard, lease: MediaLease): OperationResult<TemporaryFile>`. Read не изменяет source/live library. Write не потребляет входную lease. Source/sink внутри закрывает codec; Completed отдаёт caller-у PreparedBoard/TemporaryFile. До выдачи результата images/audio прошли inspect реальных bytes; unsupported codec → UNSUPPORTED_MEDIA, не пропуск и не TTS вместо записи.
+
+Whitelist reader: строки `1.0`, `1.2` legacy flat по доказанным bundled fixtures; `2.0` legacy flat — только после synthetic test с той же схемой и evidence peer test; `3.0` только pages. Другие версии отвергаются UNSUPPORTED_VERSION, не «все1.x». Legacy numeric-string dimensions принимаются лишь canonical decimal positive integer (проверенный producer), не coercion boolean/NaN/fraction. `quiz=true`, любой mode кроме standard на любой странице, active неизвестная схема → reject whole. Проверка raw JSON до нормализации.
+
+Root fields: version/withoutSpace/directSet/description/pages (legacy rows/columns/cards). Page: id/mode/rows/columns/cards. Card: id/cardType/title/imagePath/audioPath/width/height/audioText/audioVoice. Типы0/1/2/3 = content/space/empty/placeholder; placeholder нормализуется в EMPTY без новых ID при каждом save. Known quiz fields в standard сохраняются пассивно, не активируют обучение. Остальные неизвестные пассивные JSON fields сохраняются на соответствующем root/page/cell/card, не исполняются; сомнительная активная функция отклоняется, не игнорируется.
+
+withoutSpace=true → LITERAL title/space; normal card playback при audioPath → Recording, audioText/audioVoice только metadata. Без audioPath literal использует title как текст; в CARDS отсутствие аудио не подменяется авторским audioText (None; новый явный TTS хранится только после materialization при экспорте). Writer3.0 не обещает Electron runtime-TTS без audioPath: Tts source без prepared recording → SPEECH_MATERIALIZATION_REQUIRED. P12 перед экспортом явно материализует локальный TTS во временную export-copy, не меняет опубликованный board и не теряет текст.
+
+Budgets по фактическим bytes, все суммы checked Long: archive file <=500MiB; <=2000 entries; сумма max(compressed,uncompressed) <=500MiB как у peer; сумма реального inflate <=500MiB, config <=8MiB, отдельное media <=64MiB, отдельная картинка <=16 megapixels и side<=8192, отдельное audio <=10min. JSON depth<=64, string<=65536 UTF16, field-name<=256; страницы<=256, grid<=64x64, общее content cells<=100000. Resource limit даёт LIMIT_EXCEEDED, не silent truncate. Decoders получают эти пределы до allocation/PCM decode. Ограничения должны быть видны пользователю при отказе; larger library backup потоковый и не использует `.linka` 2000-entry budget на всю библиотеку.
+
+ZIP methods только store/deflate, no encryption/symlink/special/ZIP64/multidisk до отдельной поддержки. Проверять central/local sizes, offsets, CRC и реальные потоковые bytes, не extract-all-then-check. Безопасные относительные slash paths, запрет traversal-компонентов/drive/backslash/NUL/device names/trailing dot-space. `UUID..wav` допустим. Collision key = NFC затем lowercase, directory slash убран; prefix file-directory conflicts тоже rejected. Один canonical lookup map для media references, без filesystem extraction по именам ZIP. Sniff контейнер, не расширение `.ogg` и не force audio/mp3. Wire DTO/ZIP алгоритм P05 принадлежат P, но изменять эту политику без COORD нельзя.
+
+## Владельцы и проверки
+
+### Backup schema1 для P12
+
+Отдельное расширение `.linkabackup`, ZIP, root `manifest.json` с `format="su.linka.pictures.backup"`, `version="1.0"`, captured library revision, PortableSettings и SnapshotCounts. Нет epoch текущего процесса, message/undo, credential/lock/device voice, paths или временных операций. Metadata documents — внутренние version1 BoardDocument/StoredDraft/RetainedArchive, **не** `.linka` wire DTO; обновление этих моделей требует совместимого versioned reader, не молчаливой смены schema1.
+
+Entries: `boards/00000000.json`, `drafts/00000000.json`, `retained/00000000.json` (последовательные индексы, не непроверенные ID в пути), `assets/<64 lowercase hex>`. Manifest asset metadata — отдельный поток `assets.jsonl`, одна MediaAsset на строку, exact hash/bytes/closure. Порядок boards — порядок entries; IDs/revisions сохраняются. Дубликаты IDs/entries, неизвестные обязательные поля/версия/несовпадающие counts или лишние assets отклоняют весь backup. Tts source сохраняется как Tts, без materialization/потери текста, в отличие от Electron export.
+
+Чтение и запись по одному документу/asset потоку; разрешены только заявленные entries. Снимок metadata заранее зафиксирован, exporter не архивирует живой media-каталог или DB. Перед restore предупреждение об открытом файле и полная замена с recovery. Пределы backup P12: до 60000 entries/2GiB фактических bytes (без ZIP64), per-JSON8MiB/depth64/string65536; media с теми же decoder budgets. Предварительная оценка места включает одновременно staged backup, текущую библиотеку и recovery; место не гарантируется одним начальным free-space check — реальные IO ошибки обрабатываются до commit. Превышение не создаёт урезанную «полную» копию. Эти budgets не сокращают содержимое молча; расширение формата для более крупных библиотек — отдельная проверяемая версия.
+
+| Область | Единственный writer |
+|---|---|
+| Root build, domain declarations, ports, text normalization, security/migration, integration | COORD |
+| domain pure rules и application/communication implementation+tests | D / P03, существующие declarations не менять без handoff |
+| storage + application/library, platform storage bindings+tests | S / P04 |
+| portability/linka, wire DTO/fixtures/tests | P / P05 |
+| audio/files/platform inspection bindings | A/P06, I/P07; root/project/permission изменения только COORD |
+| shared UI primitives | C / P10; другие UI используют их, не дублируют |
+
+P03/P04/P05 запускаются в отдельных branches/worktrees после commit/freeze G2, не в общем mutable index. Нужная новая сигнатура/режим/таблица/зависимость — вернуть COORD, не импровизировать. Перед интеграцией focused tests, coherent correctness review, затем один общий gate.
+
+P02 acceptance: common model round trips/позиции/refs/form pins/epoch/cancel, path NFC tests JVM+Native17, полный Unicode16 corpus, обе ARM native compilation, оба frameworks и unsigned iOS shell после rename. P04 доказывает stale epoch/двух writers/unknown schema/GC pins/restore fault atomicity до любых user-data bindings. G2 снимается только после результатов, не наличия этого файла.

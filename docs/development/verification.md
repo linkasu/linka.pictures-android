@@ -25,7 +25,7 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 | Static simulator framework | `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --console=plain` → `shared/build/bin/iosSimulatorArm64/debugFramework/Shared.framework` |
 | Static device framework | `./gradlew :shared:linkDebugFrameworkIosArm64 --console=plain` → `shared/build/bin/iosArm64/debugFramework/Shared.framework` |
 | Native common tests, link only | `./gradlew :shared:linkDebugTestIosSimulatorArm64 --console=plain` → `shared/build/bin/iosSimulatorArm64/debugTest/test.kexe` |
-| Normal iOS app | Xcode project `normaliosApp/LinkaPokazhi.xcodeproj`, shared scheme `LinkaPokazhi`, Debug |
+| Normal iOS app | Xcode project `iosApp/LinkaPokazhi.xcodeproj`, shared scheme `LinkaPokazhi`, Debug |
 
 The Xcode project links the normal frameworks above; it does not fabricate or
 copy a probe framework. Build the matching framework first. Simulator/device
@@ -37,7 +37,7 @@ applicationId could update an existing real-user app. Assembly is compile-only.
 Unsigned generic simulator app build:
 
 ```sh
-xcodebuild build -project normaliosApp/LinkaPokazhi.xcodeproj \
+xcodebuild build -project iosApp/LinkaPokazhi.xcodeproj \
   -scheme LinkaPokazhi -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p02-ios-simulator \
@@ -47,7 +47,7 @@ xcodebuild build -project normaliosApp/LinkaPokazhi.xcodeproj \
 Unsigned generic device app build (not installation/signing/physical execution):
 
 ```sh
-xcodebuild build -project normaliosApp/LinkaPokazhi.xcodeproj \
+xcodebuild build -project iosApp/LinkaPokazhi.xcodeproj \
   -scheme LinkaPokazhi -configuration Debug \
   -destination 'generic/platform=iOS' \
   -derivedDataPath /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p02-ios-device \
@@ -183,3 +183,77 @@ The previous experimental probe worktree was not modified.
 This is **P02 normal bootstrap only**, conditionally authorized while G1 is
 open. Domain contracts/models are still COORD's work, not invented here.
 **No G1/G2/P14/P16 PASS or release-readiness claim.**
+
+## P02 contract freeze — 5 November 2026
+
+This section supersedes only the bootstrap-only G2 status above. Foundation
+`bb4f920` was integrated as `a371877`; normal shell renamed to `iosApp/`.
+Contracts and SQL/ownership handoff are in [code-contracts.md](code-contracts.md),
+and all five C4 documents/schemes now reflect the agreed full scope. This is
+**G2 declaration acceptance**, not implementation of storage, communication,
+access, migration, codecs, production UI or any release gate.
+
+After coherent review, the aggregate in-memory library snapshot model was
+removed: snapshot ports stream metadata, while the backup manifest only
+contains an explicit header/settings/counts. Model tests do not pretend to
+prove the future storage closure or transactional restore implementation.
+
+Actual final command from `/Volumes/data/linka/linka.pictures-android`:
+
+```sh
+./gradlew :shared:jvmTest :shared:linkDebugTestIosSimulatorArm64 \
+  :shared:linkDebugFrameworkIosSimulatorArm64 :shared:linkDebugFrameworkIosArm64 \
+  :app:assembleDebug --no-daemon
+```
+
+Pinned environment above. Exit0, BUILD SUCCESSFUL in36s,82 tasks
+(19 executed,63 up-to-date). JVM XML totals: **14 tests,0 failures/errors/skipped**:
+8 CoreContractsTest,1 BootstrapDependenciesTest,1 ArchivePathNormalizationTest,
+4 GraphemeBoundariesTest. The latter executes all1093 official Unicode16
+vectors, with expected boundaries and last-cluster deletion for every vector;
+it also checks malformed UTF16, emoji/Indic/flags and long contextual runs.
+Generator exact-byte `--check` passed with official source hashes; see
+[unicode.md](unicode.md) and the retained Unicode license.
+
+Native command uses the same owned iOS17.0/21A328 UDID, verified Booted:
+
+```sh
+xcrun simctl spawn DD0F9A3F-DC32-4373-BA08-400FECE3A1CC \
+  /Volumes/data/linka/linka.pictures-android/shared/build/bin/iosSimulatorArm64/debugTest/test.kexe
+```
+
+Final result: **14/14 passed,42ms**, no filter/skip, including real SQLite
+close/reopen/Unicode IO, NFC/lowercase and the whole grapheme suite.
+
+The first launch timed out at120s before tests ran. Sampling found the process
+blocked in dyld's `__open`, not a Kotlin test. A narrow tccd log query identified
+`kTCCServiceSystemPolicyRemovableVolumes` / AUTHREQ_PROMPTING for
+SimulatorTrampoline reading this exact executable on `/Volumes/data`.
+COORD neither approved the prompt nor relocated the executable to bypass it;
+the user explicitly answered **«Разрешил вручную»**. The exact same binary and
+command then passed. No full-disk permission or OS-settings change by the agent.
+Earlier Foundation compile failure was fixed with the actual category-property
+import; BetaInteropApi opt-in documents the factory API used, not a disabled
+compiler/SDK check. One redundant always-false test assertion was removed;
+the cancellation-type assertion remains.
+
+Both generic Xcode build commands above were repeated against `iosApp/`, using
+fresh `p02-contracts-ios-simulator` / `p02-contracts-ios-device` derivedData dirs
+under approved temp. Both **BUILD SUCCEEDED**, CODE_SIGNING_ALLOWED=NO.
+Both plist assertions: minimum17.0, provisional development bundle, iPhone+iPad,
+no permission usage strings/profile. Known data-only ICU17.2 simulator warning
+and no-AppIntents metadata message remain unsuppressed. Android artifact still
+has `su.linka.pictures`,1.4/code5,min21,ARMv7+ARM64; it was **not installed**.
+
+| Final contract artifact | SHA256 |
+|---|---|
+| Android debug APK | `54ed1f936c10eab3f2fd1aeb235d130868e3d20108c8ef731157ed4fe7ed97b2` |
+| Simulator Shared framework | `94a0b91996ed7aff2e1e20bbde25b51b28be6fabc701684e2c2d1f5cc7c31c20` |
+| Device Shared framework | `d17a9c846e70b5143277abb203c211369702ea0c3191e92f3b6139f286a960ed` |
+| Native test.kexe | `5a94e425d0a29c7a28900e3f9370a0836e2acba45bce7ed0fa62eaf3784b7756` |
+| Generic simulator app executable | `e32c6c00f18f3c7fec1b10dca55e4cec2c716a9d5e421a330e78fa750c10fd6f` |
+| Generic device app executable | `ba6f4a819cc7d761ba1984fadf5e8f3e3c810acf569a5df33ce335417e29cdea` |
+
+No production data binding, real migration/restore, normal app launch,
+ARMv7 runtime, physical/AAC, shipping codecs or release acceptance was performed.
+G0/G1 remain partial under the user's already authorized conditional order.

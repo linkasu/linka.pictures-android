@@ -4,6 +4,8 @@
 
 ## Разрешения и ограничения
 
+- **Условный coding разрешён:** пользователь явно выбрал «Продолжать ядро (Recommended)» после iOS17/Android21 ARM64 smoke. 5 ноября зафиксировано исключение к ранним G0/G1→P02: можно реализовывать P02–P14, не объявляя неполные gates PASS. Native codecs должны пройти приёмку до их интеграции G3/G5, ARMv7/оставшийся baseline — до соответствующей safety/финальной приёмки, G4 — до настоящей библиотеки, physical/AAC и все store/release gates неизменны. Это не MVP и не исключение ABI/форматов.
+
 - **Новая явная поправка R15:** после объяснения SDK/runtime пользователь выбрал «Поднять минимум до iOS17». Текущий минимум iOS/iPadOS теперь17+, не14. Android21/armv7/arm64 неизменны. Xcode остаётся stable27.2, не beta. Основной план и три приложения в `/Users/aacidov/.opencode/plan/` обновлены точечно; история прежних сборок14 сохранена. Это не согласие пропустить gates или установить дополнительные SDK/runtime.
 - **Отдельное разрешение на среды:** следующим ответом «Да, Android21 и iOS17» пользователь разрешил скачать/установить соответствующие образы и создать отдельные тестовые среды. Существующие AVD/simulators не сбрасывать; новые лицензии, вход Apple и native permissions не подтверждать автоматически. Android21 ARM64 установку ведёт V, iOS runtime — COORD. `xcodebuild -license check` успешен без изменения лицензии; загрузка iOS17.0 ARM64 запрошена штатным `xcodebuild -downloadPlatform` с export на data-диск.
 
@@ -18,8 +20,8 @@
 |---|---|
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
 | P01 / G1 | Не принят целиком. Android21 ARM64 и API35 прошли SQL/callback/focus/IME на final APK886 после root-focus fix и согласования D8. iOS17.0 через Chrome/MCP установлен, native SQLite и public UI XCTest прошли. ARMv7 guest не загрузился в текущем Emulator даже с classic; codec candidates проверяются отдельно |
-| P02 / G2 | Не начат: входные G0/G1 не закрыты, code-contracts/SQLite schema/access policy не заморожены |
-| P03–P14 / G3–G5 | Не начаты: независимые implementation-lanes до G2 не запускаются |
+| P02 / G2 | **Зафиксирован:** normal bootstrap `bb4f920`→`a371877`, `iosApp/`, модели/команды/ports, streaming snapshots, schema/epoch/ownership handoff, C4. JVM14/14 и Native iOS17 14/14, Unicode16 1093 вектора, Android/оба frameworks/unsigned iOS builds успешны. Это не реализация P03–P14 и не G1 PASS |
+| P03–P14 / G3–G5 | Условно разрешены; declarations/ownership P02 готовы для отдельных P03/P04/P05 branches. Дальнейшие implementation-lanes не меняют root/ports без COORD; fake runtime не заменяет native-приёмку |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
 | P16 / G7 | Не начат; внешние review/signing/store permissions отдельно, публикация не разрешена |
 
@@ -54,7 +56,7 @@
 - [iOS runtime evidence](../redesign-audit/ios-platform-runtime.md): COORD создал отдельный собственный iOS26.5 simulator, установил только `.platformprobe`, визуально проверил startup PNG и выполнил native SQLite assert harness. Ни один чужой simulator не сбрасывался; iOS14/полный UI-ввод этим не проверены.
 - Android35 ARM64 runtime: installed SHA совпал с probe artifact; реальные Unicode и ASCII/апостроф readback/callback, focus/IME/clearFocus успешны; собственный SQLite-файл 12288 bytes. Probe остановлен и оставлен установленным, baseline app/библиотека не использованы.
 
-## Следующий переход
+## История перехода P01 (до разрешённого условного P02)
 
 После поправки R15 проверяется новая сборка target17 в изолированном probe. Для перехода по прежнему порядку нужны Android21 ARMv7/ARM64 и **iOS17** runtime среды, оставшиеся G0 проверки; они пока не установлены. Официальный API21 ARM64 image доступен для скачивания; совместимость конкретного старого образа с Emulator нужно проверить запуском. ARMv7 runtime — отдельная проверка. Исторический availability-case API15 на iOS14 больше не блокирует новую цель17; общая minimum-runtime приёмка остаётся обязательной. Пользователь изменил минимум, но не разрешил пропустить gates; P02–P13 пока не начаты.
 
@@ -65,3 +67,11 @@
 Codec preflight завершён как **bounded diagnostic, не PASS всего набора**: оба public native paths на17.0 реально декодировали WAV/MP3, но не genuine Ogg/Vorbis. AMR-NB/3GPP fixture получена public Android MediaCodec из синтетического PCM без microphone/AudioRecord/новых permissions (`implementation/p01-amr-fixture`, `9f335b1`); host валидировал actual AMR и3GP, не AAC. На17.0 проверенные native paths PCM не выдали, public AMR decoder list пуст; physical не проверен. [Точная матрица/ошибки/границы](../redesign-audit/codec-preflight-summary.md). Локальная decoder dependency пока не выбрана/не интегрирована; R10 не сокращён. Изолированный codec helper находится только в новом `pokazhi-p01-android-codecs`, package `.platformprobe.codecs`, без product/library changes.
 
 Повторная проверка сохранности: **133 исходных неигнорируемых docs/PNG**, кроме двух явно обновлённых README/screens, совпадают со snapshot. Первоначальная проверка138 также включала5 `.DS_Store`; теперь один ignored `docs/redesign-audit/screenshots/.DS_Store` изменился, автор записи не устанавливался, metadata **не откатывались**. Все исходные140 файлов всё ещё сохранены в проверенном preimplementation tar; содержимое исходных PNG/архитектуры не потеряно.
+
+## P02 завершение и текущий переход
+
+5 ноября: приняты [точные code-contracts](code-contracts.md): режимы/команды, SQLite schema1, единственный writer, media/lease/GC, optimistic revisions, monotonic restore epoch, streaming snapshot и отдельный открытый backup schema1. Предварительный aggregate всех документов/медиа в памяти удалён; closure/atomicity доказывают P04/P12 tests, не тест сериализации manifest. COORD review сохранил guard непосредственно перед commit и финализацию media+lease под writer lock.
+
+Unicode16 реализован самостоятельно по официальным правилам/данным, без несовместимого Kotlin-порта и новых dependencies; лицензия/хэши и полный corpus сохранены. C4 механически согласован отдельным агентом по принятым K1–K9. [Фактическая P02 проверка](verification.md#p02-contract-freeze--5-november-2026): JVM14/14, Native iOS17 14/14,1093 Unicode vectors, обе ARM framework links, Android assembly, обе unsigned iOS shell builds. Первый Native запуск ожидал системный Removable Volumes prompt до входа в тесты; пользователь **сам вручную** разрешил доступ, тот же бинарник прошёл, обходов/agent approval не было.
+
+Все исходные C4 теперь намеренно обновлены P02 и сохранены Git-историей; предыдущая сверка133 относится к состоянию P01, не утверждает их неизменность после принятой правки архитектуры. Реальные данные и normal apps не запускались. Следующий пакет — независимые P03 message, P04 storage, P05 `.linka` по frozen handoff; COORD отдельно принимает security/decoder решения. Условный порядок уже разрешён, повторно его не спрашивать.

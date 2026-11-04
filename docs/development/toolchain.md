@@ -69,7 +69,7 @@ alternate build file or probe source-set substitution is used.
 - JVM target exists for shared tests, not as a Desktop product. Normal
   `jvmMain` provides only the matching platform actual. No publishing plugin
   or Desktop entry point is introduced.
-- `normaliosApp/LinkaPokazhi.xcodeproj`, shared scheme **`LinkaPokazhi`**:
+- `iosApp/LinkaPokazhi.xcodeproj`, shared scheme **`LinkaPokazhi`**:
   Debug-only build shell, arm64 simulator/device, iPhone+iPad via
   `TARGETED_DEVICE_FAMILY=1,2`. It links the matching already-built normal
   Shared framework by SDK-specific search path; build Shared first as mapped
