@@ -14,6 +14,7 @@ import su.linka.pictures.Callback
 import su.linka.pictures.Card
 import su.linka.pictures.R
 import su.linka.pictures.Set
+import su.linka.pictures.SetAlreadyExistsException
 import su.linka.pictures.SetsManager
 import su.linka.pictures.Telemetry
 import su.linka.pictures.components.CardGrid
@@ -213,19 +214,30 @@ class SetEditActivity : AppCompatActivity() {
         ConfirmDialog.showConfirmDialog(this, R.string.confirm_save_dialog, object : Callback<Any?>() {
             override fun onDone(result: Any?) {
                 currentSet.getManifest().withoutSpace = withoutSpaceCheckbox.isChecked
-                setsManager.save(currentSet, currentName, object : Callback<Any?>() {
-                    override fun onDone(result: Any?) {
-                        setResult(RESULT_OK)
-                        finish()
-                    }
-
-                    override fun onFail(error: Exception?) {
-                        Toast.makeText(this@SetEditActivity, R.string.set_save_error, Toast.LENGTH_LONG).show()
-                    }
-                })
+                saveConfirmed(currentSet, currentName)
             }
 
             override fun onFail(error: Exception?) = Unit
+        })
+    }
+
+    private fun saveConfirmed(currentSet: Set, currentName: String, replaceExisting: Boolean = false) {
+        setsManager.save(currentSet, currentName, replaceExisting, object : Callback<Any?>() {
+            override fun onDone(result: Any?) {
+                setResult(RESULT_OK)
+                finish()
+            }
+
+            override fun onFail(error: Exception?) {
+                if (error is SetAlreadyExistsException) {
+                    ConfirmDialog.showConfirmDialog(this@SetEditActivity, R.string.confirm_replace_set, object : Callback<Any?>() {
+                        override fun onDone(result: Any?) { saveConfirmed(currentSet, currentName, true) }
+                        override fun onFail(error: Exception?) = Unit
+                    })
+                    return
+                }
+                Toast.makeText(this@SetEditActivity, R.string.set_save_error, Toast.LENGTH_LONG).show()
+            }
         })
     }
 

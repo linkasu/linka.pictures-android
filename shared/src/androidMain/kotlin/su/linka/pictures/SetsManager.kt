@@ -60,7 +60,7 @@ class SetsManager(private val context: Context) {
         val manifests = ArrayList<SetManifest>(files.size)
         for (file in files) {
             try {
-                if (file.isFile) {
+                if (file.isFile && file.name.endsWith(".linka")) {
                     manifests.add(getSetManifest(file))
                 }
             } catch (error: IOException) {
@@ -140,16 +140,57 @@ class SetsManager(private val context: Context) {
     }
 
     fun save(set: Set, setName: String, callback: Callback<Any?>) {
+        save(set, setName, false, callback)
+    }
+
+    fun save(set: Set, setName: String, replaceExisting: Boolean, callback: Callback<Any?>) {
         try {
-            set.writeConfig()
-            val destination = File(getSetsDirectory(), setName)
-            Utils.zipFolder(set.getFolder().absolutePath, destination.absolutePath)
-            set.getManifest().archiveFile = destination
-            clearPreview(set.getManifest().cacheKey)
-            callback.onDone(null)
-        } catch (error: IOException) {
+            synchronized(AtomicSetFile.lock) {
+                val destination = AtomicSetFile.resolve(getSetsDirectory(), setName)
+                val manifest = set.getManifest()
+                val owned = manifest.archiveFile?.canonicalFile == destination
+                AtomicSetFile.write(destination, replaceExisting || owned) { staged ->
+                    set.writeConfig()
+                    Utils.zipFolder(set.getFolder().absolutePath, staged.absolutePath)
+                    validateArchive(staged)
+                }
+                val previousKey = manifest.cacheKey
+                manifest.archiveFile = destination
+                clearPreview(previousKey)
+                clearPreview(manifest.cacheKey)
+            }
+        } catch (error: Exception) {
+            if (error !is IOException && error !is IllegalArgumentException) throw error
             error.printStackTrace()
-            callback.onFail(error)
+            callback.onFail(if (error is IOException) error else IOException("Invalid set config", error))
+            return
+        }
+        callback.onDone(null)
+    }
+
+    @Throws(IOException::class)
+    fun importSet(input: InputStream, name: String, replaceExisting: Boolean = false): File =
+        synchronized(AtomicSetFile.lock) {
+            val destination = AtomicSetFile.resolve(getSetsDirectory(), name)
+            AtomicSetFile.write(destination, replaceExisting) { staged ->
+                staged.outputStream().use { output ->
+                    BoundedStreams.copy(input, output, ArchiveLimits().maxInputBytes)
+                }
+                validateArchive(staged)
+            }
+            clearPreview(destination.nameWithoutExtension)
+            destination
+        }
+
+    private fun validateArchive(archive: File) {
+        val workspace = createWorkspace()
+        try {
+            ArchiveReader().extract(archive, workspace)
+            parseManifest(archive, File(workspace, CONFIG_FILE_NAME))
+        } catch (error: JSONException) {
+            throw IOException(error)
+        } finally {
+            workspace.deleteRecursively()
         }
     }
 
@@ -162,14 +203,17 @@ class SetsManager(private val context: Context) {
         clearPreview(manifest.cacheKey)
     }
 
-    fun rename(manifest: SetManifest, result: String) {
-        val archive = manifest.archiveFile ?: return
-        val cacheKey = manifest.cacheKey
-        val parent = archive.parentFile ?: return
-        val target = File(parent, "$result.linka")
-        if (archive.renameTo(target)) {
+    fun rename(manifest: SetManifest, result: String, replaceExisting: Boolean = false) {
+        synchronized(AtomicSetFile.lock) {
+            val archive = manifest.archiveFile ?: return
+            val cacheKey = manifest.cacheKey
+            val target = AtomicSetFile.resolve(getSetsDirectory(), "$result.linka")
+            if (archive.canonicalFile == target) return
+            if (target.exists() && !replaceExisting) throw SetAlreadyExistsException(target.name)
+            if (!archive.renameTo(target)) throw IOException("Cannot rename set archive")
             clearPreview(cacheKey)
             manifest.archiveFile = target
+            clearPreview(manifest.cacheKey)
         }
     }
 

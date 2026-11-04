@@ -123,12 +123,25 @@ class MainActivity : AppCompatActivity() {
     private fun renameSet(manifest: SetManifest) = ParentPasswordDialog.run(this) {
         InputDialog.showDialog(this, R.string.rename, object : Callback<String>() {
             override fun onDone(result: String) {
-                setsManager.rename(manifest, result)
-                loadSetsList()
+                renameConfirmed(manifest, result)
             }
 
             override fun onFail(error: Exception?) = Unit
         })
+    }
+
+    private fun renameConfirmed(manifest: SetManifest, name: String, replaceExisting: Boolean = false) {
+        try {
+            setsManager.rename(manifest, name, replaceExisting)
+            loadSetsList()
+        } catch (error: su.linka.pictures.SetAlreadyExistsException) {
+            su.linka.pictures.components.ConfirmDialog.showConfirmDialog(this, R.string.confirm_replace_set, object : Callback<Any?>() {
+                override fun onDone(result: Any?) { renameConfirmed(manifest, name, true) }
+                override fun onFail(error: Exception?) = Unit
+            })
+        } catch (error: java.io.IOException) {
+            android.widget.Toast.makeText(this, R.string.set_save_error, android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun deleteSet(manifest: SetManifest) = ParentPasswordDialog.run(this) {

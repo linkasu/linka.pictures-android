@@ -4,18 +4,16 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.widget.Toast
 import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
 import su.linka.pictures.R
 import su.linka.pictures.SetsManager
 import su.linka.pictures.Telemetry
-import su.linka.pictures.ArchiveLimits
-import su.linka.pictures.BoundedStreams
-import su.linka.pictures.Utils
-import su.linka.pictures.components.ConfirmDialog
-import su.linka.pictures.resolveImportedSetFile
 import su.linka.pictures.components.ParentPasswordDialog
+import su.linka.pictures.SetAlreadyExistsException
+import su.linka.pictures.components.ConfirmDialog
 import java.io.IOException
 
 class BroadcastReceiverActivity : Activity() {
@@ -47,12 +45,19 @@ class BroadcastReceiverActivity : Activity() {
         })
     }
 
-    private fun copy(uri: Uri) {
+    private fun copy(uri: Uri, replaceExisting: Boolean = false, confirmedName: String? = null) {
+        val setsManager = SetsManager(this)
         try {
-            val destination = resolveImportedSetFile(SetsManager(this).getSetsDirectory(), uri.lastPathSegment)
+            val fileName = confirmedName ?: importedFileName(uri) ?: throw IOException("Missing import file name")
             contentResolver.openInputStream(uri)?.use { input ->
-                Utils.copy(BoundedStreams.limit(input, ArchiveLimits().maxInputBytes), destination)
+                setsManager.importSet(input, fileName, replaceExisting)
             } ?: throw IOException("Unable to open input stream")
+        } catch (error: SetAlreadyExistsException) {
+            ConfirmDialog.showConfirmDialog(this, R.string.confirm_replace_set, object : Callback<Any?>() {
+                override fun onDone(result: Any?) { copy(uri, true, error.setName) }
+                override fun onFail(error: Exception?) { finish() }
+            })
+            return
         } catch (error: Exception) {
             if (error !is IOException && error !is SecurityException && error !is IllegalArgumentException) {
                 throw error
@@ -67,5 +72,17 @@ class BroadcastReceiverActivity : Activity() {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
         })
         finish()
+    }
+
+    private fun importedFileName(uri: Uri): String? {
+        if (uri.scheme == "content") {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (column >= 0 && cursor.moveToFirst() && !cursor.isNull(column)) {
+                    return cursor.getString(column)
+                }
+            }
+        }
+        return uri.lastPathSegment
     }
 }

@@ -1,6 +1,7 @@
 <resources>
     <string name="card_limit_reached">A set can contain at most 10000 cards</string>
     <string name="invalid_grid_dimensions">Rows and columns must be between 1 and 32</string>
+    <string name="confirm_replace_set">A set with this name already exists. Replace it?</string>
     <string name="app_name">LINKa pictures</string>
 
     <string name="title_activity_settings">Settings</string>
