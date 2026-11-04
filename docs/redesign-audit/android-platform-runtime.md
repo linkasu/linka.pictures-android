@@ -349,3 +349,54 @@ FATAL        | CPU Architecture 'arm' is not supported by the QEMU2 emulator, (t
 | p01-armv7-emulator-boot.log | `6e9ab49e815d5c2d1595a7fd865bbcb1acd30734d4724365e252b85bcb387c08` |
 
 Проверки перед local commit: append-only byte-prefix относительно `c9a32601`, изменение только этого отчёта, сохранность старых screenshots/links, `git diff --check` и staged diff-check; actual result/final commit — в handoff. Это provisioning blocker, **не runtime PASS и не app regression**. Следующий app smoke требует отдельно переданный новый APK/SHA и поддерживаемый настоящий 32-bit runtime; физический ARMv7/AAC остаётся отдельным пробелом.
+
+## Дополнение: final APK886, quick64 regression API21 / API35
+
+Accepted artifact update от COORD; base **`006371fef505982ec964a5bf2cb2fd3f3ae9ec2d`**, та же branch, исходно чистая. До действий — MCP list_devices: только API21 ARM64 `5554` и API35 tablet `5556`. Новый 32-bit device **не появился**; предыдущий actual launch log остаётся blocker: `CPU Architecture 'arm' is not supported by the QEMU2 emulator, (the classic engine is deprecated!)`. Повторный boot/другая SDK/engine установка в этом продолжении **не выполнялись**; никакого нового SDK background job эта сессия не запускала и чужие jobs не опрашивала. Поэтому разрешённый 32-bit smoke **не начат**, а два quick64 выполнены независимо, как разрешено COORD. `androidv7*.png` не создавались, ARM64 не переименовывался в ARMv7 proof.
+
+### Final artifact и owner checks до update
+
+Read-only APK path тот же: `/Users/aacidov/.local/share/opencode/worktree/67846f/pokazhi-p01-platform-smoke/app/build/outputs/apk/debug/app-debug.apk`. **Перед install** `shasum -a 256` → **`886630c576528783bede77bf9385d3c7471b90f87f708524043ac6f415f76c0b`**, exact handoff match. `aapt dump badging` → package **su.linka.pictures.platformprobe**, sdkVersion **21**, target/compileSdk **35**, versionCode **1**, versionName **probe**, activity **su.linka.pictures.ProbeActivity**, native-code **arm64-v8a / armeabi-v7a**. Последнее — artifact metadata, не native32 runtime.
+
+`git rev-parse cd78fba` → **cd78fbacd6a1e46fd6168fbafd410b49555ca60b**, parent **394de1f28b4956fd82bb991ed54cd25642c88f0f**. Read-only `git show cd78fba:app/src/probe/java/su/linka/pictures/ProbeActivity.kt` подтвердил host `ComposeView.isFocusableInTouchMode = true` перед setContent; source не редактировался этой сессией. Из build handoff, **не новый build/test этой роли**: Kotlin2.2.21/AGP8.10.1/Gradle8.11.1/JDK17/CMP1.9.3/SQLite2.5.2, actual R8=8.10.24, JVM test1 passed. Reproducible build/reflection R8 здесь повторно не выполнялись; связь APK/source принята по переданному source и совпавшему SHA.
+
+До state changes MCP getprop с явными serial подтвердил:
+
+| Serial | Actual owner / SDK / ABI / zygote / readiness |
+|---|---|
+| emulator-5554 | **linka_platform_probe_api21_arm64**, SDK21, abilist **arm64-v8a**, **zygote64**, `sys.boot_completed=1` |
+| emulator-5556 | **linka_audit_tablet**, SDK35, abilist **arm64-v8a**, **zygote64**, `sys.boot_completed=1` |
+
+Обновлены **только known-owned .platformprobe** через MCP `install_app(reinstall=true, allowDowngrade=false)`: API21 **Push Install / Success**, API35 **Streamed Install / Success**. Никаких clear-data/uninstall/reboot/permission approval. `su.linka.pictures` и её library/preferences не читались/не менялись.
+
+### Точные quick64 действия и observed result
+
+На обоих устройствах MCP launch `.platformprobe/su.linka.pictures.ProbeActivity` успешен. Default text **Привет, SQLite!**; после launch начальный статус приглашает сохранить, поле без фокуса. Проверка deliberately ограничена **tap field → Save с Unicode**: ASCII/SelectAll на этих двух quick64 в этом продолжении не выполнялись, прежний quoted-ASCII result относится к прежнему APK и не объявляется новой проверкой final886.
+
+| Шаг | API21 ARM64, 1080×1920 | API35 ARM64, 2560×1600 |
+|---|---|---|
+| Launch before | [android21-final01-launch.png](screenshots/platform-probe/android21-final01-launch.png) | [android35-final01-launch.png](screenshots/platform-probe/android35-final01-launch.png) |
+| Focus / IME | MCP tap **(400,375)**; [android21-final02-focus.png](screenshots/platform-probe/android21-final02-focus.png): `Поле в фокусе`, рамка/курсор, IME видима | MCP tap **(300,200)**; [android35-final02-focus.png](screenshots/platform-probe/android35-final02-focus.png): тот же focus/IME state |
+| Save | MCP tap **(450,700)** | MCP tap **(300,416)** |
+| Readback / callback / clearFocus | [android21-final03-read-clearfocus.png](screenshots/platform-probe/android21-final03-read-clearfocus.png): **SQLite прочитал: Привет, SQLite! / Android callback: Привет, SQLite!**, **Поле без фокуса**, IME скрыта | [android35-final03-read-clearfocus.png](screenshots/platform-probe/android35-final03-read-clearfocus.png): те же **точные** readback/callback, focusfalse, IME скрыта |
+
+После Save следующий native UI dump показал expected status и EditText **focused=false** на обоих. API35 XML сохраняет exact Unicode; API21 по-прежнему заменяет не-ASCII на `?`, поэтому точное Unicode в API21 status проверено **визуально**, flags — в XML. Root view API21 получил focus=true, **EditText false** — это не ошибочно выдано за потерю фокуса всем window. Сразу затем captures; все шесть PNG **каждый визуально read**. Between focus и after-save не было BACK/hide keyboard, retry или fixed sleep. На этой final886 quick-проверке ранее наблюдавшийся API21 failure **не воспроизвёлся**: проверенный field clearFocus/IME-hide теперь **PASS**; старая c9/FA история сохранена как результат прежнего binary.
+
+API21 screenshot/dump использовали уже разрешённый MCP `execute_shell_command("screencap -p /data/local/tmp/p01-final21-<stage>.png")` → MCP pull_file; UI `uiautomator dump /data/local/tmp/p01-final21-ui.xml && cat ...`. API35 — native take_screenshot/dump_ui_hierarchy. Не использовались host raw adb, storage/config/permission workaround. Новых screenshot-helper errors/denials не было.
+
+MCP read-only **только .platformprobe** `dumpsys package` / `run-as ... ls -l databases/platform-smoke.sqlite`: оба primaryCpuAbi **arm64-v8a**, version1/probe, БД **12288 bytes** (API21 u0_a53, API35 u0_a209). Бинарник и SQLite path не подменялись; содержимое DB не читалось. После evidence collection оба owned probe **force-stopped через MCP**, оставлены установленными с сохранёнными данными. AVD не остановлены/не reset.
+
+### Evidence hashes / проверка append history
+
+Python проверил signature, lengths, CRC32 всех PNG chunks, IEND и отсутствие trailing bytes — **все шесть CRC OK**:
+
+| PNG | Dimensions / chunks | SHA256 |
+|---|---|---|
+| android21-final01-launch.png | 1080×1920 / 14 | `ef4555e9681a397973ee0ab14dc5b480c90884101b63370e27a5367d6e9148c5` |
+| android21-final02-focus.png | 1080×1920 / 19 | `ce0d3aed6adb3f2a3ae82b0bac64541324872410a541a6607ee0129272a29331` |
+| android21-final03-read-clearfocus.png | 1080×1920 / 14 | `2ef027ef89fd449b0214db55f3600cb8cf458f0d2a5d4d4c96e32fe35dae96a2` |
+| android35-final01-launch.png | 2560×1600 / 12 | `8cbb3f93945ffe5f058f54e60ab2dde0eaeeec3348dc066c97ad32f37a37e8c1` |
+| android35-final02-focus.png | 2560×1600 / 20 | `b0b6e9832ddec4ab929141f84fbe0b7c46a6c93c4c398ff81da81b62f3c27acf` |
+| android35-final03-read-clearfocus.png | 2560×1600 / 13 | `1e2c448d0450c9f26ff7d80f04258d58c6bdc8ec911bf44196d9856f39bff935` |
+
+Final focused checks: base006371f byte-prefix сохранён, включая прежние FA/c9 sections; только report append + эти шесть разрешённых PNG; report links существуют; diff-checks перед commit. Actual results/final commit возвращаются в handoff. **G1 совокупно не PASS:** настоящее ARMv7/zygote32 не получено, P00/codecs/physical/AAC и принятие остальных UI checks принадлежат COORD. Новых provisioning/tooling writes/builds/source fixes/делегации/push эта роль не выполняла.
