@@ -139,6 +139,11 @@ jobs:
       matrix:
         api: [24, 36]
     steps:
+      - name: Checkout exact smoke source and bundled fixtures
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
       - name: Download APK pair from this build
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -162,6 +167,7 @@ jobs:
             adb shell am instrument -w -r su.linka.pictures.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation.txt
             grep -Eq '^OK \([1-9][0-9]* tests?\)' instrumentation.txt
             ! grep -Eq 'FAILURES|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|Process crashed' instrumentation.txt
+            python3 -B .github/tests/process_death.py
 
   verified-artifact:
     needs: [build, device]

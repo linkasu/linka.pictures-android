@@ -62,6 +62,12 @@ class WorkflowContract(unittest.TestCase):
         self.assertIn("adb shell am instrument -w -r", device)
         self.assertIn("grep -Eq '^OK ", device)
         self.assertIn("INSTRUMENTATION_FAILED", device)
+        checkout = step(device, "Checkout exact smoke source and bundled fixtures")
+        self.assertIn("ref: ${{ inputs.sha }}", checkout)
+        self.assertIn("persist-credentials: false", checkout)
+        smoke = "python3 -B .github/tests/process_death.py"
+        self.assertIn(smoke, device)
+        self.assertLess(device.index("INSTRUMENTATION_ABORTED|Process crashed"), device.index(smoke))
         # Ordinary gates may never be conditional or failure-tolerant.
         for body in (step(build, "Unit, lint, privacy and APK gates"), device):
             self.assertNotRegex(body, r"(?m)^\s+if:")
