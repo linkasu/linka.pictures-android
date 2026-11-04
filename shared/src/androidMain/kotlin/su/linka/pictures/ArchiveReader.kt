@@ -2,6 +2,7 @@ package su.linka.pictures
 
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.model.FileHeader
+import net.lingala.zip4j.util.FileUtils
 import su.linka.pictures.shared.BoardLimits
 import java.io.File
 import java.io.IOException
@@ -9,7 +10,9 @@ import java.io.IOException
 class ArchiveReader(private val limits: ArchiveLimits = ArchiveLimits()) {
     @Throws(IOException::class)
     fun extract(archive: File, directory: File, path: String? = null) {
+        if (FileUtils.isNumberedSplitFile(archive)) throw IOException("Numbered split archives are not supported")
         if (archive.length() > limits.maxInputBytes) throw IOException("Archive exceeds input limit")
+        ZipDirectoryBounds.validate(archive, limits)
         ZipFile(archive).use { zip ->
             val headers = zip.fileHeaders
             validate(headers)
