@@ -268,3 +268,84 @@ MCP probe-only `dumpsys package` подтвердил primaryCpuAbi **arm64-v8a*
 | p01-api21-emulator-boot.log | live emulator process output; не объявляется финальным immutable log/hash |
 
 Focused final checks: append-only byte-prefix относительно base `fa17623d`, только этот отчёт + четыре разрешённых `android21*.png`, существование всех report PNG links, PNG CRC, `git diff --check` и staged diff-check; actual results/final commit возвращаются в handoff. Новых лицензий/global tools configs/product/build/CI изменений, push, делегации, iOS-дублирования или аппаратных permission обходов нет. **Open:** clearFocus/IME на API21, ARMv7, physical/AAC, TalkBack и полный продуктовый/lifecycle/error-path quality gate.
+
+## Дополнение: API21 ARMv7 provisioning — STOP, unsupported QEMU2 architecture
+
+Отдельное явное разрешение пользователя «Да, проверить ARMv7»; задача здесь **только provisioning**, без установки APK до нового build/SHA от COORD. Base: `c9a32601bf4a6106fb263fa8dc2b748f67a6a845`, branch `implementation/p01-android-runtime`, чистый worktree перед началом. Product/probe source, build/root configs и старые evidence не менялись.
+
+**Итог стадий:** exact image downloaded **YES**, SDK installed **YES**, отдельный AVD created **YES**, emulator launch attempted **YES / exit1**, guest booted **NO**, actual API21/ARMv7/zygote32 proof **НЕТ**, app installed/launched **НЕ ВЫПОЛНЯЛОСЬ**. Это конкретный **host emulator/engine blocker**, не app crash и не доказательство работоспособности ARMv7 по наличию ELF или AVD config. **G1 не PASS**, physical/AAC/P00/совокупный UI acceptance остаются открыты.
+
+### Инструменты / scope / exact install
+
+Первое действие — MCP list_devices: только `emulator-5554` (own API21 ARM64, transport13) и `emulator-5556` (старый tablet, transport11). Ни один из них не получал state-changing команд. Новый `linka_platform_probe_api21_armv7.ini` и `.avd` до создания отсутствовали; старые AVD не переиспользовались/не reset/kill/reboot/clear.
+
+- Host: `uname -m` → **arm64**; macOS **27.0.1 / 26A434**.
+- Co-located `SDK/cmdline-tools/20.0/bin/sdkmanager --version` под JDK17 → **20.0**, source.properties SHA256 `215e11e90893196549e86dfd6a024f20848322dc7a3d694bc4847b8e6d849ad1`.
+- `SDK/emulator/emulator -version` → **37.2.12.0 / build16428233**; emulator/source.properties SHA256 `ba13085f647fb8389a4d06a1de0e4104ac4e841733e50f67223ac230e1ce685a`.
+- Наличие `SDK/emulator/qemu/darwin-aarch64/qemu-system-armel` подтверждено: **Mach-O 64-bit executable arm64**, SHA256 `839db17b71ca2129b46ff290518e4de328865af0bdb01dca8592f8b7e633ea8b`. **Наличие бинарника не означает поддержку выбранного guest штатным launcher**; прямой запуск этого engine не выполнялся.
+
+Read-only официальный `https://dl.google.com/android/repository/sys-img/android/sys-img2-3.xml` подтвердил exact remotePackage **system-images;android-21;default;armeabi-v7a**, API21/default/armeabi-v7a, revision **4**, archive **armeabi-v7a-21_r04.zip**, **187163871 bytes**, manifest SHA1 **`8c606f81306564b65e41303d2603e4c42ded0d10`**. Это опубликованный checksum, не отдельно вычисленный hash скачанного ZIP.
+
+```sh
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  /Users/aacidov/Library/Android/sdk/cmdline-tools/20.0/bin/sdkmanager \
+  --sdk_root=/Users/aacidov/Library/Android/sdk \
+  --install 'system-images;android-21;default;armeabi-v7a' </dev/null \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-armv7-sdk-install.log 2>&1
+```
+
+Background install прочитан **после automatic completed notification**, без polling. Лог достиг **100% Unzipping... armeabi-v7a/kernel-q**; проверки error/warning/license/accept не выявили prompt или ошибок. Никаких новых лицензий, yes/sudo/chmod/global config/symlink/tool-version замен не было. Установленная local metadata: **Android SDK Platform 5.0.2**, revision4, API21, ABIarmeabi-v7a, tagdefault; package.xml exact localPackage совпал.
+
+| Файл под `SDK/system-images/android-21/default/armeabi-v7a/` | Bytes | SHA256 |
+|---|---:|---|
+| source.properties | 179 | `3e0aae4b60633e8cb58d4b726bb499b5d406bbf5d84768a2af46c802ff15e73e` |
+| package.xml | 18765 | `def4b04df74629d2844d10302542e3b5ac5899adeef2dfc600d105ddde49e52c` |
+| kernel-qemu | 2407928 | `c0fb84b0ed4444a56abd3201bb1b13b3d8e664d50d604d7b82a54482d1be8bd6` |
+
+Image содержит `system.img`, `userdata.img`, `ramdisk.img`, **kernel-qemu**, hardware.ini/build.prop/NOTICE/metadata; **kernel-ranchu отсутствует**. `file kernel-qemu` → **Linux kernel ARM boot executable zImage (little-endian)**. Ни image, ни kernel не подменялись.
+
+### Отдельный AVD и exact fatal
+
+```sh
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  ANDROID_HOME=/Users/aacidov/Library/Android/sdk \
+  ANDROID_SDK_ROOT=/Users/aacidov/Library/Android/sdk \
+  /Users/aacidov/Library/Android/sdk/cmdline-tools/20.0/bin/avdmanager create avd \
+  --name linka_platform_probe_api21_armv7 \
+  --package 'system-images;android-21;default;armeabi-v7a' --device 'Nexus 5' </dev/null \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-armv7-avd-create.log 2>&1
+```
+
+Create exit **0**, **Auto-selecting single ABI armeabi-v7a**, без force. Новый generated config: `abi.type=armeabi-v7a`, `hw.cpu.arch=arm`, `hw.device.name=Nexus 5`, manufacturerGoogle, targetandroid-21, `image.sysdir.1=system-images/android-21/default/armeabi-v7a/`, tagdefault, `hw.gpu.enabled=no`, `hw.gpu.mode=auto`. Config только прочитан, SHA256 **`bf99e1a89d135209893c802f602dba23c2e3077b1e338b96072bf3880578ff10`**; это declared native configuration, **не actual guest proof**.
+
+Штатный headless/no-audio launch без engine/CPU/kernel overrides и без изменения acceleration:
+
+```sh
+/Users/aacidov/Library/Android/sdk/emulator/emulator \
+  -avd linka_platform_probe_api21_armv7 -no-window -no-audio \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-armv7-emulator-boot.log 2>&1
+```
+
+Automatic background completion сообщил **exit1**; только после него прочитан полный log:
+
+```text
+INFO         | Android emulator version 37.2.12.0 (build_id 16428233) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+FATAL        | CPU Architecture 'arm' is not supported by the QEMU2 emulator, (the classic engine is deprecated!)
+```
+
+**STOP по unsupported ABI/engine.** Ошибка не сообщает об отсутствии hardware acceleration, поэтому разрешённый `-accel off` не использован как неподтверждённый обход. Classic engine, прямой qemu-system-armel, другой toolversion/OS/ABI, kernel/CPU patch и фальсификация arch не пробовались. Нативных permission denials/approval не было.
+
+Повторный MCP list_devices после fatal показал **только прежние 5554/5556**, с теми же transport IDs; **нового serial нет**, владельца следующего номера не угадывали. `sys.boot_completed=1`, actual AVD name/API/primaryABI/abilist/zygote32 получить не удалось — guest не поднялся. Процесс уже завершился по fatal до необходимости bounded boot wait; fixed sleeps и polling background logs не применялись. Созданный task-owned AVD и exact image оставлены на месте, старые AVD не изменены. APK не устанавливался никуда в этой задаче; нового app smoke/PNG нет.
+
+### Logs / append-only checks
+
+Все логи в `/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/`:
+
+| Log | SHA256 |
+|---|---|
+| p01-armv7-sdk-install.log | `b1591e5affc072f074dc9830cfff2c6be06dee0a6475edc3e742c70c5356a917` |
+| p01-armv7-avd-create.log | `82a8cc42a7f025f9eb05470b12b19f24ae9a786e923ed63b6ebed7f49652fdd2` |
+| p01-armv7-emulator-boot.log | `6e9ab49e815d5c2d1595a7fd865bbcb1acd30734d4724365e252b85bcb387c08` |
+
+Проверки перед local commit: append-only byte-prefix относительно `c9a32601`, изменение только этого отчёта, сохранность старых screenshots/links, `git diff --check` и staged diff-check; actual result/final commit — в handoff. Это provisioning blocker, **не runtime PASS и не app regression**. Следующий app smoke требует отдельно переданный новый APK/SHA и поддерживаемый настоящий 32-bit runtime; физический ARMv7/AAC остаётся отдельным пробелом.
