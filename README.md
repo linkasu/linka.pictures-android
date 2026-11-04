@@ -2,6 +2,8 @@
 
 ## Сборка и тесты
 
+Контракт наборов и совместимость: [docs/linka-format.md](docs/linka-format.md).
+
 Поддерживаемая платформа версии 2.0 — Android 7.0+ (API 24). Наборы `.linka`,
 изображения, аудио и родительский пароль хранятся локально. Автоматический Android
 backup и перенос данных должны быть отключены в release manifest; перед удалением
@@ -104,10 +106,11 @@ SHA (включая checkout/setup-java/upload-artifact), JDK — точной �
 а SDK/build-tools и toolchain — согласованными фиксированными версиями. Не меняйте
 versionCode в Git автоматически и не публикуйте artifacts провалившегося job.
 
-Checksum wrapper не заменяет dependency verification. **Критерий целостности
-зависимостей #20 пока не закрыт**: состав Compose/shared ещё объединяется в другой
-ветке. На окончательном интеграционном commit нужно разрешить **все** зависимости
-(включая debug/release, unit/instrumentation tests и shared), создать metadata:
+Checksum wrapper не заменяет dependency verification. Проверенный файл
+`gradle/verification-metadata.xml` закрепляет SHA-256 зависимостей и их metadata;
+CI использует strict verification без исключений для доверенных групп.
+При обновлении зависимостей разрешите **все** конфигурации (включая debug/release,
+unit/instrumentation tests и shared) и обновите metadata:
 
 ```sh
 ./gradlew --write-verification-metadata sha256 :shared:jvmTest :app:lint \
@@ -123,8 +126,12 @@ checksums/подписи с официальными источниками ар
 `gradle/verification-metadata.xml`, затем повторить те же gates с
 `--dependency-verification strict`. CI уже требует strict и tracked metadata с
 SHA-256 для каждого artifact, проверкой metadata и без `trusted-artifacts`;
-пока проверенный файл не добавлен, CI намеренно блокируется. Не коммитить
-непроверенные автоматически сгенерированные hashes. Байтовая идентичность APK/AAB
+изменение версии без проверенного hash блокирует сборку. Не коммитить
+непроверенные автоматически сгенерированные hashes. Первичная проверка сверяет
+hashes с опубликованными checksums, Gradle module metadata или байтами файлов
+официальных Maven Central, Google Maven и Gradle Plugin Portal, а не только с
+локальным Gradle cache. Для Linux CI отдельно закреплён Linux-вариант AAPT2.
+Байтовая идентичность APK/AAB
 не измерялась и не гарантируется: проверять её нужно двумя чистыми сборками одного
 commit с одинаковыми inputs/toolchain и сравнением artifacts.
 
