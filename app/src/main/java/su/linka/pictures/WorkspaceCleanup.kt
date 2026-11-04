@@ -9,13 +9,23 @@ import java.io.IOException
 internal object WorkspaceCleanup {
     private val token = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
-    fun onProcessStart(context: Context) {
+    fun onProcessStart(context: Context): Thread? {
         try {
             val root = File(context.cacheDir, "workspace")
-            if (root.canonicalFile != File(context.cacheDir.canonicalFile, "workspace")) return
-            root.listFiles()?.filter { token.matches(it.name) }?.forEach(::deleteScratch)
+            if (root.canonicalFile != File(context.cacheDir.canonicalFile, "workspace")) return null
+            // Capture before Activities start; background deletion must never scan their new workspaces.
+            val abandoned = root.listFiles()?.filter { token.matches(it.name) }.orEmpty()
+            if (abandoned.isEmpty()) return null
+            return Thread({
+                for (file in abandoned) {
+                    try { deleteScratch(file) } catch (error: IOException) {
+                        Log.w("WorkspaceCleanup", "Could not reclaim an abandoned workspace", error)
+                    }
+                }
+            }, "workspace-cleanup").apply { start() }
         } catch (error: IOException) {
             Log.w("WorkspaceCleanup", "Could not reclaim an abandoned workspace", error)
+            return null
         }
     }
 

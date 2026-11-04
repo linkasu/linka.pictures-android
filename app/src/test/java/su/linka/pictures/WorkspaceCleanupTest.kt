@@ -27,12 +27,14 @@ class WorkspaceCleanupTest {
         File(foreign, "keep").writeText("foreign")
         Files.createSymbolicLink(File(scratch, "linked-draft").toPath(), durable.toPath())
         try {
-            WorkspaceCleanup.onProcessStart(context)
+            val cleanup = WorkspaceCleanup.onProcessStart(context)
+            val current = SetsManager(context).createSet()
+            cleanup?.join(5_000)
+            assertFalse(cleanup?.isAlive == true)
             assertFalse(scratch.exists())
             assertEquals("draft", marker.readText())
             assertEquals("phrase", phrase.readText())
             assertEquals("foreign", File(foreign, "keep").readText())
-            val current = SetsManager(context).createSet()
             try { assertTrue(current.getFolder().isDirectory) } finally { current.close() }
         } finally {
             durable.deleteRecursively()
