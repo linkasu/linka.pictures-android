@@ -199,4 +199,37 @@ class SetsManagerAtomicTest {
         assertArrayEquals(original, destination.readBytes())
     }
 
+    @Test fun missingReferencedMediaCannotReplaceAnExistingArchive() {
+        val destination = manager.importSet(archive().inputStream(), "same.linka")
+        val original = destination.readBytes()
+        val opened = manager.getSet("same.linka")
+        try {
+            opened.getManifest().cards.add(Card(1, "missing.png"))
+            assertTrue(save(opened) is IOException)
+            assertArrayEquals(original, destination.readBytes())
+            for (field in listOf("imagePath", "audioPath")) {
+                for (path in listOf("missing.png", "config.json")) {
+                    val config = """{"cards":[{"id":1,"$field":"$path"}]}"""
+                    assertThrows(IOException::class.java) {
+                        manager.importSet(archive(config).inputStream(), "same.linka", true)
+                    }
+                    assertArrayEquals(original, destination.readBytes())
+                }
+            }
+        } finally { opened.close() }
+    }
+
+    @Test fun defaultInstallRetryNeverOverwritesAnExistingSet() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val names = requireNotNull(context.assets.list("sets"))
+        assertEquals(6, names.size)
+        names.forEach { manager.importSet(archive("""{"rows":2}""").inputStream(), it) }
+        val destination = manager.getSetFile(names.first())
+        val edited = destination.readBytes()
+        Cookie(context).set(Cookie.ASSETS_LOADER, false)
+        manager.loadDefaultSets()
+        assertArrayEquals(edited, destination.readBytes())
+        assertTrue(Cookie(context).get(Cookie.ASSETS_LOADER, false))
+    }
+
 }

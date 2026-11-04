@@ -6,10 +6,8 @@ import net.lingala.zip4j.exception.ZipException
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
-import java.io.OutputStream
 import java.util.ArrayList
 import java.util.UUID
 
@@ -18,19 +16,19 @@ class SetsManager(private val context: Context) {
     private val cookie = Cookie(context)
 
     @Throws(IOException::class)
-    fun loadDefaultSets() {
+    fun loadDefaultSets() = synchronized(AtomicSetFile.lock) {
         if (cookie.get(Cookie.ASSETS_LOADER, false)) {
-            return
+            return@synchronized
         }
         val sets = getSetsDirectory()
         val assetManager = getAssetsManager()
-        val list = assetManager.list("sets") ?: emptyArray()
+        val list = assetManager.list("sets") ?: throw IOException("Cannot list bundled sets")
         for (name in list) {
+            val destination = AtomicSetFile.resolve(sets, name)
+            // A retry after an interrupted first launch must not replace an already edited set.
+            if (destination.exists()) continue
             assetManager.open("sets/$name").use { input ->
-                val outFile = File(sets, name)
-                FileOutputStream(outFile).use { output ->
-                    copyStream(input, output)
-                }
+                importSet(input, name)
             }
         }
         cookie.set(Cookie.ASSETS_LOADER, true)
@@ -120,6 +118,7 @@ class SetsManager(private val context: Context) {
         try {
             ArchiveReader().extract(setFile, outputDir)
             val manifest = parseManifest(setFile, File(outputDir, CONFIG_FILE_NAME))
+            validateMedia(manifest, outputDir)
             return Set(manifest, outputDir, ownsWorkspace = true)
         } catch (error: Exception) {
             outputDir.deleteRecursively()
@@ -188,11 +187,21 @@ class SetsManager(private val context: Context) {
         val workspace = createWorkspace()
         try {
             ArchiveReader().extract(archive, workspace)
-            parseManifest(archive, File(workspace, CONFIG_FILE_NAME))
+            validateMedia(parseManifest(archive, File(workspace, CONFIG_FILE_NAME)), workspace)
         } catch (error: JSONException) {
             throw IOException(error)
         } finally {
             workspace.deleteRecursively()
+        }
+    }
+
+    private fun validateMedia(manifest: SetManifest, workspace: File) {
+        for (card in manifest.cards) {
+            for (path in listOfNotNull(card.imagePath, card.audioPath)) {
+                if (path == CONFIG_FILE_NAME || !File(workspace, path).isFile) {
+                    throw IOException("Missing or invalid card media: $path")
+                }
+            }
         }
     }
 
@@ -329,15 +338,6 @@ class SetsManager(private val context: Context) {
             root.mkdirs()
         }
         return root
-    }
-
-    private fun copyStream(input: InputStream, output: OutputStream) {
-        val buffer = ByteArray(1024)
-        while (true) {
-            val read = input.read(buffer)
-            if (read == -1) break
-            output.write(buffer, 0, read)
-        }
     }
 
     companion object {
