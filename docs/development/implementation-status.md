@@ -4,6 +4,9 @@
 
 ## Разрешения и ограничения
 
+- **Новая явная поправка R15:** после объяснения SDK/runtime пользователь выбрал «Поднять минимум до iOS17». Текущий минимум iOS/iPadOS теперь17+, не14. Android21/armv7/arm64 неизменны. Xcode остаётся stable27.2, не beta. Основной план и три приложения в `/Users/aacidov/.opencode/plan/` обновлены точечно; история прежних сборок14 сохранена. Это не согласие пропустить gates или установить дополнительные SDK/runtime.
+- **Отдельное разрешение на среды:** следующим ответом «Да, Android21 и iOS17» пользователь разрешил скачать/установить соответствующие образы и создать отдельные тестовые среды. Существующие AVD/simulators не сбрасывать; новые лицензии, вход Apple и native permissions не подтверждать автоматически. Android21 ARM64 установку ведёт V, iOS runtime — COORD. `xcodebuild -license check` успешен без изменения лицензии; загрузка iOS17.0 ARM64 запрошена штатным `xcodebuild -downloadPlatform` с export на data-диск.
+
 - Пользователь поручил выполнить план с параллельными агентами, worktrees и локальными ветками/коммитами. Основная ветка: `implementation/linka-pokazhi` от `v1.4`.
 - На вопрос о недоступных minimum-runtime средах пользователь ответил «реши проблему». Это не разрешение поднять minimum OS, убрать ABI или объявить G1 пройденным без доказательств. Проверяется альтернативный совместимый кандидат; порядок stop-gates пока сохраняется.
 - Явно разрешена штатная отмена только двух несохранённых тестовых состояний: `Audit14д` на `linka_audit_phone` и новый набор на `linka_audit_tablet`. Сохранённые наборы не удалять. Для продолжения аудитора передано это ограничение.
@@ -14,7 +17,7 @@
 | Пакет | Фактический статус |
 |---|---|
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
-| P01 / G1 | Не принят. Compile blockers устранены: Android APK min21/ARMv7+ARM64 и настоящий iOS simulator executable min14 собраны. Android35 UI/focus/SQLite/callback и iOS26.5 startup/native SQLite прошли. Minimum runtime и availability review остаются открыты |
+| P01 / G1 | Не принят. Android APK min21/ARMv7+ARM64 собран; после поправки R15 iOS app exact17.0 тоже собран, device framework слинкован. Android35 и iOS26.5 smoke прошли, включая новый target17 binary. Загрузка runtime17 требует доступа Apple; Android21 provisioning продолжается |
 | P02 / G2 | Не начат: входные G0/G1 не закрыты, code-contracts/SQLite schema/access policy не заморожены |
 | P03–P14 / G3–G5 | Не начаты: независимые implementation-lanes до G2 не запускаются |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
@@ -30,7 +33,7 @@
 | Platform preflight | `pokazhi-p01-platform-smoke` / `implementation/p01-platform-probe` | `15dad5d`→`8d14b6d`→`595061a`→`c7eb3a2`: отклонённые кандидаты и успешные final builds; `dedb578`: native iOS runtime. Эксперимент не интегрирован, minimum-runtime proof отсутствует |
 | Android runtime | `pokazhi-p00-android` / `implementation/p01-android-runtime` | `a4dd51d`→`13bb635`: [API35 ARM64 UI/focus/SQLite/callback evidence](../redesign-audit/android-platform-runtime.md), 5 просмотренных PNG; baseline не затронут |
 
-Текущий probe stack: Kotlin/KMP/compiler2.2.21, CMP1.9.3 (Android Compose1.9.4), SQLite2.5.2, AGP8.6.1, compileSdk35/minSdk21, Gradle8.7, JDK17.0.19, Xcode27.2; iOS executable min14. Коммит `c7eb3a2` снимает AGP/compileSdk blocker, `dedb578` добавляет actual native iOS SQLite check. Это проверенный compile/current-runtime кандидат, не принятый G1 и не product stack, подключённый к библиотеке.
+Текущий probe stack: Kotlin/KMP/compiler2.2.21, CMP1.9.3 (Android Compose1.9.4), SQLite2.5.2, AGP8.6.1, compileSdk35/minSdk21, Gradle8.7, JDK17.0.19, Xcode27.2. Исторический iOS executable имел min14; после явного изменения R15 commit `d85fcf1` собирает app exact17.0 и device-arm64 framework. `c7eb3a2` снимает AGP/compileSdk blocker, `dedb578` добавляет actual native iOS SQLite check. Это проверенный compile/current-runtime кандидат, не принятый G1 и не product stack, подключённый к библиотеке.
 
 Все эти worktrees созданы штатным OpenCode tool под `/Users/aacidov/.local/share/opencode/worktree/67846f/`. Tool создал P00 worktrees с detached HEAD; завершённые Android/Electron commits дополнительно закреплены именованными ветками. Чужие существовавшие worktrees/ветки не изменяются. Вложенной делегации нет.
 
@@ -51,4 +54,4 @@
 
 ## Следующий переход
 
-Текущие lanes завершены, результаты просмотрены и сохранены; build probe остаётся изолированным. Для перехода по исходному порядку нужны разрешённые Android21 ARMv7/ARM64 и iOS14 runtime среды, оставшиеся G0 проверки и закрытие availability-case. Их в текущем окружении нет. Уточнение: официальный API21 ARM64 image доступен для скачивания; его установка/пробный запуск может закрыть часть пробела без физического Android, но пока не разрешены/не выполнялись. ARMv7 и iOS14 host/toolchain compatibility этим не решаются; см. уточнение в platform-preflight. Только явное новое решение пользователя может перенести runtime-проверки на более поздний gate; минимум ОС/ABI и запрет выпуска без приёмки при этом не меняются. До такого решения G0/G1 нельзя заменить зелёной отметкой либо начать зависимые P02–P13 под видом готового bootstrap. В ответ на запрос такого решения пользователь попросил подробное объяснение проблемы/возможности скачивания; согласия изменить порядок не было.
+После поправки R15 проверяется новая сборка target17 в изолированном probe. Для перехода по прежнему порядку нужны Android21 ARMv7/ARM64 и **iOS17** runtime среды, оставшиеся G0 проверки; они пока не установлены. Официальный API21 ARM64 image доступен для скачивания; совместимость конкретного старого образа с Emulator нужно проверить запуском. ARMv7 runtime — отдельная проверка. Исторический availability-case API15 на iOS14 больше не блокирует новую цель17; общая minimum-runtime приёмка остаётся обязательной. Пользователь изменил минимум, но не разрешил пропустить gates; P02–P13 пока не начаты.
