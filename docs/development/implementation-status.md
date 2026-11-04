@@ -21,7 +21,7 @@
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
 | P01 / G1 | Не принят целиком. Android21 ARM64 и API35 прошли SQL/callback/focus/IME на final APK886 после root-focus fix и согласования D8. iOS17.0 через Chrome/MCP установлен, native SQLite и public UI XCTest прошли. ARMv7 guest не загрузился в текущем Emulator даже с classic; codec candidates проверяются отдельно |
 | P02 / G2 | **Зафиксирован:** normal bootstrap `bb4f920`→`a371877`, `iosApp/`, модели/команды/ports, streaming snapshots, schema/epoch/ownership handoff, C4. JVM14/14 и Native iOS17 14/14, Unicode16 1093 вектора, Android/оба frameworks/unsigned iOS builds успешны. Это не реализация P03–P14 и не G1 PASS |
-| P03–P14 / G3–G5 | Условно разрешены; declarations/ownership P02 готовы для отдельных P03/P04/P05 branches. Дальнейшие implementation-lanes не меняют root/ports без COORD; fake runtime не заменяет native-приёмку |
+| P03–P14 / G3–G5 | **P03/P04/P05 запущены параллельно от frozen `0816394`** в отдельных worktrees; результаты ещё не приняты/не интегрированы. P06–P14 пока не начаты. Root/ports не меняются исполнителями без COORD; fake runtime не заменяет native-приёмку |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
 | P16 / G7 | Не начат; внешние review/signing/store permissions отдельно, публикация не разрешена |
 
@@ -34,6 +34,10 @@
 | UI P00 | `pokazhi-p00-ui-audit` / `implementation/p00-ui-followup` | `2604991`→`d7c1532`, `71b17cd`→`b2a15a4`, `47c6c79`→`74246db`: [evidence](../redesign-audit/p00-ui-audit.md), 30 просмотренных новых PNG; tablet types/TTS-submit/Tab+Enter/save проверены, phone disconnected |
 | Platform preflight | `pokazhi-p01-platform-smoke` / `implementation/p01-platform-probe` | `15dad5d`→`8d14b6d`→`595061a`→`c7eb3a2`: отклонённые кандидаты и успешные final builds; `dedb578`: native iOS runtime. Эксперимент не интегрирован, minimum-runtime proof отсутствует |
 | Android runtime | `pokazhi-p00-android` / `implementation/p01-android-runtime` | `a4dd51d`→`13bb635`: [API35 ARM64 UI/focus/SQLite/callback evidence](../redesign-audit/android-platform-runtime.md), 5 просмотренных PNG; baseline не затронут |
+| Foundation P02 | `pokazhi-p02-foundation` / `implementation/p02-foundation` | `bb4f920`→`a371877`, normal bootstrap, результаты расширены G2 `0816394` |
+| D / P03 | `pokazhi-p03-communication` / `implementation/p03-communication` | В работе от `0816394`: общий message, команды, reducer/effects/leases, focused tests |
+| S / P04 | `pokazhi-p04-storage` / `implementation/p04-storage` | В работе от `0816394`: SQL/media/drafts/snapshot/recovery, fault tests; safety review COORD до любых реальных данных |
+| P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | В работе от `0816394`: wire DTO/ZIP boundary/semantic fixtures, trust review COORD |
 
 Дополнения Android21: `fa17623d`→`d44723b` сохраняет успешную загрузку SDK и первоначальный tools-root blocker; `c9a32601`→`5a35201` подтверждает его исправление co-located cmdline-tools20.0, новый API21 ARM64 AVD и SQL/callback runtime, но честно фиксирует clearFocus/IME FAIL.
 
