@@ -9,6 +9,8 @@ import su.linka.pictures.text.archivePathCollisionKey
 internal const val ARCHIVE_LIMIT = 500L * 1024 * 1024
 internal const val MEDIA_LIMIT = 64L * 1024 * 1024
 internal const val CONFIG_LIMIT = 8L * 1024 * 1024
+internal const val PATH_BYTE_LIMIT = 4096
+internal const val CENTRAL_NAME_BYTE_LIMIT = 1024L * 1024
 internal val activeKeys = setOf("action", "actions", "command", "commands", "event", "events", "script", "scripts", "navigation")
 internal val wireJson = Json { isLenient = false }
 
@@ -27,7 +29,8 @@ internal class CodecCancelled : Exception()
 internal class CodecUnconfirmed : Exception()
 
 internal fun safePath(path: String): String {
-    checkZip(path.isNotEmpty() && path.length <= 65535 && path.none { it == '\\' || it == '\u0000' || it == ':' })
+    limit(path.length <= PATH_BYTE_LIMIT && path.encodeToByteArray().size <= PATH_BYTE_LIMIT)
+    checkZip(path.isNotEmpty() && path.none { it == '\\' || it == '\u0000' || it == ':' })
     val segments = path.removeSuffix("/").split('/')
     for (s in segments) {
         checkZip(s.isNotEmpty() && s != "." && s != ".." && !s.endsWith('.') && !s.endsWith(' '))

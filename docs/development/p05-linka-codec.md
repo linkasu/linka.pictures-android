@@ -23,6 +23,10 @@ runtime files или чужих media.
   local/central paths, offsets, truncation, archive/count/aggregate/actual-inflate
   budgets; ZIP64/multidisk/encryption/symlink/special records отвергаются.
   Non-ASCII ZIP names требуют UTF8 flag; недоказанные legacy encodings не угадываются.
+  Parser memory budgets: имя <=4096 UTF8 bytes, сумма central names <=1MiB,
+  включая directories/config. Проверка declared name size и checked Long суммы
+  выполняется до read/allocation имени; local names и media reference paths тоже
+  ограничены 4096 bytes. Превышение — LIMIT_EXCEEDED без truncation/переименования.
 - Payload staging использует только созданные `PlatformFilesPort` handles с
   фиксированным suggested name, никогда ZIP paths для filesystem extraction.
   Каждый chunk ограничен до записи. Даже unused entries проходят ZIP validation.
@@ -67,6 +71,9 @@ runtime files или чужих media.
   распространяется без retry, final PreparedBoard или подмены на Failed/Cancelled.
   Cleanup пытается освободить все свои handles даже при ошибке одного cleanup;
   transfer финальной lease происходит только после успешного normal cleanup.
+  После последнего suspend acquire и непосредственно перед handoff выполняется
+  ensureActive: поздний Completed lease отменённого owner закрывается в finally,
+  PreparedBoard не передаётся, cancellation не превращается в Failed/Cancelled.
   Ошибка cleanup не маскирует primary UnconfirmedCommit/cancellation. Физическое
   удаление temp при отказе OS discard не гарантируется кодеком — это native gate.
 - Writer не потребляет caller lease: удерживает retain, проверяет все assets,
@@ -90,7 +97,7 @@ media, count/aggregate/per-file/archive-actual/content-count/JSON/decoder limits
 exact accepted boundaries, writer IO/hash/cancel cleanup и UnconfirmedCommit
 после успешной первой preparation без final publication.
 
-Итоговая проверка после correctness review: `:shared:jvmTest` — **35/35**, из
+Проверка исходного implementation commit `974d875`: `:shared:jvmTest` — **35/35**, из
 них прежние 14 и новые 21; failures/errors/skipped = 0 по XML. Также PASS
 `:shared:compileKotlinIosSimulatorArm64` и
 `:shared:compileTestKotlinIosSimulatorArm64` (компиляция, не запуск Native tests).
@@ -98,6 +105,43 @@ exact accepted boundaries, writer IO/hash/cancel cleanup и UnconfirmedCommit
 passive source IDs; добавлена regression для cleanup errors и сохранения
 UnconfirmedCommit. Затронутые JVM/Native compile checks повторены и прошли.
 Ни один test не объявляет fake inspection decoder proof.
+
+## Corrections по trust review COORD
+
+Review base: `974d8752f749aa622dd5f4b77354d6f1ea102236`. Добавлены только
+два согласованных исправления: name-memory budgets и cancellation после final
+acquire. Production diff: `CodecBoundary.kt` (constants/safePath), `LinkaZip.kt`
+(early central/local limits и тот же writer name budget), `LinkaCodec.kt`
+(две cancellation checks); test seam, четыре regression tests и этот документ.
+Ports/deps/domain/storage/audio/platform не менялись.
+
+Новые actual synthetic ZIP cases: ровно 4096/4097 UTF8 bytes, включая non-ASCII и
+directory slash; UTF8 flag; local/central name headers; declared oversized central
+name без достаточных bytes (LIMIT до EOF); ровно 1MiB/1MiB+1 central names,
+directories включены; oversized reference paths. Отказы происходят без prepare/
+inspection. Некоперативный suspend acquire возобновляется с новой lease после
+cancel owner: наблюдается CancellationException, нет handoff, все собственные
+leases/temp закрыты, immutable media и source bytes сохранены. Прежние writer
+caller-lease/cancellation regressions сохранены.
+
+Итог corrections: focused codec **25/25**, полный `:shared:jvmTest` **39/39**
+(прежние 35 + четыре новых), failures/errors/skipped = 0 по XML. Main и test
+`:shared:compileKotlinIosSimulatorArm64` /
+`:shared:compileTestKotlinIosSimulatorArm64` — PASS. Повторный peer oracle на
+Node v22.22.2 / E `c540646e…` — PASS: strict flat2.0, writer ZIP3.0,
+sparse/span visibility. Native tests не запускались. Production correction
+diff — три файла, 13 additions / 2 deletions; остальное — test seam/regressions
+и evidence, без изменения frozen declarations.
+
+### Ограничение deflate canonicality
+
+`raw.remaining == 0` не доказывает exact end самого DEFLATE stream: public Okio
+inflater может prefetch compressed trailer во внутренний buffer. Проверены
+compressed-region budgets, actual output size и CRC, но отсутствие таких trailing
+compressed bytes **не доказано**. Эти bytes не исполняются. Public common API
+даёт bytesWritten, не bytesRead; one-byte feeding, internal API, собственный
+deflate decoder и новые библиотеки не добавлялись. Решение о необходимости более
+строгой canonicality остаётся COORD, это не заявленный PASS.
 
 Команда focused проверки:
 

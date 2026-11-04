@@ -80,6 +80,7 @@ internal class LinkaZip private constructor(
             val entries = mutableListOf<ZipItem>()
             val keys = mutableMapOf<String, Boolean>()
             var budget = 0L
+            var nameBudget = 0L
             files.source(file).value().buffer().use { source ->
                 source.skip(centralOffset)
                 val central = LimitedSource(source, centralSize).buffer()
@@ -98,6 +99,8 @@ internal class LinkaZip private constructor(
                     val size = central.u32()
                     checkZip(compressed != 0xffffffffL && size != 0xffffffffL)
                     val nameSize = central.u16()
+                    limit(nameSize <= PATH_BYTE_LIMIT && nameSize.toLong() <= CENTRAL_NAME_BYTE_LIMIT - nameBudget)
+                    nameBudget += nameSize.toLong()
                     val extraSize = central.u16()
                     val commentSize = central.u16()
                     checkZip(central.u16() == 0)
@@ -154,6 +157,7 @@ internal class LinkaZip private constructor(
                 val compressed = source.u32()
                 val size = source.u32()
                 val nameSize = source.u16()
+                limit(nameSize <= PATH_BYTE_LIMIT)
                 val extraSize = source.u16()
                 val descriptor = entry.flags and 8 != 0
                 checkZip((crc == entry.crc || descriptor && crc == 0L) &&
@@ -224,13 +228,15 @@ internal class LinkaZipWriter(private val sink: BufferedSink) {
     private val entries = mutableListOf<Written>()
     private var offset = 0L
     private var payload = 0L
+    private var nameBudget = 0L
 
     suspend fun add(name: String, source: Source, expectedSize: Long? = null, expectedHash: String? = null) {
         source.use {
             safePath(name)
             limit(entries.size < 2000)
             val bytes = name.encodeToByteArray()
-            limit(bytes.size <= 65535)
+            limit(bytes.size.toLong() <= CENTRAL_NAME_BYTE_LIMIT - nameBudget)
+            nameBudget += bytes.size.toLong()
             val start = offset
             sink.writeIntLe(0x04034b50).writeShortLe(20).writeShortLe(0x808).writeShortLe(0)
                 .writeIntLe(0).writeIntLe(0).writeIntLe(0).writeIntLe(0).writeShortLe(bytes.size).writeShortLe(0).write(bytes)

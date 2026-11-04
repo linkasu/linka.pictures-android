@@ -15,12 +15,14 @@ internal class CodecTestRig : PlatformFilesPort, MediaStore, MediaInspectionPort
     var idCalls = 0
     var prepares = 0
     var acquires = 0
+    var inspections = 0
     var openLeases = 0
     var openSources = 0
     var openSinks = 0
     var failPrepareAt = Int.MAX_VALUE
     var prepareOutcome: OperationResult<PreparedMedia> = OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))
     var failAcquire = false
+    var acquireOverride: (suspend (Set<AssetId>) -> OperationResult<MediaLease>)? = null
     var imageInfo = ImageInfo(2, 2, "image/png")
     var audioInfo = AudioInfo(1000, "audio/wav")
     var inspectionOutcome: OperationResult<Nothing>? = null
@@ -102,6 +104,7 @@ internal class CodecTestRig : PlatformFilesPort, MediaStore, MediaInspectionPort
     }
     override suspend fun acquire(assets: Set<AssetId>): OperationResult<MediaLease> {
         acquires++
+        acquireOverride?.let { return it(assets) }
         return if (failAcquire) OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)) else OperationResult.Completed(Lease(assets))
     }
     override suspend fun metadata(id: AssetId): OperationResult<MediaAsset> = assets[id]?.let { OperationResult.Completed(it) } ?: OperationResult.Failed(Problem(ProblemCode.MISSING_ASSET))
@@ -112,11 +115,13 @@ internal class CodecTestRig : PlatformFilesPort, MediaStore, MediaInspectionPort
     override fun source(id: AssetId, lease: MediaLease): OperationResult<Source> = source(file(id, lease).value())
     override suspend fun collectGarbage(): OperationResult<GarbageCollectionReport> = error("codec must not delete immutable assets")
     override suspend fun image(file: LocalFile): OperationResult<ImageInfo> {
+        inspections++
         check(bytes.getValue(file.path).isNotEmpty())
         onInspection?.invoke()
         return inspectionOutcome ?: OperationResult.Completed(imageInfo)
     }
     override suspend fun audio(file: LocalFile): OperationResult<AudioInfo> {
+        inspections++
         check(bytes.getValue(file.path).isNotEmpty())
         onInspection?.invoke()
         return inspectionOutcome ?: OperationResult.Completed(audioInfo)

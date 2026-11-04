@@ -60,10 +60,12 @@ class LinkaCodec(
             val (document, normalized) = wire.document(name, imported, ids)
             currentCoroutineContext().ensureActive()
             finalLease = media.acquire(document.assetIds()).value()
+            currentCoroutineContext().ensureActive()
             cleanup(prepared, temporaries, throwOnFailure = true)
             val result = PreparedBoard(document,
                 BoardTransferReport(document.pages.size, document.pages.sumOf { it.cells.count { cell -> cell.kind == CellKind.CONTENT } }, images, recordings, mediaBytes, normalized),
                 finalLease)
+            currentCoroutineContext().ensureActive()
             finalLease = null
             result
         } finally {

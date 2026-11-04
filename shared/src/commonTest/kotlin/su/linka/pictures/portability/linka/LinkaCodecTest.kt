@@ -1,6 +1,9 @@
 package su.linka.pictures.portability.linka
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.*
 import okio.Buffer
@@ -14,8 +17,93 @@ import su.linka.pictures.application.portability.PreparedBoard
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import kotlin.test.*
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class LinkaCodecTest {
+    @Test fun zipFilenameBudgetUsesUtf8BytesBeforeCentralOrLocalNameAllocation() = runTest {
+        for (directory in listOf(false, true)) {
+            val name = if (directory) "é".repeat(2047) + "a/" else "é".repeat(2048)
+            assertEquals(4096, name.encodeToByteArray().size)
+            val rig = CodecTestRig()
+            val board = rig.codec.read(rig.input(syntheticZip(listOf(configEntry(simpleConfig), SyntheticEntry(name, byteArrayOf())))), "test").value()
+            board.close()
+            assertEquals(0, rig.prepares); assertEquals(0, rig.inspections); clean(rig)
+            val over = if (directory) name.dropLast(1) + "a/" else name + "a"
+            assertEquals(4097, over.encodeToByteArray().size)
+            assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(simpleConfig), SyntheticEntry(over, byteArrayOf())))), "test"), ProblemCode.LIMIT_EXCEEDED)
+            assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(simpleConfig), SyntheticEntry("small", byteArrayOf(), localName = over)))), "test"), ProblemCode.LIMIT_EXCEEDED)
+            assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(simpleConfig), SyntheticEntry(name, byteArrayOf(), flags = 0)))), "test"), ProblemCode.UNSAFE_ARCHIVE)
+            assertEquals(0, rig.prepares); assertEquals(0, rig.inspections); clean(rig)
+        }
+        val truncatedName = syntheticZip(listOf(configEntry(simpleConfig)))
+        val centralOffset = Buffer().write(truncatedName, truncatedName.size - 6, 4).readIntLe()
+        truncatedName[centralOffset + 28] = 1
+        truncatedName[centralOffset + 29] = 0x10
+        val rig = CodecTestRig()
+        // No 4097 name bytes exist: LIMIT rather than EOF proves the header is checked before readByteArray.
+        assertFailure(rig.codec.read(rig.input(truncatedName), "test"), ProblemCode.LIMIT_EXCEEDED)
+        assertEquals(0, rig.prepares); assertEquals(0, rig.inspections); clean(rig)
+    }
+
+    @Test fun aggregateCentralFilenameBudgetIncludesDirectoriesAndAcceptsExactlyOneMiB() = runTest {
+        val directories = List(255) { index -> SyntheticEntry(index.toString().padStart(4, '0') + "x".repeat(4091) + "/", byteArrayOf()) }
+        val remaining = (1024 * 1024 - "config.json".encodeToByteArray().size - 255 * 4096)
+        for (extra in 0..1) {
+            val last = SyntheticEntry("last" + "y".repeat(remaining + extra - 5) + "/", byteArrayOf())
+            val entries = listOf(configEntry(simpleConfig)) + directories + last
+            assertEquals(1024L * 1024 + extra, entries.sumOf { it.name.encodeToByteArray().size.toLong() })
+            val rig = CodecTestRig()
+            val result = rig.codec.read(rig.input(syntheticZip(entries)), "test")
+            if (extra == 0) result.value().close() else assertFailure(result, ProblemCode.LIMIT_EXCEEDED)
+            assertEquals(0, rig.prepares); assertEquals(0, rig.inspections); clean(rig)
+        }
+    }
+
+    @Test fun mediaReferenceUtf8PathBudgetRejectsBeforeLookupPreparationOrInspection() = runTest {
+        for (reference in listOf("x".repeat(4097), "é".repeat(2048) + "a")) {
+            val rig = CodecTestRig()
+            assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(cardConfig(card("x", image = reference)))))), "test"), ProblemCode.LIMIT_EXCEEDED)
+            assertEquals(0, rig.prepares); assertEquals(0, rig.inspections); clean(rig)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun nonCooperativeFinalAcquireAfterCancellationCannotHandOffPreparedBoard() = runTest {
+        val rig = CodecTestRig()
+        var pending: Continuation<OperationResult<MediaLease>>? = null
+        var roots: Set<AssetId> = emptySet()
+        rig.acquireOverride = { assets ->
+            roots = assets
+            suspendCoroutine { pending = it }
+        }
+        val original = syntheticZip(listOf(configEntry(cardConfig(card("x", image = "image"))), SyntheticEntry("image", byteArrayOf(1, 2))))
+        val file = rig.input(original)
+        var handedOff = false
+        var cancellationObserved = false
+        val owner = launch {
+            try {
+                rig.codec.read(file, "test")
+                handedOff = true
+            } catch (cancelled: CancellationException) {
+                cancellationObserved = true
+                throw cancelled
+            }
+        }
+        runCurrent()
+        assertNotNull(pending)
+        assertEquals(1, rig.prepares); assertEquals(1, rig.acquires); assertEquals(1, rig.openLeases)
+        owner.cancel()
+        pending!!.resume(OperationResult.Completed(rig.Lease(roots)))
+        owner.join()
+        assertTrue(cancellationObserved); assertTrue(owner.isCancelled); assertFalse(handedOff)
+        assertEquals(1, rig.assets.size)
+        assertContentEquals(byteArrayOf(1, 2), rig.bytes.getValue(roots.single().value))
+        assertContentEquals(original, rig.raw(file))
+        clean(rig)
+    }
+
     private fun JsonObject.changed(key: String, value: JsonElement): JsonObject = JsonObject(toMutableMap().also { it[key] = value })
     private val simple get() = wireJson.parseToJsonElement(simpleConfig).jsonObject
     private fun cardConfig(vararg cards: JsonObject, rows: Int = 1, columns: Int = 1): String = simple.changed("pages", JsonArray(listOf(
