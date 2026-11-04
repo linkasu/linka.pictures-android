@@ -2,11 +2,20 @@ package su.linka.pictures
 
 import android.net.Uri
 import android.os.Bundle
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import su.linka.pictures.components.ParentPasswordDialog
 import java.io.File
 import java.io.IOException
@@ -18,10 +27,27 @@ class SetExportController(
     private val onError: (Exception) -> Unit,
     private val onCancelled: () -> Unit = {}
 ) {
-    private var pendingToken by mutableStateOf<String?>(null)
+    private val operation by lazy { ViewModelProvider(activity)[Operation::class.java] }
+    private var pendingToken: String?
+        get() = operation.token
+        set(value) { operation.token = value }
     private var authorizing by mutableStateOf(false)
     private val work = ActivityWork(activity)
-    val isPending: Boolean get() = authorizing || work.busy || pendingToken != null
+    val isPending: Boolean get() = authorizing || work.busy || operation.preparing ||
+        operation.writing || operation.awaitingCompletion || pendingToken != null
+
+    init {
+        activity.lifecycleScope.launch {
+            activity.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                operation.completion.collect { result ->
+                    if (result != null && !activity.isDestroyed && operation.completion.compareAndSet(result, null)) {
+                        operation.awaitingCompletion = false
+                        if (result.error == null) onSuccess() else onError(result.error)
+                    }
+                }
+            }
+        }
+    }
 
     private val launcher = activity.registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/vnd.linka")
@@ -52,7 +78,11 @@ class SetExportController(
             override fun onDone(result: Any?) {
                 if (activity.isDestroyed) return
                 authorizing = false
-                work.run(prepare, { archive ->
+                val state = operation
+                state.preparing = true
+                work.run({
+                    try { prepare() } finally { state.finishPreparing() }
+                }, { archive ->
                     pendingToken = archive.nameWithoutExtension
                     val name = File(fileName).name.let {
                         if (it.endsWith(".linka")) it else "$it.linka"
@@ -73,16 +103,27 @@ class SetExportController(
     }
 
     fun saveState(outState: Bundle) {
+        outState.remove(STATE_KEY)
+        outState.remove(STATE_WRITING)
         pendingToken?.let { outState.putString(STATE_KEY, it) }
+        if (operation.writing) outState.putBoolean(STATE_WRITING, true)
     }
 
     fun restoreState(savedState: Bundle?) {
+        // A retained operation is authoritative; the Bundle may describe an already consumed result.
+        if (operation.restored) return
+        operation.restored = true
         val token = savedState?.getString(STATE_KEY) ?: return
         if (!TOKEN.matches(token)) {
             onError(IOException("Invalid pending export token"))
             return
         }
         pendingToken = token
+        if (savedState.getBoolean(STATE_WRITING)) {
+            clearPending()
+            operation.finish(IOException("Export interrupted by process death"))
+            return
+        }
         if (!pendingFile()!!.isFile) {
             // Keep the token until the picker result: never mistake missing cache for success.
             onError(IOException("Prepared export is no longer available"))
@@ -90,31 +131,57 @@ class SetExportController(
     }
 
     internal fun complete(uri: Uri?) {
-        if (work.busy || activity.isDestroyed) return
+        if (work.busy || operation.writing || operation.awaitingCompletion || activity.isDestroyed) return
         val archive = pendingFile()
         if (uri == null) {
             clearPending()
             onCancelled()
             return
         }
-        work.run({
-          try {
-            if (archive == null || !archive.isFile) throw IOException("Prepared export is no longer available")
-            // Open input first: missing private cache must never truncate the provider target.
-            archive.inputStream().use { input ->
-                val output = activity.contentResolver.openOutputStream(uri, "wt")
-                    ?: throw IOException("Cannot open export destination")
-                output.use { input.copyTo(it) }
-            }
-          } finally { archive?.delete() }
-        }, {
-            pendingToken = null
-            onSuccess()
-        }, { error ->
-            pendingToken = null
-            onError(error)
-        })
+        operation.write(activity.applicationContext, archive, uri)
     }
+
+    /** Retains only operation data and application-owned IO, never a host or its callbacks. */
+    internal class Operation : ViewModel() {
+        var token by mutableStateOf<String?>(null)
+        var preparing by mutableStateOf(false)
+        var writing by mutableStateOf(false)
+        var awaitingCompletion by mutableStateOf(false)
+        var restored = false
+        val completion = MutableStateFlow<Completion?>(null)
+
+        fun finishPreparing() { viewModelScope.launch { preparing = false } }
+
+        fun finish(error: Exception?) {
+            token = null
+            writing = false
+            awaitingCompletion = true
+            completion.value = Completion(error)
+        }
+
+        fun write(context: Context, archive: File?, uri: Uri) {
+            if (writing) return
+            writing = true
+            viewModelScope.launch {
+                val error = withContext(Dispatchers.IO + NonCancellable) {
+                    try {
+                        if (archive == null || !archive.isFile) throw IOException("Prepared export is no longer available")
+                        // Open input first: missing private cache must never truncate the provider target.
+                        archive.inputStream().use { input ->
+                            val output = context.contentResolver.openOutputStream(uri, "wt")
+                                ?: throw IOException("Cannot open export destination")
+                            output.use { input.copyTo(it) }
+                        }
+                        null
+                    } catch (error: Exception) { error }
+                    finally { archive?.delete() }
+                }
+                finish(error)
+            }
+        }
+    }
+
+    internal data class Completion(val error: Exception?)
 
     private fun pendingFile(): File? = pendingToken?.let { File(activity.cacheDir, "exports/$it.linka") }
 
@@ -125,6 +192,7 @@ class SetExportController(
 
     companion object {
         private const val STATE_KEY = "preparedSetExport"
+        private const val STATE_WRITING = "writingSetExport"
         private val TOKEN = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
     }
 }

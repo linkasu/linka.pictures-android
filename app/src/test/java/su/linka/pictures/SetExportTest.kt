@@ -23,6 +23,8 @@ import java.io.File
 import java.io.IOException
 import java.io.OutputStream
 import java.util.zip.ZipFile
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
@@ -58,7 +60,7 @@ class SetExportTest {
         val uri = Uri.parse("content://exports/recreated")
         shadowOf(recreated.get().contentResolver).registerOutputStream(uri, output)
         recreated.get().activityResultRegistry.dispatchResult(request.requestCode, Activity.RESULT_OK, Intent().setData(uri))
-        awaitHostWork(recreated.get().exportController)
+        awaitWork { !recreated.get().exportController.isPending }
         assertEquals(1, recreated.get().successes)
         assertEquals(0, recreated.get().errors)
         assertTrue(output.size() > 0)
@@ -215,7 +217,7 @@ class SetExportTest {
         val output = ByteArrayOutputStream()
         shadowOf(restoredHost.get().contentResolver).registerOutputStream(uri, output)
         restored.complete(uri)
-        awaitHostWork(restored)
+        awaitWork { !restored.isPending }
         assertArrayEquals(expected, output.toByteArray())
         assertEquals(1, successes)
         assertNull(error)
@@ -256,7 +258,7 @@ class SetExportTest {
                     override fun close() { if (failOnClose) throw expected }
                 })
                 controller.complete(uri)
-                awaitHostWork(controller)
+                awaitWork { !controller.isPending }
                 assertEquals(expected.javaClass, failure?.javaClass)
                 assertEquals(expected.message, failure?.message)
                 assertFalse(pendingFile.exists())
@@ -288,20 +290,127 @@ class SetExportTest {
         val restored = SetExportController(restoredHost.get(), { successes++ }, { errors++ })
         restored.restoreState(state)
         assertEquals(1, errors)
+        restoredHost.start().resume()
         val output = ByteArrayOutputStream()
         val uri = Uri.parse("content://exports/missing")
         shadowOf(restoredHost.get().contentResolver).registerOutputStream(uri, output)
         restored.complete(uri)
-        awaitHostWork(restored)
+        awaitWork { !restored.isPending }
         assertEquals(2, errors)
         assertEquals(0, output.size())
         assertEquals(0, successes)
         assertFalse(restored.isPending)
-        restored.restoreState(Bundle().apply { putString("preparedSetExport", "../../outside") })
+        val invalidHost = Robolectric.buildActivity(ComponentActivity::class.java).create()
+        val invalid = SetExportController(invalidHost.get(), { successes++ }, { errors++ })
+        invalid.restoreState(Bundle().apply { putString("preparedSetExport", "../../outside") })
         assertEquals(3, errors)
-        assertFalse(restored.isPending)
+        assertFalse(invalid.isPending)
         assertTrue(workspace.isDirectory)
-        restoredHost.destroy()
+        invalidHost.destroy()
+        restoredHost.pause().stop().destroy()
         workspace.deleteRecursively()
+    }
+
+    @Test fun blockedSafWriteSurvivesRotationAndOnlyTheNewOwnerReceivesCompletionOnce() {
+        val (context, source, workspace) = ComponentTestUtils.createSet()
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean("parent", false).commit()
+        val host = Robolectric.buildActivity(ExportHost::class.java).setup()
+        val old = host.get()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val output = ByteArrayOutputStream()
+        val uri = Uri.parse("content://exports/blocked-rotation")
+        shadowOf(context.contentResolver).registerOutputStream(uri, object : OutputStream() {
+            override fun write(value: Int) {
+                assertNotEquals(android.os.Looper.getMainLooper(), android.os.Looper.myLooper())
+                entered.countDown()
+                check(release.await(10, TimeUnit.SECONDS))
+                output.write(value)
+            }
+        })
+        try {
+            old.exportController.export("board") { source }
+            awaitHostWork(old.exportController)
+            old.exportController.complete(uri)
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            val saved = Bundle().also(old.exportController::saveState)
+            assertTrue(saved.getBoolean("writingSetExport"))
+            host.recreate()
+            val current = host.get()
+            assertNotSame(old, current)
+            assertTrue(current.exportController.isPending)
+            var repeatedReads = 0
+            current.exportController.export("duplicate") { repeatedReads++; source }
+            assertEquals(0, repeatedReads)
+            release.countDown()
+            awaitWork { current.successes == 1 }
+            assertFalse(current.exportController.isPending)
+            assertEquals(0, current.errors)
+            assertEquals(0, old.successes)
+            assertEquals(0, old.errors)
+            assertTrue(output.size() > 0)
+            assertTrue(File(context.cacheDir, "exports").listFiles().orEmpty().isEmpty())
+            host.recreate()
+            assertFalse(host.get().exportController.isPending)
+            assertEquals(0, host.get().successes) // The retained result has already been consumed.
+        } finally {
+            release.countDown()
+            host.pause().stop().destroy()
+            workspace.deleteRecursively()
+        }
+    }
+
+    @Test fun rotationDuringPreparationKeepsSingleFlightAndCleansAbandonedSnapshot() {
+        val (context, source, workspace) = ComponentTestUtils.createSet()
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean("parent", false).commit()
+        val host = Robolectric.buildActivity(ExportHost::class.java).setup()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        try {
+            host.get().exportController.export("board") {
+                entered.countDown()
+                check(release.await(10, TimeUnit.SECONDS))
+                source
+            }
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            host.recreate()
+            assertTrue(host.get().exportController.isPending)
+            var repeats = 0
+            host.get().exportController.export("repeat") { repeats++; source }
+            release.countDown()
+            awaitWork { !host.get().exportController.isPending }
+            awaitWork { File(context.cacheDir, "exports").listFiles().orEmpty().isEmpty() }
+            assertEquals(0, repeats)
+            assertEquals(0, host.get().successes)
+            assertEquals(0, host.get().errors)
+            assertNull(shadowOf(host.get()).nextStartedActivityForResult)
+        } finally {
+            release.countDown()
+            host.pause().stop().destroy()
+            workspace.deleteRecursively()
+        }
+    }
+
+    @Test fun processDeathDuringWriteReportsInterruptionWithoutRetryOrPermanentPendingState() {
+        val (context, source, workspace) = ComponentTestUtils.createSet()
+        val archive = SetsManager(context).prepareExport(source)
+        val saved = Bundle().apply {
+            putString("preparedSetExport", archive.nameWithoutExtension)
+            putBoolean("writingSetExport", true)
+        }
+        val host = Robolectric.buildActivity(ExportHost::class.java).setup(saved)
+        try {
+            awaitWork { host.get().errors == 1 }
+            assertFalse(host.get().exportController.isPending)
+            assertEquals(0, host.get().successes)
+            assertFalse(archive.exists())
+            assertNull(shadowOf(host.get()).nextStartedActivityForResult)
+            host.recreate()
+            assertFalse(host.get().exportController.isPending)
+            assertEquals(0, host.get().errors)
+        } finally {
+            host.pause().stop().destroy()
+            workspace.deleteRecursively()
+        }
     }
 }
