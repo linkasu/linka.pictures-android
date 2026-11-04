@@ -102,22 +102,32 @@ object Utils {
     @JvmStatic
     @Throws(IOException::class)
     fun zipFolder(inputFolderPath: String, outZipPath: String) {
+        val source = File(inputFolderPath).absoluteFile.normalize()
+        val root = source.canonicalFile
+        val unlinkedSource = source.parentFile?.let { File(it.canonicalFile, source.name) } ?: source
+        if (root != unlinkedSource || !root.isDirectory) {
+            throw IOException("Archive source must be a regular directory: $inputFolderPath")
+        }
+        val destination = File(outZipPath).canonicalFile
         FileOutputStream(outZipPath).use { fos ->
             ZipOutputStream(fos).use { zos ->
-                val srcDir = File(inputFolderPath)
-                val files = srcDir.listFiles() ?: return
-                val buffer = ByteArray(1024)
-                for (file in files) {
-                    FileInputStream(file).use { fis ->
-                        zos.putNextEntry(ZipEntry(file.name))
-                        while (true) {
-                            val length = fis.read(buffer)
-                            if (length <= 0) break
-                            zos.write(buffer, 0, length)
+                fun addDirectory(directory: File) {
+                    val files = directory.listFiles()
+                        ?: throw IOException("Cannot list archive directory: $directory")
+                    for (file in files) {
+                        val canonical = file.canonicalFile
+                        if (canonical != file || canonical == destination ||
+                            !canonical.path.startsWith(root.path + File.separator)) continue
+                        if (file.isDirectory) {
+                            addDirectory(file)
+                        } else if (file.isFile) {
+                            zos.putNextEntry(ZipEntry(file.relativeTo(root).invariantSeparatorsPath))
+                            FileInputStream(file).use { it.copyTo(zos) }
+                            zos.closeEntry()
                         }
-                        zos.closeEntry()
                     }
                 }
+                addDirectory(root)
             }
         }
     }
