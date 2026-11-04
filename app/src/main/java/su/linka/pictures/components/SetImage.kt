@@ -23,6 +23,6 @@ fun SetImage(file: File?, modifier: Modifier, revision: String = "") {
                 .signature(signature)
                 .override(512, 512).fitCenter().into(view)
         },
-        onRelease = { view -> Glide.with(view).clear(view) },
+        onRelease = { view -> Glide.with(view.context.applicationContext).clear(view) },
     )
 }

@@ -29,6 +29,8 @@ class ProcessDeathParsers(unittest.TestCase):
         other = f"  * Hist #0: ActivityRecord{{124 u0 {PACKAGE}/.activity.MainActivity t2}}\n"
         self.assertTrue(grid_stopped("\n\n" + grid + "mState=STOPPED stopped=true\n" + other))
         self.assertTrue(grid_stopped(grid + "state=STOPPED stopped=true\n"))
+        self.assertTrue(grid_stopped(grid + "state=STOPPED delayedResume=false\nmAppStopped=true\n"))
+        self.assertFalse(grid_stopped(grid + "state=STOPPED\nmAppStopped=false\n"))
         self.assertFalse(grid_stopped(grid + "state=RESUMED stopped=false\n" + other +
                                       "state=STOPPED stopped=true\n"))
 

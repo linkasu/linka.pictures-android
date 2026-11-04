@@ -67,7 +67,7 @@ def grid_stopped(output):
     records = re.split(r"(?m)(?=^[ \t]*\* Hist #\d+:)", output)[1:]
     return any(GRID in record.splitlines()[0]
                and re.search(r"\b(?:mState|state)=STOPPED\b", record)
-               and "stopped=true" in record for record in records)
+               and re.search(r"\b(?:stopped|mAppStopped)=true\b", record) for record in records)
 
 
 class Smoke:
