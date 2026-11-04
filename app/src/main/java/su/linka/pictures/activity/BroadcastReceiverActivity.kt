@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
 import su.linka.pictures.R
@@ -11,7 +12,7 @@ import su.linka.pictures.SetsManager
 import su.linka.pictures.Telemetry
 import su.linka.pictures.Utils
 import su.linka.pictures.components.ConfirmDialog
-import java.io.File
+import su.linka.pictures.resolveImportedSetFile
 import java.io.IOException
 
 class BroadcastReceiverActivity : Activity() {
@@ -44,18 +45,17 @@ class BroadcastReceiverActivity : Activity() {
     }
 
     private fun copy(uri: Uri) {
-        val setsManager = SetsManager(this)
-        val fileName = uri.lastPathSegment ?: run {
-            finish()
-            return
-        }
-        val destination = File(setsManager.getSetsDirectory(), fileName)
         try {
+            val destination = resolveImportedSetFile(SetsManager(this).getSetsDirectory(), uri.lastPathSegment)
             contentResolver.openInputStream(uri)?.use { input ->
                 Utils.copy(input, destination)
             } ?: throw IOException("Unable to open input stream")
-        } catch (error: IOException) {
+        } catch (error: Exception) {
+            if (error !is IOException && error !is SecurityException && error !is IllegalArgumentException) {
+                throw error
+            }
             error.printStackTrace()
+            Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
             finish()
             return
         }
