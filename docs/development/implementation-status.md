@@ -21,7 +21,7 @@
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
 | P01 / G1 | Не принят целиком. Android21 ARM64 и API35 прошли SQL/callback/focus/IME на final APK886 после root-focus fix и согласования D8. iOS17.0 через Chrome/MCP установлен, native SQLite и public UI XCTest прошли. ARMv7 guest не загрузился в текущем Emulator даже с classic; codec candidates проверяются отдельно |
 | P02 / G2 | **Зафиксирован:** normal bootstrap `bb4f920`→`a371877`, `iosApp/`, модели/команды/ports, streaming snapshots, schema/epoch/ownership handoff, C4. JVM14/14 и Native iOS17 14/14, Unicode16 1093 вектора, Android/оба frameworks/unsigned iOS builds успешны. Это не реализация P03–P14 и не G1 PASS |
-| P03–P14 / G3–G5 | **P03 интегрирован** после review исправлений: `38a34d6`/`9cd6a0d`, JVM41/41 и Native iOS17 41/41. P04/P05 в работе после разрешённых blockers; общий аудиокоординатор готовится отдельным пакетом. Native adapters/UI/реальные данные ещё не подключены; G3–G5 не приняты целиком |
+| P03–P14 / G3–G5 | **P03 и common P05 интегрированы** после review: P05 `22fffdb`/`ad9ceaa`, объединённый JVM66/66 и Native iOS17 66/66, pure Electron oracle PASS. P04 и shared audio ещё исправляются. Native adapters/UI/реальные данные не подключены; G3–G5 не приняты целиком |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
 | P16 / G7 | Не начат; внешние review/signing/store permissions отдельно, публикация не разрешена |
 
@@ -37,7 +37,7 @@
 | Foundation P02 | `pokazhi-p02-foundation` / `implementation/p02-foundation` | `bb4f920`→`a371877`, normal bootstrap, результаты расширены G2 `0816394` |
 | D / P03 | `pokazhi-p03-communication` / `implementation/p03-communication` | `ce76a873`→`38a34d6`, review corrections `d54acecb`→`9cd6a0d`; integrated common state machine, bounded saves/quarantine, JVM и iOS17 41/41 |
 | S / P04 | `pokazhi-p04-storage` / `implementation/p04-storage` | В работе от `0816394`: SQL/media/drafts/snapshot/recovery, fault tests; safety review COORD до любых реальных данных |
-| P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | В работе от `0816394`: wire DTO/ZIP boundary/semantic fixtures, trust review COORD |
+| P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | `974d8752`→`22fffdb`, review fixes `9c000326`→`ad9ceaa`; integrated bounded codec, Native/JVM common suite и pure peer oracle PASS; native inspector/полный runtime round-trip OPEN |
 | Shared audio prerequisite | `pokazhi-p06-audio-coordinator` / `implementation/p06-audio-coordinator` | Запущен от `08b7e64`: общий AudioCoordinator по frozen AudioPort/NativeAudioBackend, owner/request/cancel/preflight/temp ownership tests. Не native P06/P07 codec/permissions acceptance |
 
 ### Первая implementation/review волна после G2
@@ -50,6 +50,14 @@
 S после исправления uncertain-commit тестов нашёл новый read-only blocker: generic driver close checkpoint-ит source schema2 WAL (4096→12288 bytes). Draft снова **не интегрирован**,48 storage tests:46 passed/2 новых red. COORD проверил опубликованный source2.5.2 и официальную SQLite WAL/URI документацию: flags overload публичен, но generic factory его не несёт; `immutable=1` нельзя выдавать за универсальное safe recovery. Принят initial **probe-copy** протокол с single-writer предпосылкой, streaming stable DB/WAL/journal copy, SQLite recovery только копии, неизменными source files и отказом без source-open при ошибке. Точная ownership/fault матрица добавлена в code-contracts; S должен доказать её перед финальным commit, не выключать regression.
 
 Вторая review-волна: P05 вернул реальный codec `974d8752` (35 JVM tests, Native compilation, pure Node peer oracle3.0/2.0), **пока не интегрирован**. COORD прочитал4 production files и запросил central-index name memory budget (4096 UTF8 bytes/path,1MiB aggregate до allocation) и cancellation check после final acquire с late-result cleanup. Новые budgets зафиксированы в handoff, старые tests/peer proof сохраняются. Shared audio вернул `db767de7` (66 JVM tests, Native compilation), **пока не интегрирован**: review всех3 production files потребовал failure-safe stop/finish/lease/temp cleanup/wakeup и явный synthesis maxTextLength отказ до backend. Исполнители исправляют свои branches, COORD не дублирует их implementation; native codec/OS/physical acceptance этими fakes не подменяется.
+
+### P05 integration acceptance
+
+P вернул review fixes `9c000326`: production+13/-2 и4 новые common regressions,39/39 isolated JVM. COORD просмотрел actual delta/предельные UTF8/aggregate tests/noncooperative final-acquire cancellation и интегрировал `974d8752`/`9c000326` как `22fffdb`/`ad9ceaa`. Docs-only stop `ba11871d` перенесён как история `aca90c2`, не как готовый codec.
+
+Main gate после review: JVM + Native test link + оба Shared.framework + Android assembly, **BUILD SUCCESSFUL**,47s. Объединённые tests: **66/66 JVM**,0 failures/errors/skipped; **66/66 Native iOS17.0/21A328**,24506ms на том же owned UDID. Raw native log только в approved temp `p05-integrated-native-ios17.log`. Из main повторно исполнен pure peer oracle на E `c540646…`/Node22.22.2: legacy2-flat, actual Kotlin ZIP3 writer reader/normalizer, sparse/span visibility **PASS**, peer git status unchanged. Не Electron app/storage/TTS runtime и не decoder proof.
+
+COORD явно принимает bounded payload decoding, не canonical-DEFLATE proof: public Okio prefetch может скрыть trailing compressed bytes, при этом полный compressed range учтён, фактический payload ограничен size/CRC/hash и только он передаётся inspector. Лимитация записана в handoff/report; никаких private APIs/собственного deflate/one-byte slow feed. UTF8 flag требуется для non-ASCII ZIP names, non-content media references отвергаются целиком без потери молча. Все оставшиеся native/physical/ABI, real inspector allocation и полный cross-app runtime round-trip gates OPEN.
 
 ### P03 integration acceptance
 

@@ -183,3 +183,21 @@ python3 -c 'import json,xml.etree.ElementTree as E; r=E.parse("shared/build/test
 и не Android↔iOS↔Electron device acceptance. Реальные WAV/OGG/MP3/3GPP/AMR-NB,
 physical targets/ARMv7, native inspector allocation limits, P12 materialization и
 native executor integration остаются у соответствующих gates/COORD.
+
+## COORD integration verification
+
+Trust review прочитал все4 production files и затем точную дельту review fixes.
+Интеграция: `974d8752` → `22fffdb`, `9c000326` → `ad9ceaa`.
+Main aggregate gate (P02+P03+P05) прошёл: **66/66 JVM**, Native test link,
+оба static Shared.framework и Android debug assembly; BUILD SUCCESSFUL in47s.
+На проверенном owned iOS17.0/21A328 через public simctl spawn: **66/66 PASS**,
+24506ms. Raw log `p05-integrated-native-ios17.log` находится только в approved
+session temp. Ни один test не фильтровался/отключался для итогового прогона.
+
+Из main также повторён pure Node22.22.2 peer oracle на E `c540646…`:
+legacy2-flat + фактический Kotlin writer ZIP3 reader/normalizer + sparse/span
+visibility PASS; peer status неизменен, собственный synthetic ZIP удалён.
+Это принимает common codec и его bounded-payload trust checks, не доказывает
+полный Electron runtime/media round-trip, native inspector или ARMv7.
+Ограничение strict deflate canonicality выше принято COORD явно, не скрыто
+под проверками CRC/size, которые такого свойства не доказывают.

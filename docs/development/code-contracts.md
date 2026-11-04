@@ -151,6 +151,8 @@ Budgets по фактическим bytes, все суммы checked Long: archi
 
 ZIP methods только store/deflate, no encryption/symlink/special/ZIP64/multidisk до отдельной поддержки. Проверять central/local sizes, offsets, CRC и реальные потоковые bytes, не extract-all-then-check. Безопасные относительные slash paths, запрет traversal-компонентов/drive/backslash/NUL/device names/trailing dot-space. `UUID..wav` допустим. Collision key = NFC затем lowercase, directory slash убран; prefix file-directory conflicts тоже rejected. Один canonical lookup map для media references, без filesystem extraction по именам ZIP. Sniff контейнер, не расширение `.ogg` и не force audio/mp3. Wire DTO/ZIP алгоритм P05 принадлежат P, но изменять эту политику без COORD нельзя.
 
+COORD review принимает bounded ZIP decoding, **не** доказательство canonical DEFLATE bitstream: публичный common Okio3.10.2 не сообщает bytesRead inflater-а, prefetch может поглотить trailing bytes внутри объявленной compressed region. Весь compressed region всё равно учитывается budget-ом, выдаваемый payload ограничен реальными bytes/size/CRC и хэшируется; нативный media decoder получает только проверенный inflated payload, а не исходный ZIP. Такие trailing compressed bytes не исполняются/не становятся файловыми путями. Это известное ограничение каноничности; новый parser/internal API/one-byte slow feed ради него не добавляются. Нельзя заявлять, что все noncanonical DEFLATE representations отвергаются; новые counterexamples, обходящие budgets/CRC/payload trust boundary, остаются блокирующими дефектами.
+
 ## Владельцы и проверки
 
 ### Backup schema1 для P12
