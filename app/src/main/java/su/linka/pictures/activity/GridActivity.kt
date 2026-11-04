@@ -1,42 +1,36 @@
 package su.linka.pictures.activity
 
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
-import android.widget.ImageButton
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.appbar.MaterialToolbar
-import net.lingala.zip4j.exception.ZipException
-import su.linka.pictures.AnalyticsEvents
-import su.linka.pictures.Callback
-import su.linka.pictures.Card
-import su.linka.pictures.Cookie
-import su.linka.pictures.PhraseDraftStore
+import androidx.compose.runtime.*
+import su.linka.pictures.*
 import su.linka.pictures.R
 import su.linka.pictures.Set
-import su.linka.pictures.SetsManager
-import su.linka.pictures.Telemetry
-import su.linka.pictures.components.CardGrid
-import su.linka.pictures.components.OutputLine
 import su.linka.pictures.components.ParentPasswordDialog
+import su.linka.pictures.components.SetImage
+import su.linka.pictures.ui.*
+import java.io.File
 import java.security.MessageDigest
 
 class GridActivity : AppCompatActivity() {
-
-    private lateinit var setsManager: SetsManager
-    private lateinit var grid: CardGrid
-    private lateinit var outputLine: OutputLine
-    private lateinit var nextButton: ImageButton
-    private lateinit var prevButton: ImageButton
-    private lateinit var cookie: Cookie
-
     private var set: Set? = null
-    private var gridSettings: GridSettings = GridSettings()
+    private val work = ActivityWork(this)
+    private lateinit var cookie: Cookie
     private lateinit var fileName: String
+    internal var gridSettings by mutableStateOf(GridSettings())
+        private set
+    internal var document by mutableStateOf<BoardDocument?>(null)
+        private set
+    internal var page by mutableIntStateOf(0)
+        private set
+    internal var selection by mutableStateOf<List<Int>>(emptyList())
+        private set
+    internal lateinit var audio: BoardAudioPlayer
+        private set
     private var documentIdentity: String? = null
     private lateinit var phraseDraftStore: PhraseDraftStore
     private var phraseDraftToken: String? = null
@@ -44,178 +38,142 @@ class GridActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_grid)
-
         cookie = Cookie(this)
-        setsManager = SetsManager(this)
         phraseDraftStore = PhraseDraftStore(this)
-        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
+        audio = BoardAudioPlayer(this)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                close()
-            }
+            override fun handleOnBackPressed() = close()
         })
-
-        nextButton = findViewById(R.id.next_button)
-        prevButton = findViewById(R.id.prev_button)
-        outputLine = findViewById(R.id.output_line)
-        grid = findViewById(R.id.card_grid)
-
-        val incomingFileName = intent?.extras?.getString(EXTRA_FILE)
-        if (incomingFileName.isNullOrEmpty()) {
-            finish()
-            return
+        val name = intent?.getStringExtra(EXTRA_FILE)
+        if (name.isNullOrEmpty()) { finish(); return }
+        fileName = name
+        setContent {
+            PicturesTheme {
+                val board = document ?: BoardDocument()
+                BoardScreen(board, page, selection.mapNotNull { board.cards.getOrNull(it) }, gridSettings.isOutput,
+                    gridSettings.isPagesButtons, work.busy, ::onAction,
+                    image = { path, _, modifier -> SetImage(path?.let { File(set!!.getFolder(), it) }, modifier) },
+                    title = fileName.removeSuffix(".linka"))
+            }
         }
-        fileName = incomingFileName
-        supportActionBar?.title = fileName.removeSuffix(".linka")
-
-        try {
-            val loadedSet = setsManager.getSet(fileName)
-            set = loadedSet
-            val archive = setsManager.getSetFile(fileName)
-            val identity = MessageDigest.getInstance("SHA-256")
-                .digest((fileName + ":" + archive.length() + ":" + archive.lastModified() + ":" +
-                    loadedSet.getManifest().toJSONObject().toString()).toByteArray())
-                .joinToString("") { "%02x".format(it) }
+        work.run({
+            val manager = SetsManager(this)
+            val loaded = manager.getSet(name)
+            try {
+                val archive = manager.getSetFile(name)
+                val identity = MessageDigest.getInstance("SHA-256")
+                    .digest((name + ":" + archive.length() + ":" + archive.lastModified() + ":" +
+                        loaded.getManifest().toJSONObject().toString()).toByteArray())
+                    .joinToString("") { "%02x".format(it) }
+                val token = savedInstanceState?.getString("phraseDraftToken")
+                val restored = if (savedInstanceState?.getString("documentIdentity") == identity && token != null)
+                    phraseDraftStore.restore(token, identity) else null
+                Triple(loaded, identity, restored)
+            } catch (error: Exception) { loaded.close(); throw error }
+        }, { (loaded, identity, restored) ->
+            set = loaded
+            document = loaded.getManifest().toDocument()
             documentIdentity = identity
-            outputLine.setSet(loadedSet)
-            grid.setSet(loadedSet)
-            grid.setCardSelectListener(CardGrid.OnCardSelectListener { card, _ ->
-                onCardSelect(card)
-            })
-            gridSettings = GridSettings.fromInt(cookie.getSetSettings(fileName, DEFAULT_GRID_SETTINGS))
-            prepareView()
-            if (savedInstanceState != null && savedInstanceState.getString("documentIdentity") == documentIdentity) {
-                grid.jumpToPage(savedInstanceState.getInt("page"))
+            gridSettings = GridSettings.fromInt(cookie.getSetSettings(name, DEFAULT_GRID_SETTINGS))
+            if (savedInstanceState?.getString("documentIdentity") == identity) {
+                page = savedInstanceState.getInt("page").coerceIn(0, pageCount() - 1)
                 savedInstanceState.getString("phraseDraftToken")?.let { token ->
-                    val selection = phraseDraftStore.restore(token, identity)
-                    if (selection != null) {
+                    if (restored != null) {
                         phraseDraftToken = token
-                        outputLine.restoreSelection(selection)
-                    } else {
-                        Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
-                    }
+                        selection = restored.filter { document!!.cards.getOrNull(it)?.cardType in 0..1 }
+                    } else Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
                 }
             }
-        } catch (error: ZipException) {
-            error.printStackTrace()
+        }, {
             Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
             finish()
+        }, abandoned = { it.first.close() })
+    }
+
+    internal fun onAction(action: BoardAction) {
+        if (isDestroyed || work.busy) return
+        val board = document ?: return
+        when (action) {
+            is BoardAction.SelectCard -> {
+                val card = board.cards.getOrNull(action.absoluteIndex) ?: return
+                if (card.cardType !in 0..1) return
+                Telemetry.logEvent(AnalyticsEvents.CARD_SELECT, null)
+                if (gridSettings.isOutput) selection = selection + action.absoluteIndex
+                else if (card.cardType == 0) audio.play(set!!, listOf(card))
+            }
+            is BoardAction.Page -> page = action.index.coerceIn(0, pageCount() - 1)
+            BoardAction.Backspace -> { audio.stop(); selection = selection.dropLast(1) }
+            BoardAction.Clear -> { audio.stop(); selection = emptyList() }
+            BoardAction.Speak -> {
+                if (audio.playing) audio.stop()
+                else if (gridSettings.isOutput) {
+                    val phrase = selection.map { board.cards[it] }
+                    if (board.withoutSpace) {
+                        if (!audio.speak(phraseText(phrase))) Toast.makeText(this,
+                            if (audio.speechState == BoardAudioPlayer.SpeechState.INITIALIZING) R.string.speech_not_ready
+                            else R.string.speech_unavailable, Toast.LENGTH_LONG).show()
+                    } else audio.play(set!!, phrase)
+                }
+            }
+            BoardAction.Settings -> ParentPasswordDialog.run(this) {
+                Telemetry.logEvent(AnalyticsEvents.OPEN_GRID_SETTINGS, null)
+                showSettings()
+            }
+            BoardAction.Close -> close()
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.grid_activity_menu, menu)
-        return super.onCreateOptionsMenu(menu)
-    }
+    private fun pageCount(): Int = document?.let { board ->
+        maxOf(1, (board.cards.size + board.rows * board.columns - 1) / (board.rows * board.columns))
+    } ?: 1
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                close()
-                true
-            }
-            R.id.settings -> {
-                ParentPasswordDialog.showDialog(this, object : Callback<Any?>() {
-                    override fun onDone(result: Any?) {
-                        Telemetry.logEvent(AnalyticsEvents.OPEN_GRID_SETTINGS, null)
-                        showSettings()
-                    }
-
-                    override fun onFail(error: Exception?) = Unit
-                })
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-    override fun onDestroy() {
-        outputLine.release()
-        set?.close()
-        super.onDestroy()
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        capturePhrase()
-        outState.putString("documentIdentity", documentIdentity)
-        outState.putInt("page", grid.currentPage())
-        phraseDraftToken?.takeUnless { phraseFinished }?.let { outState.putString("phraseDraftToken", it) }
-        super.onSaveInstanceState(outState)
-    }
-
-    override fun onStop() {
-        capturePhrase()
-        super.onStop()
+    private fun showSettings() {
+        audio.stop()
+        val view = GridSettingsView(this)
+        view.setSettings(gridSettings.copy())
+        AlertDialog.Builder(this).setTitle(R.string.grid_activity_settings).setView(view)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                view.commit()
+                gridSettings = view.getSettings()
+                cookie.setSetSettings(fileName, gridSettings.toInt())
+            }.setNegativeButton(R.string.cancel, null).show()
     }
 
     private fun capturePhrase() {
         val identity = documentIdentity ?: return
         if (phraseFinished) return
         try {
-            phraseDraftToken = phraseDraftStore.capture(phraseDraftToken, identity, outputLine.captureSelection())
+            phraseDraftToken = phraseDraftStore.capture(phraseDraftToken, identity, selection.toIntArray())
         } catch (_: Exception) {
             Toast.makeText(this, R.string.set_save_error, Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun onCardSelect(card: Card?) {
-        if (card != null) {
-            Telemetry.logEvent(AnalyticsEvents.CARD_SELECT, null)
-            outputLine.addCard(card)
-        }
+    override fun onSaveInstanceState(outState: Bundle) {
+        capturePhrase()
+        outState.putString("documentIdentity", documentIdentity)
+        outState.putInt("page", page)
+        phraseDraftToken?.takeUnless { phraseFinished }?.let { outState.putString("phraseDraftToken", it) }
+        super.onSaveInstanceState(outState)
     }
 
-    private fun showSettings() {
-        if (!::fileName.isInitialized) return
-        val settingsView = GridSettingsView(this)
-        settingsView.setSettings(gridSettings.copy())
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.grid_activity_settings)
-            .setView(settingsView)
-            .setPositiveButton(R.string.ok) { dialog, _ ->
-                settingsView.commit()
-                gridSettings = settingsView.getSettings()
-                cookie.setSetSettings(fileName, gridSettings.toInt())
-                prepareView()
-                dialog.dismiss()
-            }
-            .setNegativeButton(R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
+    override fun onStop() {
+        if (::audio.isInitialized) audio.stop()
+        capturePhrase()
+        super.onStop()
     }
 
-    private fun prepareView() {
-        outputLine.setDirectMode(!gridSettings.isOutput)
-        outputLine.visibility = if (gridSettings.isOutput) View.VISIBLE else View.GONE
-        val showPaging = gridSettings.isPagesButtons && grid.getPagesCount() > 1
-        prevButton.visibility = if (showPaging) View.VISIBLE else View.GONE
-        nextButton.visibility = if (showPaging) View.VISIBLE else View.GONE
-
-        if (showPaging) {
-            nextButton.setOnClickListener { grid.nextPage() }
-            prevButton.setOnClickListener { grid.prevPage() }
-        } else {
-            nextButton.setOnClickListener(null)
-            prevButton.setOnClickListener(null)
-        }
+    override fun onDestroy() {
+        if (::audio.isInitialized) audio.close()
+        set?.close()
+        super.onDestroy()
     }
 
-    private fun close() {
-        ParentPasswordDialog.showDialog(this, object : Callback<Any?>() {
-            override fun onDone(result: Any?) {
-                phraseFinished = true
-                phraseDraftToken?.let { phraseDraftStore.discard(it) }
-                finish()
-            }
-
-            override fun onFail(error: Exception?) = Unit
-        })
+    private fun close() = ParentPasswordDialog.run(this) {
+        audio.stop()
+        phraseFinished = true
+        phraseDraftToken?.let { phraseDraftStore.discard(it) }
+        finish()
     }
 
     companion object {

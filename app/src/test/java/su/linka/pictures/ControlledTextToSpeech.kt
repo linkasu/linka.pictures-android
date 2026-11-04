@@ -16,6 +16,8 @@ class ControlledTextToSpeech {
     val requests = mutableListOf<Pair<String, File>>()
     var synthesisResult = TextToSpeech.SUCCESS
     var spoken = false
+    var spokenText: String? = null
+    var spokenId: String? = null
     var stopped = false
     var closed = false
 
@@ -43,6 +45,8 @@ class ControlledTextToSpeech {
     @Implementation
     fun speak(text: CharSequence, queueMode: Int, params: Bundle?, utteranceId: String): Int {
         spoken = true
+        spokenText = text.toString()
+        spokenId = utteranceId
         return TextToSpeech.SUCCESS
     }
 

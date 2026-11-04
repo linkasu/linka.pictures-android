@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="speech_not_ready">Речевой движок ещё запускается. Нажмите «Произнести» немного позже.</string>
+    <string name="speech_unavailable">Речь недоступна. Проверьте настройки синтеза речи на устройстве.</string>
     <string name="card_limit_reached">В наборе может быть не более 10000 карточек</string>
     <string name="invalid_grid_dimensions">Число строк и столбцов должно быть от 1 до 32</string>
     <string name="confirm_replace_set">Набор с таким именем уже существует. Заменить его?</string>

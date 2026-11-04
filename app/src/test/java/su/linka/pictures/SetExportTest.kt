@@ -49,6 +49,7 @@ class SetExportTest {
         PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean("parent", false).commit()
         val host = Robolectric.buildActivity(ExportHost::class.java).setup()
         host.get().exportController.export("board.linka") { source }
+        awaitHostWork(host.get().exportController)
         val request = shadowOf(host.get()).nextStartedActivityForResult
         val state = Bundle()
         host.saveInstanceState(state).pause().stop().destroy()
@@ -57,6 +58,7 @@ class SetExportTest {
         val uri = Uri.parse("content://exports/recreated")
         shadowOf(recreated.get().contentResolver).registerOutputStream(uri, output)
         recreated.get().activityResultRegistry.dispatchResult(request.requestCode, Activity.RESULT_OK, Intent().setData(uri))
+        awaitHostWork(recreated.get().exportController)
         assertEquals(1, recreated.get().successes)
         assertEquals(0, recreated.get().errors)
         assertTrue(output.size() > 0)
@@ -112,6 +114,7 @@ class SetExportTest {
             correctDialog.findViewById<EditText>(R.id.input_prompt).setText("secret")
             correctDialog.getButton(DialogInterface.BUTTON_POSITIVE).callOnClick()
             ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+            awaitHostWork(controller)
             assertEquals(1, reads)
             assertTrue(controller.isPending)
             controller.complete(null)
@@ -193,6 +196,7 @@ class SetExportTest {
         val controller = SetExportController(host.get(), { successes++ }, { error = it })
         host.start().resume()
         controller.export("board") { source }
+        awaitHostWork(controller)
         assertTrue(controller.isPending)
         assertEquals("application/vnd.linka", shadowOf(host.get()).nextStartedActivityForResult.intent.type)
         val state = Bundle()
@@ -211,6 +215,7 @@ class SetExportTest {
         val output = ByteArrayOutputStream()
         shadowOf(restoredHost.get().contentResolver).registerOutputStream(uri, output)
         restored.complete(uri)
+        awaitHostWork(restored)
         assertArrayEquals(expected, output.toByteArray())
         assertEquals(1, successes)
         assertNull(error)
@@ -233,6 +238,7 @@ class SetExportTest {
         host.start().resume()
         try {
             controller.export("board.linka") { source }
+            awaitHostWork(controller)
             val state = Bundle().also(controller::saveState)
             val archive = File(context.cacheDir, "exports/${state.getString("preparedSetExport")}.linka")
             controller.complete(null)
@@ -240,6 +246,7 @@ class SetExportTest {
             assertFalse(archive.exists())
             for (failOnClose in listOf(false, true)) {
                 controller.export("board.linka") { source }
+                awaitHostWork(controller)
                 val pending = Bundle().also(controller::saveState)
                 val pendingFile = File(context.cacheDir, "exports/${pending.getString("preparedSetExport")}.linka")
                 val uri = Uri.parse("content://exports/failure-$failOnClose")
@@ -249,7 +256,9 @@ class SetExportTest {
                     override fun close() { if (failOnClose) throw expected }
                 })
                 controller.complete(uri)
-                assertSame(expected, failure)
+                awaitHostWork(controller)
+                assertEquals(expected.javaClass, failure?.javaClass)
+                assertEquals(expected.message, failure?.message)
                 assertFalse(pendingFile.exists())
                 assertFalse(controller.isPending)
             }
@@ -271,6 +280,7 @@ class SetExportTest {
         val controller = SetExportController(host.get(), { successes++ }, { errors++ })
         host.start().resume()
         controller.export("board") { source }
+        awaitHostWork(controller)
         val state = Bundle().also(controller::saveState)
         File(context.cacheDir, "exports/${state.getString("preparedSetExport")}.linka").delete()
         host.pause().stop().destroy()
@@ -282,6 +292,7 @@ class SetExportTest {
         val uri = Uri.parse("content://exports/missing")
         shadowOf(restoredHost.get().contentResolver).registerOutputStream(uri, output)
         restored.complete(uri)
+        awaitHostWork(restored)
         assertEquals(2, errors)
         assertEquals(0, output.size())
         assertEquals(0, successes)

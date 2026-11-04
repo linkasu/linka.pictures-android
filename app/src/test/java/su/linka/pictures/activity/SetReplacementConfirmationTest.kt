@@ -22,6 +22,8 @@ import org.robolectric.shadows.ShadowContentResolver
 import org.robolectric.shadows.ShadowToast
 import su.linka.pictures.R
 import su.linka.pictures.SetsManager
+import su.linka.pictures.Set
+import su.linka.pictures.awaitHostWork
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.zip.ZipEntry
@@ -67,12 +69,14 @@ class SetReplacementConfirmationTest {
             try {
                 ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
                 shadowOf(Looper.getMainLooper()).idle()
+                awaitHostWork(controller.get())
                 val replacementDialog = ShadowAlertDialog.getLatestAlertDialog()
                 assertEquals(context.getString(R.string.confirm_replace_set),
                     org.robolectric.Shadows.shadowOf(replacementDialog).title.toString())
                 assertArrayEquals(old, destination.readBytes())
                 replacementDialog.getButton(if (confirm) AlertDialog.BUTTON_POSITIVE else AlertDialog.BUTTON_NEGATIVE).performClick()
                 shadowOf(Looper.getMainLooper()).idle()
+                awaitHostWork(controller.get())
                 assertArrayEquals(if (confirm) incoming.readBytes() else old, destination.readBytes())
                 assertTrue(controller.get().isFinishing)
             } finally { controller.pause().stop().destroy() }
@@ -88,19 +92,22 @@ class SetReplacementConfirmationTest {
         val controller = Robolectric.buildActivity(SetEditActivity::class.java, intent).setup()
         try {
             val activity = controller.get()
-            val fresh = manager.createSet().apply { getManifest().rows = 2 }
-            SetEditActivity::class.java.getDeclaredField("set").apply { isAccessible = true }.set(activity, fresh)
+            awaitHostWork(activity)
+            val fresh = SetEditActivity::class.java.getDeclaredField("set").apply { isAccessible = true }.get(activity) as Set
+            fresh.getManifest().apply { rows = 2; archiveFile = null }
             val save = SetEditActivity::class.java.getDeclaredMethod("save").apply { isAccessible = true }
             for (confirm in listOf(false, true)) {
                 save.invoke(activity)
                 ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
                 shadowOf(Looper.getMainLooper()).idle()
+                awaitHostWork(activity)
                 val replacementDialog = ShadowAlertDialog.getLatestAlertDialog()
                 assertEquals(context.getString(R.string.confirm_replace_set),
                     org.robolectric.Shadows.shadowOf(replacementDialog).title.toString())
                 assertArrayEquals(old, destination.readBytes())
                 replacementDialog.getButton(if (confirm) AlertDialog.BUTTON_POSITIVE else AlertDialog.BUTTON_NEGATIVE).performClick()
                 shadowOf(Looper.getMainLooper()).idle()
+                awaitHostWork(activity)
                 if (confirm) {
                     assertEquals(2, manager.getSetManifest("same.linka").rows)
                     assertTrue(activity.isFinishing)
@@ -122,6 +129,7 @@ class SetReplacementConfirmationTest {
         try {
             ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             shadowOf(Looper.getMainLooper()).idle()
+            awaitHostWork(controller.get())
             assertEquals(2, SetsManager(context).getSetManifest("My board.linka").rows)
             assertTrue(controller.get().isFinishing)
         } finally { controller.pause().stop().destroy() }
@@ -139,6 +147,7 @@ class SetReplacementConfirmationTest {
             try {
                 ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
                 shadowOf(Looper.getMainLooper()).idle()
+                awaitHostWork(controller.get())
                 assertEquals("original", outside.readText())
                 assertTrue(manager.getSetsDirectory().listFiles()!!.isEmpty())
                 assertEquals(context.getString(R.string.set_open_error), ShadowToast.getTextOfLatestToast())
@@ -156,6 +165,7 @@ class SetReplacementConfirmationTest {
         try {
             ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             shadowOf(Looper.getMainLooper()).idle()
+            awaitHostWork(controller.get())
             assertEquals(2, SetsManager(context).getSetManifest("fallback.linka").rows)
         } finally { controller.pause().stop().destroy() }
     }
@@ -173,9 +183,11 @@ class SetReplacementConfirmationTest {
         try {
             ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             shadowOf(Looper.getMainLooper()).idle()
+            awaitHostWork(controller.get())
             registerDocument(context, uri, "other.linka")
             ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
             shadowOf(Looper.getMainLooper()).idle()
+            awaitHostWork(controller.get())
             assertEquals(2, manager.getSetManifest("confirmed.linka").rows)
             assertArrayEquals(originalOther, other.readBytes())
         } finally { controller.pause().stop().destroy() }

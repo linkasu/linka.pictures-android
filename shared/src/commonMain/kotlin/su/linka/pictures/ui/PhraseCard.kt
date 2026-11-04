@@ -16,7 +16,9 @@ internal fun PhraseCard(card: Picture, image: @Composable (String?, String?, Mod
     Card(Modifier.width(120.dp)) {
         Column(Modifier.padding(8.dp)) {
             if (card.cardType == 0 && card.imagePath != null) {
-                image(card.imagePath, null, Modifier.fillMaxWidth().height(64.dp).clearAndSetSemantics {})
+                Box(Modifier.fillMaxWidth().height(64.dp).clearAndSetSemantics {}) {
+                    image(card.imagePath, null, Modifier.fillMaxWidth().height(64.dp))
+                }
             }
             Text(if (card.cardType == 1) stringResource(Res.string.space_card)
                 else card.title?.takeIf { it.isNotBlank() } ?: stringResource(Res.string.untitled_card))

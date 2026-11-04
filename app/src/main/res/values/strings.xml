@@ -1,4 +1,6 @@
 <resources>
+    <string name="speech_not_ready">Speech is still starting. Please try Speak again shortly.</string>
+    <string name="speech_unavailable">Speech is unavailable. Check your device’s text-to-speech settings.</string>
     <string name="card_limit_reached">A set can contain at most 10000 cards</string>
     <string name="invalid_grid_dimensions">Rows and columns must be between 1 and 32</string>
     <string name="confirm_replace_set">A set with this name already exists. Replace it?</string>

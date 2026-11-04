@@ -6,7 +6,6 @@ import android.widget.CheckBox
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -44,7 +43,7 @@ class MainActivityPrivacyNoticeTest {
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertFalse(dialog.isShowing)
-        assertNotNull(activity.findViewById<android.view.View>(R.id.sets_list))
+        assertComposeHost(activity)
         assertEquals(TelemetryCollectionState.UNKNOWN, TelemetryPrivacyPreferences(context).state())
         controller.pause().stop().destroy()
     }

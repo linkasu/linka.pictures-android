@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import su.linka.pictures.BoardDocument
@@ -44,10 +45,10 @@ fun BoardScreen(
                         Text(stringResource(Res.string.phrase_title), style = MaterialTheme.typography.titleMedium)
                         if (phrase.isEmpty()) Text(stringResource(Res.string.empty_phrase))
                         if (document.withoutSpace) {
-                            Text(phraseText(phrase), style = MaterialTheme.typography.headlineSmall)
+                            Text(phraseText(phrase), modifier = Modifier.testTag("phrase-text"), style = MaterialTheme.typography.headlineSmall)
                         } else {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(phrase) { card ->
+                            LazyRow(modifier = Modifier.testTag("phrase-cards"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(phrase.filter { it.cardType == 0 }) { card ->
                                     // Phrase cards are display-only, not disabled interactive buttons.
                                     PhraseCard(card, image)
                                 }
