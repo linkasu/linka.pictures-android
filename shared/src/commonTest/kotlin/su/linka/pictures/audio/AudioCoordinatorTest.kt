@@ -20,7 +20,8 @@ class AudioCoordinatorTest {
         val backend = NativeAudioFake()
         val media = AudioMediaFake()
         val files = AudioFilesFake()
-        val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(test.testScheduler))
+        val uncaught = mutableListOf<Throwable>()
+        val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(test.testScheduler) + CoroutineExceptionHandler { _, failure -> uncaught += failure })
         val coordinator = AudioCoordinator(backend, media, files, scope)
         val owner = AudioOwner("communication", AudioPurpose.COMMUNICATION)
         val asset = AssetId("a".repeat(64))
@@ -34,7 +35,10 @@ class AudioCoordinatorTest {
         fun synth(id: String = "synth", text: String = "текст", language: String? = null, voice: String? = null) = test.async {
             coordinator.synthesize(SynthesisRequest(RequestId(id), AudioOwner("editor", AudioPurpose.SYNTHESIS), text, language, voice))
         }
-        fun close() { scope.cancel(); test.runCurrent() }
+        fun close() {
+            scope.cancel(); test.runCurrent()
+            assertTrue(uncaught.isEmpty(), "No cleanup exception may escape the coordinator")
+        }
     }
 
     @Test fun mixedPlanIsFullyInspectedThenPlayedInOrderWithoutFallbackOrWhitespaceSpeech() = runTest {
@@ -462,5 +466,258 @@ class AudioCoordinatorTest {
             assertEquals(listOf(file), f.files.discarded)
             f.close()
         }
+    }
+
+    @Test fun throwingStopStillCancelsOldJobAndNewIntentWaitsForItsTerminalResult() = runTest {
+        for (noncooperative in listOf(false, true)) {
+            val f = Fixture(this)
+            val gate = CompletableDeferred<Unit>()
+            var oldJob: Job? = null
+            f.backend.audible = { id ->
+                if (id == RequestId("old")) {
+                    oldJob = currentCoroutineContext().job
+                    if (noncooperative) withContext(NonCancellable) { gate.await() } else gate.await()
+                }
+                OperationResult.Completed(Unit)
+            }
+            f.backend.stopAction = { error("stop fault") }
+            f.play("old"); f.play("new")
+            assertTrue(oldJob!!.isCancelled)
+            if (noncooperative) {
+                assertEquals(1, f.backend.calls.size)
+                assertEquals(2, f.media.open)
+                gate.complete(Unit); runCurrent()
+            }
+            assertEquals(2, f.backend.calls.size)
+            assertEquals(1, f.backend.peakNativeActive)
+            assertEquals(RequestId("new"), f.coordinator.state.value.requestId)
+            assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+            assertEquals(0, f.media.open)
+            f.close()
+        }
+    }
+
+    @Test fun throwingStopDoesNotReplaceExplicitCancelOrInterruptPrimaryResult() = runTest {
+        for (interrupt in listOf(false, true)) {
+            val f = Fixture(this)
+            f.backend.recording = { _, _ -> awaitCancellation() }
+            f.backend.stopAction = { error("stop fault") }
+            val request = f.record(); runCurrent()
+            if (interrupt) f.coordinator.interrupt() else f.coordinator.stop("editor", RequestId("record"))
+            runCurrent()
+            if (interrupt) {
+                assertEquals(ProblemCode.INTERRUPTED, assertIs<OperationResult.Failed>(request.await()).problem.code)
+                assertEquals(AudioPhase.INTERRUPTED, f.coordinator.state.value.phase)
+                assertEquals(ProblemCode.INTERRUPTED, f.coordinator.state.value.problem?.code)
+            } else {
+                assertEquals(OperationResult.Cancelled, request.await())
+                assertEquals(AudioPhase.CANCELLED, f.coordinator.state.value.phase)
+                assertEquals(ProblemCode.IO_FAILURE, f.coordinator.state.value.problem?.code)
+            }
+            f.play("next")
+            assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+            f.close()
+        }
+    }
+
+    @Test fun throwingFinishRecordingFailsCallerCancelsNativeAndDiscardsLateFileWithoutReady() = runTest {
+        val f = Fixture(this)
+        val gate = CompletableDeferred<Unit>()
+        val file = TemporaryFile("late-after-finish-error")
+        var native: Job? = null
+        f.backend.recording = { _, callback ->
+            native = currentCoroutineContext().job
+            callback(AudioPhase.RECORDING)
+            withContext(NonCancellable) { gate.await(); OperationResult.Completed(file) }
+        }
+        f.backend.finishAction = { error("finish fault") }
+        val request = f.record(); runCurrent()
+        f.coordinator.finishRecording("editor", RequestId("record")); runCurrent()
+        assertEquals(ProblemCode.IO_FAILURE, assertIs<OperationResult.Failed>(request.await()).problem.code)
+        assertEquals(AudioPhase.FAILED, f.coordinator.state.value.phase)
+        assertTrue(native!!.isCancelled)
+        f.play("new")
+        assertEquals(listOf("record"), f.backend.calls)
+        gate.complete(Unit); runCurrent()
+        assertEquals(listOf(file), f.files.discarded)
+        assertEquals(RequestId("new"), f.coordinator.state.value.requestId)
+        assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+        f.close()
+    }
+
+    @Test fun throwingLeaseCloseStillWakesActorAndPreservesCompletedOrUnknownOutcome() = runTest {
+        for (unknown in listOf(false, true)) {
+            val f = Fixture(this)
+            f.media.closeFailure = { error("lease fault") }
+            if (unknown) f.media.failure = OperationResult.UnconfirmedCommit
+            f.play(segments = listOf(SpeechSegment.Recording(f.asset)))
+            assertEquals(1, f.media.closeAttempts)
+            assertEquals(0, f.media.open)
+            assertEquals(if (unknown) AudioPhase.FAILED else AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+            assertEquals(if (unknown) ProblemCode.COMMIT_OUTCOME_UNKNOWN else ProblemCode.IO_FAILURE, f.coordinator.state.value.problem?.code)
+            f.media.failure = null
+            f.play("next")
+            assertEquals(RequestId("next"), f.coordinator.state.value.requestId)
+            assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+            assertEquals(2, f.media.closeAttempts)
+            f.close()
+        }
+    }
+
+    @Test fun throwingPendingOrDuplicateLeaseCloseCannotBreakAdmissionOrReplacement() = runTest {
+        val f = Fixture(this)
+        f.media.closeFailure = { error("lease fault") }
+        fun request(id: String) = PlaybackRequest(RequestId(id), f.owner, SpeechPlan(listOf(SpeechSegment.Text(id)), id), f.media.Lease(emptySet()))
+        f.coordinator.play(request("old"))
+        f.coordinator.play(request("new"))
+        f.coordinator.play(request("old"))
+        runCurrent()
+        assertEquals(listOf("tts:new:null:null"), f.backend.calls)
+        assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+        assertEquals(3, f.media.closeAttempts)
+        assertEquals(0, f.media.open)
+        f.close()
+    }
+
+    @Test fun shutdownAttemptsAllResourcesWhenStopLeaseAndLateDiscardThrow() = runTest {
+        val f = Fixture(this)
+        val gate = CompletableDeferred<Unit>()
+        val file = TemporaryFile("late-shutdown-error")
+        var native: Job? = null
+        f.backend.recording = { _, _ ->
+            native = currentCoroutineContext().job
+            withContext(NonCancellable) { gate.await(); OperationResult.Completed(file) }
+        }
+        f.backend.stopAction = { error("stop fault") }
+        f.media.closeFailure = { error("lease fault") }
+        f.files.discardAction = { error("discard fault") }
+        val request = f.record(); runCurrent()
+        f.play("pending")
+        f.close()
+        assertTrue(native!!.isCancelled)
+        assertEquals(OperationResult.Cancelled, request.await())
+        assertEquals(0, f.media.open)
+        assertEquals(1, f.media.closeAttempts)
+        gate.complete(Unit); runCurrent()
+        assertEquals(listOf(file), f.files.discardAttempts)
+        assertTrue(f.files.discarded.isEmpty())
+        assertEquals(0, f.backend.nativeActive)
+        assertTrue(f.uncaught.isEmpty())
+    }
+
+    @Test fun lateCompletedOutcomeDiscardFailureDoesNotStrandNewIntentOrCaller() = runTest {
+        val f = Fixture(this)
+        val file = TemporaryFile("stale-completed")
+        f.files.discardAction = { error("discard fault") }
+        f.backend.synthesis = {
+            currentCoroutineContext().job.invokeOnCompletion {
+                f.coordinator.play(PlaybackRequest(RequestId("new"), f.owner, SpeechPlan(listOf(SpeechSegment.Text("new")), ""), f.media.Lease(emptySet())))
+            }
+            OperationResult.Completed(file)
+        }
+        val old = f.synth(); runCurrent()
+        assertEquals(OperationResult.Cancelled, old.await())
+        assertEquals(listOf(file), f.files.discardAttempts)
+        assertTrue(f.files.discarded.isEmpty())
+        assertEquals(RequestId("new"), f.coordinator.state.value.requestId)
+        assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+        assertEquals(0, f.media.open)
+        f.close()
+    }
+
+    @Test fun cancellationDiscardFailureCannotEscapeContinuationHandlerOrHangNextRequest() = runTest {
+        val f = Fixture(this)
+        val paused = PausedDispatcher()
+        val failures = mutableListOf<Throwable>()
+        val caller = CoroutineScope(SupervisorJob() + paused + CoroutineExceptionHandler { _, failure -> failures += failure })
+        val file = TemporaryFile("undelivered-cleanup-fault")
+        f.backend.synthesis = { OperationResult.Completed(file) }
+        f.files.discardAction = { error("discard fault") }
+        val request = caller.async {
+            f.coordinator.synthesize(SynthesisRequest(RequestId("synth"), AudioOwner("editor", AudioPurpose.SYNTHESIS), "text", null))
+        }
+        paused.next(); runCurrent()
+        request.cancel()
+        paused.next(); runCurrent()
+        assertEquals(listOf(file), f.files.discardAttempts)
+        assertEquals(AudioPhase.CANCELLED, f.coordinator.state.value.phase)
+        assertEquals(ProblemCode.IO_FAILURE, f.coordinator.state.value.problem?.code)
+        assertTrue(failures.isEmpty())
+        f.play("new")
+        assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+        caller.cancel(); f.close()
+    }
+
+    @Test fun validationPrimaryFailureAndUnknownSurviveThrowingDiscardWithoutFalseReady() = runTest {
+        for (kind in listOf("failed", "cancelled", "unknown")) {
+            val f = Fixture(this)
+            val file = TemporaryFile("bad-$kind")
+            f.backend.synthesis = { OperationResult.Completed(file) }
+            f.backend.inspect = { when (kind) {
+                "failed" -> OperationResult.Failed(Problem(ProblemCode.UNSUPPORTED_MEDIA))
+                "cancelled" -> OperationResult.Cancelled
+                else -> OperationResult.UnconfirmedCommit
+            } }
+            f.files.discardAction = { error("discard fault") }
+            val request = f.synth(); runCurrent()
+            when (kind) {
+                "failed" -> assertEquals(ProblemCode.UNSUPPORTED_MEDIA, assertIs<OperationResult.Failed>(request.await()).problem.code)
+                "cancelled" -> assertEquals(OperationResult.Cancelled, request.await())
+                else -> {
+                    assertEquals(OperationResult.UnconfirmedCommit, request.await())
+                    assertEquals(ProblemCode.COMMIT_OUTCOME_UNKNOWN, f.coordinator.state.value.problem?.code)
+                }
+            }
+            assertNotEquals(AudioPhase.READY, f.coordinator.state.value.phase)
+            assertEquals(listOf(file), f.files.discardAttempts)
+            assertTrue(f.files.discarded.isEmpty())
+            f.play("next")
+            assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+            f.close()
+        }
+    }
+
+    @Test fun synthesisHonorsExactUtf16MaximumAndRejectsOneOverBeforeAnyBackendOrTemp() = runTest {
+        for (text in listOf("😀ab", "😀abc", "     ")) {
+            val f = Fixture(this)
+            f.backend.voices.value = f.backend.voices.value.copy(maxTextLength = 4)
+            val file = TemporaryFile("synth-limit")
+            f.backend.synthesis = { request -> assertEquals(text, request.text); OperationResult.Completed(file) }
+            val request = f.synth(text = text); runCurrent()
+            if (text.length == 4) {
+                assertSame(file, assertIs<OperationResult.Completed<*>>(request.await()).value)
+                assertEquals(1, f.backend.calls.size)
+                assertEquals(AudioPhase.READY, f.coordinator.state.value.phase)
+            } else {
+                assertEquals(ProblemCode.LIMIT_EXCEEDED, assertIs<OperationResult.Failed>(request.await()).problem.code)
+                assertTrue(f.backend.calls.isEmpty())
+                assertTrue(f.backend.inspected.isEmpty())
+                assertTrue(f.files.discardAttempts.isEmpty())
+                assertEquals(AudioPhase.FAILED, f.coordinator.state.value.phase)
+            }
+            f.close()
+            assertTrue(f.files.discarded.isEmpty())
+        }
+    }
+
+    @Test fun shutdownStopFailureStillCancelsActiveNativeAndResolvesAwaitingCaller() = runTest {
+        val f = Fixture(this)
+        val gate = CompletableDeferred<Unit>()
+        val file = TemporaryFile("late-direct-shutdown")
+        var native: Job? = null
+        f.backend.recording = { _, _ ->
+            native = currentCoroutineContext().job
+            withContext(NonCancellable) { gate.await(); OperationResult.Completed(file) }
+        }
+        f.backend.stopAction = { error("shutdown stop fault") }
+        val request = f.record(); runCurrent()
+        assertFalse(native!!.isCancelled)
+        f.close()
+        assertTrue(native!!.isCancelled)
+        assertEquals(OperationResult.Cancelled, request.await())
+        gate.complete(Unit); runCurrent()
+        assertEquals(listOf(file), f.files.discarded)
+        assertEquals(0, f.backend.nativeActive)
+        assertTrue(f.uncaught.isEmpty())
     }
 }

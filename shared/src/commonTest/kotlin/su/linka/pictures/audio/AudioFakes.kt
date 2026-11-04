@@ -12,8 +12,12 @@ internal fun <T> unused(): T = error("Unexpected audio test port call")
 
 internal class AudioFilesFake : PlatformFilesPort {
     val discarded = mutableListOf<TemporaryFile>()
+    val discardAttempts = mutableListOf<TemporaryFile>()
+    var discardAction: (TemporaryFile) -> Unit = {}
     override fun discard(file: TemporaryFile) {
-        check(file !in discarded) { "Double discard" }
+        check(file !in discardAttempts) { "Double discard" }
+        discardAttempts += file
+        discardAction(file)
         discarded += file
     }
     override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = unused()
@@ -27,6 +31,8 @@ internal class AudioMediaFake : MediaStore {
     val clips = mutableMapOf<AssetId, LocalFile>()
     var failure: OperationResult<LocalFile>? = null
     var open = 0
+    var closeFailure: (() -> Unit)? = null
+    var closeAttempts = 0
     inner class Lease(override val assets: Set<AssetId>) : MediaLease {
         var closed = false
         init { open++ }
@@ -34,7 +40,14 @@ internal class AudioMediaFake : MediaStore {
             check(!closed && this.assets.containsAll(assets))
             return OperationResult.Completed(Lease(assets))
         }
-        override fun close() { if (!closed) { closed = true; open-- } }
+        override fun close() {
+            if (!closed) {
+                closeAttempts++
+                closed = true
+                open--
+                closeFailure?.invoke()
+            }
+        }
     }
     override fun file(id: AssetId, lease: MediaLease): OperationResult<LocalFile> {
         check(lease is Lease && !lease.closed && id in lease.assets)
@@ -53,6 +66,8 @@ internal class NativeAudioFake : NativeAudioBackend {
     val inspected = mutableListOf<LocalFile>()
     val stopped = mutableListOf<RequestId>()
     val finished = mutableListOf<RequestId>()
+    var stopAction: (RequestId) -> Unit = {}
+    var finishAction: (RequestId) -> Unit = {}
     var inspect: suspend (LocalFile) -> OperationResult<Unit> = { OperationResult.Completed(Unit) }
     var audible: suspend (RequestId) -> OperationResult<Unit> = { OperationResult.Completed(Unit) }
     var recording: suspend (RecordingRequest, (AudioPhase) -> Unit) -> OperationResult<TemporaryFile> = { _, _ -> unused() }
@@ -84,6 +99,6 @@ internal class NativeAudioFake : NativeAudioBackend {
         calls += "record"
         recording(request, onPhase)
     }
-    override fun finishRecording(requestId: RequestId) { finished += requestId }
-    override fun stop(requestId: RequestId) { stopped += requestId }
+    override fun finishRecording(requestId: RequestId) { finished += requestId; finishAction(requestId) }
+    override fun stop(requestId: RequestId) { stopped += requestId; stopAction(requestId) }
 }

@@ -3,6 +3,8 @@ package su.linka.pictures.audio
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.flow.MutableStateFlow
 import su.linka.pictures.application.OperationResult
+import su.linka.pictures.application.Problem
+import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.RequestId
 
@@ -14,6 +16,7 @@ internal class AudioWork(
     val synthesis: SynthesisRequest? = null,
     private val continuation: CancellableContinuation<OperationResult<TemporaryFile>>? = null,
     private val files: PlatformFilesPort,
+    private val onCleanupFailure: (AudioWork) -> Unit,
 ) {
     val token = Any()
     private enum class Life { PENDING, RUNNING, CANCELLED, ENDED }
@@ -26,6 +29,7 @@ internal class AudioWork(
     }))
     val voiceSnapshot = MutableStateFlow<VoiceCapability?>(null)
     val outcome = MutableStateFlow<OperationResult<TemporaryFile?>?>(null)
+    val cleanupProblem = MutableStateFlow<Problem?>(null)
     val cancelled get() = life.value == Life.CANCELLED
     fun start() = life.compareAndSet(Life.PENDING, Life.RUNNING)
 
@@ -34,7 +38,7 @@ internal class AudioWork(
             val previous = life.value
             if (previous == Life.CANCELLED || previous == Life.ENDED) return
             if (life.compareAndSet(previous, Life.CANCELLED)) {
-                if (previous == Life.PENDING) playback?.lease?.close()
+                if (previous == Life.PENDING) closePlaybackLease()
                 reply(result)
                 return
             }
@@ -56,7 +60,7 @@ internal class AudioWork(
         }
         // Cancellation between resume and dispatch must dispose the undelivered file, not a caller-owned one.
         target.resume(delivered) { _, value, _ ->
-            if (value is OperationResult.Completed) files.discard(value.value)
+            if (value is OperationResult.Completed) discardFile(value.value)
         }
     }
 
@@ -68,6 +72,22 @@ internal class AudioWork(
     }
 
     fun discard(result: OperationResult<TemporaryFile?>?) {
-        if (result is OperationResult.Completed) result.value?.let(files::discard)
+        if (result is OperationResult.Completed) result.value?.let(::discardFile)
+    }
+
+    fun discardFile(file: TemporaryFile) { cleanup { files.discard(file) } }
+
+    fun closePlaybackLease() { cleanup { playback?.lease?.close() } }
+
+    // Cleanup is best-effort; a failed OS delete/stop must not replace the primary outcome or strand peers.
+    fun cleanup(action: () -> Unit): Boolean = try {
+        action()
+        true
+    } catch (_: Exception) {
+        val problem = Problem(ProblemCode.IO_FAILURE)
+        cleanupProblem.value = problem
+        phase.value = phase.value.copy(problem = phase.value.problem ?: problem)
+        onCleanupFailure(this)
+        false
     }
 }

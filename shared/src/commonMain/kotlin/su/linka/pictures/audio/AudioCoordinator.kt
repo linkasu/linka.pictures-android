@@ -47,31 +47,34 @@ class AudioCoordinator internal constructor(
     private fun shutdown() {
         val previous = control.getAndUpdate { it.copy(closed = true, desired = null, finish = null) }
         if (previous.closed) return
-        previous.desired?.cancel(OperationResult.Cancelled)
-        wake.close()
-        active?.let {
-            it.cancel(OperationResult.Cancelled)
-            backend.stop(it.id)
-            it.discard(it.takeOutcome())
+        try {
+            previous.desired?.cancel(OperationResult.Cancelled)
+            wake.close()
+            active?.let {
+                it.cancel(OperationResult.Cancelled)
+                it.cleanup { backend.stop(it.id) }
+                it.discard(it.takeOutcome())
+            }
+        } finally {
+            try { active?.cleanup { nativeJob?.cancel() } }
+            finally { runtime.cancel() }
         }
-        nativeJob?.cancel()
-        runtime.cancel()
     }
 
     override fun play(request: PlaybackRequest) {
         // Snapshot a caller's mutable List before ownership crosses into the worker.
         val snapshot = request.copy(plan = request.plan.copy(segments = request.plan.segments.toList()))
-        submit(AudioWork(snapshot.id, snapshot.owner, playback = snapshot, files = files))
+        submit(AudioWork(snapshot.id, snapshot.owner, playback = snapshot, files = files, onCleanupFailure = ::cleanupFailed))
     }
 
     override suspend fun record(request: RecordingRequest): OperationResult<TemporaryFile> = suspendCancellableCoroutine { reply ->
-        val work = AudioWork(request.id, request.owner, recording = request, continuation = reply, files = files)
+        val work = AudioWork(request.id, request.owner, recording = request, continuation = reply, files = files, onCleanupFailure = ::cleanupFailed)
         reply.invokeOnCancellation { cancel(work, OperationResult.Cancelled, AudioPhase.CANCELLED) }
         submit(work)
     }
 
     override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> = suspendCancellableCoroutine { reply ->
-        val work = AudioWork(request.id, request.owner, synthesis = request, continuation = reply, files = files)
+        val work = AudioWork(request.id, request.owner, synthesis = request, continuation = reply, files = files, onCleanupFailure = ::cleanupFailed)
         reply.invokeOnCancellation { cancel(work, OperationResult.Cancelled, AudioPhase.CANCELLED) }
         submit(work)
     }
@@ -107,11 +110,11 @@ class AudioCoordinator internal constructor(
             val problem = (result as? OperationResult.Failed)?.problem
             if (before.desired !== work) {
                 if (before.desired == null && before.completedToken === work.token && before.display.phase == AudioPhase.READY) {
-                    if (!control.compareAndSet(before, before.copy(completedToken = null, display = AudioState(work.id, work.owner, phase, problem = problem)))) continue
+                    if (!control.compareAndSet(before, before.copy(display = AudioState(work.id, work.owner, phase, problem = problem ?: work.cleanupProblem.value)))) continue
                 }
                 break
             }
-            if (control.compareAndSet(before, before.copy(desired = null, finish = null, display = AudioState(work.id, work.owner, phase, problem = problem)))) break
+            if (control.compareAndSet(before, before.copy(desired = null, finish = null, completedToken = work.token, display = AudioState(work.id, work.owner, phase, problem = problem ?: work.cleanupProblem.value)))) break
         }
         work.cancel(result)
         wake.trySend(Unit)
@@ -141,8 +144,8 @@ class AudioCoordinator internal constructor(
                 if (before.desired !== running || running.cancelled) {
                     if (!stopping) {
                         stopping = true
-                        backend.stop(running.id)
-                        nativeJob!!.cancel()
+                        try { running.cleanup { backend.stop(running.id) } }
+                        finally { running.cleanup { nativeJob!!.cancel() } }
                     }
                 } else {
                     val voice = running.voiceSnapshot.value
@@ -153,7 +156,9 @@ class AudioCoordinator internal constructor(
                     if (before.finish === running && control.compareAndSet(before, before.copy(finish = null))) {
                         if (running.phase.value.phase == AudioPhase.RECORDING) {
                             phase(running, AudioPhase.FINISHING)
-                            backend.finishRecording(running.id)
+                            if (!running.cleanup { backend.finishRecording(running.id) }) {
+                                cancel(running, OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)), AudioPhase.FAILED)
+                            }
                         }
                     }
                 }
@@ -174,8 +179,8 @@ class AudioCoordinator internal constructor(
             }
             nativeJob = job
             job.invokeOnCompletion {
-                desired.playback?.lease?.close()
-                if (!wake.trySend(Unit).isSuccess) desired.discard(desired.takeOutcome())
+                try { desired.closePlaybackLease() }
+                finally { if (!wake.trySend(Unit).isSuccess) desired.discard(desired.takeOutcome()) }
             }
             job.start()
         }
@@ -201,7 +206,7 @@ class AudioCoordinator internal constructor(
                 OperationResult.UnconfirmedCommit -> Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN)
                 else -> null
             }
-            val display = AudioState(work.id, work.owner, phase, problem = problem)
+            val display = AudioState(work.id, work.owner, phase, problem = problem ?: work.cleanupProblem.value)
             if (control.compareAndSet(before, before.copy(desired = null, finish = null, display = display, completedToken = work.token))) {
                 work.reply(result)
                 return
@@ -210,7 +215,16 @@ class AudioCoordinator internal constructor(
     }
 
     private fun phase(work: AudioWork, phase: AudioPhase, index: Int = 0) {
-        work.phase.value = AudioState(work.id, work.owner, phase, index)
+        work.phase.value = AudioState(work.id, work.owner, phase, index, work.cleanupProblem.value)
+        wake.trySend(Unit)
+    }
+
+    private fun cleanupFailed(work: AudioWork) {
+        while (true) {
+            val before = control.value
+            if (before.closed || (before.desired !== work && (before.desired != null || before.completedToken !== work.token))) break
+            if (control.compareAndSet(before, before.copy(display = before.display.copy(problem = before.display.problem ?: work.cleanupProblem.value)))) break
+        }
         wake.trySend(Unit)
     }
 
@@ -284,6 +298,7 @@ class AudioCoordinator internal constructor(
         if (synthesis != null) {
             val voice = voices.value
             voiceProblem(voice, synthesis.languageTag, synthesis.preferredVoiceId)?.let { return OperationResult.Failed(it) }
+            if (synthesis.text.length > voice.maxTextLength) return OperationResult.Failed(Problem(ProblemCode.LIMIT_EXCEEDED))
             if (synthesis.text.isBlank()) return OperationResult.Failed(Problem(ProblemCode.SPEECH_UNAVAILABLE))
         }
         var owned: TemporaryFile? = null
@@ -311,7 +326,7 @@ class AudioCoordinator internal constructor(
             current(work)
             return OperationResult.Completed(owned).also { owned = null }
         } finally {
-            owned?.let(files::discard)
+            owned?.let(work::discardFile)
         }
     }
 
