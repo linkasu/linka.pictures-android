@@ -2,177 +2,18 @@ name: Android CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+
+permissions:
+  contents: read
 
 concurrency:
   group: android-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Cache Android build cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/build-cache
-          key: ${{ runner.os }}-android-build-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-android-build-
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
-
-      - name: Gradle wrapper validation
-        uses: gradle/actions/wrapper-validation@v4
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Run lint, all unit variants, and release privacy checks
-        run: ./gradlew lint test verifyReleasePrivacy
-
-      - name: Assemble app and androidTest APKs
-        run: ./gradlew assembleDebug assembleDebugAndroidTest
-
-      - name: Prepare artifacts for upload
-        run: |
-          mkdir -p artifacts/debug artifacts/androidTest/debug
-          cp app/build/outputs/apk/debug/app-debug.apk artifacts/debug/
-          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk artifacts/androidTest/debug/
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apks
-          path: artifacts
-
-  firebase-test:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: android-apks
-          path: artifacts
-
-      - name: Inspect downloaded artifacts
-        run: |
-          echo "Artifacts directory structure:"
-          ls -R artifacts
-          echo "APK files found:"
-          find artifacts -name '*.apk' -print
-
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v1
-        with:
-          project_id: ${{ secrets.PROJECT_ID }}
-          credentials_json: ${{ secrets.FIREBASE_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-
-      - name: Configure project
-        run: gcloud config set project ${{ secrets.PROJECT_ID }}
-
-      - name: Run Firebase Test Lab instrumentation
-        run: |
-          gcloud firebase test android run \
-            --type instrumentation \
-            --app artifacts/debug/app-debug.apk \
-            --test artifacts/androidTest/debug/app-debug-androidTest.apk \
-            --device model=redfin,version=30,locale=en,orientation=portrait
-
-      - name: Run Firebase Robo scripted UI test
-        run: |
-          gcloud firebase test android run \
-            --type robo \
-            --app artifacts/debug/app-debug.apk \
-            --robo-script MainActivity_robo_script.json \
-            --device model=redfin,version=30,locale=en,orientation=portrait \
-            --timeout 5m
-  bundle-release:
-    runs-on: ubuntu-latest
-    needs: firebase-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Cache Android build cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/build-cache
-          key: ${{ runner.os }}-android-build-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-android-build-
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
-
-      - name: Gradle wrapper validation
-        uses: gradle/actions/wrapper-validation@v4
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Decode keystore
-        run: |
-          echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${GITHUB_WORKSPACE}/ci-release.jks"
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-
-      - name: Verify privacy gate and build signed release bundle
-        run: ./gradlew verifyReleasePrivacy bundleRelease
-        env:
-          ANDROID_KEYSTORE_PATH: ${{ format('{0}/ci-release.jks', github.workspace) }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      - name: Upload release bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+  verify:
+    uses: ./.github/workflows/android-verify.yml
+    with:
+      sha: ${{ github.sha }}

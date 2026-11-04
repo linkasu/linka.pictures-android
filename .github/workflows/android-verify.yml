@@ -1,0 +1,192 @@
+name: Android verification
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        required: true
+        type: string
+      release:
+        type: boolean
+        default: false
+      version_code:
+        type: string
+        default: ''
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+    outputs:
+      sha:
+        value: ${{ jobs.build.outputs.sha }}
+      artifact_id:
+        value: ${{ jobs.verified-artifact.outputs.artifact_id }}
+      artifact_digest:
+        value: ${{ jobs.verified-artifact.outputs.artifact_digest }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Checkout exact verification commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check source identity and release trust
+        id: source
+        env:
+          EXPECTED_SHA: ${{ inputs.sha }}
+          RELEASE: ${{ inputs.release }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          if [ "$RELEASE" = true ]; then
+            git merge-base --is-ancestor "$EXPECTED_SHA" origin/main
+            [[ "$VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]] || exit 1
+            test "$VERSION_CODE" -le 2100000000
+          fi
+          echo "sha=$EXPECTED_SHA" >> "$GITHUB_OUTPUT"
+      - name: Workflow contract tests
+        run: python3 -B -m unittest discover -s .github/tests -v
+      - name: Set up Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21.0.13+9'
+      - name: Set up Gradle and validate wrapper
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Unit, lint, privacy and APK gates
+        run: >-
+          ./gradlew :shared:jvmTest :app:lint :app:testDebugUnitTest
+          :app:testReleaseUnitTest :app:verifyReleasePrivacy
+          :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Upload exact debug APK pair
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-debug-${{ inputs.sha }}
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+      - name: Build signed release candidate
+        if: inputs.release
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${ANDROID_KEYSTORE_BASE64:?}" "${ANDROID_KEYSTORE_PATH:?}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?}" "${ANDROID_KEY_ALIAS:?}" "${ANDROID_KEY_PASSWORD:?}"
+          trap 'rm -f "$ANDROID_KEYSTORE_PATH"' EXIT
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+          ./gradlew --no-configuration-cache :app:bundleRelease -PverifyReleaseSigning=true -PreleaseVersionCode="$VERSION_CODE"
+          mkdir -p release-candidate
+          cp app/build/outputs/bundle/release/app-release.aab release-candidate/
+          git rev-parse HEAD > release-candidate/commit.txt
+          printf '%s\n' "$VERSION_CODE" > release-candidate/version-code.txt
+          cd release-candidate
+          sha256sum app-release.aab > SHA256SUMS
+      - name: Upload signed candidate (not yet device-verified)
+        if: inputs.release
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-candidate-${{ inputs.sha }}
+          path: release-candidate/
+          if-no-files-found: error
+          retention-days: 1
+
+  device:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [24, 36]
+    steps:
+      - name: Download APK pair from this build
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: android-debug-${{ inputs.sha }}
+          path: apks
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run debug instrumentation (not the release binary)
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: default
+          disable-animations: true
+          script: |
+            adb install apks/debug/app-debug.apk
+            adb install apks/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w -r su.linka.pictures.test/androidx.test.runner.AndroidJUnitRunner | tee instrumentation.txt
+            grep -Eq '^OK \([1-9][0-9]* tests?\)' instrumentation.txt
+            ! grep -Eq 'FAILURES|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|Process crashed' instrumentation.txt
+
+  verified-artifact:
+    needs: [build, device]
+    if: always()
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - name: Require successful build and every device
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          DEVICE_RESULT: ${{ needs.device.result }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$DEVICE_RESULT" = success
+      - name: Record successful verification
+        env:
+          VERIFIED_SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          echo "Verified commit: $VERIFIED_SHA; debug instrumentation API 24/36; debug + release unit tests, JVM, lint and release privacy." >> "$GITHUB_STEP_SUMMARY"
+      - name: Download signed candidate after device gate
+        if: inputs.release
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-candidate-${{ inputs.sha }}
+          path: verified-release
+      - name: Check candidate identity and bytes
+        if: inputs.release
+        env:
+          VERIFIED_SHA: ${{ needs.build.outputs.sha }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+          cd verified-release
+          test "$(cat commit.txt)" = "$VERIFIED_SHA"
+          test "$(cat version-code.txt)" = "$VERSION_CODE"
+          sha256sum --check SHA256SUMS
+      - name: Upload verified release without rebuilding
+        if: inputs.release
+        id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-release-${{ inputs.sha }}
+          path: verified-release/
+          if-no-files-found: error
