@@ -303,6 +303,147 @@ class EditCardDialogTest {
         return field.get(target)
     }
 
+    @Test
+    fun restoreDoesNotRestoreMissingMediaOrResumeRecordingAndRejectsStaleChooser() {
+        val first = EditCardDialog(activity)
+        first.show(set, null)
+        first.findViewById<EditText>(su.linka.pictures.R.id.card_title_edittext)!!.setText("draft")
+        setPrivateField(first, "currentBitmap", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+        val audio = File(workingDir, "ready.audio").apply { writeText("ready") }
+        setPrivateField(first, "currentAudio", audio)
+        val media = File(workingDir, "draft-media").apply { mkdirs() }
+        first.findViewById<android.view.View>(su.linka.pictures.R.id.choose_image_button)!!.performClick()
+        val snapshot = first.captureState(media)!!
+        val oldCode = snapshot.getInt("imageRequestCode")
+        first.dismiss()
+        File(media, snapshot.getString("audio")).delete()
+
+        val restored = EditCardDialog(activity)
+        restored.restoreState(set, snapshot, media)
+        assertFalse(restored.validate())
+        val record = restored.findViewById<RecordButton>(su.linka.pictures.R.id.record_audio_button)!!
+        assertEquals(activity.getString(su.linka.pictures.R.string.record_audio), record.text.toString())
+        restored.dismiss()
+        restored.show(set, null)
+        restored.findViewById<android.view.View>(su.linka.pictures.R.id.choose_image_button)!!.performClick()
+        restored.onActivityResult(oldCode, android.app.Activity.RESULT_CANCELED, null)
+        assertTrue(restored.captureState(media)!!.getBoolean("pendingImage"))
+        restored.dismiss()
+    }
+
+    @Test
+    fun reopeningDialogDoesNotRetainPreviousCallback() {
+        val dialog = EditCardDialog(activity)
+        var callbacks = 0
+        dialog.show(set, Card(0, cardType = 1))
+        dialog.setCallback(object : Callback<Card>() {
+            override fun onDone(result: Card) { callbacks++ }
+            override fun onFail(error: Exception?) = Unit
+        })
+        dialog.dismiss()
+        dialog.show(set, Card(1, cardType = 1))
+        dialog.findViewById<android.view.View>(su.linka.pictures.R.id.positiveBtn)!!.performClick()
+        assertEquals(0, callbacks)
+    }
+
+    @Test
+    @Config(sdk = [27])
+    fun restoredChooserAcceptsResultAndMaterializesImage() {
+        val media = File(workingDir, "media").apply { mkdirs() }
+        val first = EditCardDialog(activity)
+        first.show(set, null)
+        first.findViewById<android.view.View>(su.linka.pictures.R.id.choose_image_button)!!.performClick()
+        val state = first.captureState(media)!!
+        first.dismiss()
+        val selectedImage = File(workingDir, "selected.png")
+        selectedImage.outputStream().use {
+            Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        val restored = EditCardDialog(activity)
+        restored.restoreState(set, state, media)
+        restored.onActivityResult(state.getInt("imageRequestCode"), android.app.Activity.RESULT_OK,
+            android.content.Intent().setData(android.net.Uri.fromFile(selectedImage)))
+        val updated = restored.captureState(media)!!
+        assertFalse(updated.getBoolean("pendingImage"))
+        assertTrue(updated.getBoolean("imageDirty"))
+        assertTrue(File(media, updated.getString("image")).isFile)
+        restored.dismiss()
+    }
+
+    @Test
+    fun capturingPendingSynthesisCancelsPartialFileAndRestoreDoesNotRestartOrAcceptOldEvents() {
+        val first = standardDialog()
+        val engine = ControlledTextToSpeech.latest
+        engine.initialization.onInit(TextToSpeech.SUCCESS)
+        shadowOf(Looper.getMainLooper()).idle()
+        startGeneration(first)
+        val (id, partial) = engine.requests.single()
+        partial.writeText("partial")
+        val media = File(workingDir, "media").apply { mkdirs() }
+        val state = first.captureState(media)!!
+        assertTrue(engine.stopped)
+        assertFalse(partial.exists())
+        assertTrue(state.isNull("audio"))
+        first.release()
+
+        val restored = EditCardDialog(activity)
+        restored.restoreState(set, state, media)
+        val newEngine = ControlledTextToSpeech.latest
+        newEngine.initialization.onInit(TextToSpeech.SUCCESS)
+        engine.progress.onDone(id)
+        @Suppress("DEPRECATION")
+        engine.progress.onError(id)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(newEngine.requests.isEmpty())
+        assertNull(getPrivateField(restored, "currentAudio"))
+        assertFalse(getPrivateField(restored, "audioGenerating") as Boolean)
+        assertFalse(restored.validate())
+        assertFalse(restored.findViewById<Button>(R.id.play_audio_button)!!.isEnabled)
+        assertTrue(restored.findViewById<View>(R.id.positiveBtn)!!.isEnabled)
+        restored.release()
+    }
+
+    @Test
+    fun completedSynthesisRestoresDurableReadyFileAndUsesOnlyNewOwnerCallback() {
+        val first = standardDialog()
+        val engine = ControlledTextToSpeech.latest
+        engine.initialization.onInit(TextToSpeech.SUCCESS)
+        shadowOf(Looper.getMainLooper()).idle()
+        startGeneration(first)
+        val (id, ready) = engine.requests.single()
+        ready.writeText("ready")
+        engine.progress.onDone(id)
+        shadowOf(Looper.getMainLooper()).idle()
+        var staleCalls = 0
+        first.setCallback(object : Callback<Card>() {
+            override fun onDone(result: Card) { staleCalls++ }
+            override fun onFail(error: Exception?) = Unit
+        })
+        val media = File(workingDir, "media").apply { mkdirs() }
+        val state = first.captureState(media)!!
+        first.release()
+        ready.delete()
+
+        val restored = EditCardDialog(activity)
+        restored.restoreState(set, state, media)
+        val newEngine = ControlledTextToSpeech.latest
+        newEngine.initialization.onInit(TextToSpeech.SUCCESS)
+        engine.progress.onDone(id)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(newEngine.requests.isEmpty())
+        assertTrue(restored.validate())
+        assertEquals("ready", (getPrivateField(restored, "currentAudio") as File).readText())
+        var newCalls = 0
+        restored.setCallback(object : Callback<Card>() {
+            override fun onDone(result: Card) { newCalls++ }
+            override fun onFail(error: Exception?) { throw AssertionError(error) }
+        })
+        restored.findViewById<View>(R.id.positiveBtn)!!.performClick()
+        assertEquals(1, newCalls)
+        assertEquals(0, staleCalls)
+        restored.release()
+    }
+
     private fun setPrivateField(target: Any, fieldName: String, value: Any?) {
         val field = target.javaClass.getDeclaredField(fieldName)
         field.isAccessible = true

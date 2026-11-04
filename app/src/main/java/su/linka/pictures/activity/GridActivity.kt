@@ -15,6 +15,7 @@ import su.linka.pictures.AnalyticsEvents
 import su.linka.pictures.Callback
 import su.linka.pictures.Card
 import su.linka.pictures.Cookie
+import su.linka.pictures.PhraseDraftStore
 import su.linka.pictures.R
 import su.linka.pictures.Set
 import su.linka.pictures.SetsManager
@@ -22,6 +23,7 @@ import su.linka.pictures.Telemetry
 import su.linka.pictures.components.CardGrid
 import su.linka.pictures.components.OutputLine
 import su.linka.pictures.components.ParentPasswordDialog
+import java.security.MessageDigest
 
 class GridActivity : AppCompatActivity() {
 
@@ -35,6 +37,10 @@ class GridActivity : AppCompatActivity() {
     private var set: Set? = null
     private var gridSettings: GridSettings = GridSettings()
     private lateinit var fileName: String
+    private var documentIdentity: String? = null
+    private lateinit var phraseDraftStore: PhraseDraftStore
+    private var phraseDraftToken: String? = null
+    private var phraseFinished = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +48,7 @@ class GridActivity : AppCompatActivity() {
 
         cookie = Cookie(this)
         setsManager = SetsManager(this)
+        phraseDraftStore = PhraseDraftStore(this)
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -68,6 +75,12 @@ class GridActivity : AppCompatActivity() {
         try {
             val loadedSet = setsManager.getSet(fileName)
             set = loadedSet
+            val archive = setsManager.getSetFile(fileName)
+            val identity = MessageDigest.getInstance("SHA-256")
+                .digest((fileName + ":" + archive.length() + ":" + archive.lastModified() + ":" +
+                    loadedSet.getManifest().toJSONObject().toString()).toByteArray())
+                .joinToString("") { "%02x".format(it) }
+            documentIdentity = identity
             outputLine.setSet(loadedSet)
             grid.setSet(loadedSet)
             grid.setCardSelectListener(CardGrid.OnCardSelectListener { card, _ ->
@@ -75,6 +88,18 @@ class GridActivity : AppCompatActivity() {
             })
             gridSettings = GridSettings.fromInt(cookie.getSetSettings(fileName, DEFAULT_GRID_SETTINGS))
             prepareView()
+            if (savedInstanceState != null && savedInstanceState.getString("documentIdentity") == documentIdentity) {
+                grid.jumpToPage(savedInstanceState.getInt("page"))
+                savedInstanceState.getString("phraseDraftToken")?.let { token ->
+                    val selection = phraseDraftStore.restore(token, identity)
+                    if (selection != null) {
+                        phraseDraftToken = token
+                        outputLine.restoreSelection(selection)
+                    } else {
+                        Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         } catch (error: ZipException) {
             error.printStackTrace()
             Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
@@ -111,6 +136,29 @@ class GridActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         outputLine.release()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        capturePhrase()
+        outState.putString("documentIdentity", documentIdentity)
+        outState.putInt("page", grid.currentPage())
+        phraseDraftToken?.takeUnless { phraseFinished }?.let { outState.putString("phraseDraftToken", it) }
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onStop() {
+        capturePhrase()
+        super.onStop()
+    }
+
+    private fun capturePhrase() {
+        val identity = documentIdentity ?: return
+        if (phraseFinished) return
+        try {
+            phraseDraftToken = phraseDraftStore.capture(phraseDraftToken, identity, outputLine.captureSelection())
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.set_save_error, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun onCardSelect(card: Card?) {
@@ -160,6 +208,8 @@ class GridActivity : AppCompatActivity() {
     private fun close() {
         ParentPasswordDialog.showDialog(this, object : Callback<Any?>() {
             override fun onDone(result: Any?) {
+                phraseFinished = true
+                phraseDraftToken?.let { phraseDraftStore.discard(it) }
                 finish()
             }
 

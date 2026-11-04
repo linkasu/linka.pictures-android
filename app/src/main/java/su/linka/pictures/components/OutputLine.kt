@@ -80,6 +80,22 @@ class OutputLine @JvmOverloads constructor(
 
     fun getSet(): Set? = set
 
+    fun captureSelection(): IntArray {
+        val available = manifest?.cards ?: return intArrayOf()
+        return cards.map { selected -> available.indexOfFirst { it === selected } }.toIntArray()
+    }
+
+    fun restoreSelection(indices: IntArray) {
+        clear()
+        val wasDirect = directMode
+        directMode = false
+        try {
+            indices.forEach { index -> manifest?.cards?.getOrNull(index)?.let { addCard(it) } }
+        } finally {
+            directMode = wasDirect
+        }
+    }
+
     fun addCard(newCard: Card) {
         if (directMode) {
             play(newCard, null)

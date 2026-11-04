@@ -17,6 +17,9 @@ import su.linka.pictures.Set
 import su.linka.pictures.SetAlreadyExistsException
 import su.linka.pictures.SetsManager
 import su.linka.pictures.Telemetry
+import su.linka.pictures.EditorDraftStore
+import org.json.JSONObject
+import java.io.File
 import su.linka.pictures.components.CardGrid
 import su.linka.pictures.components.ConfirmDialog
 import su.linka.pictures.components.EditCardDialog
@@ -35,6 +38,11 @@ class SetEditActivity : AppCompatActivity() {
 
     private var set: Set? = null
     private var setName: String? = null
+    private lateinit var draftStore: EditorDraftStore
+    private var draftToken: String? = null
+    private var editedPosition = 0
+    private var editedNextPage = false
+    private var draftFinished = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +53,8 @@ class SetEditActivity : AppCompatActivity() {
 
         cardDialog = EditCardDialog(this)
         setsManager = SetsManager(this)
+        draftStore = EditorDraftStore(this)
+        cardDialog.onChooseImage = { captureDraft() }
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setTitle(R.string.create_set)
@@ -104,6 +114,23 @@ class SetEditActivity : AppCompatActivity() {
             }
         }
 
+        val restored = draftStore.restore(savedInstanceState?.getString(DRAFT_TOKEN))
+        if (restored != null) {
+            try {
+                restoreDraft(restored)
+            } catch (_: Exception) {
+                draftFinished = true // Preserve the unreadable draft for recovery; do not checkpoint partial UI.
+                Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
+                finish()
+            }
+            return
+        }
+        // Never silently replace a missing/corrupt unsaved draft with the original archive.
+        if (savedInstanceState?.containsKey(DRAFT_TOKEN) == true) {
+            Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         setName = intent?.extras?.getString(SetEditActivity.EXTRA_FILE)
         if (setName == null) {
             showEnterTitleDialog()
@@ -112,14 +139,25 @@ class SetEditActivity : AppCompatActivity() {
         }
     }
 
-    override fun onStop() {
-        if (::cardDialog.isInitialized) cardDialog.onHostStop()
-        super.onStop()
-    }
-
-    override fun onDestroy() {
-        if (::cardDialog.isInitialized) cardDialog.release()
-        super.onDestroy()
+    private fun restoreDraft(draft: EditorDraftStore.Draft) {
+        val state = draft.state
+        val name = state.getString("name")
+        require(name.isNotEmpty() && File(name).name == name)
+        draftToken = draft.token
+        set = draft.set
+        setName = name
+        loadSet()
+        grid.jumpToPage(state.optInt("page"))
+        rowsCountEditText.setText(state.optString("rows", rowsCountEditText.text.toString()))
+        columnsEditText.setText(state.optString("columns", columnsEditText.text.toString()))
+        state.optJSONObject("dialog")?.let { dialogState ->
+            editedPosition = state.getInt("position")
+            require(editedPosition in 0 until su.linka.pictures.shared.BoardLimits.MAX_CARDS)
+            require(editedPosition.toLong() in 0..grid.getPagesCount().toLong() * grid.getPageSize())
+            editedNextPage = state.optBoolean("nextPage")
+            cardDialog.restoreState(draft.set, dialogState, draftStore.mediaDirectory(draft.token))
+            bindCardCallback()
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -152,7 +190,15 @@ class SetEditActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.card_limit_reached, Toast.LENGTH_LONG).show()
             return
         }
+        editedPosition = pos
+        editedNextPage = nextPage
         cardDialog.show(currentSet, if (card != null && card.cardType < 3) card else null)
+        bindCardCallback()
+    }
+
+    private fun bindCardCallback() {
+        val pos = editedPosition
+        val nextPage = editedNextPage
         cardDialog.setCallback(object : Callback<Card>() {
             override fun onDone(result: Card) {
                 addCard(pos, result)
@@ -169,8 +215,10 @@ class SetEditActivity : AppCompatActivity() {
         val currentSet = set ?: return
         Telemetry.logEvent(AnalyticsEvents.ADD_CARD, null)
         currentSet.addCard(pos, card)
+        val page = grid.currentPage()
         grid.refresh()
         grid.setSet(currentSet)
+        grid.jumpToPage(page)
     }
 
     private fun showEnterTitleDialog() {
@@ -200,6 +248,17 @@ class SetEditActivity : AppCompatActivity() {
     }
 
     private fun loadSet() {
+        if (draftToken == null) {
+            try {
+                val draft = draftStore.create(set ?: return)
+                draftToken = draft.token
+                set = draft.set
+            } catch (_: Exception) {
+                Toast.makeText(this, R.string.set_open_error, Toast.LENGTH_LONG).show()
+                finish()
+                return
+            }
+        }
         val currentSet = set ?: return
         val manifest = currentSet.getManifest()
         withoutSpaceCheckbox.isChecked = manifest.withoutSpace
@@ -224,6 +283,7 @@ class SetEditActivity : AppCompatActivity() {
     private fun saveConfirmed(currentSet: Set, currentName: String, replaceExisting: Boolean = false) {
         setsManager.save(currentSet, currentName, replaceExisting, object : Callback<Any?>() {
             override fun onDone(result: Any?) {
+                discardDraft()
                 setResult(RESULT_OK)
                 finish()
             }
@@ -244,6 +304,7 @@ class SetEditActivity : AppCompatActivity() {
     private fun close() {
         ConfirmDialog.showConfirmDialog(this, R.string.confirm_exit_dialog, object : Callback<Any?>() {
             override fun onDone(result: Any?) {
+                discardDraft()
                 setResult(RESULT_OK)
                 finish()
             }
@@ -252,7 +313,49 @@ class SetEditActivity : AppCompatActivity() {
         })
     }
 
+    private fun captureDraft(): Boolean {
+        val token = draftToken ?: return true
+        if (draftFinished) return true
+        val currentSet = set ?: return true
+        return try {
+            val state = JSONObject().put("name", setName).put("page", grid.currentPage())
+                .put("rows", rowsCountEditText.text.toString())
+                .put("columns", columnsEditText.text.toString())
+                .put("position", editedPosition).put("nextPage", editedNextPage)
+                .put("dialog", cardDialog.captureState(draftStore.mediaDirectory(token)) ?: JSONObject.NULL)
+            draftStore.capture(token, currentSet, state)
+            true
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.set_save_error, Toast.LENGTH_LONG).show()
+            false
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        captureDraft()
+        draftToken?.takeUnless { draftFinished }?.let { outState.putString(DRAFT_TOKEN, it) }
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onStop() {
+        if (::cardDialog.isInitialized) cardDialog.onHostStop()
+        captureDraft()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        if (::cardDialog.isInitialized) cardDialog.release()
+        super.onDestroy()
+    }
+
+    private fun discardDraft() {
+        draftFinished = true
+        cardDialog.dismiss()
+        draftToken?.let { draftStore.discard(it) }
+    }
+
     companion object {
         const val EXTRA_FILE = "file"
+        private const val DRAFT_TOKEN = "editorDraftToken"
     }
 }

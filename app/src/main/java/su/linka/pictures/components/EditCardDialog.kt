@@ -10,6 +10,7 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.graphics.BitmapFactory
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -23,6 +24,10 @@ import su.linka.pictures.R
 import su.linka.pictures.Set
 import su.linka.pictures.TTS
 import su.linka.pictures.Utils
+import su.linka.pictures.EditorDraftStore
+import su.linka.pictures.EditorDraftJson
+import org.json.JSONObject
+import java.util.UUID
 import java.io.File
 import java.io.IOException
 
@@ -53,6 +58,14 @@ class EditCardDialog(context: Context) : Dialog(context) {
     private var audioDirty = false
     private var audioGenerating = false
     private var audioGeneration = 0L
+    private var pendingImage = false
+    private var imageRequestCode = PICK_IMAGE_BASE
+    private var generation = 0
+    private var capturedBitmap: Bitmap? = null
+    private var capturedImage: String? = null
+    private var capturedAudioKey: String? = null
+    private var capturedAudio: String? = null
+    var onChooseImage: (() -> Boolean)? = null
 
     init {
         setContentView(R.layout.edit_card_dialog)
@@ -72,6 +85,13 @@ class EditCardDialog(context: Context) : Dialog(context) {
 
     fun show(set: Set, inputCard: Card?) {
         cancelAudioGeneration()
+        generation++
+        callback = null
+        pendingImage = false
+        capturedBitmap = null
+        capturedImage = null
+        capturedAudioKey = null
+        capturedAudio = null
         this.set = set
         this.card = inputCard?.clone() ?: Card(0, 0)
         populateCardData()
@@ -83,7 +103,9 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == PICK_IMAGE && resultCode == Activity.RESULT_OK && data != null) {
+        if (requestCode != imageRequestCode || !pendingImage || !isShowing) return
+        pendingImage = false
+        if (resultCode == Activity.RESULT_OK && data != null) {
             val selectedImage: Uri = data.data ?: return
             val bitmap = try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -93,7 +115,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
                     @Suppress("DEPRECATION")
                     MediaStore.Images.Media.getBitmap(context.contentResolver, selectedImage)
                 }
-            } catch (error: IOException) {
+            } catch (error: Exception) {
                 Toast.makeText(context, R.string.image_open_error, Toast.LENGTH_LONG).show()
                 error.printStackTrace()
                 return
@@ -102,6 +124,71 @@ class EditCardDialog(context: Context) : Dialog(context) {
             imageDirty = true
             imageView.setImageBitmap(bitmap)
         }
+    }
+
+    /** Media is materialized before the owner publishes its small saved-state token. */
+    fun captureState(media: File): JSONObject? {
+        if (!isShowing) return null
+        // Interrupted recordings are abandoned, never promoted to ready audio or resumed.
+        onHostStop()
+        currentBitmap?.let { bitmap ->
+            if (bitmap !== capturedBitmap) {
+                val name = "${UUID.randomUUID()}.png"
+                EditorDraftStore.write(File(media, name)) { output ->
+                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
+                }
+                capturedBitmap = bitmap
+                capturedImage = name
+            }
+        }
+        val audio = currentAudio?.takeIf { it.isFile }
+        val audioKey = audio?.let { "${it.absolutePath}:${it.length()}:${it.lastModified()}" }
+        if (audioKey != capturedAudioKey) {
+            capturedAudio = audio?.let {
+                val name = "${UUID.randomUUID()}.audio"
+                EditorDraftStore.write(File(media, name)) { output ->
+                    it.inputStream().use { input -> input.copyTo(output) }
+                }
+                name
+            }
+            capturedAudioKey = audioKey
+        }
+        return JSONObject().put("card", EditorDraftJson.card(card))
+            .put("title", cardTitleEditText.text.toString()).put("type", getSelectedType())
+            .put("image", if (currentBitmap != null) capturedImage else JSONObject.NULL)
+            .put("audio", capturedAudio ?: JSONObject.NULL)
+            .put("imageDirty", imageDirty).put("audioDirty", audioDirty)
+            .put("pendingImage", pendingImage)
+            .put("imageRequestCode", imageRequestCode)
+    }
+
+    fun restoreState(set: Set, state: JSONObject, media: File) {
+        val model = state.getJSONObject("card")
+        fun optional(key: String): String? = if (model.isNull(key)) null else model.getString(key)
+        val restoredCard = Card(model.getInt("id"),
+            optional("imagePath"), optional("title"), optional("audioPath"),
+            model.getInt("cardType"))
+        require(listOfNotNull(restoredCard.imagePath, restoredCard.audioPath).all {
+            File(set.getFolder(), it).canonicalPath.startsWith(set.getFolder().canonicalPath + File.separator)
+        })
+        show(set, restoredCard)
+        cardTitleEditText.setText(state.optString("title"))
+        cardTypeRadio.check(IDS[state.optInt("type").coerceIn(0, IDS.lastIndex)])
+        fun mediaFile(key: String): File? {
+            val name = state.optString(key)
+            if (name.isEmpty() || name == "null" || File(name).name != name) return null
+            return File(media, name).takeIf {
+                it.isFile && it.canonicalFile.parentFile == media.canonicalFile
+            }
+        }
+        currentBitmap = mediaFile("image")?.let { BitmapFactory.decodeFile(it.absolutePath) }
+        imageView.setImageBitmap(currentBitmap)
+        currentAudio = mediaFile("audio")
+        playAudioButton.isEnabled = currentAudio != null
+        imageDirty = state.optBoolean("imageDirty")
+        audioDirty = state.optBoolean("audioDirty")
+        pendingImage = state.optBoolean("pendingImage")
+        imageRequestCode = state.optInt("imageRequestCode", PICK_IMAGE_BASE).coerceIn(PICK_IMAGE_BASE, 65535)
     }
 
     fun validate(): Boolean {
@@ -126,11 +213,13 @@ class EditCardDialog(context: Context) : Dialog(context) {
             dismiss()
         }
         requireView<View>(R.id.delete_button).setOnClickListener { view ->
+            val requestGeneration = generation
             ConfirmDialog.showConfirmDialog(
                 view.context,
                 R.string.delete,
                 object : Callback<Any?>() {
                     override fun onDone(result: Any?) {
+                        if (!isShowing || generation != requestGeneration) return
                         card = Card(card.id, 3)
                         save(true)
                         dismiss()
@@ -145,6 +234,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
     private fun setUpListeners() {
         recordButton.setOnRecordListener(object : Callback<File>() {
             override fun onDone(result: File) {
+                if (!isShowing) return
                 cancelAudioGeneration()
                 currentAudio = result
                 audioDirty = true
@@ -266,11 +356,13 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     private fun generateImage() {
+        val requestGeneration = generation
         InputDialog.showDialog(
             context,
             R.string.generate_image,
             object : Callback<String>() {
                 override fun onDone(result: String) {
+                    if (!isShowing || generation != requestGeneration) return
                     currentBitmap = Utils.textAsBitmap(result)
                     imageDirty = true
                     imageView.setImageBitmap(currentBitmap)
@@ -286,7 +378,13 @@ class EditCardDialog(context: Context) : Dialog(context) {
             type = "image/*"
         }
         val chooser = Intent.createChooser(intent, context.getString(R.string.choose_image))
-        (Utils.unwrap(context) ?: return).startActivityForResult(chooser, PICK_IMAGE)
+        imageRequestCode = if (imageRequestCode == 65535) PICK_IMAGE_BASE else imageRequestCode + 1
+        pendingImage = true
+        if (onChooseImage?.invoke() == false) {
+            pendingImage = false
+            return
+        }
+        (Utils.unwrap(context) ?: return).startActivityForResult(chooser, imageRequestCode)
     }
 
     private fun save(isDeleting: Boolean): Boolean {
@@ -345,6 +443,9 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     override fun dismiss() {
+        generation++
+        pendingImage = false
+        callback = null
         onHostStop()
         super.dismiss()
     }
@@ -372,7 +473,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
             R.id.space_card_radio,
             R.id.empty_card_radio
         )
-        private const val PICK_IMAGE = 0
+        private const val PICK_IMAGE_BASE = 16384
     }
 
     private fun <T : View> requireView(@IdRes id: Int): T {
