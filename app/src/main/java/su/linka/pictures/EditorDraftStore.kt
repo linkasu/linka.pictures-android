@@ -18,17 +18,24 @@ class EditorDraftStore(context: Context) {
     fun create(source: Set): Draft {
         val token = UUID.randomUUID().toString()
         val board = File(directory(token), "board")
-        if (!board.mkdirs()) throw IOException("Cannot create draft workspace")
-        source.getFolder().walkTopDown().filter { it.isFile }.forEach { file ->
-            val relative = file.relativeTo(source.getFolder()).path
-            val target = File(board, relative)
-            require(file.canonicalPath.startsWith(source.getFolder().canonicalPath + File.separator))
-            target.parentFile?.mkdirs()
-            file.copyTo(target, overwrite = true)
+        try {
+            if (!board.mkdirs()) throw IOException("Cannot create draft workspace")
+            source.getFolder().walkTopDown().filter { it.isFile }.forEach { file ->
+                val relative = file.relativeTo(source.getFolder()).path
+                val target = File(board, relative)
+                require(file.canonicalPath.startsWith(source.getFolder().canonicalPath + File.separator))
+                target.parentFile?.mkdirs()
+                file.copyTo(target, overwrite = true)
+            }
+            val manifest = SetManifest(File(board, "config.json"), source.getManifest().toDocument(),
+                source.getManifest().archiveFile)
+            val draft = Draft(token, Set(manifest, board), JSONObject())
+            source.close()
+            return draft
+        } catch (error: Exception) {
+            directory(token).deleteRecursively()
+            throw error
         }
-        val manifest = SetManifest(File(board, "config.json"), source.getManifest().toDocument(),
-            source.getManifest().archiveFile)
-        return Draft(token, Set(manifest, board), JSONObject())
     }
 
     fun capture(token: String, set: Set, state: JSONObject) {

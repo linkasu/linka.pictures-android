@@ -134,8 +134,9 @@ class GridActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         outputLine.release()
+        set?.close()
+        super.onDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

@@ -9,8 +9,27 @@ import java.util.UUID
 
 class Set(
     private val manifest: SetManifest,
-    private val folder: File
-) {
+    private val folder: File,
+    private val ownsWorkspace: Boolean = false
+) : AutoCloseable {
+    private var closed = false
+
+    /** Durable drafts and caller-provided folders are released only by their explicit owner. */
+    override fun close() {
+        if (!ownsWorkspace || closed) return
+        closed = true
+        folder.deleteRecursively()
+    }
+
+    fun referencedPaths(): kotlin.collections.Set<String> {
+        val root = folder.canonicalFile
+        return (listOf("config.json") + manifest.cards.flatMap { listOfNotNull(it.imagePath, it.audioPath) })
+            .map { path ->
+                val file = File(root, path).canonicalFile
+                require(file.path.startsWith(root.path + File.separator)) { "Media outside workspace" }
+                file.relativeTo(root).invariantSeparatorsPath
+            }.toSet()
+    }
 
     fun getManifest(): SetManifest = manifest
 

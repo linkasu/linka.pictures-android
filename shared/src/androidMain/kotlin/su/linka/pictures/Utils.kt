@@ -100,8 +100,9 @@ object Utils {
     }
 
     @JvmStatic
+    @JvmOverloads
     @Throws(IOException::class)
-    fun zipFolder(inputFolderPath: String, outZipPath: String) {
+    fun zipFolder(inputFolderPath: String, outZipPath: String, includePaths: kotlin.collections.Set<String>? = null) {
         val source = File(inputFolderPath).absoluteFile.normalize()
         val root = source.canonicalFile
         val unlinkedSource = source.parentFile?.let { File(it.canonicalFile, source.name) } ?: source
@@ -121,7 +122,9 @@ object Utils {
                         if (file.isDirectory) {
                             addDirectory(file)
                         } else if (file.isFile) {
-                            zos.putNextEntry(ZipEntry(file.relativeTo(root).invariantSeparatorsPath))
+                            val path = file.relativeTo(root).invariantSeparatorsPath
+                            if (includePaths != null && path !in includePaths) continue
+                            zos.putNextEntry(ZipEntry(path))
                             FileInputStream(file).use { it.copyTo(zos) }
                             zos.closeEntry()
                         }

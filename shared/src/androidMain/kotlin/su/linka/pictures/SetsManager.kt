@@ -94,10 +94,7 @@ class SetsManager(private val context: Context) {
     private fun createWorkspace(): File {
         val root = getWorkspaceRoot()
         val folder = File(root, UUID.randomUUID().toString())
-        if (folder.exists()) {
-            folder.deleteRecursively()
-        }
-        folder.mkdirs()
+        if (!folder.mkdirs()) throw IOException("Cannot create workspace")
         return folder
     }
 
@@ -115,28 +112,33 @@ class SetsManager(private val context: Context) {
 
     @Throws(ZipException::class)
     private fun getSet(setFile: File): Set {
-        val outputDir = createWorkspace()
-        val manifest = try {
-            ArchiveReader().extract(setFile, outputDir)
-            parseManifest(setFile, File(outputDir, CONFIG_FILE_NAME))
-        } catch (error: JSONException) {
-            outputDir.deleteRecursively()
-            throw ZipException(error)
+        val outputDir = try {
+            createWorkspace()
         } catch (error: IOException) {
+            throw ZipException(error)
+        }
+        try {
+            ArchiveReader().extract(setFile, outputDir)
+            val manifest = parseManifest(setFile, File(outputDir, CONFIG_FILE_NAME))
+            return Set(manifest, outputDir, ownsWorkspace = true)
+        } catch (error: Exception) {
             outputDir.deleteRecursively()
             throw ZipException(error)
         }
-        return Set(manifest, outputDir)
     }
 
     fun getSetFile(name: String): File = File(getSetsDirectory(), name)
 
     fun createSet(): Set {
         val folder = createWorkspace()
-        folder.mkdirs()
-        val file = File(folder, CONFIG_FILE_NAME)
-        val manifest = SetManifest(file)
-        return Set(manifest, folder)
+        try {
+            val file = File(folder, CONFIG_FILE_NAME)
+            val manifest = SetManifest(file)
+            return Set(manifest, folder, ownsWorkspace = true)
+        } catch (error: Exception) {
+            folder.deleteRecursively()
+            throw error
+        }
     }
 
     fun save(set: Set, setName: String, callback: Callback<Any?>) {
@@ -151,7 +153,7 @@ class SetsManager(private val context: Context) {
                 val owned = manifest.archiveFile?.canonicalFile == destination
                 AtomicSetFile.write(destination, replaceExisting || owned) { staged ->
                     set.writeConfig()
-                    Utils.zipFolder(set.getFolder().absolutePath, staged.absolutePath)
+                    Utils.zipFolder(set.getFolder().absolutePath, staged.absolutePath, set.referencedPaths())
                     validateArchive(staged)
                 }
                 val previousKey = manifest.cacheKey

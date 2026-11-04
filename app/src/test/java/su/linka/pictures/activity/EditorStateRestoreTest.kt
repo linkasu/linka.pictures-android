@@ -58,6 +58,7 @@ class EditorStateRestoreTest {
         dialog.findViewById<android.view.View>(R.id.choose_image_button)!!.performClick()
         val state = Bundle()
         first.saveInstanceState(state).pause().stop().destroy()
+        assertTrue("Destroy must preserve the active durable draft", board.getFolder().isDirectory)
         val parcel = android.os.Parcel.obtain()
         try {
             parcel.writeBundle(state)
@@ -108,6 +109,7 @@ class EditorStateRestoreTest {
         manager.save(source, name, saveCallback())
         val intent = Intent(context, GridActivity::class.java).putExtra(GridActivity.EXTRA_FILE, name)
         val first = Robolectric.buildActivity(GridActivity::class.java, intent).setup()
+        val firstWorkspace = field<Set>(first.get(), "set").getFolder()
         val line = first.get().findViewById<OutputLine>(R.id.output_line)
         val cards = field<Set>(first.get(), "set").getManifest().cards
         val sequence = IntArray(2401) { (it * 7 + it / 4) % cards.size }
@@ -115,6 +117,7 @@ class EditorStateRestoreTest {
         first.get().findViewById<CardGrid>(R.id.card_grid).jumpToPage(1)
         val state = Bundle()
         first.saveInstanceState(state).pause().stop().destroy()
+        assertFalse("Destroy must release the playback workspace", firstWorkspace.exists())
         assertFalse(state.containsKey("selection"))
         assertNotNull(state.getString("phraseDraftToken"))
         val parcel = android.os.Parcel.obtain()

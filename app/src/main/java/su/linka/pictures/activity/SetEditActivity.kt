@@ -345,6 +345,7 @@ class SetEditActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         if (::cardDialog.isInitialized) cardDialog.release()
+        set?.close()
         super.onDestroy()
     }
 
