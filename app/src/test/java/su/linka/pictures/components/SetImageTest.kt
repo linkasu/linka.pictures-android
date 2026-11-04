@@ -46,7 +46,7 @@ class SetImageTest {
         }
         try {
             write(Color.RED)
-            activity.setContent { SetImage(file, Modifier.testTag("preview"), if (refresh.value) 1 else 0) }
+            activity.setContent { SetImage(file, Modifier.testTag("preview"), if (refresh.value) "changed" else "initial") }
             composeNodes(activity)
             val target = checkNotNull(image(activity.findViewById(android.R.id.content)))
             awaitWork { (target.drawable as? BitmapDrawable)?.bitmap?.getPixel(0, 0) == Color.RED }

@@ -44,7 +44,7 @@ class WorkflowContract(unittest.TestCase):
 
     def test_exact_build_and_device_gates(self):
         build = job(VERIFY, "build")
-        for task in ("shared:jvmTest", "app:lint", "app:testDebugUnitTest",
+        for task in ("shared:jvmTest", "app:lintDebug", "app:lintRelease", "app:testDebugUnitTest",
                      "app:testReleaseUnitTest", "app:verifyReleasePrivacy", "app:verifyReleasePolicy",
                      "app:assembleDebug", "app:assembleDebugAndroidTest"):
             self.assertIn(":" + task, build)

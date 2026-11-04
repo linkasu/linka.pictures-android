@@ -10,7 +10,7 @@ import java.io.File
 
 /** Decorative thumbnail only; the common screen supplies its accessible text label. */
 @Composable
-fun SetImage(file: File?, modifier: Modifier, revision: Long = 0) {
+fun SetImage(file: File?, modifier: Modifier, revision: String = "") {
     val signature = ObjectKey("$revision:${file?.lastModified()}:${file?.length()}")
     AndroidView(
         factory = { context -> ImageView(context).apply {
