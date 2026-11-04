@@ -82,3 +82,89 @@ Focused local report-link check выполнен Python assertions: **11 ссы�
 - **Observed PASS только для описанного smoke на API35 ARM64**: реальный native Android host + common Compose UI + bundled SQLite + host callback; default Unicode readback; ASCII U+0027 readback; observable focus/IME/clearFocus.
 - **G1 остаётся OPEN / НЕ PASS.** minSdk21 — packaged metadata, не API21 runtime. ARMv7 ELF в APK — artifact evidence, не ARMv7 runtime. Android21 ARMv7/ARM64, другие IME, accessibility/TalkBack, lifecycle/process death, cold read после перезапуска, reboot/durability, стресс/error paths, полнота Unicode/SQL security matrix, iOS14 и product regression не проверялись.
 - Productcode/configs/CI не менялись, тесты не отключались, baseline data не трогались, emulator-5554 не запускался, permissions/network/root/credentials не менялись. Нет push, делегации или самостоятельной интеграции probe в product.
+
+## Дополнение: разрешённая попытка Android21 ARM64 — остановка до создания AVD
+
+Это отдельная принятая задача после явного разрешения пользователя скачать AOSP API21 ARM64 и создать **новый** AVD `linka_platform_probe_api21_arm64`; iOS17 выполняется отдельно, здесь не исследовался. Base этой попытки: `a4dd51d56b6f56e1ce105c6ed0314c4732b1b7b1`, ветка `implementation/p01-android-runtime`, исходно чистая. История API35 выше оставлена без изменений.
+
+**Итог по стадиям:** downloaded **YES**, SDK installed **YES**, AVD created **NO**, booted **NO**, API21 probe installed/launched **NO**, API21 runtime passed **НЕ ПРОВЕРЕН**. Не обнаружена ошибка приложения или доказанная несовместимость API21 kernel с host: до boot дело не дошло. G1 остаётся **OPEN / НЕ PASS**; физические устройства, AAC и ARMv7 также открыты.
+
+### Host / инструменты / предварительные проверки
+
+- Первым действием — `adb MCP list_devices`: только `emulator-5556`, device, sdk_gphone64_arm64, transport_id 11. Повторный list после остановки дал тот же единственный device. Никаких install/launch/input/stop действий на нём в этой попытке не выполнялось.
+- `uname -m` → `arm64`; `sw_vers` → macOS **27.0.1**, build **26A434**.
+- `/Users/aacidov/Library/Android/sdk/emulator/emulator -version` → **37.2.12.0**, build_id **16428233**.
+- `command -v sdkmanager` / `command -v avdmanager` → `/opt/homebrew/bin/sdkmanager` / `/opt/homebrew/bin/avdmanager`; `sdkmanager --sdk_root=/Users/aacidov/Library/Android/sdk --version` под JDK17 → **20.0**. Каталог `/Users/aacidov/Library/Android/sdk/cmdline-tools` отсутствует (первичный `ls` сообщил `No such file or directory`), новые tools не устанавливались.
+- `ls -l /opt/homebrew/bin/avdmanager` → symlink `/opt/homebrew/share/android-commandlinetools/cmdline-tools/latest/bin/avdmanager`. У Homebrew SDK есть собственный `system-images/`, отдельный от `/Users/aacidov/Library/Android/sdk/system-images/`.
+- `emulator -list-avds` до и после попытки: `bproxy_api35`, `linka_audit_phone`, `linka_audit_tablet`. Новый task-owned `.ini` и `.avd` каталог под `/Users/aacidov/.android/avd/` отсутствовали и остались отсутствующими. Ни `--force`, ни overwrite/delete существующих AVD не применялись.
+- `avdmanager list device` подтвердил штатный профиль **Nexus 5** (id 17), выбранный для создания, без custom kernel/architecture.
+- APK повторно read-only проверен до любых возможных install: `shasum -a 256 <тот же app-debug.apk>` → **`19ed34181dafd0127a71fc9c97d8ddf7d5b0d6c586091a0811cfac51d48274c4`**. `aapt dump badging` повторно подтвердил **su.linka.pictures.platformprobe**, versionCode **1**, versionName **probe**, sdkVersion **21**, targetSdk **35**, activity **su.linka.pictures.ProbeActivity**, ARM64/ARMv7. Бинарник не пересобирался и не изменялся.
+
+### Download / install: выполнено без принятия новых лицензий
+
+Read-only запрос официального repository manifest `https://dl.google.com/android/repository/sys-img/android/sys-img2-3.xml` через Python urllib/ElementTree подтвердил точный remotePackage:
+
+```text
+path: system-images;android-21;default;arm64-v8a
+api-level: 21; tag: default; abi: arm64-v8a; revision: 4
+archive: arm64-v8a-21_r04.zip
+size: 211426314
+checksum type=sha1: c4375f1b4b4cd21a8617660e25f621cedcbd8332
+uses-license ref: android-sdk-license
+```
+
+Выполнена только точная согласованная установка, stdin закрыт; `yes`, `--licenses`, sudo/chmod или обход permissions не использовались:
+
+```sh
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  sdkmanager --sdk_root=/Users/aacidov/Library/Android/sdk \
+  --install 'system-images;android-21;default;arm64-v8a' </dev/null \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-api21-sdk-install.log 2>&1
+```
+
+Процесс выполнялся background; лог прочитан **только после автоматического completed notification**, без polling/sleep. Лог прошёл Downloading → Unzipping → **100% Unzipping... arm64-v8a/system.img**. Проверка строк error/warning/license/accept не выявила prompt/ошибок; новых лицензий не принималось. Исходный ZIP отдельно не сохранялся/не хешировался этой проверкой: SHA-1 выше — значение официального manifest, не независимо вычисленный digest загруженного ZIP.
+
+После completed в разрешённом SDK существует `system-images/android-21/default/arm64-v8a/`: `system.img`, `userdata.img`, `ramdisk.img`, `kernel-qemu`, `kernel-ranchu`, `source.properties`, `package.xml`, `NOTICE.txt`, `advancedFeatures.ini`. `source.properties` подтверждает `Pkg.Desc=Android SDK Platform 5.0.2`, `Pkg.Revision=4`, `AndroidVersion.ApiLevel=21`, `SystemImage.Abi=arm64-v8a`, `SystemImage.TagId=default`; `package.xml` localPackage совпадает с exact package и revision.
+
+| Установленный файл | Bytes | Вычисленный SHA-256 |
+|---|---:|---|
+| source.properties | 177 | `3560ad660a4a4871846e89ce6ed4d27c7009e113f02b378aa3220e5dc28ec552` |
+| package.xml | 18757 | `cb9fc4595a5179df6a4544e14236236e87ccc2956ec5a5b57c3e077e2bb6b9af` |
+| kernel-qemu | 5861888 | `ae7ff689686b66aca0c84fa1f9e57fc35389fe683605bb1946fa610a1356376b` |
+| kernel-ranchu | 7748096 | `3112e2210d65c276b067e6cfdd1c26caa95e45061cb08893cccd03f82f76407b` |
+| ramdisk.img | 990305 | `e5a9cbbe6541384168c877f563ad78c62133f469af55599226ba2995efe5d0aa` |
+
+`file kernel-qemu kernel-ranchu` определил **оба** как `Linux kernel ARM64 boot executable Image, little-endian`. Это формат kernel, не доказательство поддержки нынешним Emulator/macOS.
+
+### AVD creation: actual error и STOP
+
+```sh
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  ANDROID_HOME=/Users/aacidov/Library/Android/sdk \
+  ANDROID_SDK_ROOT=/Users/aacidov/Library/Android/sdk \
+  avdmanager create avd --name linka_platform_probe_api21_arm64 \
+  --package 'system-images;android-21;default;arm64-v8a' --device 'Nexus 5' </dev/null \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-api21-avd-create.log 2>&1
+```
+
+**Exit 1**, точный существенный stderr/stdout из объединённого лога:
+
+```text
+Loading local repository...
+[=========                              ] 25% Loading local repository...
+Error: Package path is not valid. Valid system image paths are:
+system-images;android-35;google_apis;arm64-v8a
+null
+```
+
+Подтверждённый факт: установленный API21 package присутствует в согласованном SDK, но этот вызов avdmanager его **не обнаружил**, несмотря на ANDROID_HOME/ANDROID_SDK_ROOT. Связь с отдельным Homebrew SDK-root — обоснованная **гипотеза по расположению launcher и перечисленному API35**, не отладка реализации avdmanager. Read-only `avdmanager --help` не перечисляет глобальный `--sdk_root` (есть silent/verbose/clear-cache/help); clear-cache не запускался.
+
+На этом остановлены provisioning и device действия: tools/configs не менялись, symlinks не создавались, образ не копировался в другой SDK, дополнительные cmdline-tools/другие image/ABI/версии не устанавливались, custom AVD config не писался. Для продолжения нужен отдельно согласованный способ использовать установленный image штатным AVD manager без выхода за разрешённые tooling writes.
+
+Boot-команда **не запускалась**, поэтому `sys.boot_completed=1` не наблюдался, новый serial/AVD/API/abilist не подтверждён и никаких предположений о владельце serial5554 не делалось. `linka_audit_phone`, tablet и их data не reset/kill/reboot/clear/uninstall. Новых `android21*.png` нет, поскольку нет нового запущенного UI; прежние PNG не переименовывались в API21 evidence.
+
+### Проверка append-only и ограничения
+
+Изменение этой попытки — **только добавление данного раздела** к существующему отчёту; разрешённые screenshots API21 не создавались. Focused checks перед local commit: сохранность byte-prefix отчёта из base, отсутствие изменений старых PNG/других файлов, существование прежних report links, `git diff --check` и staged diff-check. Actual results и final commit возвращаются в handoff. Полные SDK install/create логи оставлены по точным temp paths выше; они не являются source-controlled artifacts.
+
+Не выполнялись boot, API21 install/launch/SQLite/callback/focus/IME, physical/AAC/ARMv7, iOS runtime или новые app patches. Успешная SDK-установка не выдаётся за созданный/загруженный AVD или runtime PASS; предыдущий API35 result не расширяется на API21.
