@@ -77,6 +77,6 @@ AGP8.5.2 оказался ниже actual AAR metadata minimum8.6.0 у Android C
 - Android APK SHA256 `19ed34181dafd0127a71fc9c97d8ddf7d5b0d6c586091a0811cfac51d48274c4`; packaged manifest `.platformprobe`, min21; ELF32 ARM и ELF64 AARCH64 проверены у обеих native libraries/SQLite. APK собран, не подменён AAR inspection.
 - iOS framework и финальный Swift MH_EXECUTE minos14 собраны, отдельные assertions проходят. Все unknown higher-min objects отвергаются; исключение ограничено двумя точными ICU data-only SHA, без переписывания metadata.
 - Общий SQLite JVM test: 1 passed, 0 skipped. [iOS26.5 startup/native SQLite runtime](ios-platform-runtime.md) подтверждены отдельно; это не iOS14 evidence.
-- Android35 runtime проверяется отдельно на выделенном tablet. API21/armv7 runtime, iOS14 и physical/AAC остаются недоступными. Проверены лишь конкретные newer weak imports, не полная динамическая API availability.
+- [Android35 runtime](android-platform-runtime.md) прошёл на выделенном tablet: Unicode/апостроф SQLite readback, native callback, focus/IME/clearFocus. API21/armv7 runtime, iOS14 и physical/AAC остаются недоступными. Проверены лишь конкретные newer weak imports, не полная динамическая API availability.
 
 **G1 OPEN:** отсутствие minimum-runtime доказательств не разрешает P02 по принятому порядку. Это конечное описание текущей границы проверки, не утверждение, что приложение уже поддерживает обе минимальные ОС.

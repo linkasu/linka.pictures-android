@@ -14,7 +14,7 @@
 | Пакет | Фактический статус |
 |---|---|
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
-| P01 / G1 | Не принят. Compile blockers устранены: отдельный Android APK min21/ARMv7+ARM64 и настоящий iOS simulator executable min14 собраны. iOS26.5 startup/native SQLite прошли; Android35 runtime проверяется. Minimum runtime и availability review остаются открыты |
+| P01 / G1 | Не принят. Compile blockers устранены: Android APK min21/ARMv7+ARM64 и настоящий iOS simulator executable min14 собраны. Android35 UI/focus/SQLite/callback и iOS26.5 startup/native SQLite прошли. Minimum runtime и availability review остаются открыты |
 | P02 / G2 | Не начат: входные G0/G1 не закрыты, code-contracts/SQLite schema/access policy не заморожены |
 | P03–P14 / G3–G5 | Не начаты: независимые implementation-lanes до G2 не запускаются |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
@@ -28,6 +28,7 @@
 | Electron P00 | `pokazhi-p00-peer` / `implementation/p00-electron-contract` | Коммит `49f0a1d`, интегрирован как `3dc46d6`: [standard/audio/ZIP/fixtures evidence](../redesign-audit/electron-standard-contract-evidence.md) |
 | UI P00 | `pokazhi-p00-ui-audit` / `implementation/p00-ui-followup` | `2604991`→`d7c1532`, `71b17cd`→`b2a15a4`, `47c6c79`→`74246db`: [evidence](../redesign-audit/p00-ui-audit.md), 30 просмотренных новых PNG; tablet types/TTS-submit/Tab+Enter/save проверены, phone disconnected |
 | Platform preflight | `pokazhi-p01-platform-smoke` / `implementation/p01-platform-probe` | `15dad5d`→`8d14b6d`→`595061a`→`c7eb3a2`: отклонённые кандидаты и успешные final builds; `dedb578`: native iOS runtime. Эксперимент не интегрирован, minimum-runtime proof отсутствует |
+| Android runtime | `pokazhi-p00-android` / `implementation/p01-android-runtime` | `a4dd51d`→`13bb635`: [API35 ARM64 UI/focus/SQLite/callback evidence](../redesign-audit/android-platform-runtime.md), 5 просмотренных PNG; baseline не затронут |
 
 Текущий probe stack: Kotlin/KMP/compiler2.2.21, CMP1.9.3 (Android Compose1.9.4), SQLite2.5.2, AGP8.6.1, compileSdk35/minSdk21, Gradle8.7, JDK17.0.19, Xcode27.2; iOS executable min14. Коммит `c7eb3a2` снимает AGP/compileSdk blocker, `dedb578` добавляет actual native iOS SQLite check. Это проверенный compile/current-runtime кандидат, не принятый G1 и не product stack, подключённый к библиотеке.
 
@@ -46,7 +47,8 @@
 - Tablet test library намеренно дополнена новым `P00TabletSave` (6→7), исходные шесть наборов не открывались для изменения. COORD просмотрел save confirmation/library PNG; новый набор оставлен, не удаляется. Качество/валидность TTS-аудио и offline-only voice не доказаны UI success.
 - Phone `emulator-5554` отключился при вводе имени собственного тестового набора; timeout/`error: closed`, повторный ADB MCP list показывает только tablet. Автоповтора ввода/перезапуска/очистки не было, несохранённое состояние phone неизвестно.
 - [iOS runtime evidence](../redesign-audit/ios-platform-runtime.md): COORD создал отдельный собственный iOS26.5 simulator, установил только `.platformprobe`, визуально проверил startup PNG и выполнил native SQLite assert harness. Ни один чужой simulator не сбрасывался; iOS14/полный UI-ввод этим не проверены.
+- Android35 ARM64 runtime: installed SHA совпал с probe artifact; реальные Unicode и ASCII/апостроф readback/callback, focus/IME/clearFocus успешны; собственный SQLite-файл 12288 bytes. Probe остановлен и оставлен установленным, baseline app/библиотека не использованы.
 
 ## Следующий переход
 
-Получить результаты UI-follow-up и изолированного platform probe, выполнить review и интегрировать только принятый результат. Любой toolchain/minimum/codec/data-loss blocker остаётся открытым с actual evidence. G0/G1 нельзя заменить зелёной отметкой либо начать зависимые P02–P13 под видом готового bootstrap.
+Текущие lanes завершены, результаты просмотрены и сохранены; build probe остаётся изолированным. Для перехода по исходному порядку нужны разрешённые Android21 ARMv7/ARM64 и iOS14 runtime среды, оставшиеся G0 проверки и закрытие availability-case. Их в текущем окружении нет. Только явное новое решение пользователя может перенести эти runtime-проверки на более поздний gate; минимум ОС/ABI и запрет выпуска без приёмки при этом не меняются. До такого решения G0/G1 нельзя заменить зелёной отметкой либо начать зависимые P02–P13 под видом готового bootstrap.
