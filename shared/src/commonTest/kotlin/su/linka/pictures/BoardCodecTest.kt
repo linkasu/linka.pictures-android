@@ -11,6 +11,7 @@ class BoardCodecTest {
     fun missingFieldsUseLegacyDefaultsAndUnknownFieldsAreIgnored() {
         assertEquals(BoardDocument(), BoardCodec.decode("""{"futureField":true}"""))
         assertEquals(Card(7), BoardCodec.decode("""{"cards":[{"id":7,"extra":1}]}""").cards.single())
+        assertEquals(Card(0), BoardCodec.decode("""{"cards":[{}]}""").cards.single())
     }
 
     @Test

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Card(
-    val id: Int,
+    val id: Int = 0,
     var imagePath: String? = null,
     var title: String? = null,
     var audioPath: String? = null,
