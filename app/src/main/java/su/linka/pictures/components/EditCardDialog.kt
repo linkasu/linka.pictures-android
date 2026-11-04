@@ -261,34 +261,41 @@ class EditCardDialog(context: Context) : Dialog(context) {
             return false
         }
 
-        if (!isDeleting) {
-            card.cardType = selectedType
-        }
-        if (card.cardType == 0 && !isDeleting) {
-            card.title = cardTitleEditText.text.toString()
+        if (selectedType == 0 && !isDeleting) {
             val currentSet = set ?: return false
-
-            if (imageDirty) {
-                val bitmap = currentBitmap ?: return false
-                val file = currentSet.saveBitmap(bitmap)
-                card.imagePath = file.name
-                existingImagePath = card.imagePath
-                imageDirty = false
-            } else if (existingImagePath != null) {
-                card.imagePath = existingImagePath
+            val bitmap = if (imageDirty) currentBitmap ?: return false else null
+            val audio = if (audioDirty) currentAudio ?: return false else null
+            var savedImage: File? = null
+            val audioPath: String?
+            try {
+                if (bitmap != null) {
+                    savedImage = currentSet.saveBitmap(bitmap)
+                }
+                audioPath = if (audio != null) {
+                    currentSet.copyAudioFile(audio).name
+                } else {
+                    existingAudioPath
+                }
+            } catch (error: IOException) {
+                savedImage?.delete()
+                error.printStackTrace()
+                Toast.makeText(context, R.string.set_save_error, Toast.LENGTH_LONG).show()
+                callback?.onFail(error)
+                return false
             }
-
-            if (audioDirty) {
-                val audio = currentAudio ?: return false
-                card.audioPath = currentSet.copyAudioFile(audio).name
-                existingAudioPath = card.audioPath
-                audioDirty = false
-            } else if (existingAudioPath != null) {
-                card.audioPath = existingAudioPath
-            }
+            card.title = cardTitleEditText.text.toString()
+            card.imagePath = savedImage?.name ?: existingImagePath
+            card.audioPath = audioPath
+            existingImagePath = card.imagePath
+            existingAudioPath = card.audioPath
+            imageDirty = false
+            audioDirty = false
         } else {
             card.audioPath = null
             card.imagePath = null
+        }
+        if (!isDeleting) {
+            card.cardType = selectedType
         }
         callback?.onDone(card)
         return true

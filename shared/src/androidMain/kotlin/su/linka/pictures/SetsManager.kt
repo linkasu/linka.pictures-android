@@ -145,8 +145,8 @@ class SetsManager(private val context: Context) {
     }
 
     fun save(set: Set, setName: String, callback: Callback<Any?>) {
-        set.writeConfig()
         try {
+            set.writeConfig()
             val destination = File(getSetsDirectory(), setName)
             Utils.zipFolder(set.getFolder().absolutePath, destination.absolutePath)
             set.getManifest().archiveFile = destination

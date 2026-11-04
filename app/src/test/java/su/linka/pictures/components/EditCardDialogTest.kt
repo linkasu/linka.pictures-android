@@ -6,6 +6,8 @@ import android.widget.RadioGroup
 import androidx.fragment.app.FragmentActivity
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -14,7 +16,11 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import su.linka.pictures.Card
+import su.linka.pictures.Callback
+import su.linka.pictures.R
+import org.robolectric.shadows.ShadowToast
 import java.io.File
+import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
@@ -80,6 +86,52 @@ class EditCardDialogTest {
 
         assertTrue(result)
         dialog.dismiss()
+    }
+
+    @Test
+    fun save_audioCopyFailure_keepsDialogAndOriginalPathsWithoutSuccess() {
+        val image = File(workingDir, "old.png").apply { writeText("old image") }
+        val audio = File(workingDir, "old.3gp").apply { writeText("old audio") }
+        val original = Card(0, image.name, "Original", audio.name, 0)
+        val dialog = EditCardDialog(activity)
+        dialog.show(set, original)
+        val editedCard = getPrivateField(dialog, "card") as Card
+        val missingAudio = File(workingDir, "missing-source/missing.3gp")
+        setPrivateField(dialog, "currentBitmap", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+        setPrivateField(dialog, "imageDirty", true)
+        setPrivateField(dialog, "currentAudio", missingAudio)
+        setPrivateField(dialog, "audioDirty", true)
+        dialog.findViewById<EditText>(R.id.card_title_edittext)!!.setText("Changed")
+        var done = false
+        var failure: Exception? = null
+        dialog.setCallback(object : Callback<Card>() {
+            override fun onDone(result: Card) { done = true }
+            override fun onFail(error: Exception?) { failure = error }
+        })
+
+        dialog.findViewById<android.view.View>(R.id.positiveBtn)!!.performClick()
+
+        assertFalse(done)
+        assertTrue(failure is IOException)
+        assertTrue(dialog.isShowing)
+        assertSame(editedCard, getPrivateField(dialog, "card"))
+        assertEquals(original, editedCard)
+        assertEquals(image.name, getPrivateField(dialog, "existingImagePath"))
+        assertEquals(audio.name, getPrivateField(dialog, "existingAudioPath"))
+        assertEquals(true, getPrivateField(dialog, "imageDirty"))
+        assertEquals(true, getPrivateField(dialog, "audioDirty"))
+        assertSame(missingAudio, getPrivateField(dialog, "currentAudio"))
+        assertEquals("old image", image.readText())
+        assertEquals("old audio", audio.readText())
+        assertEquals(setOf(image.name, audio.name), workingDir.list()!!.toSet())
+        assertEquals(activity.getString(R.string.set_save_error), ShadowToast.getTextOfLatestToast())
+        dialog.dismiss()
+    }
+
+    private fun getPrivateField(target: Any, fieldName: String): Any? {
+        val field = target.javaClass.getDeclaredField(fieldName)
+        field.isAccessible = true
+        return field.get(target)
     }
 
     private fun setPrivateField(target: Any, fieldName: String, value: Any?) {

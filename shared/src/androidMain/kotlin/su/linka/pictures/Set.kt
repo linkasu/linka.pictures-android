@@ -2,9 +2,8 @@ package su.linka.pictures
 
 import android.graphics.Bitmap
 import org.json.JSONException
-import java.io.BufferedWriter
+import java.io.ByteArrayInputStream
 import java.io.File
-import java.io.FileWriter
 import java.io.IOException
 import java.util.UUID
 
@@ -42,6 +41,7 @@ class Set(
         return Utils.copy(source, target)
     }
 
+    @Throws(IOException::class)
     fun saveBitmap(bitmap: Bitmap): File {
         folder.mkdirs()
         return Utils.saveBitmapToFile(
@@ -65,21 +65,16 @@ class Set(
         }
     }
 
+    @Throws(IOException::class)
     fun writeConfig() {
         val json = try {
             manifest.toJSONObject()
         } catch (error: JSONException) {
-            error.printStackTrace()
-            return
+            throw IOException("Unable to serialize set config", error)
         }
         val configFile = manifest.configFile
         configFile.parentFile?.mkdirs()
-        try {
-            BufferedWriter(FileWriter(configFile)).use { writer ->
-                writer.write(json.toString())
-            }
-        } catch (_: Exception) {
-        }
+        Utils.copy(ByteArrayInputStream(json.toString().toByteArray(Charsets.UTF_8)), configFile)
     }
 
     fun getFolder(): File = folder
