@@ -64,7 +64,7 @@ def keyboard_titles(path):
 
 
 def grid_stopped(output):
-    records = re.split(r"(?m)(?=^[ \t]*\* Hist #\d+:)", output)[1:]
+    records = re.split(r"(?m)(?=^[ \t]*\*\s+Hist\s+#\d+:)", output)[1:]
     return any(GRID in record.splitlines()[0]
                and re.search(r"\b(?:mState|state)=STOPPED\b", record)
                and re.search(r"\b(?:stopped|mAppStopped)=true\b", record) for record in records)
@@ -136,7 +136,10 @@ class Smoke:
         result = self.adb("shell", "pidof", PACKAGE, deadline=deadline, check=False)
         if result.returncode not in (0, 1):
             raise RuntimeError("Cannot inspect app PID: " + result.stderr)
-        return result.stdout.strip()
+        pid = result.stdout.strip()
+        if pid and not re.fullmatch(r"[1-9][0-9]*", pid):
+            raise RuntimeError("Expected exactly one positive app PID")
+        return pid
 
     def phrase(self, text):
         def probe(end):
@@ -194,8 +197,9 @@ class Smoke:
         self.wait("GridActivity STOPPED after HOME", lambda end: grid_stopped(
             self.adb("shell", "dumpsys", "activity", "activities", deadline=end).stdout))
         old_pid = self.wait("background app PID", self.pid)
-        self.adb("shell", "am", "kill", PACKAGE)
-        self.wait("app PID disappearance after am kill", lambda end: not self.pid(end))
+        # am kill is best-effort for cached processes; SIGKILL models abrupt death without force-stop.
+        self.adb("shell", "run-as", PACKAGE, "kill", "-9", old_pid)
+        self.wait("debug app PID disappearance after SIGKILL", lambda end: not self.pid(end))
         self.launch()
         new_pid = self.wait("restored app PID", self.pid)
         if new_pid == old_pid:

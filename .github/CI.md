@@ -10,7 +10,8 @@
 - instrumentation на эмуляторах API **24 и 36**, используя именно APK из build.
   Требуется хотя бы один выполненный тест; ошибки runner и тестов блокируют gate.
 - После instrumentation — `.github/tests/process_death.py`: открывает встроенную
-  клавиатуру, составляет фразу, выполняет HOME → `am kill` → launcher restore и
+  клавиатуру, составляет фразу, выполняет HOME → SIGKILL собственного debug PID
+  через `run-as` → launcher restore и
   проверяет новый PID и сохранённую фразу. Скрипт разрешён только на свежем CI
   emulator; не очищает данные и не активирует микрофон/речь.
 

@@ -2,8 +2,9 @@
 from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
+from unittest.mock import Mock
 
-from process_death import PACKAGE, bounds, clickable_bounds, grid_stopped, keyboard_titles
+from process_death import PACKAGE, Smoke, bounds, clickable_bounds, grid_stopped, keyboard_titles
 
 
 class ProcessDeathParsers(unittest.TestCase):
@@ -31,8 +32,21 @@ class ProcessDeathParsers(unittest.TestCase):
         self.assertTrue(grid_stopped(grid + "state=STOPPED stopped=true\n"))
         self.assertTrue(grid_stopped(grid + "state=STOPPED delayedResume=false\nmAppStopped=true\n"))
         self.assertFalse(grid_stopped(grid + "state=STOPPED\nmAppStopped=false\n"))
+        self.assertTrue(grid_stopped(grid.replace("Hist #", "Hist  #") + "state=STOPPED\nmAppStopped=true\n"))
         self.assertFalse(grid_stopped(grid + "state=RESUMED stopped=false\n" + other +
                                       "state=STOPPED stopped=true\n"))
+
+    def test_process_kill_accepts_only_one_positive_app_pid(self):
+        smoke = Smoke("emulator-test")
+        smoke.adb = Mock(return_value=Mock(returncode=0, stdout="123\n", stderr=""))
+        self.assertEqual(smoke.pid(1), "123")
+        for value in ("-1", "123 456", "not-a-pid"):
+            smoke.adb.return_value.stdout = value
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                smoke.pid(1)
+        smoke.adb.return_value.returncode = 1
+        smoke.adb.return_value.stdout = ""
+        self.assertEqual(smoke.pid(1), "")
 
     def test_actual_fixture_contains_safe_unique_ordinary_titles(self):
         path = Path(__file__).resolve().parents[2] / "app/src/main/assets/sets/Клавиатура.linka"
