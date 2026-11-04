@@ -2,7 +2,7 @@
 
 **Актуальная поправка R15:** пользователь явно выбрал iOS/iPadOS17+ вместо14. Xcode остаётся stable27.2; Android21 и обе ARM ABI не меняются. Ниже сохранена история прежних кандидатов/ограничений14; она не переопределяет новый target17. Пересборка probe под17 проверяется отдельно; minimum-runtime gate не отменён.
 
-Текущий результат после поправки: probe commit `d85fcf1` собирает app exact17.0 и device-arm64 framework. Target17 UI startup/native SQLite повторно прошли на26.5, но не на17. Пользователь разрешил установку образов; native download runtime17.0/17.5 не предоставлен Xcode, официальный архив17.0 требует пользовательского доступа Apple. [Подробности и границы](ios-platform-runtime.md). Android21 SDK image установлен, создание AVD требует согласования SDK tools-root; это диагностируется отдельно, не runtime PASS.
+Текущий результат после поправки: probe app exact17.0 и device-arm64 framework собраны. Через авторизованный Chrome/Playwright MCP скачан официальный DMG, native verify/import/boot успешны; native SQLite и **public UI XCTest 1/1** прошли на17.0. Гипотеза непринятого Apple agreement опровергнута фактическим Accepted статусом. [Подробности](ios-platform-runtime.md). Android21 ARM64 и35 прошли final886 SQL/callback/focus/IME после native owner fix. Current stack согласован с R8: **AGP8.10.1/Gradle8.11.1/R8 actual8.10.24**. ARMv7 image установлен, но stock Emulator37.2.12 отказал auto/classic до boot; native32 не доказан. Codec candidates и полный G1 ещё не приняты.
 
 Дата: 4 ноября 2026 года. Это **не выполненный P01**: его вход P00 ещё не принят, dependency patches/новый bootstrap не выполнялись.
 

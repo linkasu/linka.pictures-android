@@ -1,5 +1,15 @@
 # P01 / роль V: независимый Android runtime smoke
 
+**Текущий результат:** final probe APK886 на AGP8.10.1/Gradle8.11.1 прошёл API21 ARM64 и API35 ARM64 (SQLite/callback/focus/IME). ARMv7 image/AVD созданы, но Emulator37.2.12 отказал до guest boot и в auto, и в documented classic comparison. Native32 и весь G1 не объявлены PASS. Ниже сохранена история отдельных проверок.
+
+## COORD: источник focus fix и независимая проверка
+
+Реальный путь: `ProbeSmoke.focus.clearFocus()` → Compose FocusOwnerImpl → AndroidComposeView.clearOwnerFocus → Android21 View.clearFocus. AOSP `android-5.0.2_r1/core/java/android/view/View.java:5034–5082` прямо описывает повторное root.requestFocus, способное снова выбрать первое editable поле. В probe commit `394de1f` только Android host ComposeView получает `isFocusableInTouchMode=true`, чтобы нативный owner мог удержать снятый с поля фокус. Common UI/SQL и permissions не менялись, принудительного hide/сна/выключения проверок нет.
+
+COORD до исправления воспроизвёл focused=true после Save на owned API21. Первый исправленный APK43b (`43b3eaa637f6f9055adbec1337d271ede6085c76d297021a50a03c02e60b7223`) дал focused=false, readback/callback и `mInputShown=false`; [визуально проверенный PNG](screenshots/platform-probe/android21-focus-fixed.png) подтверждает отсутствие IME. Повтор на35 тоже прошёл. Это промежуточный binary; последующий final886 на новом D8 независимо проверен V в разделе quick64 ниже и не подменён старым screenshot. Полная keyboard traversal не заявлена: дополнительный Tab в multiline field вводил literal tab; её обязательные сценарии остаются для полного UI.
+
+## История первоначального runtime smoke
+
 **Результат:** отдельный probe APK установлен и запущен на Android 15 / API 35 / ARM64; common UI, редактирование, focus/IME, SQLite write → close → reopen → read и Android callback наблюдались успешно. **Это не G1 PASS:** Android API 21 и ARMv7 runtime не проверены.
 
 Дата: 4 ноября 2026. Write-root: `/Users/aacidov/.local/share/opencode/worktree/67846f/pokazhi-p00-android`. Base: `ce266410f46d5fa57de481dad2fb9dc2d3f31bb4`, исходно чистый detached HEAD. После проверки отсутствия ref создана новая branch `implementation/p01-android-runtime` командой `git switch -c`; существующие refs не перезаписывались. Этот отчёт не дублирует legacy inventory и не меняет product code, root configs или старые документы.
