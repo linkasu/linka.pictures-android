@@ -1,6 +1,7 @@
 package su.linka.pictures.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +27,10 @@ internal fun PictureCard(
     image: @Composable (String?, String?, Modifier) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (!editing && card?.cardType != 0 && card?.cardType != 1) {
+        Box(modifier.sizeIn(minWidth = 48.dp, minHeight = 96.dp))
+        return
+    }
     val label = when (card?.cardType) {
         0 -> card.title?.takeIf { it.isNotBlank() } ?: stringResource(Res.string.untitled_card)
         1 -> stringResource(Res.string.space_card)
@@ -38,7 +43,9 @@ internal fun PictureCard(
     ) {
         Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (card?.cardType == 0 && card.imagePath != null) {
-                image(card.imagePath, null, Modifier.fillMaxWidth().height(96.dp).clearAndSetSemantics {})
+                Box(Modifier.fillMaxWidth().height(96.dp).clearAndSetSemantics {}) {
+                    image(card.imagePath, null, Modifier.fillMaxWidth().height(96.dp))
+                }
             }
             Text(label)
         }

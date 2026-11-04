@@ -24,7 +24,7 @@ internal fun BoardGrid(
 ) {
     BoxWithConstraints(modifier) {
         // Keep logical pages intact, but wrap columns on narrow windows and large font scales.
-        val columns = minOf(document.columns.coerceAtLeast(1), (maxWidth / 96.dp).toInt().coerceAtLeast(1))
+        val columns = minOf(document.columns.coerceAtLeast(1), ((maxWidth + 8.dp) / 104.dp).toInt().coerceAtLeast(1))
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             modifier = Modifier.fillMaxSize(),

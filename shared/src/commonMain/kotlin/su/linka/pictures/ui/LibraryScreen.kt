@@ -52,7 +52,9 @@ fun LibraryScreen(
                         modifier = Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp),
                     ) {
                         Column(Modifier.fillMaxWidth()) {
-                            image(set, Modifier.fillMaxWidth().height(120.dp).clearAndSetSemantics {})
+                            Box(Modifier.fillMaxWidth().height(120.dp).clearAndSetSemantics {}) {
+                                image(set, Modifier.fillMaxWidth().height(120.dp))
+                            }
                             Text(set.name.removeSuffix(".linka"))
                         }
                     }
