@@ -38,6 +38,7 @@
 | D / P03 | `pokazhi-p03-communication` / `implementation/p03-communication` | `ce76a873`→`38a34d6`, review corrections `d54acecb`→`9cd6a0d`; integrated common state machine, bounded saves/quarantine, JVM и iOS17 41/41 |
 | S / P04 | `pokazhi-p04-storage` / `implementation/p04-storage` | В работе от `0816394`: SQL/media/drafts/snapshot/recovery, fault tests; safety review COORD до любых реальных данных |
 | P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | В работе от `0816394`: wire DTO/ZIP boundary/semantic fixtures, trust review COORD |
+| Shared audio prerequisite | `pokazhi-p06-audio-coordinator` / `implementation/p06-audio-coordinator` | Запущен от `08b7e64`: общий AudioCoordinator по frozen AudioPort/NativeAudioBackend, owner/request/cancel/preflight/temp ownership tests. Не native P06/P07 codec/permissions acceptance |
 
 ### Первая implementation/review волна после G2
 
