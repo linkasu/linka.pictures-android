@@ -168,3 +168,103 @@ Boot-команда **не запускалась**, поэтому `sys.boot_co
 Изменение этой попытки — **только добавление данного раздела** к существующему отчёту; разрешённые screenshots API21 не создавались. Focused checks перед local commit: сохранность byte-prefix отчёта из base, отсутствие изменений старых PNG/других файлов, существование прежних report links, `git diff --check` и staged diff-check. Actual results и final commit возвращаются в handoff. Полные SDK install/create логи оставлены по точным temp paths выше; они не являются source-controlled artifacts.
 
 Не выполнялись boot, API21 install/launch/SQLite/callback/focus/IME, physical/AAC/ARMv7, iOS runtime или новые app patches. Успешная SDK-установка не выдаётся за созданный/загруженный AVD или runtime PASS; предыдущий API35 result не расширяется на API21.
+
+## Дополнение: co-located tools20 → API21 ARM64 boot и partial runtime
+
+Base продолжения: `fa17623d47c761ad3960a8451080ff887d59a447`, та же ветка, чистый worktree. COORD явно разрешил **дополнительный exact `cmdline-tools;20.0`** в `/Users/aacidov/Library/Android/sdk`, чтобы штатный avdmanager находился рядом с согласованным image, без Homebrew/global config/symlink изменений. Старые разделы выше — история, не актуальное утверждение об отсутствии AVD после этого продолжения.
+
+**Текущий итог:** image downloaded/installed **YES**; tools20 installed **YES**; новый AVD created **YES**; booted **YES**, `sys.boot_completed=1`; probe installed/launched **YES**; Unicode и quoted ASCII SQLite write-close-reopen-read + Android callback **observed PASS**; **clearFocus/IME hide — observed FAIL**. Полный runtime smoke и G1 **не PASS**. API21 ARM64 действительно исполнен, но это **не ARMv7 / physical / AAC / iOS proof**.
+
+### Exact SDK-root fix и metadata
+
+Первое device-действие продолжения — MCP list_devices: только старый tablet `emulator-5556` (transport_id 11). Повторные SHA/aapt проверки APK до установки: hash **`19ed34181dafd0127a71fc9c97d8ddf7d5b0d6c586091a0811cfac51d48274c4`**, package **su.linka.pictures.platformprobe**, min21, target35, version1/probe, оба ARM ABI; источник `c7eb3a2` и binary не менялись.
+
+```sh
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  sdkmanager --sdk_root=/Users/aacidov/Library/Android/sdk \
+  --install 'cmdline-tools;20.0' </dev/null \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-api21-tools20-install.log 2>&1
+```
+
+Дождались automatic completed notification background install, затем прочитан лог: **100% Unzipping... cmdline-tools/NOTICE**, без новых license prompts/errors/warnings. `yes`, accept-licenses, sudo/chmod не использовались. Co-located `/Users/aacidov/Library/Android/sdk/cmdline-tools/20.0/bin/sdkmanager --version` → **20.0**, не latest и не upgrade.
+
+| Файл под `SDK/cmdline-tools/20.0/` | SHA-256 |
+|---|---|
+| source.properties | `215e11e90893196549e86dfd6a024f20848322dc7a3d694bc4847b8e6d849ad1` |
+| package.xml | `a812bf4987ebc2991af0a1b5e7e36374c9f8668dc2441440aadedc114ec6b5ee` |
+| bin/avdmanager | `a3ae9bdf8302aafed80115e2156039766ed309bcf7025f289c3a21e274b9279c` |
+
+source.properties: `Pkg.Revision=20.0`, `Pkg.Path=cmdline-tools;20.0`, `Pkg.Desc=Android SDK Command-line Tools`. Это установленная local metadata, не независимо вычисленный digest distribution ZIP.
+
+### Новый AVD / boot criterion / serial ownership
+
+До create повторно проверено отсутствие task-owned `.ini`/`.avd`; выполнено **без force**:
+
+```sh
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  ANDROID_HOME=/Users/aacidov/Library/Android/sdk \
+  ANDROID_SDK_ROOT=/Users/aacidov/Library/Android/sdk \
+  /Users/aacidov/Library/Android/sdk/cmdline-tools/20.0/bin/avdmanager create avd \
+  --name linka_platform_probe_api21_arm64 \
+  --package 'system-images;android-21;default;arm64-v8a' --device 'Nexus 5' </dev/null \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-api21-avd-create-colocated.log 2>&1
+```
+
+Exit **0**, `Auto-selecting single ABI arm64-v8a`. Emulator list-avds теперь содержит новый `linka_platform_probe_api21_arm64` вместе с прежними тремя. Generated config проверен read-only: `abi.type=arm64-v8a`, `hw.cpu.arch=arm64`, `hw.device.name=Nexus 5`, manufacturer Google, `image.sysdir.1=system-images/android-21/default/arm64-v8a/`, tag default, target android-21. Никакие ручные config/kernel/image/architecture patches не делались. С прежним Homebrew launcher exact create не работал; с co-located той же версии — работает: согласованная SDK-root причина устранена.
+
+Штатный boot (Emulator **37.2.12.0 / build16428233**, host macOS27.0.1 ARM64, как зафиксировано выше):
+
+```sh
+/Users/aacidov/Library/Android/sdk/emulator/emulator -avd linka_platform_probe_api21_arm64 \
+  > /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p01-api21-emulator-boot.log 2>&1
+```
+
+Boot process оставлен работающим, его completion не ожидался и background-job статус/лог не опрашивался. Проверялся **device completion criterion**, не elapsed sleep: MCP list_devices сначала ещё показывал только tablet; затем bounded loop (не более 12 native MCP calls / 120000ms) первым вызовом обнаружил новый **emulator-5554**, device, sdk_phone_arm64/generic_arm64, transport_id13. Перед **любыми state changes** на нём MCP read-only getprop подтвердил имя **linka_platform_probe_api21_arm64**, SDK **21**, abilist **arm64-v8a**, primary abi **arm64-v8a**, **sys.boot_completed=1**. Повторный запрос уточнил name через `ro.kernel.qemu.avd_name`.
+
+Serial5554 **переиспользован новым task-owned AVD**, а не старым `linka_audit_phone`; владелец не угадывался по номеру. OS **5.0.2**, fingerprint **`generic_arm64/sdk_phone_arm64/generic_arm64:5.0.2/LSY66K/8789838:eng/test-keys`**. Fixed sleep не применялся; дополнительных boot loops после observed1 не понадобилось. Host/image совместимость достаточна для этого actual boot; утверждения о других emulator/host/kernel combinations не делаются.
+
+### Probe install и UI: actual actions / ошибки evidence tooling
+
+Все device install/launch/input/capture/dump/pull/stop — **через adb MCP**, serial явно `emulator-5554`; host raw adb не использовался. `list_packages(filter="su.linka.pictures.platformprobe")` → **No packages found**. `install_app(reinstall=false, allowDowngrade=false)` → **Performing Push Install**, `pkg: /data/local/tmp/app-debug.apk`, **Success**. `start_app_activity` с package `.platformprobe` и activity `su.linka.pictures.ProbeActivity` → Starting Intent, Activity реально resumed (probe-only dumpsys activity). Permissions/Apple login prompts не возникали; baseline `.pictures` не устанавливался/открывался/чистился.
+
+Первый native `take_screenshot` **неуспешен**: `adb: error: remote object '/sdcard/mcp_screencap_temp.png' does not exist`. Read-only MCP `ls -ld` подтвердил `/sdcard -> /storage/sdcard`, `/storage/emulated/0: No such file or directory`, штатный shell-owned `/data/local/tmp` доступен. Это missing-path helper failure, **не permission denial**. Storage/permissions не правились; дальнейшие captures выполнялись MCP `execute_shell_command("screencap -p /data/local/tmp/<task-owned-name>.png")` + MCP `pull_file` в разрешённые `android21*.png`. XML: MCP `uiautomator dump /data/local/tmp/p01-api21-ui.xml && cat ...`; без изменения legacy storage или SDK.
+
+API21 uiautomator XML **сам содержит `?` вместо не-ASCII**, включая русские подписи/перенос строки: это подтверждено pull исходного XML и Python parse, а не объявлено повреждением app data. Поэтому Unicode/UI русские строки проверены **визуально в PNG**; ASCII field/readback/callback и focused=true дополнительно assert-проверены по XML. Все четыре PNG прочитаны визуально read-инструментом, не только CRC/XML.
+
+| Действие, координаты 1080×1920 | Expected / actual |
+|---|---|
+| Capture после launch, до save | [android21-01-launch.png](screenshots/platform-probe/android21-01-launch.png): default `Привет, SQLite!`, initial приглашение сохранить. **Уже `Поле в фокусе`**, IME ещё не видима; это отличается от API35 initial state |
+| MCP tap `(450,700)` по Save, затем native UI dump; no sleep | [android21-02-unicode-read.png](screenshots/platform-probe/android21-02-unicode-read.png): **точно** `SQLite прочитал: Привет, SQLite!` / `Android callback: Привет, SQLite!`. SQL/callback PASS; **поле остаётся в фокусе и IME видима**, clearFocus/IME-hide expected не выполнен |
+| Focus input, первая попытка заменить | Tap `(400,375)`, MCP shell `input keyevent 123` + пятнадцать keycode67 в том же input-вызове, затем type_text `P01 quote ' SQLite`. Все вызовы успешны, но XML выявил **`P01 quote ' SQLiteLite!`**, т.е. cursor/end/deletion approach не очистил хвост. Этот неверный текст **не сохранялся**; это ошибка тестового редактирования, не SQL mismatch |
+| Коррекция по наблюдаемому UI, не blind retry | MCP stationary swipe `(300,375)→(300,375)`, duration1000 для long-press; dump показал стандартный **Select all** bounds `[801,87][1080,231]`. Tap `(940,160)`, keyevent67 удалил выделенное, затем type_text той же synthetic ASCII. Новый dump подтвердил **точно `P01 quote ' SQLite`**, focused=true. Timeout не было, ввод не дублировался после неизвестного исхода |
+| ASCII before save | [android21-03-ascii-before.png](screenshots/platform-probe/android21-03-ascii-before.png): новое точное ASCII с U+0027, IME/focus; readback ещё старый Unicode — field не выдаётся за DB result |
+| MCP tap `(450,700)`, затем UI dump | [android21-04-ascii-read-focus.png](screenshots/platform-probe/android21-04-ascii-read-focus.png): **точно** `SQLite прочитал: P01 quote ' SQLite` / `Android callback: P01 quote ' SQLite`. XML assertions подтверждают оба ASCII значения и **focused=true**. IME остаётся видима, подпись `Поле в фокусе`; clearFocus/IME-hide **FAIL**, не PASS |
+
+При каждом SQL save следующий dump уже показывал новый callback; дополнительных save-ретраев или fixed sleeps не было. На API21 `focus.clearFocus()` в неизменённом sample присутствует (source trace выше), но наблюдаемое состояние не стало false: причина focus retention/reacquisition **не диагностирована**, однозначная вина CMP/OS/host не приписывается. Exception/error status или install/link/native SQLite error не наблюдались. Frontend acceptance по снятию фокуса не выполнен; **нового app patch/сборки/подмены sample нет**.
+
+MCP probe-only `dumpsys package` подтвердил primaryCpuAbi **arm64-v8a**, secondaryCpuAbi **null**, versionCode **1**, versionName **probe**, targetSdk **35**. Read-only разрешённый `run-as su.linka.pictures.platformprobe ls -l databases/platform-smoke.sqlite` → `-rw------- u0_a53 u0_a53 12288 2026-11-04 22:00 platform-smoke.sqlite`. Содержимое БД и baseline preferences не читались. По неизменённому `ProbeDatabase.saveAndRead` эти успешные статусы включают **реальный close/reopen + equality check**, а не только UI echo; process-death durability не проверялась.
+
+После captures probe **force-stopped через MCP**, оставлен установленным с синтетической БД. **Новый task-owned AVD оставлен работающим**, не reset/kill/reboot; старые AVD не менялись, старый tablet не использовался для state changes.
+
+### PNG / logs / focused checks
+
+Все новые PNG **1080×1920**, signature/chunk lengths/CRC32 каждого chunk/IEND/trailing bytes проверены Python standard library; **CRC OK**:
+
+| PNG под `screenshots/platform-probe/` | Chunks | SHA-256 |
+|---|---:|---|
+| android21-01-launch.png | 13 | `20683ce8ce9c112a102252c16d25ccd82601235317cc9c2b1a7c1626a1a3a369` |
+| android21-02-unicode-read.png | 19 | `7b346bdab438b57d65d5eec632f8afe520195bc52b498026afdb0cc4f8828025` |
+| android21-03-ascii-before.png | 20 | `1624d7551b74585f68d7c239adc6288a8d9f60a5ebcb76cc55a83ce9fac8f2da` |
+| android21-04-ascii-read-focus.png | 20 | `8f6226f86584777a2c3d2bd907546ac6f4256a9b0888519d1d34694b3f42689d` |
+
+Логи в session temp `/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/`:
+
+| Файл | SHA-256 / статус |
+|---|---|
+| p01-api21-tools20-install.log | `b1009a763fcf9c7b01daab2c2d0010134c67a7cc783852bae85f6e73237c75e4` |
+| p01-api21-avd-create-colocated.log | `8dfa6bd392616cd9d443437559e6ce085b011836a3a15ce0dabfbc6c640cbefb` |
+| p01-api21-ascii-before.xml | `e788f67f2bbce1ce1ca3645dcf65504a95905bcfdf069749149aac8914ca16d4` |
+| p01-api21-ascii-after.xml | `01e929b9cdddcfb3e42e1c9c391635793e3b99546f0dd306cbcad73d45c038f1` |
+| p01-api21-emulator-boot.log | live emulator process output; не объявляется финальным immutable log/hash |
+
+Focused final checks: append-only byte-prefix относительно base `fa17623d`, только этот отчёт + четыре разрешённых `android21*.png`, существование всех report PNG links, PNG CRC, `git diff --check` и staged diff-check; actual results/final commit возвращаются в handoff. Новых лицензий/global tools configs/product/build/CI изменений, push, делегации, iOS-дублирования или аппаратных permission обходов нет. **Open:** clearFocus/IME на API21, ARMv7, physical/AAC, TalkBack и полный продуктовый/lifecycle/error-path quality gate.
