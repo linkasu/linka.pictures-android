@@ -47,3 +47,15 @@ SHA-256 AAR: `3f1ae17e237d9dc0a2a0f42cb04b85b8de6e12f67adc5f5c12173fe31e501cb2`.
 До dependency patch COORD должен принять воспроизводимую связку, сохраняющую Android21/armv7/arm64 и iOS14. Нужны разрешённые среды минимальных ОС и совместимый Xcode (при необходимости отдельная установка с явным разрешением, выбор через `DEVELOPER_DIR`). Не менять глобальный `xcode-select`, не принимать лицензии и не ставить SDK/Xcode автоматически.
 
 P01/G1 остаются открытыми. По действующему плану P02 и параллельная реализация P03–P13 пока запрещены; перепрыгнуть этот gate можно только после явного изменения порядка приёмки пользователем, не объявляя недоступные проверки успешными и не меняя R15 молча.
+
+## Первый изолированный probe: Kotlin2.4.21 отклонён
+
+В `implementation/p01-platform-probe`, commit `15dad5dac3c66cb77265e5753aa7a5388366016f` (base `3deade7`), проверен кандидат KMP/compiler2.4.21 + CMP1.9.3 + SQLite2.5.2 + AGP8.5.2/Gradle8.7/JDK17/Xcode27.2. В основной implementation-ветке его сборочные изменения **не интегрированы**. Полный отчёт доступен через `git show 15dad5d:docs/development/platform-probe.md`.
+
+- SQLite2.5.2 Android manifests и фактические native entries подтверждают minSdk21, `armeabi-v7a` и `arm64-v8a`. Это artifact evidence, не runtime-test.
+- Минимальный `:shared:linkDebugFrameworkIosSimulatorArm64` успешно выполнен с установленным Xcode27.2, без version/minimum overrides.
+- Неправленый Kotlin/Native2.4.21 `konan.properties` задаёт `minVersion.ios = 15.0`, полученный framework `Info.plist` содержит `MinimumOSVersion=15.0`. Проверочный assert `minimum <= (14,0)` упал. `IPHONEOS_DEPLOYMENT_TARGET=14.0` не делает этот framework совместимым с14.
+- Archive member inspection также обнаружил два object с minimum17.2; происхождение и reachability пока не доказаны, и это не объявлено безвредным.
+- UI/SQLite behavior smoke, Android probe APK и runtime не выполнены: агент остановился до их реализации, не подменив G1 успешной линковкой.
+
+COORD принял следующий конкретный кандидат для изолированной проверки: Kotlin/KMP/compiler **2.2.21**, остальные версии без изменения. Нужны собственный Native minimum, attribution object17.2, повторная линковка и actual smoke. Это решение о следующем эксперименте, **не** готовая lock-таблица и не разрешение P02.

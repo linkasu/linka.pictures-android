@@ -49,6 +49,21 @@
 
 В **локальном** APK шесть `.linka`: перечисленные выше без lowercase `цифры.linka`; каждый payload совпадает по SHA-256 с соответствующим Git-объектом. Имена ZIP entries без UTF-8 flag корректно декодированы из сырых UTF-8 bytes; вывод Python по CP437 сам по себе не доказывает испорченные имена Android assets. Состав Linux/Play APK этим не установлен: в Git семь путей и case collision.
 
+### Наблюдаемые аудиосигнатуры
+
+Отдельный read-only проход по тем же Git blobs прочитал media bytes и RIFF `fmt ` chunks; это не воспроизведение нативным декодером.
+
+| Набор | Extension / bytes evidence |
+|---|---|
+| `Болит` | 12 `.mp3`, ID3/MPEG-frame signature candidates |
+| `Еда` | 9 `.mp3`, ID3/MPEG-frame signature candidates |
+| `Клавиатура` | Audio entries не обнаружены |
+| `ХОЧУ` | 9 `.ogg`, фактически RIFF/WAVE format1 (PCM), mono, 48kHz |
+| `Цифры`, отдельно `цифры` | По 10 `.ogg`, фактически тот же RIFF/WAVE PCM mono48kHz; оба архива идентичны, не два независимых codec samples |
+| `ШУМЫ ДОМА` | 9 `.ogg`, фактически RIFF/WAVE PCM mono48kHz |
+
+Эти fixtures **не покрывают настоящий Ogg/3GPP/AMR**. Расширение нельзя использовать как единственное основание codec/MIME policy; для V5 нужны дополнительные разрешённые samples и реальные decode tests. Байты и имена исходных архивов не менялись.
+
 ## Установленные тестовые среды
 
 ADB MCP `list_devices` нашёл два устройства. Все последующие read-only команды явно задавали serial; выбор устройства по умолчанию не использовался.
@@ -58,7 +73,7 @@ ADB MCP `list_devices` нашёл два устройства. Все после
 | `emulator-5554` | `linka_audit_phone` | 35 / arm64-v8a | `su.linka.pictures`, 1.4 / 5 |
 | `emulator-5556` | `linka_audit_tablet` | 35 / arm64-v8a | `su.linka.pictures`, 1.4 / 5 |
 
-Проверены `ro.boot.qemu.avd_name`, `ro.build.version.sdk`, `ro.product.cpu.abilist` и version fields `dumpsys package`. Установленный APK не извлекался/не сравнивался побайтово с локальным; совпадение версии не выдаётся за такую проверку. Личные/физические устройства не подключались.
+Проверены `ro.boot.qemu.avd_name`, `ro.build.version.sdk`, `ro.product.cpu.abilist` и version fields `dumpsys package`. Затем на каждом явно заданном serial через ADB MCP получен `pm path su.linka.pictures` и вычислен `sha256sum` каждого APK: оба `base.apk` имеют SHA-256 `8f33a33449645b94733839bac058e48759f6069c7fe7513fcabb423520882f04`, совпадающий с сохранённым локальным APK. Это связывает снятый UI с локальным debug baseline по digest, не только versionName. APK не извлекался; private library/preferences не читались. Личные/физические устройства не подключались.
 
 ## Не доказано
 
