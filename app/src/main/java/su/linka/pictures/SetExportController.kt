@@ -4,6 +4,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import su.linka.pictures.components.ParentPasswordDialog
 import java.io.File
 import java.io.IOException
@@ -15,9 +18,10 @@ class SetExportController(
     private val onError: (Exception) -> Unit,
     private val onCancelled: () -> Unit = {}
 ) {
-    private var pendingToken: String? = null
-    private var authorizing = false
-    val isPending: Boolean get() = authorizing || pendingToken != null
+    private var pendingToken by mutableStateOf<String?>(null)
+    private var authorizing by mutableStateOf(false)
+    private val work = ActivityWork(activity)
+    val isPending: Boolean get() = authorizing || work.busy || pendingToken != null
 
     private val launcher = activity.registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/vnd.linka")
@@ -46,21 +50,22 @@ class SetExportController(
         authorizing = true
         ParentPasswordDialog.showDialog(activity, object : Callback<Any?>() {
             override fun onDone(result: Any?) {
+                if (activity.isDestroyed) return
                 authorizing = false
-                try {
-                    val archive = prepare()
+                work.run(prepare, { archive ->
                     pendingToken = archive.nameWithoutExtension
                     val name = File(fileName).name.let {
                         if (it.endsWith(".linka")) it else "$it.linka"
                     }
                     launcher.launch(name)
-                } catch (error: Exception) {
+                }, { error ->
                     clearPending()
                     onError(error)
-                }
+                }, abandoned = { it.delete() })
             }
 
             override fun onFail(error: Exception?) {
+                if (activity.isDestroyed) return
                 authorizing = false
                 if (error == null) onCancelled() else onError(error)
             }
@@ -85,13 +90,15 @@ class SetExportController(
     }
 
     internal fun complete(uri: Uri?) {
+        if (work.busy || activity.isDestroyed) return
         val archive = pendingFile()
         if (uri == null) {
             clearPending()
             onCancelled()
             return
         }
-        val error = try {
+        work.run({
+          try {
             if (archive == null || !archive.isFile) throw IOException("Prepared export is no longer available")
             // Open input first: missing private cache must never truncate the provider target.
             archive.inputStream().use { input ->
@@ -99,12 +106,14 @@ class SetExportController(
                     ?: throw IOException("Cannot open export destination")
                 output.use { input.copyTo(it) }
             }
-            null
-        } catch (failure: Exception) {
-            failure
-        }
-        clearPending()
-        if (error == null) onSuccess() else onError(error)
+          } finally { archive?.delete() }
+        }, {
+            pendingToken = null
+            onSuccess()
+        }, { error ->
+            pendingToken = null
+            onError(error)
+        })
     }
 
     private fun pendingFile(): File? = pendingToken?.let { File(activity.cacheDir, "exports/$it.linka") }

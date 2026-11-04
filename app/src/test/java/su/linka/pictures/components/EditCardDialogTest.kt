@@ -29,6 +29,7 @@ import su.linka.pictures.Card
 import su.linka.pictures.Callback
 import su.linka.pictures.ControlledTextToSpeech
 import su.linka.pictures.R
+import su.linka.pictures.awaitHostWork
 import java.io.File
 import java.io.IOException
 
@@ -110,6 +111,7 @@ class EditCardDialogTest {
         val missingAudio = File(workingDir, "missing-source/missing.3gp")
         setPrivateField(dialog, "currentBitmap", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
         setPrivateField(dialog, "imageDirty", true)
+        setPrivateField(dialog, "originalImage", null)
         setPrivateField(dialog, "currentAudio", missingAudio)
         setPrivateField(dialog, "audioDirty", true)
         dialog.findViewById<EditText>(R.id.card_title_edittext)!!.setText("Changed")
@@ -121,6 +123,7 @@ class EditCardDialogTest {
         })
 
         dialog.findViewById<android.view.View>(R.id.positiveBtn)!!.performClick()
+        awaitHostWork(dialog)
 
         assertFalse(done)
         assertTrue(failure is IOException)
@@ -303,6 +306,28 @@ class EditCardDialogTest {
         return field.get(target)
     }
 
+    @Test fun completedTemporaryAudioIsDeletedOnReplacementAndDismissButBorrowedAudioSurvives() {
+        val dialog = EditCardDialog(activity)
+        val borrowed = File(workingDir, "borrowed.audio").apply { writeText("borrowed") }
+        dialog.show(set, Card(0, title = "Original", audioPath = borrowed.name))
+        val record = dialog.findViewById<RecordButton>(R.id.record_audio_button)!!
+        @Suppress("UNCHECKED_CAST")
+        val listener = getPrivateField(record, "onRecordListener") as Callback<File>
+        val first = File(activity.cacheDir, "recorded-1.audio").apply { writeText("first") }
+        val second = File(activity.cacheDir, "recorded-2.audio").apply { writeText("second") }
+        listener.onDone(first)
+        assertTrue(borrowed.exists())
+        listener.onDone(second)
+        assertFalse(first.exists())
+        dialog.dismiss()
+        assertFalse(second.exists())
+        assertTrue(borrowed.exists())
+        dialog.show(set, Card(1, title = "Borrowed", audioPath = borrowed.name))
+        dialog.dismiss()
+        assertTrue(borrowed.exists())
+        dialog.release()
+    }
+
     @Test
     fun restoreDoesNotRestoreMissingMediaOrResumeRecordingAndRejectsStaleChooser() {
         val first = EditCardDialog(activity)
@@ -320,6 +345,7 @@ class EditCardDialogTest {
 
         val restored = EditCardDialog(activity)
         restored.restoreState(set, snapshot, media)
+        awaitHostWork(restored)
         assertFalse(restored.validate())
         val record = restored.findViewById<RecordButton>(su.linka.pictures.R.id.record_audio_button)!!
         assertEquals(activity.getString(su.linka.pictures.R.string.record_audio), record.text.toString())
@@ -363,6 +389,7 @@ class EditCardDialogTest {
         restored.restoreState(set, state, media)
         restored.onActivityResult(state.getInt("imageRequestCode"), android.app.Activity.RESULT_OK,
             android.content.Intent().setData(android.net.Uri.fromFile(selectedImage)))
+        awaitHostWork(restored)
         val updated = restored.captureState(media)!!
         assertFalse(updated.getBoolean("pendingImage"))
         assertTrue(updated.getBoolean("imageDirty"))
@@ -388,6 +415,7 @@ class EditCardDialogTest {
 
         val restored = EditCardDialog(activity)
         restored.restoreState(set, state, media)
+        awaitHostWork(restored)
         val newEngine = ControlledTextToSpeech.latest
         newEngine.initialization.onInit(TextToSpeech.SUCCESS)
         engine.progress.onDone(id)
@@ -426,6 +454,7 @@ class EditCardDialogTest {
 
         val restored = EditCardDialog(activity)
         restored.restoreState(set, state, media)
+        awaitHostWork(restored)
         val newEngine = ControlledTextToSpeech.latest
         newEngine.initialization.onInit(TextToSpeech.SUCCESS)
         engine.progress.onDone(id)
@@ -439,12 +468,14 @@ class EditCardDialogTest {
             override fun onFail(error: Exception?) { throw AssertionError(error) }
         })
         restored.findViewById<View>(R.id.positiveBtn)!!.performClick()
+        awaitHostWork(restored)
         assertEquals(1, newCalls)
         assertEquals(0, staleCalls)
         restored.release()
     }
 
     private fun setPrivateField(target: Any, fieldName: String, value: Any?) {
+        awaitHostWork(target)
         val field = target.javaClass.getDeclaredField(fieldName)
         field.isAccessible = true
         field.set(target, value)

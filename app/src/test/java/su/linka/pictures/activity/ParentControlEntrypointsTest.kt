@@ -3,13 +3,11 @@ package su.linka.pictures.activity
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.os.Bundle
 import android.net.Uri
 import android.widget.EditText
-import android.widget.GridView
 import android.app.AlertDialog
-import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceManager
-import androidx.preference.SwitchPreferenceCompat
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -25,11 +23,15 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 import org.robolectric.shadows.ShadowLooper
 import su.linka.pictures.Callback
+import su.linka.pictures.Card
+import su.linka.pictures.PhraseDraftStore
 import su.linka.pictures.ParentControl
 import su.linka.pictures.R
-import su.linka.pictures.SetsAdapter
 import su.linka.pictures.SetsManager
 import su.linka.pictures.TelemetryPrivacyPreferences
+import su.linka.pictures.ui.LibraryAction
+import su.linka.pictures.ui.SettingsAction
+import su.linka.pictures.ui.BoardAction
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
@@ -66,13 +68,11 @@ class ParentControlEntrypointsTest {
         })
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
-        val grid = activity.findViewById<GridView>(R.id.sets_list)
-        val manifest = (grid.adapter as SetsAdapter).getItem(0)!!
-        val archive = requireNotNull(manifest.archiveFile)
+        assertComposeHost(activity)
+        val summary = activity.sets.first { it.name == "protected.linka" }
+        val archive = manager.getSetFile(summary.name)
         fun requestDelete() {
-            grid.onItemLongClickListener!!.onItemLongClick(grid, null, 0, 0)
-            val menu = latestDialog()
-            menu.listView.performItemClick(null, 3, 3)
+            activity.onAction(LibraryAction.Delete(summary))
             ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
         }
         requestDelete()
@@ -87,6 +87,7 @@ class ParentControlEntrypointsTest {
         assertTrue(archive.exists())
         latestDialog().getButton(DialogInterface.BUTTON_POSITIVE).performClick()
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+        su.linka.pictures.awaitHostWork(activity)
         assertFalse(archive.exists())
         controller.pause().stop().destroy()
     }
@@ -100,10 +101,10 @@ class ParentControlEntrypointsTest {
             override fun onFail(error: Exception?) = throw AssertionError(error)
         })
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
-        val grid = controller.get().findViewById<GridView>(R.id.sets_list)
-        for (action in listOf(1, 2)) {
-            grid.onItemLongClickListener!!.onItemLongClick(grid, null, 0, 0)
-            latestDialog().listView.performItemClick(null, action, action.toLong())
+        su.linka.pictures.awaitHostWork(controller.get())
+        val summary = controller.get().sets.first { it.name == "protected.linka" }
+        for (action in listOf(LibraryAction.Edit(summary), LibraryAction.Rename(summary))) {
+            controller.get().onAction(action)
             ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
             assertNotNull(latestDialog().findViewById<EditText>(R.id.input_prompt))
             answer("wrong")
@@ -123,11 +124,10 @@ class ParentControlEntrypointsTest {
 
         val controller = Robolectric.buildActivity(SettingsActivity::class.java).setup()
         answer("secret")
-        controller.get().supportFragmentManager.executePendingTransactions()
-        assertNotNull(controller.get().supportFragmentManager.findFragmentById(R.id.settings))
+        assertTrue(controller.get().authenticated)
+        assertComposeHost(controller.get())
         controller.recreate()
-        controller.get().supportFragmentManager.executePendingTransactions()
-        assertNull(controller.get().supportFragmentManager.findFragmentById(R.id.settings))
+        assertFalse(controller.get().authenticated)
         latestDialog().cancel()
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
         assertTrue(controller.get().isFinishing)
@@ -138,19 +138,17 @@ class ParentControlEntrypointsTest {
     fun settingsCannotEnableWithoutPasswordOrClearActivePassword() {
         val controller = Robolectric.buildActivity(SettingsActivity::class.java).setup()
         val activity = controller.get()
-        activity.supportFragmentManager.executePendingTransactions()
-        val fragment = activity.supportFragmentManager.findFragmentById(R.id.settings)
-            as SettingsActivity.SettingsFragment
-        val parent = fragment.findPreference<SwitchPreferenceCompat>("parent")!!
-        val password = fragment.findPreference<EditTextPreference>("parent_password")!!
-        assertTrue(password.isEnabled)
-        assertFalse(parent.callChangeListener(true))
-        assertTrue(password.callChangeListener("secret"))
-        password.text = "secret"
-        assertTrue(parent.callChangeListener(true))
-        parent.isChecked = true
-        assertFalse(password.callChangeListener(""))
-        assertFalse(password.callChangeListener("   "))
+        activity.onAction(SettingsAction.ToggleParent(true))
+        assertFalse(ParentControl(context).enabled)
+        activity.onAction(SettingsAction.ChangePassword)
+        answer("secret")
+        assertTrue(ParentControl(context).hasPassword)
+        activity.onAction(SettingsAction.ToggleParent(true))
+        for (invalid in listOf("", "   ")) {
+            activity.onAction(SettingsAction.ChangePassword)
+            answer(invalid)
+            assertTrue(ParentControl(context).accepts("secret"))
+        }
         assertTrue(ParentControl(context).enabled)
         assertTrue(ParentControl(context).accepts("secret"))
         controller.pause().stop().destroy()
@@ -161,26 +159,94 @@ class ParentControlEntrypointsTest {
         protect("")
         val controller = Robolectric.buildActivity(SettingsActivity::class.java).setup()
         val activity = controller.get()
-        activity.supportFragmentManager.executePendingTransactions()
-        val fragment = activity.supportFragmentManager.findFragmentById(R.id.settings)
-            as SettingsActivity.SettingsFragment
-        assertFalse(fragment.findPreference<SwitchPreferenceCompat>("parent")!!.isEnabled)
-        assertFalse(fragment.findPreference<SwitchPreferenceCompat>("telemetry_analytics")!!.isEnabled)
-        val password = fragment.findPreference<EditTextPreference>("parent_password")!!
-        assertTrue(password.isEnabled)
-        assertFalse(password.callChangeListener(""))
-        assertTrue(password.callChangeListener("restored"))
-        password.text = "restored"
+        assertTrue(activity.passwordRecoveryRequired)
+        activity.onAction(SettingsAction.ToggleParent(false))
+        activity.onAction(SettingsAction.ToggleAnalytics(true))
+        activity.onAction(SettingsAction.Back)
+        assertTrue(ParentControl(context).enabled)
+        assertFalse(activity.analyticsEnabled)
+        assertFalse(activity.isFinishing)
+        activity.onAction(SettingsAction.ChangePassword)
+        answer("")
+        assertTrue(activity.passwordRecoveryRequired)
+        activity.onAction(SettingsAction.ChangePassword)
+        answer("restored")
+        assertFalse(activity.passwordRecoveryRequired)
         assertFalse(ParentControl(context).needsRecovery)
         controller.pause().stop().destroy()
 
         val next = Robolectric.buildActivity(SettingsActivity::class.java).setup()
-        next.get().supportFragmentManager.executePendingTransactions()
-        assertNull(next.get().supportFragmentManager.findFragmentById(R.id.settings))
+        assertFalse(next.get().authenticated)
         answer("restored")
-        next.get().supportFragmentManager.executePendingTransactions()
-        assertNotNull(next.get().supportFragmentManager.findFragmentById(R.id.settings))
+        assertTrue(next.get().authenticated)
         next.pause().stop().destroy()
+    }
+
+    @Test
+    fun assigningAndAuthenticatingPasswordKeepsLiteralWhitespace() {
+        val controller = Robolectric.buildActivity(SettingsActivity::class.java).setup()
+        controller.get().onAction(SettingsAction.ChangePassword)
+        answer(" secret ")
+        assertTrue(ParentControl(context).accepts(" secret "))
+        assertFalse(ParentControl(context).accepts("secret"))
+        controller.get().onAction(SettingsAction.ToggleParent(true))
+        controller.recreate()
+        assertFalse(controller.get().authenticated)
+        answer(" secret ")
+        assertTrue(controller.get().authenticated)
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun createAndImportCannotLaunchBeforeParentApproval() {
+        protect()
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        try {
+            for (action in listOf(LibraryAction.Create, LibraryAction.Import)) {
+                controller.get().onAction(action)
+                assertNotNull(latestDialog().findViewById<EditText>(R.id.input_prompt))
+                answer("wrong")
+                assertNull(shadowOf(controller.get()).nextStartedActivityForResult)
+                assertFalse(controller.get().isFinishing)
+            }
+        } finally { controller.pause().stop().destroy() }
+    }
+
+    @Test
+    fun communicationExitOnlyDiscardsPhraseAfterCorrectParentPassword() {
+        protect()
+        val manager = SetsManager(context)
+        val source = manager.createSet()
+        try {
+            source.addCard(0, Card(0, title = "word"))
+            manager.save(source, "protected-phrase.linka", object : Callback<Any?>() {
+                override fun onDone(result: Any?) = Unit
+                override fun onFail(error: Exception?) = throw AssertionError(error)
+            })
+        } finally { source.close() }
+        val intent = Intent(context, GridActivity::class.java).putExtra(GridActivity.EXTRA_FILE, "protected-phrase.linka")
+        val controller = Robolectric.buildActivity(GridActivity::class.java, intent).setup()
+        try {
+            val activity = controller.get()
+            activity.onAction(BoardAction.SelectCard(0))
+            val state = Bundle()
+            controller.saveInstanceState(state)
+            val token = state.getString("phraseDraftToken")!!
+            val identity = state.getString("documentIdentity")!!
+            val drafts = PhraseDraftStore(context)
+            activity.onAction(BoardAction.Close)
+            answer("wrong")
+            assertFalse(activity.isFinishing)
+            assertNotNull(drafts.restore(token, identity))
+            activity.onAction(BoardAction.Close)
+            latestDialog().cancel()
+            assertFalse(activity.isFinishing)
+            assertNotNull(drafts.restore(token, identity))
+            activity.onAction(BoardAction.Close)
+            answer("secret")
+            assertTrue(activity.isFinishing)
+            assertNull(drafts.restore(token, identity))
+        } finally { controller.pause().stop().destroy() }
     }
 
     @Test

@@ -6,12 +6,10 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.os.Looper
 import android.view.View
-import android.widget.LinearLayout
 import android.widget.RadioGroup
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,15 +24,13 @@ import su.linka.pictures.Card
 import su.linka.pictures.R
 import su.linka.pictures.SetsManager
 import su.linka.pictures.components.EditCardDialog
-import su.linka.pictures.components.EditCardGrid
-import su.linka.pictures.components.GridButton
+import su.linka.pictures.ui.EditorAction
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class SetEditActivityPaginationTest {
     private lateinit var controller: ActivityController<SetEditActivity>
     private lateinit var activity: SetEditActivity
-    private lateinit var grid: EditCardGrid
 
     @Before
     fun setUp() {
@@ -55,8 +51,8 @@ class SetEditActivityPaginationTest {
             .putExtra(SetEditActivity.EXTRA_FILE, "pagination.linka")
         controller = Robolectric.buildActivity(SetEditActivity::class.java, intent).setup()
         activity = controller.get()
-        grid = activity.findViewById(R.id.card_grid)
-        grid.jumpToPage(2)
+        assertComposeHost(activity)
+        activity.onAction(EditorAction.Page(2))
     }
 
     @After
@@ -67,14 +63,14 @@ class SetEditActivityPaginationTest {
 
     @Test
     fun editingThirdPageKeepsPageAndUpdatesAbsolutePosition() {
-        cell(0).performClick()
+        activity.onAction(EditorAction.EditCard(4))
         saveSpaceCard()
 
-        assertEquals(2, grid.currentPage())
-        assertEquals(1, cell(0).getCard()?.cardType)
-        assertEquals(4, cell(0).getCard()?.id)
-        grid.jumpToPage(0)
-        assertEquals(2, cell(0).getCard()?.cardType)
+        assertEquals(2, activity.page)
+        assertEquals(1, activity.document!!.cards[4].cardType)
+        assertEquals(4, activity.document!!.cards[4].id)
+        activity.onAction(EditorAction.Page(0))
+        assertEquals(2, activity.document!!.cards[0].cardType)
     }
 
     @Test
@@ -82,35 +78,46 @@ class SetEditActivityPaginationTest {
         beginFourthPage()
         saveSpaceCard()
 
-        assertEquals(3, grid.currentPage())
-        assertEquals(4, grid.getPagesCount())
-        assertEquals(1, cell(0).getCard()?.cardType)
-        assertEquals(7, cell(1).getCard()?.id)
-        grid.prevPage()
-        assertEquals(4, cell(0).getCard()?.id)
-        assertEquals(3, cell(1).getCard()?.cardType)
+        assertEquals(3, activity.page)
+        assertEquals(7, activity.document!!.cards.size)
+        assertEquals(1, activity.document!!.cards[6].cardType)
+        assertEquals(null, activity.document!!.cards.getOrNull(7))
+        activity.onAction(EditorAction.Page(2))
+        assertEquals(4, activity.document!!.cards[4].id)
+        assertEquals(3, activity.document!!.cards[5].cardType)
+    }
+
+    @Test
+    fun resizingResetsToFirstPageWithoutChangingCards() {
+        val cards = activity.document!!.cards
+        activity.onAction(EditorAction.Resize(2, 2))
+        assertEquals(0, activity.page)
+        assertEquals(2, activity.document!!.rows)
+        assertEquals(2, activity.document!!.columns)
+        assertEquals(cards, activity.document!!.cards)
     }
 
     @Test
     fun cancellingPageConfirmationOrCardKeepsThirdPage() {
-        activity.findViewById<View>(R.id.next_button).performClick()
+        activity.onAction(EditorAction.NewPage)
         (ShadowDialog.getLatestDialog() as AlertDialog)
             .getButton(DialogInterface.BUTTON_NEGATIVE).performClick()
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(2, grid.currentPage())
+        assertEquals(2, activity.page)
 
         beginFourthPage()
         (ShadowDialog.getLatestDialog() as EditCardDialog)
             .findViewById<View>(R.id.cancel_button)!!.performClick()
 
-        assertEquals(2, grid.currentPage())
-        assertEquals(3, grid.getPagesCount())
-        assertFalse(grid.nextPage())
-        assertEquals(3, cell(1).getCard()?.cardType)
+        assertEquals(2, activity.page)
+        assertEquals(5, activity.document!!.cards.size)
+        activity.onAction(EditorAction.Page(3))
+        assertEquals(2, activity.page)
+        assertEquals(null, activity.document!!.cards.getOrNull(5))
     }
 
     private fun beginFourthPage() {
-        activity.findViewById<View>(R.id.next_button).performClick()
+        activity.onAction(EditorAction.NewPage)
         (ShadowDialog.getLatestDialog() as AlertDialog)
             .getButton(DialogInterface.BUTTON_POSITIVE).performClick()
         shadowOf(Looper.getMainLooper()).idle()
@@ -122,6 +129,4 @@ class SetEditActivityPaginationTest {
         dialog.findViewById<View>(R.id.positiveBtn)!!.performClick()
     }
 
-    private fun cell(column: Int): GridButton =
-        (grid.getChildAt(0) as LinearLayout).getChildAt(column) as GridButton
 }

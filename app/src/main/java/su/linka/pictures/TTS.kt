@@ -21,6 +21,7 @@ class TTS(context: Context) {
     private val handler = Handler(Looper.getMainLooper())
     private var initialized = false
     private var pending: Synthesis? = null
+    private val cancelledFiles = mutableMapOf<String, File>()
     private val tts = TextToSpeech(appContext) { status ->
         handler.post {
             if (state == State.INITIALIZING) {
@@ -39,6 +40,7 @@ class TTS(context: Context) {
 
             override fun onDone(utteranceId: String?) {
                 handler.post {
+                    cancelledFiles.remove(utteranceId)?.let { it.delete(); return@post }
                     val operation = pending?.takeIf { it.id == utteranceId } ?: return@post
                     if (!operation.file.isFile || !operation.file.canRead() || operation.file.length() == 0L) {
                         fail(operation, IllegalStateException("TTS produced no readable audio"))
@@ -53,6 +55,7 @@ class TTS(context: Context) {
             @Deprecated("Required by UtteranceProgressListener")
             override fun onError(utteranceId: String?) {
                 handler.post {
+                    cancelledFiles.remove(utteranceId)?.let { it.delete(); return@post }
                     pending?.takeIf { it.id == utteranceId }?.let {
                         fail(it, IllegalStateException("TTS synthesis failed"))
                     }
@@ -87,7 +90,11 @@ class TTS(context: Context) {
     fun cancelSynthesis() {
         val operation = pending ?: return
         pending = null
-        if (initialized) tts.stop()
+        if (initialized) {
+            // Some engines finish writing after stop(); their late callback still owns this path.
+            cancelledFiles[operation.id] = operation.file
+            tts.stop()
+        }
         operation.file.delete()
         state = if (initialized) State.READY else State.INITIALIZING
     }

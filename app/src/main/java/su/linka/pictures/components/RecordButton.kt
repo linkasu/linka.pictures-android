@@ -87,7 +87,7 @@ class RecordButton @JvmOverloads constructor(
     private fun startRecording() {
         onDestroy()
         val targetFile = try {
-            File.createTempFile(UUID.randomUUID().toString(), ".3gpp")
+            File.createTempFile(UUID.randomUUID().toString(), ".3gpp", context.cacheDir)
         } catch (error: IOException) {
             onRecordListener?.onFail(error)
             return
@@ -115,7 +115,8 @@ class RecordButton @JvmOverloads constructor(
     private fun stopRecording() {
         val file = stopRecordingInternal()
         if (file != null) {
-            onRecordListener?.onDone(file)
+            val listener = onRecordListener
+            if (listener != null) listener.onDone(file) else file.delete()
         } else {
             onRecordListener?.onFail(Exception("Recording failed"))
         }
