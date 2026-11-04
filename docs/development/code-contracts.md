@@ -58,6 +58,20 @@ S реализует `storage/StorageRuntime.kt`: `companion object { suspend fu
 
 Реализация P04: bundled SQLite2.5.2, Okio filesystem. `PRAGMA user_version=1`, `foreign_keys=ON`, `journal_mode=WAL`, `synchronous=FULL`. Все значения bound parameters; нет dynamic SQL из внешних имён. До создания схемы читается user_version: 0 в новой/пустой DB — создать новую, 1 — проверить обязательные таблицы и открыть, больше 1 — NEWER_SCHEMA без записи/delete/fallback. Непустая неизвестная DB с version0 или неполная schema1 — INVALID_DATA, не пересоздание. Проверять версию до смены journal mode. Не менять legacy 1.4 файлы.
 
+### Initial schema probe: исходные файлы не открываются SQLite
+
+P04 доказал, что generic SQLiteDriver.open(existingPath) при close может checkpoint-нуть WAL даже после отказа NEWER_SCHEMA. Bundled2.5.2 имеет публичный flags overload, но frozen generic SQLiteDriver его не передаёт; PRAGMA query_only не делает исходное открытие физически read-only. Immutable URI также не используется для live source: он отключает locking/change detection и не является универсальной crash-recovery гарантией.
+
+Принятый COORD протокол без изменения factory API:
+
+1. На первоначальном open ещё нет writer-а: один StorageRuntime на sandbox/process, никаких других app processes/extensions/writers на этот root. Shell обеспечивает это владение; пользовательская SQLite path не принимается. Это явная предпосылка, не обещание safe concurrent backup чужой живой DB.
+2. Если DB существует, скопировать её и присутствующие `-wal`/`-journal` побайтово в свежий уникальный **owned probe directory**, mustCreate без overwrite. `-shm` не копировать/не изменять: SQLite восстановит индекс только у копии. Владелец scratch — этот open, не исходная библиотека; можно использовать новый уникальный child под runtime root, не переиспользовать неизвестный каталог. До принятия schema не запускать source GC/staging cleanup.
+3. Копировать потоково, проверять размеры/ошибки и стабильность source file set+bytes до/после копии (stream hashes), без загрузки всей DB в память. Изменившийся source/нехватка места/ошибка чтения/копии → отказ IO_FAILURE/CONFLICT, **не** fallback к source open. Никакой своей интерпретации SQLite header/WAL/journal.
+4. Generic driver открывает **только probe-copy**; штатный SQLite восстанавливает её WAL/rollback journal, читает user_version и валидирует известную schema. Любые checkpoint/SHM/journal writes относятся только к копии. NEWER_SCHEMA/INVALID_DATA/corrupt source → закрыть probe и удалить только собственный scratch; исходные DB/WAL/SHM/journal/прочие файлы остаются byte-for-byte и не удаляются.
+5. Только после признания schema0-empty/schema1 и повторного подтверждения стабильности source закрыть/очистить probe и открыть live writer обычным путём; повторно проверить user_version/known schema до прикладных mutations. Live crash recovery допустим только для уже принятой схемы. Смена источника между проверками при нарушенной single-writer предпосылке не маскируется как поддерживаемый сценарий.
+
+Цена — streaming copy/hash **metadata DB**, не media library, на startup; shortcut допускается до измеренного startup bottleneck и отдельного flags-capable read-only binding с теми же invariant tests. Проверка generic-driver URI без URI flags не считается доказательством поддержки URI. Регрессии обязаны проверять unknown schema в WAL crash leftovers, отсутствие source checkpoint/SHM write, rollback-journal fixture, источник с `?`/`#`/Unicode path как обычный filename, copy failure и запрет любого driver.open на live source до принятия schema. Известный источник при неуспешной cleanup probe не превращается в destructive fallback.
+
 Минимальная логическая схема (имена столбцов обязательны, вспомогательные индексы допускаются):
 
 | Таблица | Столбцы / constraints |
