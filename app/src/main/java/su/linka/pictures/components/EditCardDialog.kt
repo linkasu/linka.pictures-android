@@ -30,6 +30,7 @@ class EditCardDialog(context: Context) : Dialog(context) {
 
     private val mediaPlayer = MediaPlayer()
     private val tts = TTS(context)
+    private var released = false
 
     private val cardTypeRadio: RadioGroup
     private val cardTitleEditText: EditText
@@ -310,12 +311,24 @@ class EditCardDialog(context: Context) : Dialog(context) {
     }
 
     override fun dismiss() {
+        onHostStop()
         super.dismiss()
+    }
+
+    fun onHostStop() {
+        recordButton.onDestroy()
+        if (!released) mediaPlayer.reset()
+    }
+
+    fun release() {
+        if (released) return
+        dismiss()
+        released = true
         try {
-            mediaPlayer.stop()
-        } catch (_: Exception) {
+            mediaPlayer.release()
+        } finally {
+            tts.shutdown()
         }
-        mediaPlayer.reset()
     }
 
     companion object {

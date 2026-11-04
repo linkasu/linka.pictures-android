@@ -106,6 +106,16 @@ class SetEditActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStop() {
+        if (::cardDialog.isInitialized) cardDialog.onHostStop()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        if (::cardDialog.isInitialized) cardDialog.release()
+        super.onDestroy()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         cardDialog.onActivityResult(requestCode, resultCode, data)
