@@ -5,7 +5,7 @@
 неизменяемый SHA на Ubuntu 24.04 / Temurin **21.0.13+9**:
 
 - `:shared:jvmTest`, `:app:lint`, `:app:testDebugUnitTest`,
-  `:app:testReleaseUnitTest`, `:app:verifyReleasePrivacy`;
+  `:app:testReleaseUnitTest`, `:app:verifyReleasePrivacy`, `:app:verifyReleasePolicy`;
 - `:app:assembleDebug`, `:app:assembleDebugAndroidTest`;
 - instrumentation на эмуляторах API **24 и 36**, используя именно APK из build.
   Требуется хотя бы один выполненный тест; ошибки runner и тестов блокируют gate.
@@ -34,12 +34,22 @@ Keystore декодируется во временный файл, переда
 удаляется trap; значения secrets не печатаются. Контракт signing из issue #20:
 
 ```sh
-./gradlew --no-configuration-cache :app:bundleRelease \
+./gradlew --no-configuration-cache :app:verifyReleaseBundle \
   -PverifyReleaseSigning=true -PreleaseVersionCode="$VERSION_CODE"
 ```
 
-Все четыре signing env обязательны, fallback недопустим. Этот Gradle gate и
-dependency verification metadata должны прибыть из issue #20 до production.
+Все четыре signing env обязательны, fallback недопустим. Gradle signing gate #20
+интегрирован. `verifyReleaseBundle` дополнительно читает protobuf manifest самого
+AAB через bundletool из AGP и требует package `su.linka.pictures`, явный versionCode,
+minSdk 24 и targetSdk 36. Проверка выполняется до upload release candidate;
+`version-code.txt` не считается доказательством версии внутри AAB.
+Все Gradle-команды CI используют `--dependency-verification strict`. До их запуска
+обязателен tracked `gradle/verification-metadata.xml` с включённой проверкой metadata,
+непустым списком artifacts и SHA-256; `trusted-artifacts` запрещён. Workflow не
+генерирует hashes. Файл ещё должен добавить primary после объединения итоговых
+Compose/shared dependencies и независимой проверки hashes по официальным
+Maven/Google источникам: до этого CI намеренно блокируется, а критерий целостности
+#20 не считается закрытым. Команды описаны в README.
 Release host tests явно включены в `app/build.gradle` через публичный
 `androidComponents.beforeVariants` / `HostTestBuilder.UNIT_TEST_TYPE`.
 Причина: в sources JAR AGP 9.3.1 `BooleanOption.kt:158–163` устанавливает
@@ -71,7 +81,9 @@ actionlint .github/workflows/*.yml
 Тесты читают реальные workflow, проверяют цепочку gates/ref/artifact, матрицу,
 triggers и pins; shell разрешения ref выполняется на временном локальном git repo,
 включая попытку подмены `origin/main` через refspec. Они не запускают Play/Firebase.
-Это contract tests, а не замена реального GitHub emulator run.
+Это contract tests, а не замена реального GitHub emulator run. Manifest-policy
+negative tests (неверные package/versionCode/minSdk/targetSdk) выполняются самим
+`:app:verifyReleasePolicy`, который явно входит в CI.
 
 ## Источники pins
 

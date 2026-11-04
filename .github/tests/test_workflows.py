@@ -16,6 +16,7 @@ WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 CI = (WORKFLOWS / "android.yml").read_text()
 VERIFY = (WORKFLOWS / "android-verify.yml").read_text()
 PRODUCTION = (WORKFLOWS / "google-play-production.yml").read_text()
+APP_BUILD = (WORKFLOWS.parents[1] / "app" / "build.gradle").read_text()
 
 
 def job(workflow, name):
@@ -44,7 +45,7 @@ class WorkflowContract(unittest.TestCase):
     def test_exact_build_and_device_gates(self):
         build = job(VERIFY, "build")
         for task in ("shared:jvmTest", "app:lint", "app:testDebugUnitTest",
-                     "app:testReleaseUnitTest", "app:verifyReleasePrivacy",
+                     "app:testReleaseUnitTest", "app:verifyReleasePrivacy", "app:verifyReleasePolicy",
                      "app:assembleDebug", "app:assembleDebugAndroidTest"):
             self.assertIn(":" + task, build)
         self.assertIn("ref: ${{ inputs.sha }}", build)
@@ -107,12 +108,63 @@ class WorkflowContract(unittest.TestCase):
             self.assertNotIn("actions/checkout@", body)
         self.assertIn("releaseFiles: verified-release/app-release.aab", publish)
         signed = step(VERIFY, "Build signed release candidate")
-        self.assertIn('--no-configuration-cache :app:bundleRelease -PverifyReleaseSigning=true -PreleaseVersionCode="$VERSION_CODE"', signed)
+        self.assertIn('--no-configuration-cache --dependency-verification strict :app:verifyReleaseBundle -PverifyReleaseSigning=true -PreleaseVersionCode="$VERSION_CODE"', signed)
         for secret in ("ANDROID_KEYSTORE_PATH", "ANDROID_KEYSTORE_PASSWORD",
                        "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"):
             self.assertIn("${" + secret + ":?}", signed)
         self.assertIn("sha256sum app-release.aab > SHA256SUMS", signed)
         self.assertIn("git rev-parse HEAD > release-candidate/commit.txt", signed)
+
+    def test_release_manifest_gate_reads_the_aab_not_a_sidecar(self):
+        gate = APP_BUILD.split("tasks.register('verifyReleaseBundle') {", 1)[1].split(
+            "\ndef needsReleaseSigning", 1)[0]
+        self.assertIn("dependsOn 'bundleRelease'", gate)
+        self.assertIn("outputs/bundle/release/app-release.aab", gate)
+        self.assertIn("new java.util.zip.ZipFile(bundle)", gate)
+        self.assertIn("base/manifest/AndroidManifest.xml", gate)
+        self.assertIn("com.android.aapt.Resources.XmlNode.parseFrom(stream)", gate)
+        self.assertIn("requireReleaseManifest(", gate)
+        for field in ("packageName", "versionCode", "minSdkVersion", "targetSdkVersion"):
+            self.assertIn("manifest." + field, gate)
+        self.assertIn("], versionCodeInput)", gate)
+        self.assertNotIn("version-code.txt", gate)
+
+    def test_verification_is_strict_and_never_generated_by_ci(self):
+        for workflow in (CI, VERIFY, PRODUCTION):
+            for line in workflow.splitlines():
+                if "./gradlew " in line:
+                    self.assertIn("--dependency-verification strict", line)
+            self.assertNotIn("--write-verification-metadata", workflow)
+            self.assertNotIn("--dependency-verification off", workflow)
+            self.assertNotIn("--dependency-verification lenient", workflow)
+        guard = run_script(step(VERIFY, "Require reviewed dependency verification metadata"))
+        self.assertIn("test -s gradle/verification-metadata.xml", guard)
+        self.assertIn("git ls-files --error-unmatch gradle/verification-metadata.xml", guard)
+        metadata = '''<verification-metadata xmlns="https://schema.gradle.org/dependency-verification">
+          <configuration><verify-metadata>true</verify-metadata></configuration>
+          <components><component group="example" name="library" version="1">
+            <artifact name="library-1.jar"><sha256 value="HASH"/></artifact>
+          </component></components></verification-metadata>'''.replace("HASH", "a" * 64)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", directory], check=True)
+            path = root / "gradle" / "verification-metadata.xml"
+            path.parent.mkdir()
+            cases = [(None, False), ("", False),
+                     (metadata.replace('<components>', '<components-disabled>').replace(
+                         '</components>', '</components-disabled>'), False),
+                     (metadata.replace("<verify-metadata>true", "<verify-metadata>false"), False),
+                     (metadata.replace("a" * 64, "not-a-checksum"), False),
+                     (metadata.replace("</configuration>", '<trusted-artifacts><trust group=".*" regex="true"/></trusted-artifacts></configuration>'), False),
+                     (metadata, True)]
+            for content, success in cases:
+                with self.subTest(content=content):
+                    if content is not None:
+                        path.write_text(content)
+                        subprocess.run(["git", "add", str(path)], cwd=root, check=True)
+                    result = subprocess.run(["bash", "-e", "-c", guard], cwd=root,
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode == 0, success, result.stderr)
 
     def test_pins_and_runtime(self):
         for workflow in (CI, VERIFY, PRODUCTION):

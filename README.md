@@ -8,19 +8,25 @@ backup и перенос данных должны быть отключены �
 приложения или сменой устройства экспортируйте нужные наборы вручную и сохраните
 копии вне приложения. Экспорт набора не является резервной копией всех настроек.
 
-Нужны JDK 17, Android SDK (platform 35 и Build Tools, выбранные AGP), принятые
-лицензии SDK и доступ к Maven-репозиториям при первом запуске. Используйте только
-wrapper из репозитория; версии инструментов заданы в Gradle-файлах.
+Нужны JDK 21 для Gradle/lint, установленный JDK 17 для `shared.jvmToolchain(17)`,
+Android SDK platform 36 и Build Tools 36.0.0, принятые лицензии SDK и доступ к
+Maven-репозиториям при первом запуске. Toolchain: AGP 9.3.1, Gradle 9.7.0,
+Kotlin 2.4.21, Compose Multiplatform 1.11.1; JVM bytecode приложения — 17.
+Используйте только wrapper из репозитория.
 
 ```sh
-export JAVA_HOME="$(/usr/libexec/java_home -v 17)" # macOS; на Linux задайте путь к JDK 17
+export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home" # macOS/Homebrew; иначе задайте путь к JDK 21
 export ANDROID_HOME="$HOME/Library/Android/sdk" # замените своим путём SDK
 ./gradlew :app:verifyReleasePolicy
 ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:testReleaseUnitTest
-./gradlew :app:lintDebug :app:verifyReleasePrivacy
+./gradlew :shared:jvmTest :app:lint :app:verifyReleasePrivacy
 # На подключённом тестовом устройстве/эмуляторе API 24+:
 ./gradlew :app:connectedDebugAndroidTest
 ```
+
+CI проверяет instrumentation на API 24 и 36; подробности gates и публикации —
+[`.github/CI.md`](.github/CI.md). API 21–23 в версии 2.0 не поддерживаются;
+это явное изменение минимальной платформы, а не результат manifest merge.
 
 Debug, конфигурация (`./gradlew help`), release unit-тесты и privacy-проверка не
 требуют production keystore или паролей. `check` включает `verifyReleasePolicy`
@@ -59,10 +65,16 @@ toolchain при сборке. Не включайте shell tracing, Gradle `--
 ```sh
 # 7 — пример, не автоматически выбранный следующий код Play.
 ./gradlew :app:verifyReleaseSigning -PreleaseVersionCode=7
-./gradlew :app:bundleRelease -PverifyReleaseSigning=true -PreleaseVersionCode=7
+./gradlew --no-configuration-cache :app:verifyReleaseBundle -PverifyReleaseSigning=true -PreleaseVersionCode=7
 # Для подписанного APK вместо AAB:
 ./gradlew :app:assembleRelease -PverifyReleaseSigning=true -PreleaseVersionCode=7
 ```
+
+`verifyReleaseBundle` собирает AAB и читает **protobuf manifest внутри этого AAB**
+через bundletool из AGP: package должен быть `su.linka.pictures`, versionCode —
+равен явному input, minSdk/targetSdk — 24/36. Несовпадение останавливает выпуск
+до загрузки кандидата. `version-code.txt` и checksum служат дополнительной
+идентификацией, а не заменой проверки manifest.
 
 `verifyReleaseSigning` — отдельный preflight task; `-PverifyReleaseSigning=true`
 включает ту же проверку уже при конфигурации. Значения свойства кроме `true`/`false`
@@ -79,24 +91,40 @@ AAB: `app/build/outputs/bundle/release/`; APK: `app/build/outputs/apk/release/`.
 
 ## Повторяемость сборки и контракт CI
 
-Wrapper Gradle 8.7 проверяет SHA-256 дистрибутива по официальному
-`https://services.gradle.org/distributions/gradle-8.7-bin.zip.sha256`.
+Wrapper Gradle 9.7.0 проверяет SHA-256 дистрибутива по официальному
+`https://services.gradle.org/distributions/gradle-9.7.0-bin.zip.sha256`.
 При обновлении wrapper заменяйте **и URL, и checksum** значениями для одной версии.
 Уже распакованный локальный Gradle wrapper повторно не проверяет этим checksum.
 
-Release workflow должен требовать обязательный input versionCode и передавать его
+Release workflow требует обязательный input versionCode (для release event —
+repository variable `ANDROID_VERSION_CODE`) и передаёт его
 как `-PreleaseVersionCode` вместе с `-PverifyReleaseSigning=true`; пустой input
 должен приводить к ошибке, а не default. Закрепляйте workflow actions полными commit
 SHA (включая checkout/setup-java/upload-artifact), JDK — точной версией поставщика,
 а SDK/build-tools и toolchain — согласованными фиксированными версиями. Не меняйте
 versionCode в Git автоматически и не публикуйте artifacts провалившегося job.
 
-Checksum wrapper не заменяет dependency verification: после объединения modern
-toolchain/Compose нужно разрешить **все** зависимости (включая debug/release,
-unit/instrumentation tests и shared), создать Gradle verification metadata через
-`--write-verification-metadata sha256`, независимо проверить происхождение
-checksum и повторить сборки с `--dependency-verification strict`. До этого metadata
-для устаревшего baseline намеренно не генерируется. Байтовая идентичность APK/AAB
+Checksum wrapper не заменяет dependency verification. **Критерий целостности
+зависимостей #20 пока не закрыт**: состав Compose/shared ещё объединяется в другой
+ветке. На окончательном интеграционном commit нужно разрешить **все** зависимости
+(включая debug/release, unit/instrumentation tests и shared), создать metadata:
+
+```sh
+./gradlew --write-verification-metadata sha256 :shared:jvmTest :app:lint \
+  :app:testDebugUnitTest :app:testReleaseUnitTest :app:verifyReleasePolicy \
+  :app:verifyReleasePrivacy :app:assembleDebug :app:assembleDebugAndroidTest
+# В защищённом окружении с явным versionCode и тестовыми signing inputs:
+./gradlew --no-configuration-cache --write-verification-metadata sha256 \
+  :app:verifyReleaseBundle -PverifyReleaseSigning=true -PreleaseVersionCode=7
+```
+
+Генерация — только инвентаризация, **не подтверждение доверия**. Независимо сверить
+checksums/подписи с официальными источниками артефактов, проверить весь
+`gradle/verification-metadata.xml`, затем повторить те же gates с
+`--dependency-verification strict`. CI уже требует strict и tracked metadata с
+SHA-256 для каждого artifact, проверкой metadata и без `trusted-artifacts`;
+пока проверенный файл не добавлен, CI намеренно блокируется. Не коммитить
+непроверенные автоматически сгенерированные hashes. Байтовая идентичность APK/AAB
 не измерялась и не гарантируется: проверять её нужно двумя чистыми сборками одного
 commit с одинаковыми inputs/toolchain и сравнением artifacts.
 

@@ -129,8 +129,38 @@ tasks.register('verifyReleaseSigning') {
     doLast { requireReleaseSigning(signingValues, versionCodeInput) }
 }
 
+def requireReleaseManifest = { Map actual, String code ->
+    def expected = [packageName: 'su.linka.pictures', versionCode: parseVersionCode(code),
+                    minSdk: 24, targetSdk: 36]
+    if (actual != expected) {
+        throw new GradleException('Release AAB manifest does not match the expected package, versionCode or SDK policy')
+    }
+}
+
+tasks.register('verifyReleaseBundle') {
+    group = 'verification'
+    description = 'Check package, versionCode and SDKs from the actual release AAB protobuf manifest.'
+    dependsOn 'bundleRelease'
+    doLast {
+        def bundle = layout.buildDirectory.file('outputs/bundle/release/app-release.aab').get().asFile
+        new java.util.zip.ZipFile(bundle).withCloseable { archive ->
+            def entry = archive.getEntry('base/manifest/AndroidManifest.xml')
+            if (entry == null) throw new GradleException('Release AAB is missing its base manifest')
+            // Bundletool and the protobuf schema are already supplied by the Android Gradle plugin.
+            def manifest = archive.getInputStream(entry).withCloseable { stream ->
+                com.android.tools.build.bundletool.model.AndroidManifest.create(
+                    com.android.aapt.Resources.XmlNode.parseFrom(stream))
+            }
+            requireReleaseManifest([packageName: manifest.packageName,
+                                    versionCode: manifest.versionCode.orElse(-1),
+                                    minSdk: manifest.minSdkVersion.orElse(-1),
+                                    targetSdk: manifest.targetSdkVersion.orElse(-1)], versionCodeInput)
+        }
+    }
+}
+
 def needsReleaseSigning = { String name ->
-    name in ['verifyReleaseSigning', 'assembleRelease', 'bundleRelease', 'packageRelease',
+    name in ['verifyReleaseSigning', 'verifyReleaseBundle', 'assembleRelease', 'bundleRelease', 'packageRelease',
              'packageReleaseBundle', 'packageReleaseUniversalApk', 'signReleaseBundle', 'validateSigningRelease']
 }
 // Check the resolved graph, including abbreviated CLI names and aggregate assemble/build tasks.
@@ -148,6 +178,14 @@ tasks.register('verifyReleasePolicy') {
         assert parseVersionCode(null) == 6
         assert parseVersionCode('1') == 1
         assert parseVersionCode('2100000000') == 2100000000
+        def manifest = [packageName: 'su.linka.pictures', versionCode: 7, minSdk: 24, targetSdk: 36]
+        requireReleaseManifest(manifest, '7')
+        [packageName: 'other.package', versionCode: 5, minSdk: 21, targetSdk: 35].each { key, value ->
+            try {
+                requireReleaseManifest(manifest + [(key): value], '7')
+                throw new AssertionError("Unexpected release manifest ${key} accepted")
+            } catch (GradleException expected) { }
+        }
         ['0', '-1', '+1', '01', '', ' ', '1.0', '1\n', '2100000001', '99999999999999999999'].each { value ->
             try {
                 parseVersionCode(value)
@@ -189,7 +227,7 @@ tasks.register('verifyReleasePolicy') {
         } finally {
             fixture.delete()
         }
-        ['verifyReleaseSigning', 'assembleRelease', 'bundleRelease', 'packageRelease',
+        ['verifyReleaseSigning', 'verifyReleaseBundle', 'assembleRelease', 'bundleRelease', 'packageRelease',
          'packageReleaseBundle', 'packageReleaseUniversalApk', 'signReleaseBundle', 'validateSigningRelease'].each {
             assert needsReleaseSigning(it)
         }

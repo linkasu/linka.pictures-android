@@ -61,6 +61,24 @@ jobs:
           echo "sha=$EXPECTED_SHA" >> "$GITHUB_OUTPUT"
       - name: Workflow contract tests
         run: python3 -B -m unittest discover -s .github/tests -v
+      - name: Require reviewed dependency verification metadata
+        run: |
+          test -s gradle/verification-metadata.xml
+          git ls-files --error-unmatch gradle/verification-metadata.xml
+          python3 -B - <<'PY'
+          import re
+          import xml.etree.ElementTree as ET
+          root = ET.parse('gradle/verification-metadata.xml').getroot()
+          ns = {'v': 'https://schema.gradle.org/dependency-verification'}
+          assert root.tag == '{' + ns['v'] + '}verification-metadata'
+          assert root.findtext('v:configuration/v:verify-metadata', namespaces=ns) == 'true'
+          assert root.find('.//v:trusted-artifacts', ns) is None, 'Artifact trust bypass is forbidden'
+          artifacts = root.findall('v:components/v:component/v:artifact', ns)
+          assert artifacts, 'Verification metadata must contain real dependency artifacts'
+          for artifact in artifacts:
+              hashes = artifact.findall('v:sha256', ns)
+              assert hashes and all(re.fullmatch('[0-9a-f]{64}', h.get('value', '')) for h in hashes)
+          PY
       - name: Set up Java
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -70,8 +88,8 @@ jobs:
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
       - name: Unit, lint, privacy and APK gates
         run: >-
-          ./gradlew :shared:jvmTest :app:lint :app:testDebugUnitTest
-          :app:testReleaseUnitTest :app:verifyReleasePrivacy
+          ./gradlew --dependency-verification strict :shared:jvmTest :app:lint :app:testDebugUnitTest
+          :app:testReleaseUnitTest :app:verifyReleasePrivacy :app:verifyReleasePolicy
           :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Upload exact debug APK pair
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -97,7 +115,7 @@ jobs:
           trap 'rm -f "$ANDROID_KEYSTORE_PATH"' EXIT
           umask 077
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
-          ./gradlew --no-configuration-cache :app:bundleRelease -PverifyReleaseSigning=true -PreleaseVersionCode="$VERSION_CODE"
+          ./gradlew --no-configuration-cache --dependency-verification strict :app:verifyReleaseBundle -PverifyReleaseSigning=true -PreleaseVersionCode="$VERSION_CODE"
           mkdir -p release-candidate
           cp app/build/outputs/bundle/release/app-release.aab release-candidate/
           git rev-parse HEAD > release-candidate/commit.txt
