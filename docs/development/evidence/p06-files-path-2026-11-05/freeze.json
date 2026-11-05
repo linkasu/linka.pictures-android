@@ -1,0 +1,9 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-files-path-3a6f7c45-59c4-4c38-8f03-bd0b7f858d0d/frozen-path-test.apk",
+  "sha256": "2247f5bafc2e359e5ebe6a7b5cfbf87ec98ed6691ecbcdae8c595b1e0604e37b",
+  "package": "su.linka.pictures.shared.test",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "api21": "focused 2 changed cases",
+  "api35": "full files19; primary-approved -feature -WiFiPacketStream per-run workaround; not default stability/network proof"
+}

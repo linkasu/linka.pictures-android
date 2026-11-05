@@ -33,7 +33,10 @@ class AndroidPlatformFilesPortTest {
             val file = completed(f.port.createTemporaryFile("мёд data.bin", "application/octet-stream"))
             assertEquals("мёд data.bin", file.displayName)
             assertNotEquals("мёд data.bin", File(file.path).name)
-            assertEquals(f.temp.toString(), File(file.path).parent)
+            val ownRoot = f.fs.canonicalize(f.temp)
+            val created = f.fs.canonicalize(file.path.toPath())
+            assertEquals(ownRoot, created.parent)
+            assertEquals(1, created.relativeTo(ownRoot).segments.size)
             code(ProblemCode.NOT_FOUND, f.port.source(TemporaryFile(file.path)))
             code(ProblemCode.NOT_FOUND, f.port.sink(TemporaryFile(file.path)))
             f.port.discard(TemporaryFile(file.path)); assertTrue(File(file.path).exists())
@@ -220,12 +223,18 @@ class AndroidPlatformFilesPortTest {
             val request=caller.async{f.port.pick(PickedFileKind.IMAGE,"owner")}
             dispatcher.next().run()
             val delivery=dispatcher.next()
-            val path=withContext(Dispatchers.IO){f.fs.list(f.temp).single()}
+            val path=withContext(Dispatchers.IO){
+                val ownRoot=f.fs.canonicalize(f.temp)
+                val copied=f.fs.canonicalize(f.fs.list(f.temp).single())
+                assertEquals(ownRoot,copied.parent)
+                assertEquals(1,copied.relativeTo(ownRoot).segments.size)
+                copied // Capture physical identity while it exists; cleanup must delete this exact file.
+            }
             request.cancel()
             withContext(Dispatchers.Main){delivery.run()}
             while(!request.isCompleted)dispatcher.next().run()
             assertEquals(path,withTimeout(5000){f.deleted.receive()})
-            assertFalse(File(path.toString()).exists());assertTrue(failures.isEmpty())
+            withContext(Dispatchers.IO){assertFalse(f.fs.exists(path))};assertTrue(failures.isEmpty())
         } finally {caller.cancel();f.close()}
     }
     @Test fun destinationClosedDuringOpenCannotWriteChunksOrBecomeReusable() = runBlocking {

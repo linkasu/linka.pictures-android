@@ -1,0 +1,366 @@
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+su.linka.pictures.platform.files.AndroidPlatformFilesPortTest:
+INSTRUMENTATION_STATUS: test=invalidLeafMimeAndSyncMainCallsFailWithoutFilesystemWork
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=invalidLeafMimeAndSyncMainCallsFailWithoutFilesystemWork
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=ownerRevokedDuringSuccessfulGuardCannotAdmitProviderOpen
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=ownerRevokedDuringSuccessfulGuardCannotAdmitProviderOpen
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=destinationClosedDuringOpenCannotWriteChunksOrBecomeReusable
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=destinationClosedDuringOpenCannotWriteChunksOrBecomeReusable
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=physicalUnlinkFailureDoesNotReviveHandleOrKillRemainingCleanup
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=physicalUnlinkFailureDoesNotReviveHandleOrKillRemainingCleanup
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=pickActualStreamBudgetCannotBeBypassedByProviderMetadata
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=pickActualStreamBudgetCannotBeBypassedByProviderMetadata
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=pickRejectsForeignUriAndUnsafeMetadataRatherThanUsingThemAsPaths
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=pickRejectsForeignUriAndUnsafeMetadataRatherThanUsingThemAsPaths
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: expected:</data/user/0/su.linka.pictures.shared.test/cache/p06-files-3aa3991d-07c5-4e66-afa6-33b7ac428c3e/temporary/562b2abc-fe97-4783-8f51-fb79b1399144.tmp> but was:</data/data/su.linka.pictures.shared.test/cache/p06-files-3aa3991d-07c5-4e66-afa6-33b7ac428c3e/temporary/562b2abc-fe97-4783-8f51-fb79b1399144.tmp>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest$cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo$1.invokeSuspend(AndroidPlatformFilesPortTest.kt:227)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest.cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo(AndroidPlatformFilesPortTest.kt:216)
+
+INSTRUMENTATION_STATUS: stream=
+Error in cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo(su.linka.pictures.platform.files.AndroidPlatformFilesPortTest):
+java.lang.AssertionError: expected:</data/user/0/su.linka.pictures.shared.test/cache/p06-files-3aa3991d-07c5-4e66-afa6-33b7ac428c3e/temporary/562b2abc-fe97-4783-8f51-fb79b1399144.tmp> but was:</data/data/su.linka.pictures.shared.test/cache/p06-files-3aa3991d-07c5-4e66-afa6-33b7ac428c3e/temporary/562b2abc-fe97-4783-8f51-fb79b1399144.tmp>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest$cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo$1.invokeSuspend(AndroidPlatformFilesPortTest.kt:227)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest.cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo(AndroidPlatformFilesPortTest.kt:216)
+
+INSTRUMENTATION_STATUS: test=cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=nonemptyOwnedTempCannotBeTruncatedAndMediaSourceCannotReadCredentialsOrSymlinks
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=nonemptyOwnedTempCannotBeTruncatedAndMediaSourceCannotReadCredentialsOrSymlinks
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=guardClosingDestinationBeforeOpenCannotAdmitProviderTruncate
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=guardClosingDestinationBeforeOpenCannotAdmitProviderTruncate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=knownOversizedPrivateInputFailsBeforeProviderOpenAndOwnerRevocationIsRespected
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=knownOversizedPrivateInputFailsBeforeProviderOpenAndOwnerRevocationIsRespected
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=providerOpenFailureNeverReportsCompletedAndKeepsPrivateSource
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=providerOpenFailureNeverReportsCompletedAndKeepsPrivateSource
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=chunkGuardRevocationStopsAndMayLeavePartialProviderDocumentWithoutRollbackOrDelete
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=chunkGuardRevocationStopsAndMayLeavePartialProviderDocumentWithoutRollbackOrDelete
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=pickCopiesActualBytesAndClosesCursorAndTransientProviderStreamWithMinimalIntents
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=pickCopiesActualBytesAndClosesCursorAndTransientProviderStreamWithMinimalIntents
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stack=org.junit.ComparisonFailure: expected:</data/[user/0]/su.linka.pictures.s...> but was:</data/[data]/su.linka.pictures.s...>
+	at org.junit.Assert.assertEquals(Assert.java:117)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest$uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity$1$1.invokeSuspend(AndroidPlatformFilesPortTest.kt:36)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+
+INSTRUMENTATION_STATUS: stream=
+Error in uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity(su.linka.pictures.platform.files.AndroidPlatformFilesPortTest):
+org.junit.ComparisonFailure: expected:</data/[user/0]/su.linka.pictures.s...> but was:</data/[data]/su.linka.pictures.s...>
+	at org.junit.Assert.assertEquals(Assert.java:117)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest$uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity$1$1.invokeSuspend(AndroidPlatformFilesPortTest.kt:36)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+
+INSTRUMENTATION_STATUS: test=uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=destinationWritesExactBytesOnceAndCloseForbidsLateWrite
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=destinationWritesExactBytesOnceAndCloseForbidsLateWrite
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=discardOnMainInvalidatesImmediatelyAndUnlinksOnlyOnIo
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=discardOnMainInvalidatesImmediatelyAndUnlinksOnlyOnIo
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=cancelAndBackgroundAfterRequesterNeverReturnLateOwnedFile
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=cancelAndBackgroundAfterRequesterNeverReturnLateOwnedFile
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=rootAndCallerCancellationDismissOnlyOwnedRequestAndNoPickerResultIsReplayed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=rootAndCallerCancellationDismissOnlyOwnedRequestAndNoPickerResultIsReplayed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=choosingDestinationDoesNotWriteAndGuardAndPrivateSourceAreCheckedBeforeTruncate
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.files.AndroidPlatformFilesPortTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=19
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=choosingDestinationDoesNotWriteAndGuardAndPrivateSourceAreCheckedBeforeTruncate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 3.389
+There were 2 failures:
+1) cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo(su.linka.pictures.platform.files.AndroidPlatformFilesPortTest)
+java.lang.AssertionError: expected:</data/user/0/su.linka.pictures.shared.test/cache/p06-files-3aa3991d-07c5-4e66-afa6-33b7ac428c3e/temporary/562b2abc-fe97-4783-8f51-fb79b1399144.tmp> but was:</data/data/su.linka.pictures.shared.test/cache/p06-files-3aa3991d-07c5-4e66-afa6-33b7ac428c3e/temporary/562b2abc-fe97-4783-8f51-fb79b1399144.tmp>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest$cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo$1.invokeSuspend(AndroidPlatformFilesPortTest.kt:227)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest.cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo(AndroidPlatformFilesPortTest.kt:216)
+2) uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity(su.linka.pictures.platform.files.AndroidPlatformFilesPortTest)
+org.junit.ComparisonFailure: expected:</data/[user/0]/su.linka.pictures.s...> but was:</data/[data]/su.linka.pictures.s...>
+	at org.junit.Assert.assertEquals(Assert.java:117)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at su.linka.pictures.platform.files.AndroidPlatformFilesPortTest$uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity$1$1.invokeSuspend(AndroidPlatformFilesPortTest.kt:36)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+
+FAILURES!!!
+Tests run: 19,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1
