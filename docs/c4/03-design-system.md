@@ -4,7 +4,7 @@
 
 Это правила целевого интерфейса, не подтверждение их реализации или AAC-приёмки. Платформенные цели — Android21 ARMv7/ARM64 и iOS17; [стек](../development/toolchain.md) закреплён отдельно.
 
-Theme/accessibility primitives реализуются отдельно от экранов и real bindings; pure palette tests не означают native semantics/keyboard/VoiceOver/TalkBack acceptance. Единственный handoff с точными четырьмя palettes и API — [code-contracts](../development/code-contracts.md#p10-early-tokensprimitives-не-продуктовые-экраны).
+Theme/accessibility primitives и session-driven экран общения реализованы отдельно от real bindings; pure palette/presentation tests не означают native semantics/keyboard/VoiceOver/TalkBack acceptance. Фраза и исправления не входят в secondary-controls scroll, Speak/Stop закреплён. Единственный handoff с точными четырьмя palettes и interface — [code-contracts](../development/code-contracts.md#p10-early-tokensprimitives-не-продуктовые-экраны).
 
 ## 3.1. Главный принцип
 

@@ -6,7 +6,7 @@
 
 Это принятая целевая архитектура, не описание готового продукта. C1/C2 описывают цель; C3 отдельно отмечает проверенное ядро и ещё не подключённые части. **Плана реализации здесь нет.** Фактическое состояние и evidence — в [статусе реализации](../development/implementation-status.md).
 
-Проверенное общее ядро: CommunicationSession, StorageRuntime, LinkaCodec/BackupCodec, CheckedZip и AudioCoordinator. Полный common suite: **214/214 JVM и 214/214 на iOS17**, включая [совместный storage/backup/recovery сценарий](../development/core-backup-integration.md). Это не продуктовый UI: normal Android пока использует legacy path, iOS — development shell. Native codecs, защита, миграция и реальные bindings ещё не приняты целиком. [Точные контракты](../development/code-contracts.md) отделяют core evidence от native/physical gates.
+Проверенное общее ядро: CommunicationSession, StorageRuntime, LinkaCodec/BackupCodec, CheckedZip и AudioCoordinator. Base common suite: **214/214 JVM и 214/214 на iOS17**, включая [совместный storage/backup/recovery сценарий](../development/core-backup-integration.md). Дополнительно реализованы theme/primitives, session-driven communication presentation и [core защиты](../development/access-policy.md); aggregate gate новых частей фиксируется отдельно в журнале. Это не готовые приложения: normal Android пока использует legacy path, iOS — development shell. Native codecs, защита, миграция и реальные bindings ещё не приняты целиком. [Точные контракты](../development/code-contracts.md) отделяют core evidence от native/physical gates.
 
 ## Содержание
 

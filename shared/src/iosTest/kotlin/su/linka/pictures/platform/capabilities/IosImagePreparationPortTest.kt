@@ -288,7 +288,7 @@ class IosImagePreparationPortTest {
             bytes.remove(file.path)
         }
         override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = error("No picker")
-        override suspend fun save(file: LocalFile, suggestedName: String, ownerId: String): OperationResult<Unit> = error("No save")
+        override suspend fun chooseDestination(suggestedName: String, mediaType: String, ownerId: String): OperationResult<ExportDestination> = error("No destination")
     }
 
     companion object {

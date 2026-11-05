@@ -17,6 +17,20 @@ kotlin {
             baseName = 'Shared'
             isStatic = true
         }
+        if (target.name == 'iosSimulatorArm64') {
+            def appHostTests = target.compilations.create('appHostTest') {
+                associateWith(target.compilations.main)
+                defaultSourceSet.kotlin.srcDir('src/iosAppHostTest/kotlin')
+                defaultSourceSet.dependencies {
+                    implementation kotlin('test')
+                    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+                }
+            }
+            target.binaries.test('appHost', [org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG]) {
+                compilation = appHostTests
+                baseName = 'AppHostTests'
+            }
+        }
     }
     androidTarget {
         compilations.all {

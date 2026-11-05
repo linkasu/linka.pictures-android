@@ -32,13 +32,17 @@ Shell обязан различать принадлежащий запросу 
 
 ## Проверенное ядро и оставшиеся bindings
 
-`LocalAssistantAccess` реализует policy поверх существующего `DeviceOwnerVerifier`, а не второго OS-verification interface. `FileCredentialStore` пишет bounded record через own must-create staging+flush+atomic rename, last guard до publish; исключение rename сверяет exact old/new bytes отдельным чтением. Не удалось подтвердить — UnconfirmedCommit. Реальный app-private noBackup root ещё должен передать Android composition root; legacy preferences не читались и не изменялись. iOS Keychain и настоящие OS prompts ещё **не реализованы**.
+`LocalAssistantAccess` реализует policy поверх существующего `DeviceOwnerVerifier`, а не второго OS-verification interface. `FileCredentialStore` пишет bounded record через own must-create staging+flush+atomic rename, last guard до publish; исключение rename сверяет exact old/new bytes отдельным чтением. Не удалось подтвердить — UnconfirmedCommit. Реальный app-private noBackup root ещё должен передать Android composition root; legacy preferences не читались и не изменялись. iOS Keychain binding скомпилирован, но [app-host runtime gate](ios-keychain-host.md) **BLOCKED**; настоящие OS owner prompts ещё не реализованы.
 
 Focused JVM: **17/17**,0 failures/errors/skips, включая4 actual-FS tests: reopen, late guard, failed/known/unknown rename, foreign staging sentinel/oversized record и неизменность library sentinel. Android и Native compilation PASS. Ранее весь Native suite **230/230** на owned iOS17 (40193ms) включил11 policy tests и2 actual CommonCrypto tests; добавленные4 file-store tests после этого ещё ждут Native runtime. Standard PBKDF2 vectors, embedded NUL/empty input и production1300000 Unicode/lone-surrogate vector совпали с независимым Python hashlib, без нового crypto dependency. Native vector занял428ms на одном simulator — не ARMv7 calibration.
 
 Raw logs в approved temp: `p08-core-review-check.log`, `p08-core-native-ios17.log`, `p08-file-credential-fixed.log`. Новые Android tests проверяют actual API provider и own noBackup root, но runtime до отдельного APK freeze/device execution **не заявляется**. Initial iOS compile failure был неверным именем K/N package (`platform.CommonCrypto` вместо встроенного `platform.CoreCrypto`); временный пустой custom cinterop удалён, не добавлены библиотека/SDK/новый минимум. KDF идёт через штатные Java/CommonCrypto, comparison — MessageDigest.isEqual / timingsafe_bcmp.
 
-Core fakes для owner proof не являются реальной системной проверкой. Никаких новых native permissions, passcode/settings changes, production credential reads, normal-app installs или real-user migration. Полные P08/G4 до native stores/prompts/lifecycle/root review остаются OPEN.
+После coherent review main aggregate прошёл **240/240 JVM и240/240 Native iOS17,40570ms**, включая4 real file-store tests и9 UI presentation/palette tests. Оба frameworks, Android normal/test APK собираются, normal APK не устанавливается. Следующие iOS image tests и OS-bound Keychain compartment учитываются отдельно; предыдущий total их не подменяет.
+
+После добавления iOS image22 latest core исполнил **262/262 Native,56147ms**. На Android actual PBKDF2/noBackup reopen подтверждены внутри reviewed63/63 suite API21/35, без настоящего owner prompt. Новые build paths после переноса SDK/cache проверены; повторять эти device suites ради переноса не требуется. App-host Keychain2 по-прежнему BLOCKED отдельно.
+
+Core fakes для owner proof не являются реальной системной проверкой. Никаких passcode/settings changes, production credential reads, normal-app installs или real-user migration. Пользователь отдельно разрешил isolated ad-hoc Keychain test-host; AMFI отказал restricted entitlements, обход не выполнялся. Полные P08/G4 до native stores/prompts/lifecycle/root review остаются OPEN.
 
 ## Внешние файлы: решение до native binding
 

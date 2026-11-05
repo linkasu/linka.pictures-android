@@ -582,7 +582,7 @@ CommunicationSession отображает выбор немедленно и о�
 
 WAV, OGG, MP3, 3GPP/AMR-NB и вложенные media проверяются реальными fixtures отдельно на Android21/iOS17. Decoder/transcoder требует проверки лицензии, памяти и ARMv7/ARM64/iOS17. Расширение или принудительный MIME audio/mp3 не доказывают декодирование. Native codec gaps остаются OPEN до приёмки адаптеров. Временный source URI не постоянная ссылка: внутренняя копия завершается до публикации.
 
-Android audio/inspection реализованы частично; raw-AMR21 исправлен прямой подачей валидированных NB packets в MediaCodec, runtime исправления проверяется отдельно. На iOS native OS paths не покрыли Vorbis/AMR; минимальный LGPL-only FFmpeg — isolated candidate preflight, не shipping dependency. Static build не заменяет actual PCM/cancel/RSS/physical proof или source/notices/relink/App Store acceptance. Immutable source не перекодируется на месте.
+Android audio/inspection/image prep реализованы частично; raw-AMR21 исправлен прямой подачей валидированных NB packets в MediaCodec, с KDF/images/dref corpus **63/63 на API21/35** до переноса AVD. Non-self-contained 3GPP URL/URN/alias отвергаются bounded structural validator до decoder; строки в opaque mdat не сканируются. На iOS native OS paths не покрыли Vorbis/AMR; LGPL-only FFmpeg доказал actual PCM всех5 форматов в isolated preflight, но development bridge ещё проходит тот же external-ref negative gate. Пользователь отдельно разрешил development integration, не shipping/release. Proof5 tiny fixtures не заменяет RSS/security corpus/physical или source/notices/relink/App Store acceptance. Immutable source не перекодируется на месте.
 
 ### Экспорт набора и резервная копия — разные вещи
 
@@ -661,6 +661,8 @@ Upgrade Android1.4 сохраняет `su.linka.pictures`, пользовате�
 Новая блокировка включается только при доступной реальной системной проверке владельца: наличие биометрии/boolean не результат проверки; после возврата из Settings prerequisites проверяются вновь. Если passcode/проверка недоступны, включение понятно отклоняется, общение работает. Существующая legacy-блокировка сохраняется при upgrade даже без новых prerequisites.
 
 Забытый пароль сбрасывается **свежей успешной системной проверкой владельца**, без удаления библиотеки или reset app/data; прежние assistant sessions отзываются, можно задать новый пароль. Capability эфемерна и scoped к действию/сеансу, отзывается при закрытии/фоне/сбросе. Отмена prompt и поздний success закрытого сеанса не авторизуют действие. Алгоритм верификатора и параметры принимает COORD; самодельная криптография и изменение минимума ОС ради зависимости не разрешены.
+
+Core policy/верификатор и owner-bound commit guards реализованы: точный versioned UTF16-hex → штатный PBKDF2-HMAC-SHA1/1300000/salt16/dk32, legacy trim только входа, bounded64 owner contexts, отзываемые guards даже без lock. Atomic file credential store использует отдельный private noBackup root, unknown publish блокирует mutations до reopen. Native Keychain/свежие OS prompts/root lifecycle ещё не подключены — [policy/evidence](../development/access-policy.md), не G4 PASS.
 
 Общение продолжает работать, даже если помощник забыл пароль.
 

@@ -1,5 +1,28 @@
 # P02 focused verification map
 
+## Текущие gates после P08/P10 и переноса AVD
+
+Ниже сохранена историческая P02 карта. Для текущего дерева **core Native и app-host tests — разные обязательные compartments**, не один total:
+
+- `:shared:jvmTest` — common/JVM. Последний принятый main aggregate240/240.
+- `:shared:linkDebugTestIosSimulatorArm64` — весь core Native, включая `iosTest`; запуск только на явно проверенном owned simulator, без default `allTests`/device selection. Следующие image/file adapters изменяют count, поэтому считать фактический зарегистрированный/executed набор.
+- `:shared:linkAppHostDebugTestIosSimulatorArm64` — **два обязательных Keychain app-host tests**, не включённые в core. Source `shared/src/iosAppHostTest/`, associated main compilation `appHostTest`; executable `shared/build/bin/iosSimulatorArm64/appHostDebugTest/AppHostTests.kexe`. Link/`--ktest_list_tests` — не execution.
+
+Runtime app-host gate сейчас **BLOCKED**: CLI получил−34018, отдельно разрешённый ad-hoc `.app` отклонён macOS AMFI−424 restricted entitlements/launchd153. Не снимать Data Protection/entitlements/AMFI, не использовать чужой привилегированный runner и не повторять ad-hoc попытки. Нужен штатный Xcode app/test-host с подходящей signing identity; доступ к signing credentials/profiles отдельно разрешается. [Полный evidence](ios-keychain-host.md). Зелёный core не закрывает P08/G4/native security gate.
+
+5 ноября пользователь перенёс SDK/AVD и Gradle caches/wrapper на data. Свежие shells получают SDK `/Volumes/data/developer-state/android-sdk`, AVD `/Volumes/data/developer-state/android-avd`; старые aliases и `.gradle` symlinks валидны. Использовать новые environment paths, не удалять старые каталоги/данные от имени агента и не делать wipe/reset. Boot owned21arm64/tablet35 после переноса — отдельный runtime check, не повод повторять уже выполненные63/63. Те результаты до переноса: [freeze/summaries](evidence/p06-dref-2026-11-05/).
+
+Per-command JDK17/Xcode остаются прежними. Не задавать старый ANDROID_HOME поверх нового environment. Текущий explicit core command после успешного link и повторной проверки owner/name/runtime:
+
+```sh
+xcrun simctl spawn DD0F9A3F-DC32-4373-BA08-400FECE3A1CC \
+  "$PWD/shared/build/bin/iosSimulatorArm64/debugTest/test.kexe"
+```
+
+Это не запускает app-host tests и не заменяет их BLOCKED gate. Normal Android APK с прежним `su.linka.pictures` до G4 на реальные данные не устанавливать.
+
+---
+
 This verifies ordinary bootstrap builds and dependency interoperability,
 **without a probe flag**, not product parity or a full quality gate. Base
 `f7589be1dd5a5be26ff3d4991c84734d3f5dac9d`; approved versions and scope are in
