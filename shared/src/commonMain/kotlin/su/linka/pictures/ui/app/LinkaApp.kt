@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.*
 import su.linka.pictures.application.OperationResult
+import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.authoring.*
 import su.linka.pictures.application.communication.*
 import su.linka.pictures.application.library.LibraryController
@@ -42,9 +43,11 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     }
     val route by navigation.route.collectAsState()
     val transitioning by navigation.transitioning.collectAsState()
-    val requiresRestart by controller.requiresRestart.collectAsState()
+    val restartProblem by navigation.problem.collectAsState()
+    val committedEpoch by navigation.committedEpoch.collectAsState()
+    var hideLifecycleProblem by remember(navigation, restartProblem) { mutableStateOf(false) }
     val assistantState by access.state.collectAsState()
-    val commandsEnabled = isForeground && !requiresRestart && assistantState.commandsAvailable()
+    val commandsEnabled = isForeground && restartProblem == null && assistantState.commandsAvailable()
     val message by communication.state.collectAsState()
     val voices by audio.voices.collectAsState()
     val listing by library.listing.collectAsState()
@@ -109,6 +112,20 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                 ProductPage.EDITOR -> ProductEditor(current, ids, capability, isForeground, commandsEnabled, images, accessPanel,
                     { editorAssets = it }, { navigate(ProductPage.LIBRARY) })
                 ProductPage.COMMUNICATION -> Unit
+            }
+        }
+        if (restartProblem?.code == ProblemCode.IO_FAILURE && !hideLifecycleProblem) {
+            ProductDialog("Не удалось завершить закрытие / перезагрузку", {
+                hideLifecycleProblem = true
+                navigate(ProductPage.COMMUNICATION)
+            }) {
+                committedEpoch?.let { androidx.compose.material.Text("Последнее подтверждённое изменение библиотеки — эпоха $it. Ошибка завершения не отменяет эту запись. Не повторяйте восстановление.") }
+                Feedback(restartProblem?.let { OperationResult.Failed(it) })
+                androidx.compose.material.Text("Для безопасного продолжения требуется перезапуск приложения. Новые защищённые действия запрещены; автоматического повтора нет.")
+                Action("К экрану общения") {
+                    hideLifecycleProblem = true
+                    navigate(ProductPage.COMMUNICATION)
+                }
             }
         }
     }

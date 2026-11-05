@@ -8,9 +8,11 @@ import su.linka.pictures.domain.*
 
 /** Revision/epoch arguments must come from the snapshot on which the user acted. */
 class LibraryController(private val library: LibraryStore, private val gate: AssistantGate) {
-    private val unconfirmed = MutableStateFlow(false)
-    val requiresRestart = unconfirmed.asStateFlow()
-    fun markCommitUnconfirmed() { unconfirmed.value = true }
+    private val mutableRestartProblem = MutableStateFlow<Problem?>(null)
+    val restartProblem = mutableRestartProblem.asStateFlow()
+    val requiresRestart: Boolean get() = restartProblem.value != null
+    fun markCommitUnconfirmed() { mutableRestartProblem.compareAndSet(null, Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN)) }
+    fun haltForLifecycleFailure() { mutableRestartProblem.value = Problem(ProblemCode.IO_FAILURE) }
     suspend fun rename(owner: String, capability: AssistantCapability?, entry: LibraryEntrySummary,
         name: String, epoch: Long): OperationResult<PublishedBoard> =
         write(ProtectedAction.RENAME_BOARD, owner, capability, epoch) {
@@ -35,10 +37,10 @@ class LibraryController(private val library: LibraryStore, private val gate: Ass
 
     private suspend fun <T> write(action: ProtectedAction, owner: String, capability: AssistantCapability?,
         epoch: Long, operation: suspend (WritePermit) -> OperationResult<T>): OperationResult<T> {
+        stopped()?.let { return it }
         val fresh = gate.guard(action, capability, owner)
         val guard: CommitGuard = {
-            if (unconfirmed.value) OperationResult.UnconfirmedCommit
-            else if (library.listing.value.epoch != epoch) OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
+            stopped() ?: if (library.listing.value.epoch != epoch) OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
             else fresh()
         }
         val result = when (val allowed = guard()) {
@@ -47,7 +49,11 @@ class LibraryController(private val library: LibraryStore, private val gate: Ass
             OperationResult.Cancelled -> OperationResult.Cancelled
             OperationResult.UnconfirmedCommit -> OperationResult.UnconfirmedCommit
         }
-        if (result == OperationResult.UnconfirmedCommit) unconfirmed.value = true
+        if (result == OperationResult.UnconfirmedCommit) markCommitUnconfirmed()
         return result
+    }
+
+    private fun stopped(): OperationResult<Nothing>? = restartProblem.value?.let {
+        if (it.code == ProblemCode.COMMIT_OUTCOME_UNKNOWN) OperationResult.UnconfirmedCommit else OperationResult.Failed(it)
     }
 }

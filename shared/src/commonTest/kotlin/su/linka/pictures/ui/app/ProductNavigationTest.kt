@@ -21,6 +21,7 @@ class ProductNavigationTest {
     private class Access : AssistantAccess {
         override val state = MutableStateFlow<AssistantState>(AssistantState.Unprotected(OwnerVerificationAvailability.UNAVAILABLE))
         val open = MutableStateFlow<Set<String>>(emptySet())
+        var revokeFailure = false
         private val generation = MutableStateFlow(0)
         override fun check(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): OperationResult<Unit> =
             if (ownerId in open.value) OperationResult.Completed(Unit) else OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED))
@@ -34,13 +35,27 @@ class ProductNavigationTest {
         override suspend fun resetPasswordWithDeviceOwner(password: String, ownerId: String) = OperationResult.Failed(Problem(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE))
         override suspend fun disableLock(capability: AssistantCapability, ownerId: String) = OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED))
         override suspend fun refreshPrerequisites() = Unit
-        override fun revokeOwner(ownerId: String) { generation.update { it + 1 } }
+        override fun revokeOwner(ownerId: String) {
+            if (revokeFailure) error("Injected access revoke failure")
+            generation.update { it + 1 }
+        }
         override fun revokeAll() { generation.update { it + 1 } }
     }
     private class Fixture(val runtime: StorageRuntime) {
         val native = AuthoringNativeFakes()
         val access = Access()
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        var stopFailure = false
+        var closeFailure = false
+        val uncaught = MutableStateFlow(0)
+        val stopCalls = MutableStateFlow(0)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, _ -> uncaught.update { it + 1 } })
+        val audio = object : AudioPort by native {
+            override fun stop(ownerId: String, requestId: RequestId?) {
+                stopCalls.update { it + 1 }
+                if (stopFailure) error("Injected stop failure")
+                native.stop(ownerId, requestId)
+            }
+        }
         private val serial = MutableStateFlow(0)
         val ids = IdSource { "p13-${serial.updateAndGet { it + 1 }}" }
         val communication = CommunicationSession(runtime.library, runtime.messages, runtime.media, native, ids, scope)
@@ -48,18 +63,23 @@ class ProductNavigationTest {
         val events = MutableStateFlow<List<String>>(emptyList())
         val closedWhileActive = MutableStateFlow<List<Boolean>>(emptyList())
         val navigation: ProductNavigation = ProductNavigation(runtime.library, runtime.media, runtime.messages,
-            access, native, native, native, native, ids, scope, communication, controller,
+            access, audio, native, native, native, ids, scope, communication, controller,
             { owner -> access.open.update { it + owner }; events.update { it + "open:$owner" } },
             { owner ->
                 closedWhileActive.update { it + (currentJob()?.isActive == true) }
                 access.open.update { it - owner }; events.update { it + "close:$owner" }
+                if (closeFailure) error("Injected native close failure")
             }, { error("No replacement expected in this fixture") })
         private fun currentJob() = navigation.route.value?.scope?.coroutineContext?.get(Job)
         fun send(route: ProductRoute, action: AuthoringAction) = route.editor!!.send(AuthoringCommand(CommandId(ids.next()), route.owner, route.capability.value, action))
         suspend fun await(route: ProductRoute, predicate: (AuthoringState) -> Boolean) = withContext(Dispatchers.Default) {
             withTimeout(10_000) { route.editor!!.state.first(predicate) }
         }
-        suspend fun finish() { navigation.open(ProductPage.COMMUNICATION); scope.cancel(); scope.coroutineContext[Job]!!.join() }
+        suspend fun finish() {
+            stopFailure = false; closeFailure = false; access.revokeFailure = false
+            try { navigation.open(ProductPage.COMMUNICATION) }
+            finally { scope.cancel(); scope.coroutineContext[Job]!!.join() }
+        }
     }
     private suspend fun fresh(test: suspend (Fixture) -> Unit) {
         val fs = FileSystem.SYSTEM
@@ -140,6 +160,154 @@ class ProductNavigationTest {
         f.navigation.open(ProductPage.COMMUNICATION)
         assertNull(f.navigation.route.value)
         assertTrue(f.access.open.value.isEmpty())
+    } }
+
+    @Test fun disposalRevokesOldGuardBeforeThrowingAudioStopAndStillCleansOwner() = runTest { fresh { f ->
+        f.navigation.open(ProductPage.LIBRARY)
+        val route = f.navigation.route.value!!
+        val guard = f.access.guard(ProtectedAction.RENAME_BOARD, null, route.owner)
+        assertIs<OperationResult.Completed<Unit>>(guard())
+        f.stopFailure = true
+        runCatching { f.navigation.dispose() }
+        assertIs<OperationResult.Failed>(guard())
+        withContext(Dispatchers.Default) { withTimeout(10_000) { route.scope.coroutineContext[Job]!!.join() } }
+        assertFalse(route.owner in f.access.open.value)
+        assertEquals(listOf("open:${route.owner}", "close:${route.owner}"), f.events.value)
+        assertTrue(f.controller.requiresRestart)
+        assertEquals(Problem(ProblemCode.IO_FAILURE), f.navigation.problem.value)
+        assertFalse(route.closeResult.await())
+    } }
+
+    @Test fun throwingNativeCloseStillAwaitsTransferCleanupAndNeverOpensANewOwner() = runTest { fresh { f ->
+        f.native.pickResult = CompletableDeferred()
+        f.navigation.open(ProductPage.TRANSFER)
+        val route = f.navigation.route.value!!
+        val prepare = route.scope.async { route.transfer!!.prepareImport(route.owner, "Импорт") }
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.native.pickEntered.await() } }
+        f.closeFailure = true
+        f.navigation.open(ProductPage.LIBRARY)
+        assertTrue(prepare.isCompleted)
+        assertFalse(route.scope.coroutineContext[Job]!!.isActive)
+        assertFalse(route.closeResult.await())
+        assertTrue(route.transfer!!.state.value.values.all { it.transfer.phase == TransferPhase.CANCELLED })
+        assertNull(f.navigation.route.value)
+        assertTrue(f.closedWhileActive.value.single())
+        assertEquals(listOf("open:${route.owner}", "close:${route.owner}"), f.events.value)
+        f.navigation.open(ProductPage.EDITOR, AuthoringAction.NewBoard())
+        assertNull(f.navigation.route.value)
+        assertEquals(Problem(ProblemCode.IO_FAILURE), f.navigation.problem.value)
+        assertEquals(0, f.uncaught.value)
+    } }
+
+    @Test fun authoringRevokeAudioFailureCannotSkipNativeCloseOrChildCancellation() = runTest { fresh { f ->
+        f.navigation.open(ProductPage.EDITOR, AuthoringAction.NewBoard())
+        val route = f.navigation.route.value!!
+        f.send(route, route.initialAction!!)
+        f.await(route) { it.savePhase == DraftSavePhase.SAVED }
+        val guard = f.access.guard(ProtectedAction.APPLY_DRAFT, null, route.owner)
+        f.stopFailure = true
+        f.navigation.open(ProductPage.LIBRARY)
+        assertIs<OperationResult.Failed>(guard())
+        assertTrue(f.stopCalls.value >= 2)
+        assertFalse(route.scope.coroutineContext[Job]!!.isActive)
+        assertNull(f.navigation.route.value)
+        assertFalse(route.owner in f.access.open.value)
+        assertTrue(f.closedWhileActive.value.single())
+        assertEquals(Problem(ProblemCode.IO_FAILURE), f.navigation.problem.value)
+        assertEquals(0, f.uncaught.value)
+    } }
+
+    @Test fun failingCoreRevokeIsNotTreatedAsSuccessfulLifecycleOrAuthorization() = runTest { fresh { f ->
+        f.navigation.open(ProductPage.LIBRARY)
+        val route = f.navigation.route.value!!
+        f.access.revokeFailure = true
+        f.navigation.open(ProductPage.SETTINGS)
+        assertFalse(route.scope.coroutineContext[Job]!!.isActive)
+        assertFalse(route.closeResult.await())
+        assertNull(f.navigation.route.value)
+        assertTrue(f.access.open.value.isEmpty())
+        assertEquals(Problem(ProblemCode.IO_FAILURE), f.navigation.problem.value)
+        assertTrue(f.controller.requiresRestart)
+        assertEquals(listOf("open:${route.owner}", "close:${route.owner}"), f.events.value)
+    } }
+
+    private class RestoreFixture(val rig: TransferTestRig) {
+        val native = AuthoringNativeFakes()
+        val access = Access()
+        val controller = LibraryController(rig.runtime.library, access)
+        var stopFailure = false
+        var reloadFailure = false
+        val attempts = MutableStateFlow(0)
+        val delivered = MutableStateFlow<List<Long>>(emptyList())
+        val uncaught = MutableStateFlow(0)
+        val scope = CoroutineScope(rig.scope.coroutineContext + CoroutineExceptionHandler { _, _ -> uncaught.update { it + 1 } })
+        val audio = object : AudioPort by native {
+            override fun stop(ownerId: String, requestId: RequestId?) {
+                if (stopFailure) error("Injected stop failure")
+                native.stop(ownerId, requestId)
+            }
+        }
+        val communication = CommunicationSession(rig.runtime.library, rig.runtime.messages, rig.runtime.media, native, rig.ids, scope)
+        val navigation = ProductNavigation(rig.runtime.library, rig.runtime.media, rig.runtime.messages, access,
+            audio, rig.files, native, rig.inspection, rig.ids, scope, communication, controller,
+            { owner -> access.open.update { it + owner } }, { owner -> access.open.update { it - owner } },
+            { epoch ->
+                attempts.update { it + 1 }
+                if (reloadFailure) error("Injected root reload failure")
+                delivered.update { it + epoch }
+            })
+        suspend fun restore(): ProductRoute {
+            navigation.open(ProductPage.TRANSFER)
+            val route = navigation.route.value!!
+            val operation = assertIs<OperationResult.Completed<OperationId>>(route.transfer!!.prepareRestore(route.owner)).value
+            assertIs<OperationResult.Completed<Unit>>(route.transfer.confirm(route.owner, operation, null, TransferConfirmation.ReplaceWholeLibrary))
+            return route
+        }
+        suspend fun finish() {
+            stopFailure = false; reloadFailure = false
+            try { navigation.open(ProductPage.COMMUNICATION) } finally { rig.clean() }
+        }
+    }
+
+    private suspend fun freshRestore(test: suspend (RestoreFixture) -> Unit) {
+        val rig = TransferTestRig.fresh()
+        rig.add(); rig.backupInput()
+        val fixture = RestoreFixture(rig)
+        try { test(fixture) } finally { fixture.finish() }
+    }
+
+    @Test fun failedRootReloadNeverClaimsDeliveredEpochOrAutomaticallyRetries() = runTest { freshRestore { f ->
+        f.reloadFailure = true
+        val route = f.restore()
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.attempts.first { it == 1 } } }
+        f.navigation.open(ProductPage.LIBRARY)
+        assertTrue(f.controller.requiresRestart)
+        assertEquals(Problem(ProblemCode.IO_FAILURE), f.navigation.problem.value)
+        assertEquals(f.rig.runtime.library.listing.value.epoch, f.navigation.committedEpoch.value)
+        assertNull(route.deliveredEpoch)
+        assertTrue(f.delivered.value.isEmpty())
+        assertEquals(1, f.attempts.value)
+        assertEquals(TransferPhase.COMPLETED, route.transfer!!.state.value.values.single().transfer.phase)
+        assertEquals(0, f.uncaught.value)
+        f.navigation.open(ProductPage.TRANSFER)
+        assertNull(f.navigation.route.value)
+        assertEquals(1, f.attempts.value)
+    } }
+
+    @Test fun confirmedRestoreEpochSurvivesSecondaryStopFailureDuringClose() = runTest { freshRestore { f ->
+        val route = f.restore()
+        val epoch = f.rig.runtime.library.listing.value.epoch
+        f.stopFailure = true
+        f.navigation.open(ProductPage.LIBRARY)
+        assertEquals(TransferPhase.COMPLETED, route.transfer!!.state.value.values.single().transfer.phase)
+        assertEquals(epoch, route.deliveredEpoch)
+        assertEquals(epoch, f.navigation.committedEpoch.value)
+        assertEquals(listOf(epoch), f.delivered.value)
+        assertEquals(1, f.attempts.value)
+        assertFalse(route.scope.coroutineContext[Job]!!.isActive)
+        assertNull(f.navigation.route.value)
+        assertEquals(Problem(ProblemCode.IO_FAILURE), f.navigation.problem.value)
+        assertEquals(0, f.uncaught.value)
     } }
 
     @Test fun actualRestoreEpochIsDeliveredOnceAndNeverReplayedFromTransferHistory() = runTest {

@@ -105,6 +105,29 @@ class LibraryControllerTest {
         assertEquals(shown, real.listing.value)
     } }
 
+    @Test fun lifecycleHaltRejectsAlreadyIssuedPermitWithoutPretendingCommitIsUnknown() = runTest { fresh { runtime, gate ->
+        val real = runtime.library
+        assertIs<OperationResult.Completed<PublishedBoard>>(real.addBoard(document(), permit(runtime)))
+        val shown = real.listing.value
+        lateinit var controller: LibraryController
+        val library = object : LibraryStore by real {
+            override suspend fun renameBoard(id: BoardId, name: String, expectedRevision: Long, permit: WritePermit): OperationResult<PublishedBoard> {
+                controller.haltForLifecycleFailure()
+                permit.check().hasProblem(ProblemCode.IO_FAILURE)
+                return real.renameBoard(id, name, expectedRevision, permit)
+            }
+        }
+        controller = LibraryController(library, gate)
+        controller.rename("owner", gate.capability, shown.items.single(), "Не записывать", shown.epoch).hasProblem(ProblemCode.IO_FAILURE)
+        controller.delete("owner", gate.capability, shown.items.single(), shown.epoch).hasProblem(ProblemCode.IO_FAILURE)
+        assertEquals(shown, real.listing.value)
+        assertEquals(1, gate.actions.size)
+        assertTrue(controller.requiresRestart)
+        assertEquals(Problem(ProblemCode.IO_FAILURE), controller.restartProblem.value)
+        controller.markCommitUnconfirmed()
+        assertEquals(Problem(ProblemCode.IO_FAILURE), controller.restartProblem.value)
+    } }
+
     @Test fun knownSuccessfulWritesUpdateListingAndPreserveOpaqueSettings() = runTest { fresh { runtime, gate ->
         val library = runtime.library
         assertIs<OperationResult.Completed<PublishedBoard>>(library.addBoard(document(), permit(runtime)))

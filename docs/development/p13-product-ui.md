@@ -225,3 +225,75 @@ env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :shared:jvmTest \
 
 Компиляция shared targets не означает готовый Android+iOS продукт: реальные app roots,
 screenshots и integration/device acceptance выполняет primary после binding.
+
+## Correction после bbba81d — failure-safe owner cleanup
+
+Primary обнаружил реальный дефект: старый `invalidate` вызывал audio.stop перед
+access.revokeOwner, а `closed=true` устанавливался до callbacks. Исключение stop
+оставляло старый guard допустимым, пропускало native close/child cleanup. Вторая
+ошибка: deliveredEpoch записывался до вызова onLibraryReplaced, поэтому exception
+callback оставлял ложное подтверждение reload и не давал restart/error.
+
+Оба теста написаны до исправления, выполнены на bbba81d-коде и дали **2 tests,
+2 failed (AssertionError)**. Первый поймал допустимый старый guard после failed
+dispose, второй — отсутствие restart latch после реального restore и failed reload.
+
+```sh
+env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :shared:jvmTest \
+  --tests 'su.linka.pictures.ui.app.ProductNavigationTest.disposalRevokesOldGuardBeforeThrowingAudioStopAndStillCleansOwner' \
+  --tests 'su.linka.pictures.ui.app.ProductNavigationTest.failedRootReloadNeverClaimsDeliveredEpochOrAutomaticallyRetries' \
+  --console=plain
+```
+
+Исправление:
+
+- Первое внешнее действие close/dispose — синхронный access.revokeOwner. Потом
+  независимо пробуются authoring Revoke, audio.stop и native onOwnerClosed. Ошибка
+  любой попытки не обходит следующую. Completion barrier фиксирует именно конец
+  invalidation attempts, не выдуманный успешный close.
+- Transfer revokePending ожидается до child scope cancellation. Committed epoch
+  notification выполняется независимо в finally, cancelAndJoin — в следующем
+  finally. Close result завершается только после всех попыток и отдельно сообщает
+  failure; queued transition/disposal не создают нового owner после такого failure.
+- Поглощённый P11 cleanupProblem также проверяется при закрытии и после child join.
+  Это сохраняет первичный authoring outcome, но не теряет ошибку освобождения ресурсов.
+- Ошибки cleanup/reload публикуются как **структурированный IO_FAILURE** без paths,
+  exception text или secrets. Неполный lifecycle ставит sticky restart halt: новые
+  owner не открываются, новые и ранее выданные LibraryController guards отказывают.
+  Ошибки настоящего gate не превращаются в allow. Unknown write по-прежнему остаётся
+  отдельным domain outcome; IO restart latch не ослабляется поздней domain notification.
+- Реальный restore остаётся COMPLETED даже при secondary stop/close failure.
+  Последняя доказанная committed epoch сохраняется для UI. deliveredEpoch меняется
+  **только после возврата** настоящего root reload callback. Failed reload отзывает
+  admission, даёт IO_FAILURE/restart, но не переигрывается автоматически из collector,
+  close или возврата на экран и не объявляется доставленным. Returning confirmed
+  transfer result не отменяется искусственно ради обработки callback exception.
+- LinkaApp показывает отдельный scrollable error dialog: если есть доказанная
+  committed epoch, прямо сказано, что запись уже подтверждена и повторять restore
+  нельзя. Закрытие сообщения ведёт к communication и завершает оставшийся owner
+  cleanup; защищённые действия остаются заблокированы до перезапуска.
+- **Public LinkaApp signature не менялась.** Root/native/ports и P11/P12 source не
+  изменялись. У LibraryController один restartProblem StateFlow и вычисляемый
+  requiresRestart; дополнительного runtime/DI или фиктивных callbacks нет.
+- Пояснение access исправлено: «На Android 21/22 системная проверка не используется
+  из-за ограничений безопасности». Наличие OS API больше не отрицается; existing
+  legacy lock по-прежнему не отключается автоматически.
+
+Новые проверки проходят через настоящие ProductNavigation и StorageRuntime, не через
+пустой тестовый wrapper: стабильный throwing audio.stop, exception native-close
+callback при активном picker, core revoke failure, explicit child cancel/join,
+COMPLETED restore + secondary stop failure, failed reload без replay/ложного delivered
+epoch, отказ старого application WritePermit после lifecycle halt. Старый regression
+slow-cleanup disposal остаётся в suite.
+
+Если native-close callback бросает, успешное закрытие native owner не выдумывается:
+зафиксированы попытка, failed close result и IO restart halt. Остальные cleanup
+действия всё равно выполняются; новый owner после неполного lifecycle не открывается.
+
+Correction gate: **21/21 PASS** (14 прежних + 7 новых), 0 failures/errors/skipped:
+LibraryControllerTest 6, ProductNavigationTest 11, ProductPresentationTest 4.
+Android shared debug Kotlin, iosArm64 и iosSimulatorArm64 shared compile **PASS**.
+Combined команда выше — BUILD SUCCESSFUL, 17 s; decoder producer VERIFIED_FASTPATH,
+только существующие expect/actual beta warnings. `git diff --check` — PASS.
+OS prompts/devices, native root bindings, signing и screenshots не выполнялись
+повторно и не объявляются доказанными этой correction.

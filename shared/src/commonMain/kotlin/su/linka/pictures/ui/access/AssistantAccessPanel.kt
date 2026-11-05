@@ -36,7 +36,7 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
     })
     if (verification != OwnerVerificationAvailability.AVAILABLE) Text(
         "Системная проверка владельца ${if (verification == OwnerVerificationAvailability.UNKNOWN) "ещё не определена" else "недоступна"}. " +
-            "На Android 21/22 эта функция ОС отсутствует. Новый пароль и сброс недоступны; существующая защита автоматически не отключается.")
+            "На Android 21/22 системная проверка не используется из-за ограничений безопасности. Новый пароль и сброс недоступны; существующая защита автоматически не отключается.")
     if (state is AssistantState.Protected) Field(password, "Текущий пароль", ready,
         PasswordVisualTransformation(), passwordKeyboard, true) { password = it }
     Action(if (state is AssistantState.Unprotected) "Разрешить команды в этом экране" else "Разблокировать этот экран", ready) {

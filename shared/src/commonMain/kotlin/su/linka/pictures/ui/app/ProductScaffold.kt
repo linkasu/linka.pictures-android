@@ -70,6 +70,7 @@ internal fun productFeedback(result: OperationResult<*>): String = when (result)
         ProblemCode.UNAUTHORIZED -> "Нужна повторная авторизация помощника."
         ProblemCode.CONFLICT, ProblemCode.STALE_REQUEST -> "Данные изменились. Обновите экран и повторно проверьте действие."
         ProblemCode.OWNER_VERIFICATION_UNAVAILABLE -> "Системная проверка владельца недоступна."
+        ProblemCode.IO_FAILURE -> "Ошибка ввода-вывода (IO_FAILURE)."
         ProblemCode.COMMIT_OUTCOME_UNKNOWN -> "Исход записи неизвестен. Не повторяйте действие. Перезапустите приложение и проверьте данные."
         else -> "Не удалось выполнить действие: ${result.problem.code}."
     }

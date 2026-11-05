@@ -43,7 +43,7 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     var draftDecision by remember { mutableStateOf<DraftDecision?>(null) }
     var name by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    val requiresRestart by controller.requiresRestart.collectAsState()
+    val restartProblem by controller.restartProblem.collectAsState()
     LaunchedEffect(listing.epoch, listing.revision, refresh) {
         drafts = null; draftsEpoch = null
         val snapshot = shownListing
@@ -57,7 +57,7 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     ProductScaffold("Библиотека", onBack, scrollContent = false) {
       LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
        item { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (requiresRestart) Feedback(OperationResult.UnconfirmedCommit)
+        restartProblem?.let { Feedback(OperationResult.Failed(it)) }
         access()
         Action("Новая доска", enabled && !busy, onClick = onCreate)
         Action("Настройки", enabled && !busy, onClick = onSettings)
