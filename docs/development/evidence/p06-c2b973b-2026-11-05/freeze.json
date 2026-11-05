@@ -1,0 +1,13 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-runtime-f32e6311-a42f-4b78-b724-177bf9f5c127/frozen-shared-debug-androidTest.apk",
+  "sha256": "78bf2245103973ac3d952c39f6ef657ca49f15ab5300898bf410ca76baf0d0d7",
+  "bytes": 16040843,
+  "package": "su.linka.pictures.shared.test",
+  "runner": "androidx.test.runner.AndroidJUnitRunner",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "source_test_counts": {
+    "audio": 13,
+    "capabilities": 24
+  }
+}

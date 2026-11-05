@@ -1,0 +1,7 @@
+MCP adb.get_logcat serial=emulator-5556 filterSpec="P06CodecFixture:I *:S" limit=10000
+Current full-suite PID=13337; older PID=12807 records excluded, no log buffers cleared.
+11-05 12:53:57.473 13337 13351 I P06CodecFixture: type=audio/mpeg durationMillis=200 fixtureSHA=796a8d642760fd8bb1e4e216b5ab2ef02e73dd633bf3a27bfcce6e9450c9b026
+11-05 12:53:57.506 13337 13351 I P06CodecFixture: type=audio/ogg durationMillis=200 fixtureSHA=98305ce0d4bf14c7189c25835e2f87b8a602b462232a4e8e285fae0480cf7208
+11-05 12:53:57.533 13337 13351 I P06CodecFixture: type=audio/3gpp durationMillis=220 fixtureSHA=f81c04f29cffcba93be208c36cfc0e2df9196c3fb2e097d5e7234a17ed72426c
+11-05 12:53:57.550 13337 13351 I P06CodecFixture: type=audio/wav durationMillis=100 fixtureSHA=2cff5b9df6ad5c5b7f145c62e14300d6820ced98f96c22564c6ab46084e02dcc
+11-05 12:53:57.566 13337 13351 I P06CodecFixture: type=audio/amr durationMillis=220 fixtureSHA=94f6facdcb17482cba9590b2f83068cc61c85a8adb0270032557e7487c125934
