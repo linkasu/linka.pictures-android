@@ -17,6 +17,8 @@ ID не равны имени. AssetId — lowercase SHA256 фактически
 
 BoardPage: 1..64 rows/columns, sparse BoardCell.position в `[0, capacity)`, позиции уникальны. Отсутствующая позиция — пусто. CONTENT имеет CardDocument; SPACE/EMPTY не имеют его. CardId уникален в документе; PageId уникален. Внутренний документ имеет 1..256 страниц. Layout-нормализация переносит overflow на дополнительные страницы, не отбрасывает карточки; превышение предела — явный отказ всего набора.
 
+Каноническая внутренняя сетка **uniform, одна клетка = одна позиция**, без spans из opaque JSON. R04 разрешает нормализацию: импортированные width/height валидируются и нормализуются к1; covered/overflow content не теряется и не скрывается. Экспорт описывает эту фактическую сетку с width=height=1, не реанимирует старый span из metadata после editor resize/move. UI/domain/editor не парсят extensionsJson ради геометрии. Никакого автоматического смыслового сортирования; сохраняется входная последовательность/пустоты в пределах разрешённой нормализации. Исходный внешний архив остаётся неизменным; остальные пассивные unknown metadata сохраняются.
+
 SpeechSource — Recording(assetId, audioText/audioVoice), Tts(text, languageTag), None. Параметры редакторского синтеза не являются fallback записи. Snapshot выбранной карточки содержит происхождение и собственные label/image/speech, не перечитывает источник после edit/delete.
 
 Один MessageDraft на процесс/библиотеку, а не на доску. Режим COMPOSE/DIRECT хранится вместе с фразой; текущие focus/audio/request/capability/undo не сохраняются.

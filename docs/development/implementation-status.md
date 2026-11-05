@@ -39,6 +39,7 @@
 | S / P04 | `pokazhi-p04-storage` / `implementation/p04-storage` | В работе от `0816394`: SQL/media/drafts/snapshot/recovery, fault tests; safety review COORD до любых реальных данных |
 | P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | `974d8752`→`22fffdb`, review fixes `9c000326`→`ad9ceaa`; integrated bounded codec, Native/JVM common suite и pure peer oracle PASS; native inspector/полный runtime round-trip OPEN |
 | Shared audio prerequisite | `pokazhi-p06-audio-coordinator` / `implementation/p06-audio-coordinator` | `db767de7`→`a8d857c`, review fixes `b4b172cb`→`0d5e8ba`; общий coordinator принят,102/102 JVM+iOS17 вместе с P03/P05. Не native P06/P07 codec/permissions acceptance |
+| Android audio/inspection | `pokazhi-p06-android-audio` / `implementation/p06-android-audio` | Запущен от `8381a14`: platform audio backend/реальный bounded media inspector и отдельные instrumented tests; в lane только compile, без устройств/mic/permission grants; runtime acceptance COORD позже |
 
 ### Первая implementation/review волна после G2
 
@@ -60,6 +61,8 @@ Main gate после review: JVM + Native test link + оба Shared.framework + 
 COORD явно принимает bounded payload decoding, не canonical-DEFLATE proof: public Okio prefetch может скрыть trailing compressed bytes, при этом полный compressed range учтён, фактический payload ограничен size/CRC/hash и только он передаётся inspector. Лимитация записана в handoff/report; никаких private APIs/собственного deflate/one-byte slow feed. UTF8 flag требуется для non-ASCII ZIP names, non-content media references отвергаются целиком без потери молча. Все оставшиеся native/physical/ABI, real inspector allocation и полный cross-app runtime round-trip gates OPEN.
 
 ### P03 integration acceptance
+
+Текущая cross-module поправка перед authoring: COORD согласовал actual uniform geometry (1cell/position) с R04. Старые spans в opaque extensions не должны управлять writer-ом после resize/move, если UI их не читает. P05 реализует read/write normalization к1 и обновляет actual peer visibility regression без потери карточек/unknown metadata/исходного архива; этот новый delta ещё не интегрирован. Новые typed spans/UI JSON parsing/автосортировка не добавляются.
 
 COORD reviewed точный delta `ce76a873..d54acecb` по save lifetime/quarantine/closing/cursor и regression tests; frozen signatures не менялись исполнителем. Основная ветка интегрирует только собственные implementation commits D, не дублирует cherry-picked COORD updates. Проверено в main `9cd6a0d`: `:shared:jvmTest :shared:linkDebugTestIosSimulatorArm64 :shared:linkDebugFrameworkIosSimulatorArm64 :shared:linkDebugFrameworkIosArm64 :app:assembleDebug`, **BUILD SUCCESSFUL**,44s. JVM XML:41 tests,0 failures/errors/skipped. Native executable запущен на подтверждённом owned iOS17.0 UDID: **41/41 PASS**,23009ms;4096-part boundary stress занял22159ms, не скрыт как мгновенный runtime.
 
