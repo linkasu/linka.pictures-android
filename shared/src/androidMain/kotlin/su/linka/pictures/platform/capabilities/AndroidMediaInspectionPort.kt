@@ -36,15 +36,22 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
 
     override suspend fun audio(file: LocalFile): OperationResult<AudioInfo> = inspect(file) { source, check ->
         val mediaType = MediaContainer.audio(source, check)
-        val extractor = MediaExtractor()
+        var extractor: MediaExtractor? = null
         var codec: MediaCodec? = null
         var cleanupFailed = false
         val result = try {
-            extractor.setDataSource(source.fd)
-            val tracks = (0 until extractor.trackCount).filter { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
-            if (tracks.size != 1) MediaContainer.unsupported()
-            val track = tracks.single()
-            val format = extractor.getTrackFormat(track)
+            val rawAmr = if (mediaType == "audio/amr") RawAmrPackets(source, check) else null
+            var track = -1
+            val format = if (rawAmr != null) {
+                MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AMR_NB, 8000, 1)
+            } else {
+                val parsed = MediaExtractor().also { extractor = it }
+                parsed.setDataSource(source.fd)
+                val tracks = (0 until parsed.trackCount).filter { parsed.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+                if (tracks.size != 1) MediaContainer.unsupported()
+                track = tracks.single()
+                parsed.getTrackFormat(track)
+            }
             val mime = format.getString(MediaFormat.KEY_MIME) ?: MediaContainer.invalid()
             val name = MediaCodecList(MediaCodecList.ALL_CODECS).findDecoderForFormat(format) ?: MediaContainer.unsupported()
             val decoder = MediaCodec.createByCodecName(name).also { codec = it }
@@ -54,7 +61,7 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
             if (channels <= 0 || rate <= 0) MediaContainer.invalid()
             if (channels > capabilities.maxInputChannelCount || !capabilities.isSampleRateSupported(rate)) MediaContainer.unsupported()
             if (format.containsKey(MediaFormat.KEY_DURATION) && format.getLong(MediaFormat.KEY_DURATION) > 600_000_000L) throw InvalidMedia(ProblemCode.LIMIT_EXCEEDED)
-            extractor.selectTrack(track)
+            extractor?.selectTrack(track)
             decoder.configure(format, null, null, 0)
             decoder.start()
             var inputEnded = false
@@ -72,16 +79,16 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
                     if (index >= 0) {
                         val buffer = decoder.getInputBuffer(index) ?: MediaContainer.invalid()
                         buffer.clear()
-                        val count = extractor.readSampleData(buffer, 0)
+                        val count = if (rawAmr != null) rawAmr.read(buffer) else extractor!!.readSampleData(buffer, 0)
                         if (count < 0) {
-                            decoder.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            decoder.queueInputBuffer(index, 0, 0, rawAmr?.sampleTimeUs ?: 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                             inputEnded = true
                         } else {
                             if (count > buffer.capacity()) MediaContainer.invalid()
                             bytes += count
                             if (bytes > MediaContainer.MAX_BYTES) throw InvalidMedia(ProblemCode.LIMIT_EXCEEDED)
-                            decoder.queueInputBuffer(index, 0, count, maxOf(0, extractor.sampleTime), 0)
-                            extractor.advance()
+                            decoder.queueInputBuffer(index, 0, count, rawAmr?.sampleTimeUs ?: maxOf(0, extractor!!.sampleTime), 0)
+                            extractor?.advance()
                         }
                     }
                 }
@@ -124,7 +131,7 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
             AudioInfo(maxOf(1, (frames * 1000 + outputRate - 1) / outputRate), mediaType)
         } finally {
             try { codec?.release() } catch (_: Exception) { cleanupFailed = true }
-            try { extractor.release() } catch (_: Exception) { cleanupFailed = true }
+            try { extractor?.release() } catch (_: Exception) { cleanupFailed = true }
         }
         if (cleanupFailed) throw InvalidMedia(ProblemCode.IO_FAILURE)
         result

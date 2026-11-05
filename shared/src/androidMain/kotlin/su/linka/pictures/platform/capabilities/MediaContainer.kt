@@ -9,6 +9,8 @@ internal class InvalidMedia(val code: ProblemCode) : Exception()
 /** Bounded structural checks supplement decoders which may silently accept a truncated prefix. */
 internal object MediaContainer {
     const val MAX_BYTES = 64L * 1024 * 1024
+    const val MAX_AMR_FRAMES = 30_000
+    private val amrFrameSizes = intArrayOf(13, 14, 16, 18, 20, 21, 27, 32, 6)
     fun invalid(): Nothing = throw InvalidMedia(ProblemCode.INVALID_DATA)
     fun unsupported(): Nothing = throw InvalidMedia(ProblemCode.UNSUPPORTED_MEDIA)
     private fun RandomAccessFile.ascii(count: Int) = ByteArray(count).also(::readFully).toString(Charsets.US_ASCII)
@@ -112,19 +114,22 @@ internal object MediaContainer {
         if (!lastEos) invalid()
     }
 
+    fun amrFrameSize(header: Int): Int {
+        if (header !in 0..255 || (header and 0x83) != 0) invalid()
+        val kind = (header ushr 3) and 15
+        return if (kind == 15) 1 else amrFrameSizes.getOrNull(kind) ?: invalid()
+    }
+
     private fun amr(input: RandomAccessFile, check: () -> Unit) {
         input.seek(6)
-        val sizes = intArrayOf(13, 14, 16, 18, 20, 21, 27, 32, 6)
         var frames = 0
         while (input.filePointer < input.length()) {
             check()
             val header = input.readUnsignedByte()
-            val kind = (header ushr 3) and 15
-            if (header and 0x83 != 0) invalid()
-            val size = if (kind == 15) 1 else sizes.getOrNull(kind) ?: invalid()
+            val size = amrFrameSize(header)
             if (input.filePointer + size - 1 > input.length()) invalid()
             input.skipBytes(size - 1)
-            if (++frames > 30_000) throw InvalidMedia(ProblemCode.LIMIT_EXCEEDED)
+            if (++frames > MAX_AMR_FRAMES) throw InvalidMedia(ProblemCode.LIMIT_EXCEEDED)
         }
         if (frames == 0) invalid()
     }
