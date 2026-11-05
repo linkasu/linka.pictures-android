@@ -6,6 +6,20 @@ plugins {
     id 'org.jetbrains.compose'
 }
 
+def decoderOutputs = layout.buildDirectory.dir('ios-audio-decoder')
+def prepareIosAudioDecoder = tasks.register('prepareIosAudioDecoder', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'python3', '-B', rootProject.file('scripts/build-ios-audio-decoder.py').absolutePath,
+        '--gradle-output-root', decoderOutputs.get().asFile.absolutePath
+    inputs.files(rootProject.file('scripts/build-ios-audio-decoder.py'),
+        rootProject.file('scripts/ios_audio_decoder_outputs.py'),
+        rootProject.file('scripts/preflight-ios-ffmpeg.py'),
+        file('src/nativeInterop/c/linka_audio_decoder.c'),
+        file('src/nativeInterop/cinterop/include/linka_audio_decoder.h'))
+    // The producer owns its seeded manifest/cache; Gradle must not delete it as stale task output.
+    // No Gradle outputs: always verify provenance, with the producer's no-build fast path.
+}
+
 kotlin {
     jvm {
         compilerOptions {
@@ -13,6 +27,16 @@ kotlin {
         }
     }
     [iosArm64(), iosSimulatorArm64()].each { target ->
+        def minimum = "-Xoverride-konan-properties=osVersionMin.${target.konanTarget.name}=17.0".toString()
+        target.compilerOptions { freeCompilerArgs.add(minimum) }
+        target.binaries.all { freeCompilerArgs += [minimum] }
+        def decoderInterop = target.compilations.main.cinterops.create('linkaAudioDecoder') {
+            definitionFile.set(layout.buildDirectory.file("ios-audio-decoder/${target.name}/linka_audio_decoder.def"))
+        }
+        tasks.named(decoderInterop.interopProcessingTaskName).configure {
+            dependsOn prepareIosAudioDecoder
+            inputs.files(fileTree("${buildDir}/ios-audio-decoder/${target.name}/lib") { include '*.a' })
+        }
         target.binaries.framework {
             baseName = 'Shared'
             isStatic = true

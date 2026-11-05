@@ -1,8 +1,10 @@
 package su.linka.pictures.platform.capabilities
 
 import java.io.RandomAccessFile
-import java.util.zip.CRC32
+import kotlinx.coroutines.CancellationException
+import su.linka.pictures.application.OperationResult
 import su.linka.pictures.application.ProblemCode
+import su.linka.pictures.media.validateImageEnvelope
 
 internal class InvalidMedia(val code: ProblemCode) : Exception()
 
@@ -179,45 +181,14 @@ internal object MediaContainer {
     }
 
     fun image(input: RandomAccessFile, check: () -> Unit) {
-        if (input.length() < 12) invalid()
-        val signature = ByteArray(8).also(input::readFully)
-        if (signature.contentEquals(byteArrayOf(-119, 80, 78, 71, 13, 10, 26, 10))) {
-            var first = true
-            var data = false
-            val buffer = ByteArray(8192)
-            while (input.filePointer < input.length()) {
-                check()
-                if (input.length() - input.filePointer < 12) invalid()
-                val size = input.readInt().toLong() and 0xffffffffL
-                if (size > input.length() - input.filePointer - 8) invalid()
-                val type = ByteArray(4).also(input::readFully)
-                val name = type.toString(Charsets.US_ASCII)
-                if (first && (name != "IHDR" || size != 13L)) invalid()
-                first = false
-                val crc = CRC32().also { it.update(type) }
-                var remaining = size
-                while (remaining > 0) {
-                    check()
-                    val count = minOf(remaining, buffer.size.toLong()).toInt()
-                    input.readFully(buffer, 0, count); crc.update(buffer, 0, count); remaining -= count
-                }
-                if (crc.value != (input.readInt().toLong() and 0xffffffffL)) invalid()
-                if (name == "IDAT" && size > 0) data = true
-                if (name == "IEND") {
-                    if (size != 0L || !data || input.filePointer != input.length()) invalid()
-                    return
-                }
-            }
-            invalid()
-        }
-        // Other platform-supported image formats still undergo bounds + real bounded decode.
-        if (signature[0] == (-1).toByte() && signature[1] == (-40).toByte()) {
-            input.seek(input.length() - 2)
-            if (input.readUnsignedShort() != 0xffd9) invalid()
-        } else if (signature.toString(Charsets.US_ASCII).startsWith("RIFF")) {
-            input.seek(4); if (input.le32() + 8 != input.length()) invalid()
-        } else if (signature.toString(Charsets.US_ASCII).startsWith("GIF8")) {
-            input.seek(input.length() - 1); if (input.readUnsignedByte() != 59) invalid()
+        when (val result = validateImageEnvelope(input.length(), { offset, buffer, count ->
+            input.seek(offset)
+            input.readFully(buffer, 0, count)
+        }, check)) {
+            is OperationResult.Completed -> Unit
+            is OperationResult.Failed -> throw InvalidMedia(result.problem.code)
+            OperationResult.Cancelled -> throw CancellationException("Image validation cancelled")
+            OperationResult.UnconfirmedCommit -> throw InvalidMedia(ProblemCode.IO_FAILURE)
         }
     }
 }

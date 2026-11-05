@@ -1,4 +1,22 @@
-# Development iOS decoder bridge — primary review / root binding pending
+# Development iOS decoder bridge — integrated CInterop, release gates open
+
+## Current integrated state (primary, 2026-11-05)
+
+The draft/proposal below is retained as history. Root now registers the normal per-target
+CInterop bindings for both iOS targets and one `prepareIosAudioDecoder` manifest-verification
+task. Archives are explicit interop inputs; the producer owns its seeded output tree rather
+than Gradle stale-output cleanup. Valid manifest returns fastpath without extraction/build/runtime.
+`-pthread` is a clang driver flag, removed from generated ld linkerOpts; only the exact known
+legacy def is recognized for verified upgrade, arbitrary mutations still fail closed.
+
+Main aggregate **257/257 JVM**, both frameworks/core+app-host test links and Android APKs PASS.
+Owned iOS17 core **361/361 PASS,52502ms**, including real `IosAudioDecoderIntegrationTest`
+through this binding, owned file broker and inspector delegate. PCM header/original SHA,
+early native errors, cancellation cleanup and nonempty alias rejection are exercised.
+Compiler/link minimum17.0 is verified with vtool, not by rewriting binary metadata.
+Keychain2 app-host tests are excluded and remain BLOCKED; positive TTS/mic/route/foreground,
+physical/RSS/full corpus and all legal/shipping gates below remain OPEN. Log hashes and
+commands: [verification](verification.md#последний-integrated-gate-5-ноября).
 
 Base `457365579d3aba3c7f4d006d607da704de06019e`, branch
 `implementation/p07-ffmpeg-preflight`. User explicitly approved development LGPL2.1+

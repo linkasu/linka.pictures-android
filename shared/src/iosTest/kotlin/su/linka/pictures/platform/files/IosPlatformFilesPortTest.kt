@@ -112,6 +112,15 @@ class IosPlatformFilesPortTest {
         assertEquals("original", fs.source(first.path.toPath()).buffer().use { it.readUtf8() })
     } }
 
+    @Test fun waveReservationHasNativeContainerSuffixWithoutUsingTheSuggestedNameAsPath() = runTest { fixture {
+        val file = files.createTemporaryFile("private spoken title.wav", "audio/wav").get()
+        assertTrue(file.path.endsWith(".wav"))
+        assertFalse(file.path.contains("private spoken title"))
+        assertEquals("private spoken title.wav", file.displayName)
+        assertEquals(0L, fs.metadata(file.path.toPath()).size)
+        assertFalse(files.createTemporaryFile("private spoken title.wav", "application/octet-stream").get().path.endsWith(".wav"))
+    } }
+
     @Test fun foreignTemporaryAndNonemptyOwnedAllocationAreNotTruncated() = runTest { fixture {
         val file = files.createTemporaryFile("a", "text/plain").get()
         val foreign = TemporaryFile(file.path)

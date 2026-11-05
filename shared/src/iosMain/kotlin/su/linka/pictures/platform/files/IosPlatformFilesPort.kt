@@ -36,7 +36,8 @@ class IosPlatformFilesPort internal constructor(
         if (!validLeaf(suggestedName) || !validMime(mediaType)) fail(ProblemCode.INVALID_DATA)
         fileSystem.createDirectories(temporaryRoot)
         validateRoots()
-        val path = temporaryRoot / NSUUID().UUIDString
+        // Native AVAudioRecorder/AVAudioFile select the WAV container from the extension, not a hint.
+        val path = temporaryRoot / (NSUUID().UUIDString + if (mediaType == "audio/wav") ".wav" else "")
         // A collision must fail without truncating or deleting the existing file.
         val handle = fileSystem.openReadWrite(path, mustCreate = true)
         try {

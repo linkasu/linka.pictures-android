@@ -49,8 +49,16 @@ package = su.linka.pictures.platform.audio.decoder
 compilerOpts = -I{prefix}/include
 staticLibraries = liblinka_audio_decoder.a libavformat.a libavcodec.a libswresample.a libavutil.a
 libraryPaths = {prefix}/lib
-linkerOpts = -lm -pthread -framework CoreFoundation -framework CoreVideo -framework CoreMedia
+linkerOpts = -lm -framework CoreFoundation -framework CoreVideo -framework CoreMedia
 '''
+
+
+def current_definition(actual, prefix):
+    expected = definition(prefix)
+    # Known schema1 seed used clang's -pthread driver flag; K/N invokes ld directly.
+    legacy = expected.replace('linkerOpts = -lm ', 'linkerOpts = -lm -pthread ')
+    require(actual in (expected, legacy), 'published def path/package mismatch')
+    return actual == expected
 
 
 def inventory(root):
@@ -137,6 +145,7 @@ def inspect(root, project, flags, env):
     require(record['provenance']['signer'] == current_sources(project, flags)['signer'] and
             record['provenance']['source_archive_sha256'] == current_sources(project, flags)['source_archive_sha256'], 'published source provenance')
     require(record['signature']['verified'] and record['signature']['fingerprint'] == record['provenance']['signer'], 'published signature provenance')
+    definitions_current = True
     for target, (_, platform) in TARGETS.items():
         target_record = record['targets'][target]
         flags_valid(target_record)
@@ -144,7 +153,8 @@ def inspect(root, project, flags, env):
         require(target_record['configure'][:len(recorded_flags)] == recorded_flags, 'published configure/source flags mismatch')
         require(target_record['bridge_source_sha256'] == record['provenance']['files']['shared/src/nativeInterop/c/linka_audio_decoder.c'] and
                 target_record['bridge_header_sha256'] == record['provenance']['files']['shared/src/nativeInterop/cinterop/include/linka_audio_decoder.h'], 'published bridge/source fingerprint mismatch')
-        require((root / target / 'linka_audio_decoder.def').read_text() == definition(root / target), 'published def path/package mismatch')
+        if not current_definition((root / target / 'linka_audio_decoder.def').read_text(), root / target):
+            definitions_current = False
         require(digest(root / target / 'include/linka_audio_decoder.h') == record['provenance']['files']['shared/src/nativeInterop/cinterop/include/linka_audio_decoder.h'], 'published header/source mismatch')
         libraries = list((root / target / 'lib').glob('*.a'))
         require({p.name for p in libraries} == {'liblinka_audio_decoder.a','libavformat.a','libavcodec.a','libswresample.a','libavutil.a'}, 'published library set')
@@ -152,7 +162,7 @@ def inspect(root, project, flags, env):
             require(digest(lib) == target_record['libraries'][lib.name]['sha256'], 'published archive correspondence mismatch')
             native_metadata(lib, platform, env)
     chain = toolchain(env)
-    return record, record['provenance'] == current_sources(project, flags) and record['toolchain'] == chain
+    return record, definitions_current and record['provenance'] == current_sources(project, flags) and record['toolchain'] == chain
 
 
 def publish(task, root, flags, prior):

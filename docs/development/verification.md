@@ -4,7 +4,7 @@
 
 Ниже сохранена историческая P02 карта. Для текущего дерева **core Native и app-host tests — разные обязательные compartments**, не один total:
 
-- `:shared:jvmTest` — common/JVM. Последний принятый main aggregate240/240.
+- `:shared:jvmTest` — common/JVM. Последний принятый main aggregate **257/257**,0 failures/errors/skips.
 - `:shared:linkDebugTestIosSimulatorArm64` — весь core Native, включая `iosTest`; запуск только на явно проверенном owned simulator, без default `allTests`/device selection. Следующие image/file adapters изменяют count, поэтому считать фактический зарегистрированный/executed набор.
 - `:shared:linkAppHostDebugTestIosSimulatorArm64` — **два обязательных Keychain app-host tests**, не включённые в core. Source `shared/src/iosAppHostTest/`, associated main compilation `appHostTest`; executable `shared/build/bin/iosSimulatorArm64/appHostDebugTest/AppHostTests.kexe`. Link/`--ktest_list_tests` — не execution.
 
@@ -20,6 +20,23 @@ xcrun simctl spawn DD0F9A3F-DC32-4373-BA08-400FECE3A1CC \
 ```
 
 Это не запускает app-host tests и не заменяет их BLOCKED gate. Normal Android APK с прежним `su.linka.pictures` до G4 на реальные данные не устанавливать.
+
+### Последний integrated gate (5 ноября)
+
+Один aggregate после review corrections:
+
+```sh
+./gradlew :shared:jvmTest :shared:linkDebugTestIosSimulatorArm64 \
+  :shared:linkAppHostDebugTestIosSimulatorArm64 \
+  :shared:linkDebugFrameworkIosSimulatorArm64 :shared:linkDebugFrameworkIosArm64 \
+  :app:assembleDebug :shared:assembleDebugAndroidTest --console=plain
+```
+
+**PASS,3m46s**; затем весь linked core executable на проверенном owned iOS17: **361/361,52502ms**, Keychain2 отдельно BLOCKED. Точные логи/SHA — [последний срез журнала](implementation-status.md#последний-принятый-срез--native-integration-после-переноса). `vtool -show-build` подтвердил `IOSSIMULATOR/minos17.0/sdk26.0`; это реальный compiler/link target, не переписанный header.
+
+Root `prepareIosAudioDecoder` → два обычных per-target CInterop, manifest verifier без Gradle outputs (producer владеет seeded cache), static `.a` явно входят в inputs. Native runtime включает `IosAudioDecoderIntegrationTest`: real inspector callback/broker, finalized PCM16 stereo16000 WAV, original SHA, early IO/LIMIT/UNSUPPORTED, cancellation cleanup/foreign alias. Это не real TTS/mic/foreground/provider UI proof. Known ld-driver flag исправлен с отдельным `python3 -B scripts/test-ios-audio-decoder-def.py`; полный producer selfcheck16/16 ранее принят отдельно.
+
+Android changed image path проверен готовым main APK, без пересборки в lane: [**24/24 API21 и24/24 API35**](p06-main-image-envelope-runtime.md). Files [**19/19 API35 и2/2 changed API21**](evidence/p06-files-path-2026-11-05/) дополняют прежние19 API21. API35 только approved runtime `-feature -WiFiPacketStream`: [crash/workaround](api35-netsim-crash.md), не default emulator/network acceptance. Прежние63/54 не повторялись и не складываются в новый total.
 
 ---
 
