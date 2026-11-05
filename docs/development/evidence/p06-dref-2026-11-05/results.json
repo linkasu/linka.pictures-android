@@ -1,0 +1,1249 @@
+{
+  "base": "5f75a8d",
+  "freeze": {
+    "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-dref-ab0055fe-ba75-46ee-9ae1-be3a85ad4481/frozen-dref-test.apk",
+    "sha256": "1c9d835cdcd98ffedcd853ded375445c659f8206c35d68599dec30c7d4f0faae",
+    "package": "su.linka.pictures.shared.test",
+    "minSdk": 21,
+    "targetSdk": 34,
+    "counts": {
+      "PasswordCryptoAndroidTest": 2,
+      "AndroidMediaInspectionPortTest": 9,
+      "ThreeGpDataReferencesTest": 9,
+      "DecodedFloatPcmTest": 4,
+      "LegacyCodecDecodeTest": 5,
+      "RawAmrPacketsTest": 6,
+      "AndroidImagePreparationPortTest": 15,
+      "PcmWaveFileTest": 2,
+      "AndroidAudioBackendTest": 11
+    },
+    "total": 63
+  },
+  "runs": [
+    {
+      "run": "focused",
+      "serial": "emulator-5554",
+      "avd": "linka_platform_probe_api21_arm64",
+      "sdk": 21,
+      "abi": "arm64-v8a",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "assumptions": 0,
+      "seconds": 0.113,
+      "transport_timeout": false,
+      "original_run_completed_without_retry": true,
+      "sha256": "fe80b522925cbf90509cdbb8c7d1a48379946406503d6541ccf96f5a5209fcc6",
+      "results": [
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "extended64AndSizeZeroRespectSourceAndParentBoundaries",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "1"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "source64MiBAndMoov8MiBBoundsRejectBeforeDecoderWithoutLargeArrays",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "2"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "drefAndUrlLookingBytesInOpaqueMdatNeverBecomeExternalReferences",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "3"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "genuineSelfContained3gpRetainsExactShaAndRealPcmDuration",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "4"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "externalUrlUrnAliasUnknownAndLocalFlagWithLocationAreRejectedBeforePlatformDecode",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "5"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "directReferenceMovieIsUnsupportedEvenWithEmbeddedAudio",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "6"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "atomDepthAndEntryBudgetsAreInclusiveAndBounded",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "7"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancellationAtNestedAtomsPropagatesAndNeverChangesOrClosesSource",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "8"
+        },
+        {
+          "numtests": "9",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "malformedExtentVersionCountAndTruncationAreInvalidNotPartiallyAccepted",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "9"
+        }
+      ]
+    },
+    {
+      "run": "focused",
+      "serial": "emulator-5556",
+      "avd": "linka_audit_tablet",
+      "sdk": 35,
+      "abi": "arm64-v8a",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "assumptions": 0,
+      "seconds": 0.252,
+      "transport_timeout": false,
+      "original_run_completed_without_retry": true,
+      "sha256": "7fff020cb3b9c6bc93f190f3bca1a97544fb1c640084e974316c3928f70d19f1",
+      "results": [
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "1",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "extended64AndSizeZeroRespectSourceAndParentBoundaries"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "2",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "source64MiBAndMoov8MiBBoundsRejectBeforeDecoderWithoutLargeArrays"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "3",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "drefAndUrlLookingBytesInOpaqueMdatNeverBecomeExternalReferences"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "4",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "genuineSelfContained3gpRetainsExactShaAndRealPcmDuration"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "5",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "externalUrlUrnAliasUnknownAndLocalFlagWithLocationAreRejectedBeforePlatformDecode"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "6",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "directReferenceMovieIsUnsupportedEvenWithEmbeddedAudio"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "7",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "atomDepthAndEntryBudgetsAreInclusiveAndBounded"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "8",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "cancellationAtNestedAtomsPropagatesAndNeverChangesOrClosesSource"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "9",
+          "id": "AndroidJUnitRunner",
+          "numtests": "9",
+          "stream": ".",
+          "test": "malformedExtentVersionCountAndTruncationAreInvalidNotPartiallyAccepted"
+        }
+      ]
+    },
+    {
+      "run": "full",
+      "serial": "emulator-5554",
+      "avd": "linka_platform_probe_api21_arm64",
+      "sdk": 21,
+      "abi": "arm64-v8a",
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "assumptions": 0,
+      "seconds": 32.831,
+      "transport_timeout": true,
+      "original_run_completed_without_retry": true,
+      "sha256": "118dd6409c0ffa4ddea04f5ecf473646bec12a85fb124e19e78c10143ee22637",
+      "results": [
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "actualApiProviderPreservesUnicodeAndEmbeddedNulAtProductionWorkFactor",
+          "class": "su.linka.pictures.access.PasswordCryptoAndroidTest",
+          "current": "1"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "verifierReopensFromOwnedNoBackupRootWithoutAnyOsPromptOrLibraryAccess",
+          "class": "su.linka.pictures.access.PasswordCryptoAndroidTest",
+          "current": "2"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "explicitlyMissingVoiceHasUnavailableOutcomeNotPositiveTtsProof",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "3"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "validClipAwaitsActualMediaPlayerTerminalCallback",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "4"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "permissionDeniedAndCancelledNeverCreateRecordingOrEmitReady",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "5"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "callerAndParentCancellationCleanPendingPermissionWithoutMicOrLateReady",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "6"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "synthesisOverPlatformLimitNeverCreatesTempOrCallsPermission",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "7"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "syntheticPermissionSuccessDoesNotBypassActualOsPermission",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "8"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "unexpectedNonemptyTemporaryIsRejectedWithoutTakingCleanupOwnership",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "9"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "exactStopCancelsPermissionWaitAndOldIdDoesNotCancelNextRequest",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "10"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "inspectClipUsesActualInjectedInspectorAndDoesNotPlayOrRewriteSource",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "11"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "malformedOrNulSpeechDoesNotReachVoiceOrTempCreation",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "12"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "overlapIsRejectedRatherThanCreatingAnotherNativeRequestQueue",
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "13"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "emptyRecordingCannotBeFinalizedAndExistingFileIsNotOverwritten",
+          "class": "su.linka.pictures.platform.audio.PcmWaveFileTest",
+          "current": "14"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "streamedSamplesFinalizeExactHeaderAndActualSampleCount",
+          "class": "su.linka.pictures.platform.audio.PcmWaveFileTest",
+          "current": "15"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "emptyIsInvalidButWhitespaceAndArgbEndpointsRemainExplicitAndValid",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "16"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "pngEncodeWriteAndCloseErrorsNeverReturnPartialCompletedFile",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "17"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "deliveredImageRemainsCallerOwnedAfterSubsequentCancellationAndPreparation",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "18"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "discardFailureDoesNotMaskPrimaryValidationFailureCancelOrUnknown",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "19"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancelledCallerDispatchAfterValidatedIoResultStillDiscardsTemp",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "20"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "malformedUtf16NulAndOutOfRangeColoursAreRefusedBeforeCreatingMedia",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "21"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "streamingCopyBudgetUsesBoundedBuffersAndClosesControlledStreams",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "22"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "unicodeAndExplicitSpacesWrapWithoutTextChangesShrinkOrEllipsisAndRenderActualPng",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "23"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "nonemptyFactoryResultsAndSourceAliasAreNotOverwrittenOrDiscarded",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "24"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "lateInspectionResultAfterCancellationDoesNotTransferOwnedTemp",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "25"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "invalidSourceIsNotCopiedOrDeleted",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "26"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "textLengthAndComputedHeightLimitsFailWithoutTruncationOrFileCreation",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "27"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "readOnlyPngAndExifJpegAreCopiedExactlyWithoutReencodingOrSourceMutation",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "28"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancellationDuringCopyClosesBothHandlesAndKeepsOriginal",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "29"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "sourceSinkReadWriteAndCloseFailuresCloseAllHandlesAndDiscardOnlyOutput",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "30"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "actualPcmWaveDecodesDespiteWrongExtensionAndMimeHint",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "31"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "declaredLongWaveCannotBypassTenMinuteBudget",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "32"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "truncatedMp3AmrAndIsoBoxesAreRejectedBeforeDecoderCanAcceptAPrefix",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "33"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "invalidPngCrcAndWaveHeaderHaveExplicitFailure",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "34"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "truncatedContainersAndMagicOnlyNeverCountAsDecodedAudio",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "35"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "amrWidebandAndNon3gpFtypAreNotGuessedAsSupportedLegacyAudio",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "36"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "pngIsActuallyDecodedAndDimensionsAreNotTakenFromMimeHint",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "37"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "sourceAndImageBoundsAreRejectedBeforeLargeDecodeAllocation",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "38"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancelledInspectionDoesNotBecomeFailedOrChangeSource",
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "39"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "onlyDeclaredWindowIsScannedAndOriginalPositionLimitAndByteOrderRemainUntouched",
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "40"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "nanAndBothInfinitiesAreRejectedBeforeCountingFrames",
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "41"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "scanRetainsCancellationAndDeadlineCheckpointsWithoutWholeBufferCopy",
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "42"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "finiteNativeEndianSamplesIncludingSilenceAndExtremesAreValid",
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "43"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "trueMp3DecodedDespiteWaveNameAndHint",
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "44"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "trueVorbisDecodedDespiteWaveNameAndHint",
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "45"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "amrNbIn3gpDecodedDespiteWaveNameAndHint",
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "46"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "pcmWaveUnderOggNameAndHintStillDecodesAsWave",
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "47"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "rawAmrNbDecodedDespiteWaveNameAndHint",
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "48"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancellationChecksBeforeAndAfterReadPropagateWithoutClosingSourceOrPublishingPacket",
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "49"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "pinnedRawAmrPacketsPreserveExactBytesTimestampsEofAndBorrowedReader",
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "50"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "thirtyThousandFramesAreAllowedButNextPacketFailsWithoutBeingConsumed",
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "51"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "wrongMagicReservedModesPaddingAndTruncatedPayloadFailWithoutPartialWrite",
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "52"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "insufficientCodecBufferAndEmptyStreamDoNotInventOrCutPackets",
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "53"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "allNbModesSidNoDataAndQualityBitKeepTheirOriginalTocAndPayload",
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "54"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "extended64AndSizeZeroRespectSourceAndParentBoundaries",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "55"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "source64MiBAndMoov8MiBBoundsRejectBeforeDecoderWithoutLargeArrays",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "56"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "drefAndUrlLookingBytesInOpaqueMdatNeverBecomeExternalReferences",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "57"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "genuineSelfContained3gpRetainsExactShaAndRealPcmDuration",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "58"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "externalUrlUrnAliasUnknownAndLocalFlagWithLocationAreRejectedBeforePlatformDecode",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "59"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "directReferenceMovieIsUnsupportedEvenWithEmbeddedAudio",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "60"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "atomDepthAndEntryBudgetsAreInclusiveAndBounded",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "61"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancellationAtNestedAtomsPropagatesAndNeverChangesOrClosesSource",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "62"
+        },
+        {
+          "numtests": "63",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "malformedExtentVersionCountAndTruncationAreInvalidNotPartiallyAccepted",
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "63"
+        }
+      ]
+    },
+    {
+      "run": "full",
+      "serial": "emulator-5556",
+      "avd": "linka_audit_tablet",
+      "sdk": 35,
+      "abi": "arm64-v8a",
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "assumptions": 0,
+      "seconds": 23.258,
+      "transport_timeout": false,
+      "original_run_completed_without_retry": true,
+      "sha256": "3ba6ff73a78586f758dccfe8986a34bbf953c4283375de20a14e0c366dfd5612",
+      "results": [
+        {
+          "class": "su.linka.pictures.access.PasswordCryptoAndroidTest",
+          "current": "1",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "actualApiProviderPreservesUnicodeAndEmbeddedNulAtProductionWorkFactor"
+        },
+        {
+          "class": "su.linka.pictures.access.PasswordCryptoAndroidTest",
+          "current": "2",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "verifierReopensFromOwnedNoBackupRootWithoutAnyOsPromptOrLibraryAccess"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "3",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "explicitlyMissingVoiceHasUnavailableOutcomeNotPositiveTtsProof"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "4",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "validClipAwaitsActualMediaPlayerTerminalCallback"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "5",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "permissionDeniedAndCancelledNeverCreateRecordingOrEmitReady"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "6",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "callerAndParentCancellationCleanPendingPermissionWithoutMicOrLateReady"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "7",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "synthesisOverPlatformLimitNeverCreatesTempOrCallsPermission"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "8",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "syntheticPermissionSuccessDoesNotBypassActualOsPermission"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "9",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "unexpectedNonemptyTemporaryIsRejectedWithoutTakingCleanupOwnership"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "10",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "exactStopCancelsPermissionWaitAndOldIdDoesNotCancelNextRequest"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "11",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "inspectClipUsesActualInjectedInspectorAndDoesNotPlayOrRewriteSource"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "12",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "malformedOrNulSpeechDoesNotReachVoiceOrTempCreation"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.AndroidAudioBackendTest",
+          "current": "13",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "overlapIsRejectedRatherThanCreatingAnotherNativeRequestQueue"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.PcmWaveFileTest",
+          "current": "14",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "emptyRecordingCannotBeFinalizedAndExistingFileIsNotOverwritten"
+        },
+        {
+          "class": "su.linka.pictures.platform.audio.PcmWaveFileTest",
+          "current": "15",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "streamedSamplesFinalizeExactHeaderAndActualSampleCount"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "16",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "emptyIsInvalidButWhitespaceAndArgbEndpointsRemainExplicitAndValid"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "17",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "pngEncodeWriteAndCloseErrorsNeverReturnPartialCompletedFile"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "18",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "deliveredImageRemainsCallerOwnedAfterSubsequentCancellationAndPreparation"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "19",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "discardFailureDoesNotMaskPrimaryValidationFailureCancelOrUnknown"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "20",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "cancelledCallerDispatchAfterValidatedIoResultStillDiscardsTemp"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "21",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "malformedUtf16NulAndOutOfRangeColoursAreRefusedBeforeCreatingMedia"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "22",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "streamingCopyBudgetUsesBoundedBuffersAndClosesControlledStreams"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "23",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "unicodeAndExplicitSpacesWrapWithoutTextChangesShrinkOrEllipsisAndRenderActualPng"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "24",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "nonemptyFactoryResultsAndSourceAliasAreNotOverwrittenOrDiscarded"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "25",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "lateInspectionResultAfterCancellationDoesNotTransferOwnedTemp"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "26",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "invalidSourceIsNotCopiedOrDeleted"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "27",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "textLengthAndComputedHeightLimitsFailWithoutTruncationOrFileCreation"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "28",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "readOnlyPngAndExifJpegAreCopiedExactlyWithoutReencodingOrSourceMutation"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "29",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "cancellationDuringCopyClosesBothHandlesAndKeepsOriginal"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "30",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "sourceSinkReadWriteAndCloseFailuresCloseAllHandlesAndDiscardOnlyOutput"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "31",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "actualPcmWaveDecodesDespiteWrongExtensionAndMimeHint"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "32",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "declaredLongWaveCannotBypassTenMinuteBudget"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "33",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "truncatedMp3AmrAndIsoBoxesAreRejectedBeforeDecoderCanAcceptAPrefix"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "34",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "invalidPngCrcAndWaveHeaderHaveExplicitFailure"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "35",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "truncatedContainersAndMagicOnlyNeverCountAsDecodedAudio"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "36",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "amrWidebandAndNon3gpFtypAreNotGuessedAsSupportedLegacyAudio"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "37",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "pngIsActuallyDecodedAndDimensionsAreNotTakenFromMimeHint"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "38",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "sourceAndImageBoundsAreRejectedBeforeLargeDecodeAllocation"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidMediaInspectionPortTest",
+          "current": "39",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "cancelledInspectionDoesNotBecomeFailedOrChangeSource"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "40",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "onlyDeclaredWindowIsScannedAndOriginalPositionLimitAndByteOrderRemainUntouched"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "41",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "nanAndBothInfinitiesAreRejectedBeforeCountingFrames"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "42",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "scanRetainsCancellationAndDeadlineCheckpointsWithoutWholeBufferCopy"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.DecodedFloatPcmTest",
+          "current": "43",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "finiteNativeEndianSamplesIncludingSilenceAndExtremesAreValid"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "44",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "trueMp3DecodedDespiteWaveNameAndHint"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "45",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "trueVorbisDecodedDespiteWaveNameAndHint"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "46",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "amrNbIn3gpDecodedDespiteWaveNameAndHint"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "47",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "pcmWaveUnderOggNameAndHintStillDecodesAsWave"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.LegacyCodecDecodeTest",
+          "current": "48",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "rawAmrNbDecodedDespiteWaveNameAndHint"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "49",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "cancellationChecksBeforeAndAfterReadPropagateWithoutClosingSourceOrPublishingPacket"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "50",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "pinnedRawAmrPacketsPreserveExactBytesTimestampsEofAndBorrowedReader"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "51",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "thirtyThousandFramesAreAllowedButNextPacketFailsWithoutBeingConsumed"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "52",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "wrongMagicReservedModesPaddingAndTruncatedPayloadFailWithoutPartialWrite"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "53",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "insufficientCodecBufferAndEmptyStreamDoNotInventOrCutPackets"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.RawAmrPacketsTest",
+          "current": "54",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "allNbModesSidNoDataAndQualityBitKeepTheirOriginalTocAndPayload"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "55",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "extended64AndSizeZeroRespectSourceAndParentBoundaries"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "56",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "source64MiBAndMoov8MiBBoundsRejectBeforeDecoderWithoutLargeArrays"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "57",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "drefAndUrlLookingBytesInOpaqueMdatNeverBecomeExternalReferences"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "58",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "genuineSelfContained3gpRetainsExactShaAndRealPcmDuration"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "59",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "externalUrlUrnAliasUnknownAndLocalFlagWithLocationAreRejectedBeforePlatformDecode"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "60",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "directReferenceMovieIsUnsupportedEvenWithEmbeddedAudio"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "61",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "atomDepthAndEntryBudgetsAreInclusiveAndBounded"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "62",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "cancellationAtNestedAtomsPropagatesAndNeverChangesOrClosesSource"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.ThreeGpDataReferencesTest",
+          "current": "63",
+          "id": "AndroidJUnitRunner",
+          "numtests": "63",
+          "stream": ".",
+          "test": "malformedExtentVersionCountAndTruncationAreInvalidNotPartiallyAccepted"
+        }
+      ]
+    }
+  ],
+  "post_restart": {
+    "narrow_logcat": "Both MCP requests timed out; no raw-adb fallback",
+    "list_devices": "No attached devices after server restart; no new installs/runs attempted"
+  },
+  "exact_duration_proof": "genuine 3GP and opaque-mdat variant assert actual220ms on both; other legacy cases assert canonical type/unchanged SHA/positive <=1000ms; fresh narrow traces unavailable"
+}

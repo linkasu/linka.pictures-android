@@ -135,25 +135,7 @@ internal object MediaContainer {
     }
 
     private fun threeGp(input: RandomAccessFile, check: () -> Unit) {
-        var media = false
-        var movie = false
-        while (input.filePointer < input.length()) {
-            check()
-            val start = input.filePointer
-            if (input.length() - start < 8) invalid()
-            var size = input.readInt().toLong() and 0xffffffffL
-            val type = input.ascii(4)
-            val header = if (size == 1L) { size = input.readLong(); 16 } else 8
-            if (size == 0L) size = input.length() - start
-            if (size < header || size > input.length() - start) invalid()
-            if (start == 0L) {
-                if (type != "ftyp" || size < header + 8 || !input.ascii(4).startsWith("3g")) unsupported()
-            }
-            if (type == "mdat" && size > header) media = true
-            if (type == "moov" && size > header) movie = true
-            input.seek(start + size)
-        }
-        if (!media || !movie) invalid()
+        ThreeGpAtoms(input, check).validate()
     }
 
     private fun mp3(input: RandomAccessFile, check: () -> Unit) {
