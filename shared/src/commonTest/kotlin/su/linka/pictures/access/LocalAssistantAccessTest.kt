@@ -257,4 +257,17 @@ class LocalAssistantAccessTest {
         denied(gate.resetPasswordWithDeviceOwner("original", "reset"))
         assertEquals(1, owner.cancellations.size)
     }
+
+    @Test fun rootReadFailureKeepsCommunicationSeparateAndKnownCredentialPublishCannotReopenTheGate() = runTest {
+        val store = Store()
+        val gate = access(store)
+        store.afterPublish = { gate.block(Problem(ProblemCode.IO_FAILURE)) }
+        assertIs<OperationResult.Completed<Unit>>(gate.setPassword("confirmed", "owner", null))
+        assertEquals(1, store.writes)
+        assertEquals(ProblemCode.IO_FAILURE, assertIs<AssistantState.Unavailable>(gate.state.value).problem.code)
+        denied(gate.unlock("confirmed", "owner"))
+        denied(gate.check(ProtectedAction.EDIT_BOARD, null, "owner"))
+        // Reopening reads the confirmed record; blocking never erased/replaced it.
+        assertIs<OperationResult.Completed<AssistantCapability>>(access(store).unlock("confirmed", "new-owner"))
+    }
 }

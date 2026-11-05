@@ -23,6 +23,7 @@ internal class LocalAssistantAccess private constructor(
     private data class GateState(
         val protected: Boolean,
         val ready: Boolean = true,
+        val problem: Problem? = null,
         val revision: Any = Any(),
         val guardRevision: Any = Any(),
         val owners: Map<String, OwnerContext> = emptyMap(),
@@ -160,6 +161,14 @@ internal class LocalAssistantAccess private constructor(
         return snapshot.ready && snapshot.owners[ownerId]?.requestId == requestId
     }
 
+    internal fun block(problem: Problem) {
+        val previous = gate.getAndUpdate { it.copy(ready = false, problem = problem, revision = Any(), guardRevision = Any(), owners = emptyMap()) }
+        previous.owners.values.forEach { context ->
+            context.requestId?.let { try { verification.cancel(it) } catch (_: Exception) { } }
+        }
+        mutableState.value = AssistantState.Unavailable(problem)
+    }
+
     private fun context(ownerId: String, replace: Boolean, requestId: RequestId? = null): Any? {
         if (!validOwner(ownerId)) return null
         val created = OwnerContext(requestId = requestId)
@@ -207,8 +216,7 @@ internal class LocalAssistantAccess private constructor(
                     mutableState.value = presentation()
                 }
                 OperationResult.UnconfirmedCommit -> {
-                    gate.update { it.copy(ready = false, revision = Any(), owners = emptyMap()) }
-                    mutableState.value = AssistantState.Unavailable(Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+                    block(Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
                 }
                 else -> Unit
             }
@@ -216,8 +224,9 @@ internal class LocalAssistantAccess private constructor(
         }
     }
 
-    private fun presentation(): AssistantState = if (record.enabled) AssistantState.Protected(record.legacy, availability)
-        else AssistantState.Unprotected(availability)
+    private fun presentation(): AssistantState = if (!gate.value.ready)
+        AssistantState.Unavailable(gate.value.problem ?: Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+        else if (record.enabled) AssistantState.Protected(record.legacy, availability) else AssistantState.Unprotected(availability)
 
     private suspend fun <T> safely(block: suspend () -> OperationResult<T>): OperationResult<T> = try { block() }
     catch (cancelled: CancellationException) { throw cancelled }
