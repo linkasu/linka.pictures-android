@@ -1,7 +1,7 @@
 package su.linka.pictures.portability.linka
 
 import okio.Buffer
-import su.linka.pictures.portability.zip.Crc32
+import su.linka.pictures.binary.Crc32
 
 // Independent ZIP fixture builder, not the production writer; knobs intentionally produce invalid metadata.
 internal data class SyntheticEntry(

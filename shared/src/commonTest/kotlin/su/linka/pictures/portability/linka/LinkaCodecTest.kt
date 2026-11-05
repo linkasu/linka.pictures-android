@@ -16,6 +16,7 @@ import su.linka.pictures.application.*
 import su.linka.pictures.application.portability.PreparedBoard
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
+import su.linka.pictures.binary.Crc32
 import su.linka.pictures.portability.zip.*
 import kotlin.test.*
 import kotlin.coroutines.Continuation

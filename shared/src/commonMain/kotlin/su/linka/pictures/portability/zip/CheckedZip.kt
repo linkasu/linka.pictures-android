@@ -5,21 +5,7 @@ import kotlinx.coroutines.ensureActive
 import okio.*
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.ports.*
-
-internal class Crc32 {
-    private companion object {
-        val table = IntArray(256) { byte ->
-            var value = byte
-            repeat(8) { value = (value ushr 1) xor (if (value and 1 != 0) 0xedb88320.toInt() else 0) }
-            value
-        }
-    }
-    private var crc = -1
-    fun update(bytes: ByteArray) {
-        for (b in bytes) crc = (crc ushr 8) xor table[(crc xor b.toInt()) and 255]
-    }
-    val value: Long get() = (crc xor -1).toLong() and 0xffffffffL
-}
+import su.linka.pictures.binary.Crc32
 
 internal data class ZipItem(
     val name: String, val nameBytes: ByteArray, val flags: Int, val method: Int,
