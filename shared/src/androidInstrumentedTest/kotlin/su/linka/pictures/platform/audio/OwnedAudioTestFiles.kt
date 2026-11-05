@@ -13,9 +13,11 @@ internal class OwnedAudioTestFiles : PlatformFilesPort, AutoCloseable {
     val root = File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, "p06-test-${UUID.randomUUID()}").also { check(it.mkdir()) }
     val created = mutableListOf<TemporaryFile>()
     val discarded = mutableListOf<TemporaryFile>()
+    var initialBytes: ByteArray? = null
     override fun createTemporaryFile(suggestedName: String, mediaType: String): OperationResult<TemporaryFile> {
         val file = File(root, UUID.randomUUID().toString())
         check(file.createNewFile())
+        initialBytes?.let(file::writeBytes)
         return OperationResult.Completed(TemporaryFile(file.path, suggestedName, mediaType).also { created += it })
     }
     fun file(bytes: ByteArray, hint: String = "wrong/type"): LocalFile {

@@ -260,8 +260,9 @@ internal class AndroidAudioBackend(
             OperationResult.Cancelled -> throw NativeAudioFailure(OperationResult.Cancelled)
             OperationResult.UnconfirmedCommit -> throw NativeAudioFailure(OperationResult.UnconfirmedCommit)
         }
+        val file = File(value.path)
+        if (!file.isFile || file.length() != 0L) throw NativeAudioFailure(ProblemCode.CONFLICT)
         call.temporary.set(value)
-        if (File(value.path).length() != 0L) throw NativeAudioFailure(ProblemCode.CONFLICT)
         return value
     }
     private suspend fun validated(call: NativeAudioCall, file: TemporaryFile): OperationResult<TemporaryFile> {

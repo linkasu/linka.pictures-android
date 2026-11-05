@@ -1,6 +1,6 @@
 # P06 prerequisite: Android audio + media inspection
 
-База `8381a14e702f5ae11610222d744bfac0ada9a0c4`, ветка `implementation/p06-android-audio`. Только Android backend/inspector и собственные instrumented tests. Frozen ports/constructor, common coordinator, root/dependencies/manifest/main app/files/image preparation не менялись. Это **не полный P06**, не runtime/codec/ARMv7/permission/physical acceptance. G0/G1/G4 и native release gates остаются OPEN.
+База `8381a14e702f5ae11610222d744bfac0ada9a0c4`, ветка `implementation/p06-android-audio`. Только Android backend/inspector и собственные instrumented tests. Frozen ports/constructor, common coordinator, root/dependencies/production manifest/main app/files/image preparation не менялись. По отдельной явной COORD lease добавлен только instrumented test manifest для отключения telemetry auto-init (ниже). Это **не полный P06**, не runtime/codec/ARMv7/permission/physical acceptance. G0/G1/G4 и native release gates остаются OPEN.
 
 ## Реализовано
 
@@ -22,7 +22,7 @@
 
 ## Проверки
 
-Instrumented source содержит **20 @Test**, обычный JUnit4/InstrumentationRegistry, без Assume/Ignore/новых dependencies. Каждый fixture — собственный fresh UUID directory в test UID cache; синтетические WAV/PNG имеют self-checks, oversized input создаётся только в этом directory. Tests не выдают mic grants и не добавляют RECORD_AUDIO.
+Instrumented source после review corrections содержит **25 @Test** (исходные 20 сохранены), обычный JUnit4/InstrumentationRegistry, без Assume/Ignore/новых dependencies. Каждый fixture — собственный fresh UUID directory в test UID cache; синтетические WAV/PNG имеют self-checks, oversized input создаётся только в этом directory. Tests не выдают mic grants и не добавляют RECORD_AUDIO.
 
 Сценарии: real PCM decode и MIME-independent sniff; real PNG decode; truncation/CRC/magic-only; malformed MP3/AMR/ISO frames; 64MiB/side/pixel/10min limits; cancellation; streaming WAV header/sample count/empty/conflict; denied/cancelled/synthetic-success-with-actual-denial mic permission; exact/stale stop, parent/caller cancellation и overlap refusal; явно отсутствующий voice (только negative proof); synthesis cap; real inspect delegate; positive MediaPlayer terminal test. Последний честно требует OS focus/codec и падает при их отсутствии, а не пропускается. Positive mic/TTS/route proof не заявлен.
 
@@ -32,6 +32,20 @@ Focused `:shared:compileDebugKotlinAndroid :shared:assembleDebugAndroidTest` п�
 
 Финальная проверка также исправила constructor ordering: listener полностью создаётся до scheduling TTS init на Main (constructor разрешён с IO потока), parent cleanup регистрируется до запуска init. Повторены только инвалидированные Android compile/APK checks — **PASS**, BUILD SUCCESSFUL (3s); common source не менялся после 102/102.
 
-Артефакт: `shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk`. Output metadata: applicationId `su.linka.pictures.shared.test`, minSdkVersionForDexing=21. В ZIP присутствуют arm64-v8a/armeabi-v7a/x86/x86_64 libraries; это packaging, не ABI runtime proof. Скомпилированы 11 audio + 9 capabilities @Test, **0 instrumented tests выполнено**. Существующие manifest/signing settings не изменялись; production signing keys не использовались.
+Артефакт: `shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk`. Output metadata: applicationId `su.linka.pictures.shared.test`, minSdkVersionForDexing=21. В ZIP присутствуют arm64-v8a/armeabi-v7a/x86/x86_64 libraries; это packaging, не ABI runtime proof. Исходный gate скомпилировал 11 audio + 9 capabilities @Test; review-fix добавляет 1 audio + 4 capabilities, **0 instrumented tests выполнено**. Production manifest/signing settings не изменялись; production signing keys не использовались.
+
+## COORD review corrections после 64a4f9c
+
+База `64a4f9cabac0fab63ab7fbd257959e20913cddd9`, только три принятые corrections:
+
+1. Backend принимает cleanup ownership temporary только после проверки существующего пустого файла. Unexpected nonempty/non-file handle даёт CONFLICT без регистрации в call.temporary и без discard чужих prior bytes. Backend-level regression вызывает synthesize с test factory, возвращающей nonempty file: проверяет CONFLICT, сохранность path/bytes и отсутствие discard; не зависит от voice и не вызывает mic. Fixture удаляет только собственный directory после проверок.
+2. Перед подсчётом PCM_FLOAT frames сканируется shared-memory view конкретного BufferInfo window с явным ByteOrder.nativeOrder(). NaN/±Infinity дают INVALID_DATA, PCM8/16 и silence не меняются; нет whole-clip allocation/RMS/resampling. Cancellation/deadline checkpoints сохраняются каждые 16K float samples. Четыре tiny ByteBuffer tests покрывают finite/NaN/Inf/native byte order/window boundaries/неизменность position-limit-order и cancellation. Это не actual OS float decoder proof.
+3. Единственный дополнительно разрешённый путь `shared/src/androidInstrumentedTest/AndroidManifest.xml`: tools:node=remove для FirebaseInitProvider, enabled=false/deactivated=true analytics metadata. Новых application classes/permissions/dependencies нет. Production Firebase/privacy исправление остаётся P14/COORD.
+
+Focused compile/APK gate прошёл до coherent-diff correctness review. Actual aapt assertions на собранном APK: provider отсутствует, оба metadata bool имеют false/true, package и instrumentation targetPackage = su.linka.pictures.shared.test, min21/target34, RECORD_AUDIO отсутствует; test manifest содержит ноль uses-permission. Унаследованные legacy permissions (включая INTERNET/AD_ID/ACCESS_NETWORK_STATE и adservices) остаются в merged APK: эта lease не удаляет dependencies/permissions. Auto-init provider удалён и analytics deactivated, но это не общая privacy acceptance.
+
+Normal app config по-прежнему applicationId su.linka.pictures, targetSdk35 (app/build.gradle не менялся). Test target34/focus outcome **не доказывает** production target35 foreground Activity/focus behaviour. Exact APK hash и device execution замораживает COORD после review; lane не запускает ни APK, ни устройства.
+
+Финальный gate после review: `:shared:compileDebugKotlinAndroid :shared:assembleDebugAndroidTest` — **PASS**, BUILD SUCCESSFUL (1s). aapt из SDK build-tools35.0.0 проверил actual финальный APK: все provider/metadata/package/self-target/min21/target34/no-mic assertions **PASS**, ARMv7+ARM64 по-прежнему packaged. Test manifest не добавляет permissions. Скомпилированы **25 instrumented tests** (12 audio + 13 capabilities), runtime **UNEXECUTED**; `git diff --check` чистый. Common102 не инвалидирован Android-only diff и повторно не запускался; других Native/device/permission/production focus proof нет.
 
 **Instrumented runtime: UNEXECUTED**. Никаких ADB/devices/install/permission grants/Settings/network/browser/CI/push/signing/SDK changes. Test APK предназначен только для COORD-owned AVD/test UID, normal su.linka.pictures не устанавливался. Существующие common 102 tests не редактировались; iOS code не менялся и повтор iOS compilation этим diff не требуется.

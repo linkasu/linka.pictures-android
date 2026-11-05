@@ -12,6 +12,7 @@ import su.linka.pictures.domain.RequestId
 import su.linka.pictures.platform.capabilities.AndroidMediaInspectionPort
 import su.linka.pictures.platform.capabilities.TinyMediaFixtures
 import java.util.UUID
+import java.io.File
 
 class AndroidAudioBackendTest {
     private val owner = AudioOwner("instrumented-test", AudioPurpose.RECORDING)
@@ -139,5 +140,18 @@ class AndroidAudioBackendTest {
             assertEquals(OperationResult.Completed(Unit), withTimeout(15000) { f.backend.playClip(file, RequestId("clip")) })
             assertTrue(f.files.discarded.isEmpty())
         } finally { f.close() }
+    }
+    @Test fun unexpectedNonemptyTemporaryIsRejectedWithoutTakingCleanupOwnership() = runBlocking {
+        val f = Fixture { error("This test must never request microphone permission") }
+        try {
+            val before = byteArrayOf(1, 2, 3, 4)
+            f.files.initialBytes = before
+            val result = f.backend.synthesize(SynthesisRequest(RequestId("nonempty"), AudioOwner("test", AudioPurpose.SYNTHESIS), "text", null))
+            assertEquals(ProblemCode.CONFLICT, (result as OperationResult.Failed).problem.code)
+            val file = f.files.created.single()
+            assertTrue(File(file.path).isFile)
+            assertArrayEquals(before, File(file.path).readBytes())
+            assertTrue(f.files.discarded.isEmpty())
+        } finally { f.close() } // Only the fixture owner may delete its prior contents after the assertions.
     }
 }

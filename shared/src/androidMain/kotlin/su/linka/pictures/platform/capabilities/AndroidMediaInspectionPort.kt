@@ -109,7 +109,8 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
                             val frameBytes = currentChannels.toLong() * sampleBytes
                             val buffer = decoder.getOutputBuffer(index) ?: MediaContainer.invalid()
                             if (info.offset < 0 || info.size < 0 || info.offset.toLong() + info.size > buffer.capacity() || info.size % frameBytes != 0L) MediaContainer.invalid()
-                            // The codec produced real PCM; count and discard this buffer, never allocate/play a whole clip.
+                            if (encoding == AudioFormat.ENCODING_PCM_FLOAT) validateFloatPcm(buffer, info.offset, info.size, check)
+                            // Count only validated PCM, then discard without allocating/playing a whole clip.
                             buffer.position(info.offset); buffer.limit(info.offset + info.size)
                             buffer.position(buffer.limit())
                             frames += info.size / frameBytes
