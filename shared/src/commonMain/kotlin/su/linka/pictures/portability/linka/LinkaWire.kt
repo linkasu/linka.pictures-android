@@ -4,6 +4,7 @@ import kotlinx.serialization.json.*
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.ports.IdSource
 import su.linka.pictures.domain.*
+import su.linka.pictures.portability.zip.*
 
 private val rootFields = setOf("version", "withoutSpace", "directSet", "description", "pages", "rows", "columns", "cards")
 private val pageFields = setOf("id", "mode", "rows", "columns", "cards")

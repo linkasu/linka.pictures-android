@@ -5,6 +5,7 @@ import okio.ByteString.Companion.toByteString
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
+import su.linka.pictures.portability.zip.*
 
 // In-memory file/lease/inspection seams; inspection is deliberately NOT native decoder evidence.
 internal class CodecTestRig : PlatformFilesPort, MediaStore, MediaInspectionPort {

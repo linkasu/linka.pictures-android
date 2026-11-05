@@ -16,6 +16,7 @@ import su.linka.pictures.application.*
 import su.linka.pictures.application.portability.PreparedBoard
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
+import su.linka.pictures.portability.zip.*
 import kotlin.test.*
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -117,7 +118,7 @@ class LinkaCodecTest {
         rig.codec.read(rig.input(syntheticZip(listOf(configEntry(json)) + media)), "test").value()
     private suspend fun exportedConfig(rig: CodecTestRig, file: LocalFile): JsonObject {
         var config: JsonObject? = null
-        LinkaZip.open(rig, file).visit { entry, source -> if (entry.name == "config.json") config = boundedJson(source.buffer().readUtf8()) }
+        CheckedZip.open(rig, file, ZipProfile.LINKA).visit { entry, source -> if (entry.name == "config.json") config = boundedJson(source.buffer().readUtf8()) }
         return config!!
     }
     private fun assertFailure(result: OperationResult<*>, code: ProblemCode) = assertEquals(code, assertIs<OperationResult.Failed>(result).problem.code)
@@ -189,7 +190,7 @@ class LinkaCodecTest {
         println("P05_WRITER_ZIP_HEX=" + rig.raw(output).toByteString().hex())
         assertEquals(1, rig.openLeases)
         var exported: JsonObject? = null
-        LinkaZip.open(rig, output).visit { entry, source -> if (entry.name == "config.json") exported = boundedJson(source.buffer().readUtf8()) }
+        CheckedZip.open(rig, output, ZipProfile.LINKA).visit { entry, source -> if (entry.name == "config.json") exported = boundedJson(source.buffer().readUtf8()) }
         val wire = exported!!
         assertEquals("3.0", wire.string("version"))
         assertEquals(root["custom"], wire["custom"])
@@ -452,7 +453,7 @@ class LinkaCodecTest {
         val rig = CodecTestRig()
         val input = rig.input(syntheticZip(listOf(configEntry(cardConfig(card("a", audio = "a/UUID..wav"))).copy(flags = 0x808, descriptor = true),
             SyntheticEntry("a/", byteArrayOf(), external = 0x4000 shl 16), SyntheticEntry("a/UUID..wav", byteArrayOf(1, 2), flags = 0x808))))
-        LinkaZip.open(rig, input).visit { _, _ -> }
+        CheckedZip.open(rig, input, ZipProfile.LINKA).visit { _, _ -> }
         val board = rig.codec.read(input, "test").value()
         assertIs<SpeechSource.Recording>(board.document.pages.single().cells.single().card!!.speech)
         board.close(); clean(rig)
@@ -503,7 +504,7 @@ class LinkaCodecTest {
         assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(cardConfig(card("x", "image"))), SyntheticEntry("image", byteArrayOf(1))))), "test"), ProblemCode.IO_FAILURE)
         clean(rig)
         val source = rig.source(rig.input(byteArrayOf(1))).value()
-        assertFailsWith<CodecFailure> { LinkaZipWriter(Buffer()).add("../unsafe", source) }
+        assertFailsWith<CodecFailure> { CheckedZipWriter(Buffer(), ZipProfile.LINKA).add("../unsafe", source) }
         clean(rig)
     }
 

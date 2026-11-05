@@ -1,14 +1,13 @@
 package su.linka.pictures.portability.linka
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.serialization.SerializationException
 import okio.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.portability.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
+import su.linka.pictures.portability.zip.*
 
 class LinkaCodec(
     private val media: MediaStore,
@@ -16,13 +15,13 @@ class LinkaCodec(
     private val inspection: MediaInspectionPort,
     private val ids: IdSource,
 ) {
-    suspend fun read(file: LocalFile, name: String): OperationResult<PreparedBoard> = boundary {
+    suspend fun read(file: LocalFile, name: String): OperationResult<PreparedBoard> = codecBoundary {
         val temporaries = mutableListOf<TemporaryFile>()
         val prepared = mutableListOf<PreparedMedia>()
         var finalLease: MediaLease? = null
         try {
             limit(name.length <= 65536)
-            val zip = LinkaZip.open(files, file)
+            val zip = CheckedZip.open(files, file, ZipProfile.LINKA)
             val staged = mutableMapOf<String, Triple<TemporaryFile, String, Long>>()
             var config: String? = null
             zip.visit { entry, source ->
@@ -32,7 +31,7 @@ class LinkaCodec(
                     val temp = files.createTemporaryFile("linka-entry", "application/octet-stream").value()
                     temporaries.add(temp)
                     val hash = HashingSink.sha256(files.sink(temp).value())
-                    hash.buffer().use { sink -> copy(source, sink) }
+                    hash.buffer().use { sink -> copyStream(source, sink) }
                     staged[entry.name] = Triple(temp, hash.hash.hex(), entry.size)
                 }
             }
@@ -47,7 +46,7 @@ class LinkaCodec(
             for ((path, kind) in references) {
                 currentCoroutineContext().ensureActive()
                 val (temp, hash, byteCount) = staged.getValue(path)
-                val mediaType = inspect(temp, kind)
+                val mediaType = inspectMedia(temp, kind, inspection)
                 val source = files.source(temp).value()
                 val asset = media.prepare(source, kind, mediaType).value()
                 prepared.add(asset)
@@ -74,7 +73,7 @@ class LinkaCodec(
         }
     }
 
-    suspend fun write(board: PublishedBoard, lease: MediaLease): OperationResult<TemporaryFile> = boundary {
+    suspend fun write(board: PublishedBoard, lease: MediaLease): OperationResult<TemporaryFile> = codecBoundary {
         val document = board.document
         val assetIds = document.assetIds()
         limit(assetIds.size + 1 <= 2000)
@@ -93,7 +92,7 @@ class LinkaCodec(
                 checkData(asset.id == id && asset.kind != MediaKind.ARCHIVE)
                 limit(asset.byteCount <= MEDIA_LIMIT)
                 checkData(kinds[id] == setOf(asset.kind))
-                val actualType = inspect(media.file(id, retained).value(), asset.kind)
+                val actualType = inspectMedia(media.file(id, retained).value(), asset.kind, inspection)
                 if (actualType != asset.mediaType) fail(ProblemCode.INTEGRITY_FAILURE)
                 asset
             }
@@ -101,7 +100,7 @@ class LinkaCodec(
             val temp = files.createTemporaryFile("board.linka", "application/zip").value()
             temporary = temp
             files.sink(temp).value().buffer().use { sink ->
-                val writer = LinkaZipWriter(sink)
+                val writer = CheckedZipWriter(sink, ZipProfile.LINKA)
                 writer.add("config.json", Buffer().write(config))
                 for ((id, path) in paths) {
                     val asset = metadata.getValue(id)
@@ -109,7 +108,7 @@ class LinkaCodec(
                 }
                 writer.finish()
             }
-            LinkaZip.open(files, temp).visit { _, _ -> }
+            CheckedZip.open(files, temp, ZipProfile.LINKA).visit { _, _ -> }
             currentCoroutineContext().ensureActive()
             retained.close()
             temporary = null
@@ -133,47 +132,4 @@ class LinkaCodec(
         if (throwOnFailure) failure?.let { throw it }
     }
 
-    private suspend fun inspect(file: LocalFile, kind: MediaKind): String = when (kind) {
-        MediaKind.IMAGE -> inspection.image(file).value().let {
-            limit(it.width <= 8192 && it.height <= 8192 && it.width.toLong() * it.height <= 16L * 1000 * 1000)
-            it.mediaType
-        }
-        MediaKind.AUDIO -> inspection.audio(file).value().let {
-            limit(it.durationMillis <= 10L * 60 * 1000)
-            it.mediaType
-        }
-        MediaKind.ARCHIVE -> fail(ProblemCode.INVALID_DATA)
-    }
-}
-
-private suspend fun copy(source: Source, sink: BufferedSink) {
-    val buffer = Buffer()
-    while (true) {
-        currentCoroutineContext().ensureActive()
-        val count = source.read(buffer, 8192)
-        if (count == -1L) return
-        sink.write(buffer, count)
-    }
-}
-
-private suspend fun <T> boundary(block: suspend () -> T): OperationResult<T> = try {
-    OperationResult.Completed(block())
-} catch (cancelled: CancellationException) {
-    throw cancelled
-} catch (_: CodecCancelled) {
-    OperationResult.Cancelled
-} catch (_: CodecUnconfirmed) {
-    OperationResult.UnconfirmedCommit
-} catch (failure: CodecFailure) {
-    OperationResult.Failed(failure.problem)
-} catch (_: EOFException) {
-    OperationResult.Failed(Problem(ProblemCode.UNSAFE_ARCHIVE))
-} catch (_: IOException) {
-    OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))
-} catch (_: SerializationException) {
-    OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
-} catch (_: IllegalArgumentException) {
-    OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
-} catch (_: Exception) {
-    OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))
 }

@@ -1,4 +1,4 @@
-package su.linka.pictures.portability.linka
+package su.linka.pictures.portability.zip
 
 import kotlinx.serialization.json.*
 import su.linka.pictures.application.OperationResult
@@ -11,7 +11,6 @@ internal const val MEDIA_LIMIT = 64L * 1024 * 1024
 internal const val CONFIG_LIMIT = 8L * 1024 * 1024
 internal const val PATH_BYTE_LIMIT = 4096
 internal const val CENTRAL_NAME_BYTE_LIMIT = 1024L * 1024
-internal val activeKeys = setOf("action", "actions", "command", "commands", "event", "events", "script", "scripts", "navigation")
 internal val wireJson = Json { isLenient = false }
 
 internal class CodecFailure(val problem: Problem) : Exception()
@@ -81,9 +80,6 @@ internal fun boundedJson(text: String): JsonObject {
     return wireJson.parseToJsonElement(text) as? JsonObject ?: fail(ProblemCode.INVALID_DATA)
 }
 
-internal fun JsonObject.structural() {
-    if (keys.any { it in activeKeys }) fail(ProblemCode.UNSUPPORTED_FEATURE)
-}
 internal fun JsonObject.string(key: String, default: String? = null): String? {
     val v = this[key] ?: return default
     if (v == JsonNull) return null

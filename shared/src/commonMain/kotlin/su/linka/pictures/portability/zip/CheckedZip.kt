@@ -1,4 +1,4 @@
-package su.linka.pictures.portability.linka
+package su.linka.pictures.portability.zip
 
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -39,12 +39,12 @@ private fun extra(bytes: ByteArray) {
     }
 }
 
-internal class LinkaZip private constructor(
+internal class CheckedZip private constructor(
     private val files: PlatformFilesPort, private val file: LocalFile,
-    val items: List<ZipItem>, private val centralOffset: Long,
+    val items: List<ZipItem>, private val centralOffset: Long, private val profile: ZipProfile,
 ) {
     companion object {
-        suspend fun open(files: PlatformFilesPort, file: LocalFile): LinkaZip {
+        suspend fun open(files: PlatformFilesPort, file: LocalFile, profile: ZipProfile): CheckedZip {
             val tail = Buffer()
             var total = 0L
             files.source(file).value().buffer().use { source ->
@@ -53,7 +53,7 @@ internal class LinkaZip private constructor(
                     val n = source.read(tail, 8192)
                     if (n == -1L) break
                     total += n
-                    limit(total <= ARCHIVE_LIMIT)
+                    limit(total <= profile.bytes)
                     if (tail.size > 65557) tail.skip(tail.size - 65557)
                 }
             }
@@ -72,7 +72,7 @@ internal class LinkaZip private constructor(
             val diskCount = eocd.u16()
             val count = eocd.u16()
             checkZip(count != 65535 && count == diskCount)
-            limit(count <= 2000)
+            limit(count <= profile.entries)
             val centralSize = eocd.u32()
             val centralOffset = eocd.u32()
             checkZip(centralSize != 0xffffffffL && centralOffset != 0xffffffffL)
@@ -99,7 +99,7 @@ internal class LinkaZip private constructor(
                     val size = central.u32()
                     checkZip(compressed != 0xffffffffL && size != 0xffffffffL)
                     val nameSize = central.u16()
-                    limit(nameSize <= PATH_BYTE_LIMIT && nameSize.toLong() <= CENTRAL_NAME_BYTE_LIMIT - nameBudget)
+                    limit(nameSize <= PATH_BYTE_LIMIT && nameSize.toLong() <= profile.nameBytes - nameBudget)
                     nameBudget += nameSize.toLong()
                     val extraSize = central.u16()
                     val commentSize = central.u16()
@@ -121,8 +121,8 @@ internal class LinkaZip private constructor(
                     extra(central.readByteArray(extraSize.toLong()))
                     central.skip(commentSize.toLong())
                     budget += maxOf(compressed, size)
-                    limit(budget <= ARCHIVE_LIMIT)
-                    limit(size <= if (name == "config.json") CONFIG_LIMIT else MEDIA_LIMIT)
+                    limit(budget <= profile.bytes)
+                    limit(size <= profile.entryBytes(name))
                     if (method == 0) checkZip(size == compressed)
                     if (name.endsWith('/')) checkZip(size == 0L)
                     entries.add(ZipItem(name, nameBytes, flags, method, crc, compressed, size, offset))
@@ -136,8 +136,8 @@ internal class LinkaZip private constructor(
                     slash = key.indexOf('/', slash + 1)
                 }
             }
-            checkZip(entries.any { it.name == "config.json" && !it.directory })
-            return LinkaZip(files, file, entries.sortedBy { it.offset }, centralOffset)
+            checkZip(entries.any { it.name == (if (profile == ZipProfile.LINKA) "config.json" else "manifest.json") && !it.directory })
+            return CheckedZip(files, file, entries.sortedBy { it.offset }, centralOffset, profile)
         }
     }
 
@@ -182,7 +182,7 @@ internal class LinkaZip private constructor(
                         if (n == -1L) return -1
                         actual += n
                         actualTotal += n
-                        limit(actual <= (if (entry.name == "config.json") CONFIG_LIMIT else MEDIA_LIMIT) && actualTotal <= ARCHIVE_LIMIT)
+                        limit(actual <= profile.entryBytes(entry.name) && actualTotal <= profile.bytes)
                         checkZip(actual <= entry.size)
                         val bytes = chunk.readByteArray()
                         checksum.update(bytes)
@@ -223,7 +223,7 @@ private class LimitedSource(private val source: Source, var remaining: Long) : S
     }
 }
 
-internal class LinkaZipWriter(private val sink: BufferedSink) {
+internal class CheckedZipWriter(private val sink: BufferedSink, private val profile: ZipProfile) {
     private data class Written(val name: ByteArray, val crc: Long, val size: Long, val offset: Long)
     private val entries = mutableListOf<Written>()
     private var offset = 0L
@@ -233,10 +233,11 @@ internal class LinkaZipWriter(private val sink: BufferedSink) {
     suspend fun add(name: String, source: Source, expectedSize: Long? = null, expectedHash: String? = null) {
         source.use {
             safePath(name)
-            limit(entries.size < 2000)
+            limit(entries.size < profile.entries)
             val bytes = name.encodeToByteArray()
-            limit(bytes.size.toLong() <= CENTRAL_NAME_BYTE_LIMIT - nameBudget)
+            limit(bytes.size.toLong() <= profile.nameBytes - nameBudget)
             nameBudget += bytes.size.toLong()
+            limit(30L + bytes.size + 16 <= profile.bytes - offset)
             val start = offset
             sink.writeIntLe(0x04034b50).writeShortLe(20).writeShortLe(0x808).writeShortLe(0)
                 .writeIntLe(0).writeIntLe(0).writeIntLe(0).writeIntLe(0).writeShortLe(bytes.size).writeShortLe(0).write(bytes)
@@ -251,7 +252,8 @@ internal class LinkaZipWriter(private val sink: BufferedSink) {
                 if (n == -1L) break
                 count += n
                 payload += n
-                limit(count <= (if (name == "config.json") CONFIG_LIMIT else MEDIA_LIMIT) && payload <= ARCHIVE_LIMIT)
+                limit(count <= profile.entryBytes(name) && payload <= profile.bytes)
+                limit(count <= profile.bytes - offset - 16)
                 if (expectedSize != null && count > expectedSize) fail(ProblemCode.INTEGRITY_FAILURE)
                 val chunk = buffer.readByteArray()
                 crc.update(chunk)
@@ -260,7 +262,7 @@ internal class LinkaZipWriter(private val sink: BufferedSink) {
             if (expectedSize != null && count != expectedSize || expectedHash != null && hash.hash.hex() != expectedHash) fail(ProblemCode.INTEGRITY_FAILURE)
             sink.writeIntLe(0x08074b50).writeIntLe(crc.value.toInt()).writeIntLe(count.toInt()).writeIntLe(count.toInt())
             offset += count + 16
-            limit(offset <= ARCHIVE_LIMIT)
+            limit(offset <= profile.bytes)
             entries.add(Written(bytes, crc.value, count, start))
         }
     }
@@ -268,14 +270,16 @@ internal class LinkaZipWriter(private val sink: BufferedSink) {
     fun finish() {
         val start = offset
         for (entry in entries) {
+            limit(46L + entry.name.size + 22 <= profile.bytes - offset)
             sink.writeIntLe(0x02014b50).writeShortLe(20).writeShortLe(20).writeShortLe(0x808).writeShortLe(0)
                 .writeIntLe(0).writeIntLe(entry.crc.toInt()).writeIntLe(entry.size.toInt()).writeIntLe(entry.size.toInt())
                 .writeShortLe(entry.name.size).writeShortLe(0).writeShortLe(0).writeShortLe(0).writeShortLe(0)
                 .writeIntLe(0).writeIntLe(entry.offset.toInt()).write(entry.name)
             offset += 46 + entry.name.size
         }
+        limit(offset + 22 <= profile.bytes)
         sink.writeIntLe(0x06054b50).writeShortLe(0).writeShortLe(0).writeShortLe(entries.size).writeShortLe(entries.size)
             .writeIntLe((offset - start).toInt()).writeIntLe(start.toInt()).writeShortLe(0)
-        limit(offset + 22 <= ARCHIVE_LIMIT)
+        limit(offset + 22 <= profile.bytes)
     }
 }
