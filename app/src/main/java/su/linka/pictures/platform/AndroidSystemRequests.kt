@@ -38,6 +38,7 @@ internal class AndroidSystemRequests(
     private val onPresentationStarted: () -> Unit,
     private val scope: CoroutineScope,
     private val registry: ActivityResultRegistry = activity.activityResultRegistry,
+    private val unregister: (ActivityResultLauncher<*>) -> Unit = { it.unregister() },
 ) {
     private enum class State { LAUNCHING, WAITING_SYSTEM_RESULT, WAITING_FOREGROUND, TERMINAL }
     private sealed interface Slot
@@ -105,8 +106,11 @@ internal class AndroidSystemRequests(
         if (previous === Closed) return
         (previous as? Pending<*>)?.let(::invalidate)
         cleanupOnMain {
-            activity.lifecycle.removeObserver(destroyObserver)
-            lifetime?.cancel()
+            try {
+                attemptCleanup { activity.lifecycle.removeObserver(destroyObserver) }
+            } finally {
+                attemptCleanup { lifetime?.cancel() }
+            }
         }
     }
 
@@ -149,13 +153,13 @@ internal class AndroidSystemRequests(
                         cleanupOnMain { receive(current, parse(it)) }
                     }
                     current.launcher = launcher
-                    if (!valid(current)) {
+                    if (!valid(current) || !foreground()) {
                         finish(current, OperationResult.Cancelled)
                         return@suspendCancellableCoroutine
                     }
                     onPresentationStarted()
-                    // Revocation may synchronously close this owner/request.
-                    if (!valid(current)) {
+                    // The hook may synchronously revoke the owner or move the Activity into background.
+                    if (!valid(current) || !foreground()) {
                         finish(current, OperationResult.Cancelled)
                         return@suspendCancellableCoroutine
                     }
@@ -206,11 +210,16 @@ internal class AndroidSystemRequests(
         // Cancellation from any thread wins until the terminal CAS admits delivery.
         val active = current.invalid.compareAndSet(false, true)
         val admitted = pending.compareAndSet(current, null)
-        val delivered = if (active && admitted) checked else OperationResult.Cancelled
+        var delivered = if (active && admitted) checked else OperationResult.Cancelled
         current.state = State.TERMINAL
         current.positive = null
-        cleanup(current)
-        if (current.continuation.isActive) current.continuation.resumeWith(Result.success(delivered))
+        try {
+            if (!cleanup(current) && delivered is OperationResult.Completed) {
+                delivered = OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))
+            }
+        } finally {
+            if (current.continuation.isActive) current.continuation.resumeWith(Result.success(delivered))
+        }
     }
 
     private fun invalidate(current: Pending<*>) {
@@ -218,9 +227,18 @@ internal class AndroidSystemRequests(
         cleanupOnMain { finish(current, OperationResult.Cancelled) }
     }
 
-    private fun cleanup(current: Pending<*>) {
-        current.launcher?.unregister()
+    private fun cleanup(current: Pending<*>): Boolean {
+        val launcher = current.launcher ?: return true
+        // Detach before native cleanup: a failed unregister must not strand or retry terminal delivery.
         current.launcher = null
+        return attemptCleanup { unregister(launcher) }
+    }
+
+    private fun attemptCleanup(action: () -> Unit): Boolean = try {
+        action()
+        true
+    } catch (_: Exception) {
+        false
     }
 
     private fun cleanupOnMain(action: () -> Unit) {

@@ -21,7 +21,11 @@ use an Activity-owned coroutine scope; do not retain it across recreation.
   `Failed(PERMISSION_DENIED)`.
 - `onPresentationStarted()` runs once immediately before an admitted OS launch.
   Synchronously revoke prior capabilities/guards there. It grants nothing;
-  the requester rechecks owner/request/scope after the hook before launch.
+  the requester checks native foreground before the hook and rechecks
+  owner/request/scope plus native foreground after the hook immediately before
+  launch. An alive owner alone is insufficient: a stopped or unfocused Activity
+  returns `Cancelled` without presenting/launching. Losing foreground inside
+  the hook also cancels the launch.
 - Call `onForeground()` from `onPostResume` and from
   `onWindowFocusChanged(true)`. Positive callbacks wait for native RESUMED,
   window focus, and a non-finishing/non-destroyed Activity. The hook does not
@@ -55,6 +59,15 @@ when the caller belongs to another scope. Once a terminal completion CAS has
 admitted delivery, later cancellation cannot retract that completed operation.
 Root must enforce its own authority gate at the eventual point of use.
 
+Native unregister failure cannot strand the waiter: the slot is terminal first,
+then cleanup is attempted and continuation delivery runs in `finally`. Such a
+failure turns a positive result into `Failed(IO_FAILURE)` but preserves an
+already known cancellation/failure. The owned launcher is detached before the
+attempt, so suspend-finally does not retry it or overwrite the terminal result.
+Observer removal and lifetime cancellation are independent cleanup attempts.
+A native registry may retain an old key if unregister throws; its terminal
+callback remains inert and cannot complete a replacement request.
+
 Cancellation does not finish provider/Settings activities, revoke external
 state, or delete partial external files. An already admitted OS launch may
 finish after cancellation, but its late result is discarded.
@@ -72,6 +85,10 @@ subclass dispatching results through the real registry. Run:
 These are transport/state-machine tests, not proof of real OS dialogs or
 device behavior. They neither exercise normal legacy application/Firebase
 startup nor require actual permissions or an APK/device.
+An optional constructor unregister callback exists only to inject native
+cleanup failures in tests; production defaults to `launcher.unregister()`.
+The result-before-resume fixture launches from a resumed, focused Activity,
+then pauses/blurs it within the registry's `onLaunch` before dispatching success.
 
 This requester does not distinguish Home from an external credential/Settings
 activity, decide what counts as a real background transition, preserve real

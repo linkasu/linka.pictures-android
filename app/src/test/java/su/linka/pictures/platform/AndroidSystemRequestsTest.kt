@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.app.ActivityOptionsCompat
@@ -43,17 +44,22 @@ class AndroidSystemRequestsTest {
     private var ownerOpen = true
     private var presentations = 0
     private var onPresentation: () -> Unit = {}
+    private var unregister: (ActivityResultLauncher<*>) -> Unit = { it.unregister() }
     private var result: OperationResult<*>? = null
     private val id = RequestId("first")
 
     private class RecordingRegistry : ActivityResultRegistry() {
         val codes = mutableListOf<Int>()
+        var onLaunch: () -> Unit = {}
         override fun <I, O> onLaunch(
             requestCode: Int,
             contract: ActivityResultContract<I, O>,
             input: I,
             options: ActivityOptionsCompat?,
-        ) { codes += requestCode }
+        ) {
+            codes += requestCode
+            onLaunch()
+        }
     }
 
     @Before fun setup() {
@@ -62,7 +68,7 @@ class AndroidSystemRequestsTest {
         requests = AndroidSystemRequests(activity, { ownerOpen }, {
             presentations++
             onPresentation()
-        }, scope, registry)
+        }, scope, registry, { unregister(it) })
         idle()
         assertTrue(activity.hasWindowFocus())
     }
@@ -123,9 +129,12 @@ class AndroidSystemRequestsTest {
     }
 
     @Test fun positiveResultWaitsForResumedAndFocusedActivity() {
+        registry.onLaunch = {
+            controller.windowFocusChanged(false).pause()
+            registry.dispatchResult(registry.codes.last(), Activity.RESULT_OK,
+                Intent().setData(Uri.parse("content://documents/item")))
+        }
         document()
-        controller.windowFocusChanged(false).pause()
-        documentResult()
         assertNull(result)
         requests.onForeground()
         idle()
@@ -134,6 +143,68 @@ class AndroidSystemRequestsTest {
         requests.onForeground()
         idle()
         assertTrue(result is OperationResult.Completed)
+    }
+
+    @Test fun stoppedActivityWithAliveOwnerCannotPresentOrLaunch() {
+        controller.windowFocusChanged(false).pause().stop()
+        document()
+        assertEquals(OperationResult.Cancelled, result)
+        assertTrue(ownerOpen)
+        assertEquals(0, presentations)
+        assertTrue(registry.codes.isEmpty())
+        controller.restart().start().resume().windowFocusChanged(true)
+    }
+
+    @Test fun resumedActivityWithoutWindowFocusCannotPresentOrLaunch() {
+        controller.windowFocusChanged(false)
+        document()
+        assertEquals(OperationResult.Cancelled, result)
+        assertEquals(0, presentations)
+        assertTrue(registry.codes.isEmpty())
+    }
+
+    @Test fun losingForegroundDuringPresentationPreventsLaunch() {
+        onPresentation = { controller.windowFocusChanged(false).pause() }
+        document()
+        assertEquals(OperationResult.Cancelled, result)
+        assertEquals(1, presentations)
+        assertTrue(registry.codes.isEmpty())
+        controller.resume().windowFocusChanged(true)
+    }
+
+    @Test fun unregisterFailureCompletesWaiterAndDoesNotPoisonNextRequest() {
+        var attempts = 0
+        unregister = { attempts++; throw IllegalStateException("test unregister failure") }
+        val first = document()
+        val oldCode = registry.codes.single()
+        documentResult()
+        assertEquals(ProblemCode.IO_FAILURE, (result as? OperationResult.Failed)?.problem?.code)
+        assertTrue(first.isCompleted)
+        assertEquals(1, attempts)
+        unregister = { it.unregister() }
+        result = null
+        document(RequestId("second"))
+        documentResult(oldCode)
+        assertNull(result)
+        documentResult()
+        assertTrue(result is OperationResult.Completed)
+    }
+
+    @Test fun unregisterFailurePreservesCancellationAndFailure() {
+        unregister = { throw IllegalStateException("test unregister failure") }
+        val cancelled = document()
+        requests.cancel(id)
+        idle()
+        assertEquals(OperationResult.Cancelled, result)
+        assertTrue(cancelled.isCompleted)
+        val denied = scope.launch {
+            result = requests.requestMicrophonePermission(RequestId("denied"), "owner")
+        }
+        idle()
+        registry.dispatchResult(registry.codes.last(), false)
+        idle()
+        assertEquals(ProblemCode.PERMISSION_DENIED, (result as? OperationResult.Failed)?.problem?.code)
+        assertTrue(denied.isCompleted)
     }
 
     @Test fun ownerClosedWhileWaitingForForegroundCancelsResult() {
@@ -253,6 +324,20 @@ class AndroidSystemRequestsTest {
         assertEquals(OperationResult.Completed(Unit), result)
         assertEquals(0, presentations)
         assertTrue(registry.codes.isEmpty())
+    }
+
+    @Test fun permissionAlreadyGrantedWhileBackgroundedWaitsWithoutLaunching() {
+        shadowOf(activity.application).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        controller.windowFocusChanged(false).pause()
+        scope.launch { result = requests.requestMicrophonePermission(id, "owner") }
+        idle()
+        assertNull(result)
+        assertEquals(0, presentations)
+        assertTrue(registry.codes.isEmpty())
+        controller.resume().windowFocusChanged(true)
+        requests.onForeground()
+        idle()
+        assertEquals(OperationResult.Completed(Unit), result)
     }
 
     @Test fun permissionDenialIsPermissionDenied() {
