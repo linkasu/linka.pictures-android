@@ -7,7 +7,9 @@ CI, access/ports/native implementations и common UI не изменены.
 
 Dependency-only cherry-picks (не собственные root changes):
 `92ce9de` → `731062a`, `52f37df` → `542a7bc`, `bbba81d` → `87a019b`,
-`8fdb5ce` → `1d76f82`. Pending P13 navigation correction интегрирует COORD отдельно.
+`8fdb5ce` → `1d76f82`. Correction dependencies:
+`7c1cb7e` → `af87623`, `82e852e` → `fd24b24`, `f8032ec` → `c0b450b`,
+`55e94b6` → `4754644`. Их Android/evidence файлы не являются собственным iOS diff.
 Public `LinkaApp` seam сохранён.
 
 ## Runtime и владение
@@ -26,6 +28,10 @@ Swift оставляет существующий UIKit app-delegate/window life
 Native presenter не выбирает
 произвольное key window. UIKit queries выполняются на Main; worker admission читает
 синхронизированный snapshot actual UIKit lifecycle, не сохранённый UI boolean.
+Snapshot берёт current UIView.window либо cached weak window **только того же root
+window token**: fullscreen own modal может временно отсоединить presenting view.
+Actual app/scene activation и hidden всё равно проверяются. Inactive не background;
+foreign current window не принимается, close/disconnect очищают cache/admission.
 
 Предопределённый root: canonical app-private `Application Support/LINKa/library-v1`.
 Canonical media: `root/media`. Native temporary files находятся в отдельном
@@ -47,10 +53,15 @@ Compose error view; file credentials, fake Unprotected и повторное п�
 `LocalAssistantAccess.open` и `refreshPrerequisites`. Guard использует owned job и
 thread-safe closing StateFlow. Root не читает пользовательский legacy store.
 
-Loading/error показываются до `LinkaApp`. Автоматического retry, очистки данных,
-отключения защиты и открытия второго writer нет. После ошибки — исправление причины
-и явный перезапуск процесса, не фальшивое «готово». Позднее создание controller в
-уже failed процессе тоже показывает тот же error, не создаёт новый runtime.
+Loading/startup error показываются до `LinkaApp`. До первого Ready ошибка закрывает
+непринятый runtime. После Ready ошибка **не уничтожает graph/session/window scopes**:
+настоящий `LocalAssistantAccess.block(problem)` синхронно закрывает gate, root отменяет
+свои files/audio и показывает latched banner. Та же communication session и mounted
+editor остаются видимыми; read-only слой перехватывает pointer/keyboard и скрывает
+accessibility actions, сохраняя доступное чтение существующей фразы. Actual foreground
+не подменяется background из-за ошибки. Root-owned exception handler также доставляет
+ошибки cancellation/completion handlers на Main в этот же fail-closed путь.
+Автоматического retry, отключения защиты и второго writer нет.
 
 ## Native lifecycle и prompts
 
@@ -80,20 +91,31 @@ Usage descriptions микрофона/Face ID имеют конкретные п
 
 ## Restore и release
 
-`onLibraryReplaced(epoch)` проверяет настоящий committed listing epoch, отзывает
-access/interrupt audio, закрывает старую communication session и ожидает завершения
-её owned child jobs, затем создаёт новую на том же StorageRuntime и публикует её
-через StateFlow. Старые undo/session/speech не переигрываются. Повторные старые
-notifications игнорируются; неожиданный reload failure становится root error и
-требует restart, не исключением из UI notification с потерянным epoch.
+`onLibraryReplaced(epoch)` проверяет настоящий committed listing epoch. Root немедленно
+скрывает старый context, закрывает protected/native/audio admission, читает новые
+settings и готовит candidate session **до** разрушения старой. Публикует candidate
+только после фактического SAVED, проверки stamp.epoch/current listing epoch и
+закрытия/cancel/join старой session. До этого RootAssistantAccess отвергает новые
+commands/guards; guard, созданный в blocked phase, не становится валидным позже.
+Это тот же StorageRuntime, не новый writer. Старые undo/session/speech не replay.
+При подтверждённом replacement и reload failure баннер явно говорит: «Библиотека
+заменена, прежнее сообщение очищено. Требуется перезапуск»; старый context не
+выдаётся за новый и commit не описывается как rollback. Поздний confirmed commit
+инвалидирует старую фразу даже после ранее latched error, но не запускает auto retry.
 
-Root release отдельно владеет cleanup scope: пытается закрыть session, cancel/join
-все runtime workers, закрыть SQLite и удалить только собственный UUID cache.
+Root release отдельно владеет cleanup scope. `CleanupAttempts` сначала закрывает
+admission/revokes access, затем независимо пытается stop/revoke каждого native handle,
+отменить каждого child, отменить/join parent, detach каждого observer, закрыть SQLite
+и удалить только собственный UUID cache. Ошибка одной попытки не пропускает следующую;
+первичный Problem не заменяется вторичным cleanup IO. После ошибки SQLite.close root
+остаётся closed/blocked, нового writer/retry нет. `OwnedFiles` не claim/close foreign
+destination: owner проверяется до создания wrapper/регистрации cleanup; revoke
+пытается отменить каждый job и закрыть каждый handle, возвращая root реальный failure.
 Открытие нового writer поверх незакрытого старого не предусмотрено. iOS process
 termination может не дать завершиться async cleanup: это не доказательство graceful
 OS termination и не обещание нового background execution entitlement.
 
-## Thumbnails и pending dependency
+## Thumbnails
 
 Root использует **один common `ui.images.ThumbnailLoader` COORD**, а не свой cache.
 Составленный UI передаёт demand отдельно для каждого окна; remove вызывается при
@@ -106,12 +128,15 @@ ARGB8888-compatible display bitmap. Raw RGBA ≤256 KiB, без full-original UI
 64-MiB NSData или PNG-перекодирования canonical media. Все CF/CG handles освобождаются
 в finally. Native canonical file никогда не модифицируется.
 
-На момент предварительных проверок common helper ещё WIP в основной рабочей копии;
-он подключён **read-only** временным Gradle init script вне репозитория:
+На момент **исторических первых** проверок common helper был WIP, подключался read-only:
 `/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/r2-thumbnail-source.gradle`.
 SHA256 inspected helper: `2a3e852dbc3200afe307c089b171f714c27e40f492e0d92603df4aedccd398e2`.
-Для интеграции COORD обязан сначала принять свой helper commit и повторить обычные
-compile/link без init script. В эту ветку helper не скопирован и не закоммичен.
+Теперь принят реальный dependency `82e852e`; обычные main/framework build не нуждаются
+в init script или чужих source directories. Helper не дублируется. `9f3fa7b` добавляет
+embedded стандартный 2×2 PNG: верх RED/GREEN, низ BLUE/WHITE. `readPixels` проверяет
+точные ARGB/topology, source SHA, config и dimensions. На owned iOS17: **3/3 raster
+tests PASS,251ms**. Vertical flip/transpose не обнаружены; production CTM/bridge не
+менялись, JPEG EXIF thumbnail transform сохранён.
 
 ## Нерешённые внешние gates
 
@@ -119,7 +144,7 @@ compile/link без init script. В эту ветку helper не скопиро
   picker, но не root-owned pending inbound URL adoption/token после openURL. Поэтому
   нет document-type/openURL advertisement, unsafe автокопирования или автоимпорта.
   Нужен отдельный согласованный common/native owned-inbound seam и explicit UI import.
-- Parent интегрирует P13 navigation cleanup correction и visible-demand fixes
+- P13 cleanup/browse/readiness dependencies приняты; parent интегрирует visible-demand fixes
   communication/editor; root не угадывает assets всех страниц.
 - Positive Keychain/LA/Face ID/microphone/picker prompts, normal app install/run,
   real store signing, production identifiers/entitlements и physical device gates
@@ -127,7 +152,7 @@ compile/link без init script. В эту ветку helper не скопиро
 - App-host Keychain остаётся отдельным заблокированным gate при отсутствии разрешённой
   Apple Development identity; unsigned compile не является app-host runtime proof.
 
-## Проверки
+## Историческая базовая проверка (до correction review)
 
 Frozen implementation: native/root/tests `9be7e7f`, Swift/plist `5a72b3f`.
 Final gate с тем же read-only helper — **PASS**:
@@ -181,3 +206,64 @@ limit before IO (2). Они не вызывают настоящий Keychain и
 runner не обслуживает UIKit Main queue. В callback-negative test Main заменён
 test dispatcher, затем **все8** повторены успешно. Production dispatcher не менялся;
 predicate запрещает в этом negative test даже обращение к UIKit/AVAudioSession.
+
+## Review corrections — отдельные коммиты, без amend baseline
+
+- `9f3fa7b`: реальный asymmetric PNG pixel proof, не только dimensions/SHA.
+- `16f7137`: frozen root lifecycle/failure/cleanup и ownership correction, без amend
+  `9be7e7f`/`5a72b3f`/`1212d8b`.
+- Modal snapshot, post-Ready preservation, latched concrete access block, candidate
+  restore preparation и independent cleanup описаны выше. Pure policy regression
+  отдельно проверяет startup vs Ready error, поздний confirmed epoch после error,
+  отсутствие auto retry, запрет guard creation во время replacement, сохранение
+  primary Problem и все cleanup attempts после controlled throws.
+- Foreign native export destination отвергается `UNAUTHORIZED` до root registration;
+  neither revoke(A) nor revoke(B) его не закрывает. Два своих destinations получают
+  оба close attempts даже при throw первого; IO failure возвращается root.
+- Native modal runtime/signing/app-host/prompt gates остаются **OPEN/BLOCKED**, не
+  доказаны policy tests. ICU warning здесь повторно не исследовался.
+
+После `82e852e` normal Native main compile больше не заблокирован `block`/thumbnail.
+Но normal `linkDebugTestIosSimulatorArm64` пока заблокирован отдельным dependency
+`55e94b6`: в common `TransferCoordinatorTest.kt:49,50,60,61` отсутствует `import okio.use`
+(Native видит только `AutoCloseable.use`). Common test вне lease не менялся.
+Для фактической focused Native проверки временный init script
+`/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/r2-bootstrap-native-tests.gradle`
+выбирает только **собственные bootstrap test sources**, без common tests и без
+чужих source directories. Это не объявляется успехом normal/full test gate.
+Обычные framework builds выполняются без init script.
+
+Предварительно pure helper JVM suite: **7/7 PASS**. Actual owned17 raster suite:
+**3/3 PASS,251ms**, включая точный opaque ARGB row order RED/GREEN; BLUE/WHITE.
+Final correction gate (`16f7137`): **18/18 Native PASS,154ms**,8 test cases,
+owned17 UDID тот же. Это исходные8 + asymmetric raster1 + foreign/throwing files2 +
+snapshot2 + recovery/cleanup4 + access-admission1. Fullscreen modal остаётся policy
+regression, не positive UIKit presentation proof. Тесты не вызывают настоящий
+Keychain/LA/microphone/picker prompt и не запускают normal app.
+
+Focused test executable SHA256:
+`bf9cbcee85f7e52511a9c9d90c7e8975a1f2e9cd392e5103c4582ee8cd9a34f3`.
+Committed common ThumbnailLoader SHA256:
+`5bae8ad7d033c1dd71bc07e110313fec61a22c1e764c46f429f1748d93815a26`.
+
+```sh
+./gradlew :shared:linkDebugTestIosSimulatorArm64 \
+  :shared:linkDebugFrameworkIosSimulatorArm64 :shared:linkDebugFrameworkIosArm64 \
+  -I /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/r2-bootstrap-native-tests.gradle \
+  --console=plain
+xcrun simctl spawn DD0F9A3F-DC32-4373-BA08-400FECE3A1CC \
+  "$PWD/shared/build/bin/iosSimulatorArm64/debugTest/test.kexe" \
+  '--ktest_filter=su.linka.pictures.bootstrap.*'
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 \
+  :shared:linkDebugFrameworkIosArm64 --console=plain
+```
+
+Focused compile/link: `BUILD SUCCESSFUL`,1m55s. Последняя команда **без init script**:
+`BUILD SUCCESSFUL`,3s, оба Native main/framework UP-TO-DATE для frozen correction.
+Оба unsigned приложения повторно `BUILD SUCCEEDED` (те же xcodebuild commands/flags,
+никакого signing/install/run). Full normal Native test gate остаётся BLOCKED
+отдельным common-test import, не выдан за PASS.
+Managed logs: `sh_1ad576b92001kZIo3JgBTIfnBo.out` (focused build),
+`sh_1ad59ca1e001RmF9UIxXQdRH4Y.out` (normal frameworks),
+`sh_1ad59ca2c001h4cnSt77dNi2XV.out` (unsigned simulator),
+`sh_1ad59ca3a001LxJuARJ160B9Kq.out` (unsigned device).
