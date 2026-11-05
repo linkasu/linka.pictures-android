@@ -38,3 +38,61 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ## Оставшиеся gates
 
 Pure tests доказывают только математику палитры/множителя и значения tokens, не реальную геометрию, native semantic tree или физическую доступность. Не проверены native TalkBack/VoiceOver, клавиатурный traversal/autorepeat, pointer cancellation, focus/selected screenshots, большой системный шрифт/узкие окна на Android+iOS. Это обязательные последующие P10/P15 проверки; они не объявлены PASS. Продуктовые экраны, навигация и binding не входят в этот early handoff. Изменения frozen интерфейса или dependencies не потребовались; блокеров COORD нет.
+
+## Продолжение: presentation экрана общения
+
+Следующая разрешённая COORD итерация после интеграции early handoff в main `6052a06`. Base этой итерации — локальный `8dc9824554cfc69c854e4ffdc32a172869870c47`. Это **presentation**, не закрытие полного P10: real vertical binding/storage/audio/root/navigation/lifecycle остаются COORD; G5/G6 OPEN.
+
+Публичный API (COORD явно добавил обязательный `voices`):
+
+```kotlin
+@Composable
+fun CommunicationScreen(
+    state: CommunicationState,
+    ids: IdSource,
+    voices: VoiceCapability,
+    onCommand: (CommunicationCommand) -> Unit,
+    onOpenLibrary: () -> Unit,
+    images: Map<AssetId, ImageBitmap> = emptyMap(),
+    modifier: Modifier = Modifier,
+)
+```
+
+### Реализовано и проверено по коду
+
+- `ui/communication/CommunicationScreen.kt` — presentation exact session state. `renderedText` выводится без собственного spacing/reducer. Каждая явная команда получает новый `CommandId(ids.next())`; нет dispatch из composition/hover/focus/восстановления. `onOpenLibrary` — только callback; root отвечает за navigation/lifecycle и остановку актуального сеанса при закрытии доски.
+- `CommunicationControls.kt` — compose/direct с индикатором, Backspace/Clear/Undo, предыдущая/следующая страница без пропуска пустых страниц, явный InsertText. Speak/Stop находится в самом `CommunicationScreen` вне обеих областей прокрутки. В direct обычный Speak/Backspace/Clear/Undo недоступны; активное воспроизведение всё равно даёт Stop. Save Loading/Saving/Saved/Failed/Unconfirmed, все audio phases, реальные voice statuses и обе группы ошибок видимы; из Problem читается только code, не subjectId/systemCode/пути.
+- Локальный ещё не отправленный ввод находится выше адаптивной ветки layout, `rememberSaveable` привязан к epoch. Он сохраняется при compose/direct и перестройке представления, не заменяет MessageDraft. Поле не очищается автоматически после dispatch: frozen API не содержит acknowledgement принятия InsertText, отказ/лимит не должен терять введённый текст. Есть отдельная явно названная очистка поля, не сообщения. Пустая строка не отправляется; пробелы/Unicode не trim/normalize-ятся. Сохранение этого поля системой не является доказательством durable сохранения MessageDraft.
+- VoiceCapability обязателен, readiness не угадывается. Missing/initializing/unsupported voice — информационный статус, не запрет Speak: recording-only план не требует TTS; окончательную проверку плана выполняет session/coordinator. VOICE_UNAVAILABLE и SPEECH_UNAVAILABLE имеют разные безопасные сообщения.
+- UNCONFIRMED или COMMIT_OUTCOME_UNKNOWN блокирует все commands и переход в библиотеку; сброс прокрутки панели показывает инструкцию полностью закрыть и заново открыть приложение для авторитетной проверки данных, не повторять операцию и не считать исход сохранённым/отменённым. Сам экран reopen не выполняет и фиктивного Saved/Retry не предлагает. STALE_REQUEST также блокирует устаревший сеанс с отдельным reopen сообщением. Saving и обычный Failed не превращаются в UNCONFIRMED.
+- `CommunicationGrid.kt`/`CommunicationPresentation.kt` — страница только по совпадающим board/page cursor IDs, никакого fallback на первую страницу при несовпадении. Логические rows/columns и все capacity slots сохраняются, включая implicit holes, EMPTY, SPACE и последнюю позицию64×64. Нормализованный ранее overflow доступен через все страницы; UI не обрезает/не переупаковывает domain cells. Только CONTENT/SPACE активируются. Selected marker относится к снимку текущих board/revision/page/card, в direct выключен.
+- Портрет/узкое окно — две независимые прокручиваемые области, landscape при ширине>=480dp — соседние панели. Сообщение имеет собственную прокрутку полного текста и read-only Fit-изображения его снимков. Grid имеет native horizontal scroll и LazyColumn по логическим строкам, min96dp, без уменьшения целей для вмещения. `firstCell` восстанавливает начальную строку/горизонтальное смещение. Родительские hard constraints и крайне малые окна требуют native проверки, а не обещаний по source.
+- Применяются safeDrawing insets/IME padding, wrap без ellipsis и без ограничения системного fontScale. OutlinedTextField прокручивает длинный ввод, а не обрезает его содержимое. Foundation focusGroup/FocusManager.moveFocus обслуживают стрелки в grid, Tab/activation остаются native. Модифицированные Ctrl/Alt/Meta-сочетания не перехватываются; нет собственного gesture/key activation engine.
+- COORD разрешил внутреннюю правку `CommunicationCard.kt` без изменения сигнатуры: квадратный image slot всегда резервируется, максимум160dp, сжатие по доступной ширине внутри narrow card; Fit внутри слота. Место под selected checkmark также резервируется. Поступление пикселей/выбранность не меняют intrinsic размер этих слотов. Actual layout/screenshot proof ещё нужен.
+- Экран не декодирует/не создаёт bitmap, не приобретает/не закрывает media leases, не делает IO, не вызывает audio/access/platform ports. `images` — только lookup уже подготовленных пикселей current page/message; root обязан владеть ограниченной картой видимых assets и их lifetime, не передавать всю библиотеку.
+
+### Autorepeat evidence и проверки
+
+Осмотрен bytecode фактически установленного `foundation-desktop-1.9.3.jar`: `AbstractClickableNode.onKeyEvent` хранит `currentKeyPressInteractions`, повторный KeyDown не создаёт новую press interaction, KeyUp удаляет её и вызывает `onClickKeyUpEvent` только при существующем press. У `ClickableNode.onClickKeyDownEvent` callback отсутствует, `onClickKeyUpEvent` вызывает onClick. Поэтому дополнительный повторный обработчик в primitives не добавлен по явному решению COORD. Это evidence для отсутствия самодельного workaround, **не** native keyboard acceptance.
+
+Focused: `:shared:jvmTest --tests 'su.linka.pictures.ui.communication.CommunicationPresentationTest'` — PASS (6 тестов). Проверены sparse holes/SPACE/EMPTY/последний slot4095 и последняя страница, exact cursor без fallback, revision-aware selected, compose/direct/Stop phases, отсутствие TTS-блокировки для всех VoiceStatus, command freeze для всех источников UNCONFIRMED и stale/loading, Failed/Saving отдельно, safe errors без раскрытия subject/systemCode. Новый screen API до этой итерации отсутствовал; это не исправление воспроизведённого native дефекта.
+
+После correctness review (hoist literal input выше layout-ветки, UNCONFIRMED статус без fake Saved, pinned Speak/Stop, постоянная image geometry) выполнен gate с теми же JAVA_HOME/ANDROID_HOME/DEVELOPER_DIR, что выше:
+
+```sh
+./gradlew :shared:jvmTest :shared:compileDebugKotlinAndroid \
+  :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 \
+  :shared:compileTestKotlinIosArm64 :shared:compileTestKotlinIosSimulatorArm64 --console=plain
+```
+
+**BUILD SUCCESSFUL**. JVM:223 теста/16 suites, failures0/errors0; Android main, обе ARM Native main/test compilations PASS. `git diff --check` PASS. Native tests не исполнялись, default iosSimulatorArm64Test/allTests не запускались, devices/permissions/composition roots/dependencies/session не менялись.
+
+### Точные открытые native/integration gates этой итерации
+
+1. Реальный root binding session/state/voices/ограниченных visible images/leases, navigation/lifecycle interruption и полный communication vertical path Android+iOS.
+2. Native semantic tree: одно имя/роль/selected/action на карточку, disabled без action, live-region ошибки, snapshots/read-only message, правильные SPACE/пустая подпись; TalkBack/VoiceOver не дублируют подпись/изображение и не конфликтуют с речью.
+3. Tab/пространственный обход через lazy beyond-bounds и horizontal scroll, возврат/видимость focus, отсутствие ловушек, key hold/autorepeat на Android/iOS, pointer cancellation и отсутствие команд при hover/focus.
+4. Визуально просмотренные screenshots: portrait/landscape/narrow/IME, большие системные шрифты×portable multiplier, четыре темы, длинные/mixed/image-only сообщения и подписи, стабильность targets при image arrival и selected/focus. Проверка доступности Speak/следующего выбора на фактических малых viewports.
+5. Real persistence/reopen UNCONFIRMED/stale, failure/Stop/direct/междосочные сценарии, offline voice/missing-voice и recording-only на обеих платформах; AAC/физическая приёмка P15.
+
+Pure tests и compilation не закрывают ни один из этих native gates. Других изменений frozen интерфейсов или новых dependencies не потребовалось.
