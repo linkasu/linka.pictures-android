@@ -37,10 +37,11 @@ class AndroidDeviceOwnerVerifierTest {
     @Test fun staleOrBackgroundOwnerNeverStartsSystemUi() = runBlocking {
         var prompts = 0
         var presentationCallbacks = 0
+        val foregroundOwners = mutableListOf<String>()
         for ((current, foreground) in listOf(false to true, true to false)) {
             val verifier = AndroidDeviceOwnerVerifier(application, "Проверка", "Только собственный тест", { _, _, _ ->
                 prompts++; OperationResult.Completed(Unit)
-            }, {}, { _, _ -> current }, { foreground }, { presentationCallbacks++ })
+            }, {}, { _, _ -> current }, { owner -> foregroundOwners += owner; foreground }, { presentationCallbacks++ })
             val result = verifier.verify(RequestId("test"), "owner")
             if (Build.VERSION.SDK_INT <= 22) assertEquals(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE,
                 (result as OperationResult.Failed).problem.code)
@@ -49,5 +50,6 @@ class AndroidDeviceOwnerVerifierTest {
         }
         assertEquals(0, prompts)
         assertEquals(0, presentationCallbacks)
+        assertEquals(if (Build.VERSION.SDK_INT <= 22) emptyList<String>() else listOf("owner"), foregroundOwners)
     }
 }

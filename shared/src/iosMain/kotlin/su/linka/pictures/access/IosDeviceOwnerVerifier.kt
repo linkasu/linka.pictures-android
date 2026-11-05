@@ -16,6 +16,7 @@ import su.linka.pictures.text.isNativeText
 internal class IosDeviceOwnerVerifier(
     private val reason: String,
     private val isRequestCurrent: (RequestId, String) -> Boolean,
+    private val isOwnerForeground: (String) -> Boolean,
     private val onPromptStarted: () -> Unit,
     private val scope: CoroutineScope,
 ) : DeviceOwnerVerifier {
@@ -36,7 +37,7 @@ internal class IosDeviceOwnerVerifier(
     }
 
     override suspend fun verify(requestId: RequestId, ownerId: String): OperationResult<Unit> = withContext(Dispatchers.Main) {
-        if (!isRequestCurrent(requestId, ownerId) || !active()) return@withContext OperationResult.Cancelled
+        if (!isRequestCurrent(requestId, ownerId) || !active(ownerId)) return@withContext OperationResult.Cancelled
         if (scope.coroutineContext[Job]?.isActive == false) return@withContext OperationResult.Cancelled
         val context = LAContext()
         val attempt = Attempt(OwnerVerificationRequest(requestId, ownerId), context)
@@ -53,24 +54,24 @@ internal class IosDeviceOwnerVerifier(
                 cancel(requestId)
             }
             observers += center.addObserverForName(UIApplicationDidBecomeActiveNotification, null, NSOperationQueue.mainQueue) {
-                if (current(attempt) && active()) attempt.request.foreground() else attempt.request.cancel()
+                onForeground(ownerId)
             }
             if (!canEvaluate(context)) return@withContext failed(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE)
             currentCoroutineContext().ensureActive()
-            if (!current(attempt) || attempt.request.terminal || !active()) return@withContext OperationResult.Cancelled
+            if (!current(attempt) || attempt.request.terminal || !active(ownerId)) return@withContext OperationResult.Cancelled
             onPromptStarted()
             currentCoroutineContext().ensureActive()
-            if (!current(attempt) || attempt.request.terminal || !active()) return@withContext OperationResult.Cancelled
+            if (!current(attempt) || attempt.request.terminal || !active(ownerId)) return@withContext OperationResult.Cancelled
             context.evaluatePolicy(LAPolicyDeviceOwnerAuthentication, localizedReason = reason) { success, error ->
                 // LocalAuthentication replies on a private queue; UIKit and delivery stay on Main.
                 scope.launch(Dispatchers.Main.immediate) {
                     if (!current(attempt)) attempt.request.cancel()
-                    else attempt.request.proof(if (success) OperationResult.Completed(Unit) else failure(error), active())
+                    else attempt.request.proof(if (success) OperationResult.Completed(Unit) else failure(error), active(ownerId))
                 }
             }
             val result = attempt.request.await()
             currentCoroutineContext().ensureActive()
-            if (result is OperationResult.Completed && (!current(attempt) || !active())) OperationResult.Cancelled else result
+            if (result is OperationResult.Completed && (!current(attempt) || !active(ownerId))) OperationResult.Cancelled else result
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { failed(ProblemCode.IO_FAILURE) }
         finally {
@@ -91,10 +92,20 @@ internal class IosDeviceOwnerVerifier(
         scope.launch(Dispatchers.Main.immediate) { runCatching { attempt.context.invalidate() } }
     }
 
+    // Scene activation may occur while a different scene already keeps UIApplication active.
+    fun onForeground(ownerId: String) {
+        scope.launch(Dispatchers.Main.immediate) {
+            val attempt = pending.value?.takeIf { it.request.ownerId == ownerId } ?: return@launch
+            if (!current(attempt)) attempt.request.cancel()
+            else if (active(ownerId)) attempt.request.foreground()
+        }
+    }
+
     private fun current(attempt: Attempt): Boolean = pending.value === attempt &&
         isRequestCurrent(attempt.request.id, attempt.request.ownerId)
 
-    private fun active(): Boolean = UIApplication.sharedApplication.applicationState == UIApplicationState.UIApplicationStateActive
+    private fun active(ownerId: String): Boolean = isOwnerForeground(ownerId) &&
+        UIApplication.sharedApplication.applicationState == UIApplicationState.UIApplicationStateActive
     private fun canEvaluate(context: LAContext): Boolean = memScoped {
         val error = alloc<ObjCObjectVar<NSError?>>()
         context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, error.ptr)

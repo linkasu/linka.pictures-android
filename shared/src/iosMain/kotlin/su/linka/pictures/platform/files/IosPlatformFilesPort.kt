@@ -16,7 +16,7 @@ class IosPlatformFilesPort internal constructor(
     private val temporaryRoot: Path,
     private val mediaRoot: Path,
     private val fileSystem: FileSystem,
-    private val presenter: () -> UIViewController?,
+    private val presenter: (String) -> UIViewController?,
     private val isOwnerActive: (String) -> Boolean,
     private val scope: CoroutineScope,
 ) : PlatformFilesPort {
@@ -113,7 +113,7 @@ class IosPlatformFilesPort internal constructor(
         var result: TemporaryFile? = null
         var published = false
         try {
-            selection = selectIosFile(kind, false, ownerId, presenter, isOwnerActive) { selection = it }
+            selection = selectIosFile(kind, false, ownerId, { presenter(ownerId) }, isOwnerActive) { selection = it }
             val selected = selection!!
             val copied = copyPickedUrl(selected.url, kind) { selected.current() }
             if (copied is OperationResult.Completed) result = copied.value
@@ -138,7 +138,7 @@ class IosPlatformFilesPort internal constructor(
         var selection: IosFileSelection? = null
         var transferred = false
         try {
-            selection = selectIosFile(null, true, ownerId, presenter, isOwnerActive) { selection = it }
+            selection = selectIosFile(null, true, ownerId, { presenter(ownerId) }, isOwnerActive) { selection = it }
             val selected = selection!!
             currentCoroutineContext().ensureActive()
             if (!selected.current()) return OperationResult.Cancelled

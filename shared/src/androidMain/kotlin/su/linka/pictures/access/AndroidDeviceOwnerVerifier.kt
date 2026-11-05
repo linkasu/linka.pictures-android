@@ -19,7 +19,7 @@ internal class AndroidDeviceOwnerVerifier(
     private val requestCredential: suspend (Intent, RequestId, String) -> OperationResult<Unit>,
     private val cancelCredential: (RequestId) -> Unit,
     private val isRequestCurrent: (RequestId, String) -> Boolean,
-    private val isForeground: () -> Boolean,
+    private val isForeground: (String) -> Boolean,
     private val onPromptStarted: () -> Unit,
 ) : DeviceOwnerVerifier {
     private val application = context.applicationContext
@@ -45,28 +45,28 @@ internal class AndroidDeviceOwnerVerifier(
     @Suppress("DEPRECATION")
     override suspend fun verify(requestId: RequestId, ownerId: String): OperationResult<Unit> = withContext(Dispatchers.Main) {
         if (Build.VERSION.SDK_INT < 23) return@withContext failed(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE)
-        if (!isRequestCurrent(requestId, ownerId) || !isForeground()) return@withContext OperationResult.Cancelled
+        if (!isRequestCurrent(requestId, ownerId) || !isForeground(ownerId)) return@withContext OperationResult.Cancelled
         val request = OwnerVerificationRequest(requestId, ownerId)
         if (!pending.compareAndSet(null, request)) return@withContext failed(ProblemCode.CONFLICT)
         try {
             if (availability() != OwnerVerificationAvailability.AVAILABLE) return@withContext failed(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE)
             currentCoroutineContext().ensureActive()
-            if (!current(request) || request.terminal || !isForeground()) return@withContext OperationResult.Cancelled
+            if (!current(request) || request.terminal || !isForeground(ownerId)) return@withContext OperationResult.Cancelled
             val intent = keyguard()?.createConfirmDeviceCredentialIntent(title, description)
                 ?: return@withContext failed(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE)
             onPromptStarted()
             currentCoroutineContext().ensureActive()
-            if (!current(request) || request.terminal || !isForeground()) return@withContext OperationResult.Cancelled
+            if (!current(request) || request.terminal || !isForeground(ownerId)) return@withContext OperationResult.Cancelled
             val result = requestCredential(intent, requestId, ownerId)
             currentCoroutineContext().ensureActive()
             if (!current(request)) return@withContext OperationResult.Cancelled
-            request.proof(result, foreground = isForeground())
+            request.proof(result, foreground = isForeground(ownerId))
             val proof = request.await()
             currentCoroutineContext().ensureActive()
             if (proof is OperationResult.Completed) {
-                if (!current(request) || !isForeground()) return@withContext OperationResult.Cancelled
+                if (!current(request) || !isForeground(ownerId)) return@withContext OperationResult.Cancelled
                 if (availability() != OwnerVerificationAvailability.AVAILABLE) return@withContext failed(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE)
-                if (!current(request) || !isForeground()) return@withContext OperationResult.Cancelled
+                if (!current(request) || !isForeground(ownerId)) return@withContext OperationResult.Cancelled
             }
             proof
         } catch (cancelled: CancellationException) { throw cancelled }
@@ -80,7 +80,8 @@ internal class AndroidDeviceOwnerVerifier(
 
     fun onForeground() {
         val request = pending.value ?: return
-        if (current(request) && isForeground()) request.foreground() else request.cancel()
+        if (!current(request)) request.cancel()
+        else if (isForeground(request.ownerId)) request.foreground()
     }
 
     override fun cancel(requestId: RequestId) {

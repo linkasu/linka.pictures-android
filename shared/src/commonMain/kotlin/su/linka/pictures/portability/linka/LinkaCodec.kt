@@ -16,7 +16,12 @@ class LinkaCodec(
     private val inspection: MediaInspectionPort,
     private val ids: IdSource,
 ) {
-    suspend fun read(file: LocalFile, name: String): OperationResult<PreparedBoard> = codecBoundary {
+    suspend fun read(file: LocalFile, name: String): OperationResult<PreparedBoard> = readValidated(file, name, legacyUpgrade = false)
+
+    // Android1.4 shipped flat standard1.3 assets; only its private upgrade path admits that schema.
+    internal suspend fun readLegacyUpgrade(file: LocalFile, name: String): OperationResult<PreparedBoard> = readValidated(file, name, legacyUpgrade = true)
+
+    private suspend fun readValidated(file: LocalFile, name: String, legacyUpgrade: Boolean): OperationResult<PreparedBoard> = codecBoundary {
         val temporaries = mutableListOf<TemporaryFile>()
         val prepared = mutableListOf<PreparedMedia>()
         var finalLease: MediaLease? = null
@@ -37,7 +42,7 @@ class LinkaCodec(
                     staged[entry.name] = Triple(temp, hash.hash.hex(), entry.size)
                 }
             }
-            val wire = LinkaWire.parse(boundedJson(config ?: fail(ProblemCode.INVALID_DATA)))
+            val wire = LinkaWire.parse(boundedJson(config ?: fail(ProblemCode.INVALID_DATA)), legacyUpgrade)
             // Raw schema and every late-page/card feature are checked before the first prepare.
             val references = wire.references
             for (path in references.keys) if (path !in staged) fail(ProblemCode.MISSING_ASSET)

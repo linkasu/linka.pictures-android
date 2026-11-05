@@ -25,11 +25,11 @@ internal data class LinkaWire(val raw: JsonObject, val pages: List<WirePage>, va
     }
 
     companion object {
-        fun parse(raw: JsonObject): LinkaWire {
+        fun parse(raw: JsonObject, legacyUpgrade: Boolean = false): LinkaWire {
             raw.structural()
             if (raw.bool("quiz")) fail(ProblemCode.UNSUPPORTED_MODE)
             val version = raw.string("version") ?: fail(ProblemCode.UNSUPPORTED_VERSION)
-            if (version !in setOf("1.0", "1.2", "2.0", "3.0")) fail(ProblemCode.UNSUPPORTED_VERSION)
+            if (version !in setOf("1.0", "1.2", "2.0", "3.0") && !(legacyUpgrade && version == "1.3")) fail(ProblemCode.UNSUPPORTED_VERSION)
             val legacy = version != "3.0"
             if (legacy) checkData("pages" !in raw)
             else checkData(listOf("rows", "columns", "cards").none { it in raw })

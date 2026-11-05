@@ -24,6 +24,26 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 class LinkaCodecTest {
+    @Test fun privateUpgradeAcceptsShippedFlat13WithoutExpandingExternalVersionWhitelist() = runTest {
+        val config = """{"version":"1.3","rows":1,"columns":1,"directSet":true,"description":"сохранить","cards":[{"id":7,"cardType":0,"title":"Болит","width":2,"height":2,"custom":{"source":"legacy"}}]}"""
+        val rig = CodecTestRig()
+        val original = syntheticZip(listOf(configEntry(config)))
+        val input = rig.input(original)
+        assertFailure(rig.codec.read(input, "Болит"), ProblemCode.UNSUPPORTED_VERSION)
+        val upgraded = rig.codec.readLegacyUpgrade(input, "Болит").value()
+        try {
+            assertEquals("сохранить", upgraded.document.description)
+            assertEquals(InteractionMode.DIRECT, upgraded.document.behavior.defaultMode)
+            assertEquals("Болит", upgraded.document.pages.single().cells.single().card!!.label)
+            assertTrue(upgraded.document.pages.single().cells.single().card!!.extensionsJson.contains("legacy"))
+            assertTrue(upgraded.report.layoutNormalized)
+            assertContentEquals(original, rig.raw(input))
+        } finally { upgraded.close() }
+        assertFailure(rig.codec.readLegacyUpgrade(rig.input(syntheticZip(listOf(configEntry(config.replace("1.3", "2.99"))))), "test"), ProblemCode.UNSUPPORTED_VERSION)
+        assertFailure(rig.codec.readLegacyUpgrade(rig.input(syntheticZip(listOf(configEntry(config.replace("\"rows\":1", "\"actions\":null,\"rows\":1"))))), "test"), ProblemCode.UNSUPPORTED_FEATURE)
+        clean(rig)
+    }
+
     @Test fun lossyNativeNameIsRejectedBeforePreparingAnyMedia() = runTest {
         for (name in listOf("left\u0000right", "left\uD800right", "left\uDC00right")) {
             val rig = CodecTestRig()
