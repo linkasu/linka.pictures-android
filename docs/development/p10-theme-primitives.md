@@ -96,3 +96,23 @@ Focused: `:shared:jvmTest --tests 'su.linka.pictures.ui.communication.Communicat
 5. Real persistence/reopen UNCONFIRMED/stale, failure/Stop/direct/междосочные сценарии, offline voice/missing-voice и recording-only на обеих платформах; AAC/физическая приёмка P15.
 
 Pure tests и compilation не закрывают ни один из этих native gates. Других изменений frozen интерфейсов или новых dependencies не потребовалось.
+
+## Correction после COORD review `c8f6183`
+
+Подтверждённая причина: `CommunicationMessage` и Backspace/Clear/Undo были дочерними узлами `CommunicationControls.Column.verticalScroll`. Поэтому прокрутка формы/статусов уводила и сообщение/его действия. Для этого уже подтверждённого containment-дефекта дополнительные гипотезы/instrumentation не требовались; native воспроизведение не подменяется проверкой исходников.
+
+Исправление отдельным commit, без amend: `CommunicationScreen` выделяет соседние ограниченные viewport для сообщения и secondary controls, а grid остаётся собственной weighted рабочей областью. Сообщение целиком имеет собственную прокрутку текста/картинок; secondary scroll не является его ancestor. Backspace/Clear/Undo вынесены в `CommunicationMessageActions`, закреплённый вне body/secondary scroll непосредственно над Speak/Stop. В узком окне toolbar прокручивается **горизонтально**, сохраняя min targets и полный wrap подписей, а не растёт в несколько вертикальных рядов за счёт grid. Навигация/board/mode/page не скрыты disclosure-панелью; страницы перенесены выше формы и длинного voice status. Все команды, UNCONFIRMED freeze и API остались прежними.
+
+Новая nontrivial pure layout-policy не вводилась: используются прежняя portrait/landscape ветка, стандартные weights и foundation scroll. Pure математический тест не доказал бы ошибку ancestor scroll, поэтому такое доказательство не заявляется. Перед patch agent-runnable source-containment assert упал: `FAIL: message is a child of secondary controls verticalScroll`. После patch тот же assert (нет `CommunicationMessage(`/Backspace/Clear/Undo в secondary controls; message/toolbar принадлежат screen) PASS. Это структурная проверка причины, **не** runtime layout acceptance.
+
+Focused gate после correctness review:
+
+```sh
+./gradlew :shared:jvmTest --tests 'su.linka.pictures.ui.*' \
+  :shared:compileDebugKotlinAndroid :shared:compileKotlinIosArm64 \
+  :shared:compileKotlinIosSimulatorArm64 --console=plain
+```
+
+С теми же JAVA_HOME/ANDROID_HOME/DEVELOPER_DIR: **BUILD SUCCESSFUL**; UI JVM9 тестов PASS (6 presentation +3 theme), Android и обе ARM Native main compilations PASS. Только прежние StoragePinsLock expect/actual Beta warnings. Source containment PASS, `git diff --check` PASS. Controller/state/ports/primitives/dependencies не менялись.
+
+Открытый native regression scenario: на portrait/landscape/narrow и с IME/large-font прокрутить secondary controls от начала до конца — viewport сообщения, toolbar исправления и Speak/Stop не должны уезжать; отдельно прокручиваются длинное сообщение/снимки и grid. Проверить доступность всех трёх toolbar actions через touch, horizontal scroll, Tab/VoiceOver/TalkBack, особенно возврат focus и большой шрифт. Screenshots/runtime/semantic tree и физическая приёмка по-прежнему OPEN; устройства не запускались.

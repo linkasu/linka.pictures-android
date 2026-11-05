@@ -55,11 +55,15 @@ fun CommunicationScreen(
             ) {
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                     val controls: @Composable (Modifier) -> Unit = { paneModifier ->
-                        CommunicationControls(
-                            state, presentation, ids, dispatch,
-                            { if (presentation.commandsEnabled) onOpenLibrary() }, images,
-                            input, { if (presentation.commandsEnabled) input = it }, paneModifier,
-                        )
+                        Column(paneModifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CommunicationMessage(state, images, Modifier.weight(1f).fillMaxWidth())
+                            CommunicationControls(
+                                state, presentation, ids, dispatch,
+                                { if (presentation.commandsEnabled) onOpenLibrary() },
+                                input, { if (presentation.commandsEnabled) input = it },
+                                Modifier.weight(1f).fillMaxWidth(),
+                            )
+                        }
                     }
                     val grid: @Composable (Modifier) -> Unit = { paneModifier ->
                         val page = presentation.page
@@ -89,6 +93,7 @@ fun CommunicationScreen(
                         }
                     }
                 }
+                CommunicationMessageActions(presentation, ids, dispatch)
                 LabeledActionButton(
                     if (presentation.stopping) "Остановить" else "Произнести",
                     presentation.speechEnabled, false,

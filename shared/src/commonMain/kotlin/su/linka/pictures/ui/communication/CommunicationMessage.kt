@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -30,12 +29,15 @@ import su.linka.pictures.domain.MessagePart
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
-internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId, ImageBitmap>) {
+internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId, ImageBitmap>, modifier: Modifier) {
     val palette = LocalLinkaPalette.current
     val pictures = remember(state.message.parts) {
         state.message.parts.filterIsInstance<MessagePart.Card>().filter { it.snapshot.image != null }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier.border(1.dp, palette.border).verticalScroll(rememberScrollState()).padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Text("Общее сообщение", style = MaterialTheme.typography.h6, modifier = Modifier.semantics { heading() })
         Text(
             when {
@@ -45,8 +47,7 @@ internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId
             },
             style = MaterialTheme.typography.h6,
             softWrap = true,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp, max = 144.dp)
-                .border(1.dp, palette.border).verticalScroll(rememberScrollState()).padding(8.dp),
+            modifier = Modifier.fillMaxWidth(),
         )
         if (pictures.isNotEmpty()) LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -15,7 +15,6 @@ import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -23,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import su.linka.pictures.application.communication.CommunicationCommand
 import su.linka.pictures.application.communication.CommunicationState
 import su.linka.pictures.application.ports.IdSource
-import su.linka.pictures.domain.AssetId
 import su.linka.pictures.domain.CommandId
 import su.linka.pictures.domain.InteractionMode
 import su.linka.pictures.ui.components.LabeledActionButton
@@ -37,7 +35,6 @@ internal fun CommunicationControls(
     ids: IdSource,
     onCommand: (CommunicationCommand) -> Unit,
     onOpenLibrary: () -> Unit,
-    images: Map<AssetId, ImageBitmap>,
     input: String,
     onInputChange: (String) -> Unit,
     modifier: Modifier,
@@ -54,9 +51,6 @@ internal fun CommunicationControls(
     ) {
         Text(presentation.saveStatus, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         for (problem in presentation.problems) Text(problem, color = palette.danger, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-        CommunicationMessage(state, images)
-        Text(presentation.audioStatus, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-        Text(presentation.voiceStatus)
         LabeledActionButton("Открыть библиотеку", presentation.commandsEnabled, false, onOpenLibrary)
         Text(state.board?.document?.name ?: "Доска не открыта", style = MaterialTheme.typography.h6)
         Text(
@@ -69,11 +63,22 @@ internal fun CommunicationControls(
             presentation.commandsEnabled, false,
             { onCommand(CommunicationCommand.SetMode(id(), if (presentation.composing) InteractionMode.DIRECT else InteractionMode.COMPOSE)) },
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            LabeledActionButton("Удалить последнее", presentation.editEnabled, false, { onCommand(CommunicationCommand.Backspace(id())) })
-            LabeledActionButton("Очистить сообщение", presentation.editEnabled, true, { onCommand(CommunicationCommand.Clear(id())) })
-            LabeledActionButton("Отменить очистку сообщения", presentation.undoEnabled, false, { onCommand(CommunicationCommand.UndoClear(id())) })
+        val pages = state.board?.document?.pages.orEmpty()
+        if (presentation.page != null) {
+            Text("Страница ${presentation.pageIndex + 1} из ${pages.size}")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                LabeledActionButton(
+                    "Предыдущая страница", presentation.commandsEnabled && presentation.pageIndex > 0, false,
+                    { pages.getOrNull(presentation.pageIndex - 1)?.let { onCommand(CommunicationCommand.ChangePage(id(), it.id)) } },
+                )
+                LabeledActionButton(
+                    "Следующая страница", presentation.commandsEnabled && presentation.pageIndex < pages.lastIndex, false,
+                    { pages.getOrNull(presentation.pageIndex + 1)?.let { onCommand(CommunicationCommand.ChangePage(id(), it.id)) } },
+                )
+            }
         }
+        Text(presentation.audioStatus, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        Text(presentation.voiceStatus)
         if (presentation.composing) {
             OutlinedTextField(
                 value = input,
@@ -97,20 +102,6 @@ internal fun CommunicationControls(
                     { onCommand(CommunicationCommand.InsertText(id(), input)) },
                 )
                 LabeledActionButton("Очистить поле ввода", presentation.commandsEnabled && input.isNotEmpty(), false, { onInputChange("") })
-            }
-        }
-        val pages = state.board?.document?.pages.orEmpty()
-        if (presentation.page != null) {
-            Text("Страница ${presentation.pageIndex + 1} из ${pages.size}")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                LabeledActionButton(
-                    "Предыдущая страница", presentation.commandsEnabled && presentation.pageIndex > 0, false,
-                    { pages.getOrNull(presentation.pageIndex - 1)?.let { onCommand(CommunicationCommand.ChangePage(id(), it.id)) } },
-                )
-                LabeledActionButton(
-                    "Следующая страница", presentation.commandsEnabled && presentation.pageIndex < pages.lastIndex, false,
-                    { pages.getOrNull(presentation.pageIndex + 1)?.let { onCommand(CommunicationCommand.ChangePage(id(), it.id)) } },
-                )
             }
         }
     }
