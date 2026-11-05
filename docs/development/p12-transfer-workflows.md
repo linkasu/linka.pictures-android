@@ -7,7 +7,11 @@ UI, storage schema, credentials и native bindings не добавляются.
 ## API и состояния
 
 Конструктор: `(library, messages, linka, backup, files, gate, ids, scope)` согласно
-`code-contracts.md`. Scope принадлежит root. Все codec/source/sink/cleanup работы
+`code-contracts.md`. Coordinator принадлежит ограниченному transfer UI-owner/root
+child scope, не является вечным process-global сервисом. Scope принадлежит root;
+закрытые owner IDs не переиспользуются. `closedOwners` сохраняет tombstones до
+освобождения coordinator, чтобы close никогда не открывал старый owner повторно.
+Все codec/source/sink/cleanup работы
 выполняются на `Dispatchers.IO`; короткий mutex хранит только admission/state.
 Guard callbacks, picker, FS и SQL под этим mutex не выполняются.
 
@@ -23,7 +27,9 @@ Guard callbacks, picker, FS и SQL под этим mutex не выполняют
   явно проверяют owner/capability. Close освобождает операции владельца и закрывает
   этот owner для новых admissions; новый UI owner получает новый идентификатор.
 - `revokePending(ownerId)` — lifecycle invalidation, а не авторизация. Root вызывает
-  её при background/picker interruption и отдельно отзывает доступ через access.
+  её при background/picker interruption. Порядок обязателен: сначала синхронный
+  `access.revokeOwner(ownerId)` / `access.revokeAll()`, затем запуск suspend
+  `revokePending` для затронутых owners; authority отнимается до ожидания mutex/join.
   Отозванная операция terminal, никогда автоматически не продолжается. Для нового
   explicit действия нужна новая prepare и затем fresh confirm.
 
@@ -34,6 +40,12 @@ VALIDATING/PREPARING → AWAITING_CONFIRMATION → WRITING → COMPLETED.
 CANCELLED, FAILED и UNCONFIRMED различаются. Для одного owner допускается только
 одна pending/running операция, включая завершение cleanup; второй запрос возвращает
 CONFLICT без скрытой очереди. Разные owners имеют независимые операции.
+State не является историей: terminal остаётся видимым до успешного admission новой
+операции того же owner, которое заменяет прежнюю terminal запись. Для каждого owner
+хранится не более одной active/latest-terminal записи; чужие owners не удаляются,
+а отказ admission не скрывает предыдущий результат.
+In-flight waiter держит собственную terminal phase до возврата: замена публичной
+записи новой операцией не превращает уже подтверждённый commit в Cancelled.
 
 Счётчики обновляются после успешной codec-проверки архива: `processedEntries` —
 реальное число ZIP entries, `processedBytes` — сумма их проверенных распакованных
@@ -114,5 +126,20 @@ PASS: финальные 14/14 workflow tests. Совокупно 146 разли
 сборки — существующие expect/actual Beta. Normal APK, allTests, default simulator,
 Keychain, OS prompts, UI и physical devices для этой lane не запускались.
 
-Root перед отменой своего scope обязан вызвать `revokePending` для остающихся
-owners: завершённый prepare намеренно держит lease/temp до explicit terminal.
+Correction после `7d74425`: bounded per-owner state, сохранение close tombstones и
+уточнённый root lifecycle. Добавлен тест повторных prepare/confirm с двумя owners:
+terminal виден до следующего admission, CONFLICT не удаляет state, чужой active/
+terminal сохраняется, закрытый owner не открывается снова. Прежние 14 тестов не
+ослаблялись. PASS: 15/15 focused workflow tests и обе incremental Native compilations:
+
+```sh
+./gradlew :shared:jvmTest \
+  --tests 'su.linka.pictures.application.portability.TransferCoordinatorTest' \
+  :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 --console=plain
+```
+
+Root перед отменой своего child scope обязан сначала синхронно отозвать access,
+затем дождаться `close` / `revokePending` для всех остающихся owners и лишь после
+этого отменять scope. После access revoke gate может отклонить protected close;
+в этом случае cleanup выполняется через lifecycle `revokePending`, без новой
+авторизации. Завершённый prepare намеренно держит lease/temp до explicit terminal.

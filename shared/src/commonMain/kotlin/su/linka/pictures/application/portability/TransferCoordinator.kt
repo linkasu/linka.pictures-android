@@ -23,6 +23,7 @@ class TransferCoordinator(
 ) {
     private class Pending(val id: OperationId, val owner: String, val kind: TransferKind, val epoch: Long) {
         val revoked = MutableStateFlow(false)
+        val terminalPhase = MutableStateFlow<TransferPhase?>(null)
         val resources = mutableListOf<() -> Unit>()
         val cleanupLock = Mutex()
         var job: Deferred<OperationResult<Unit>>? = null
@@ -157,7 +158,7 @@ class TransferCoordinator(
             if (pending.values.any { it.owner == owner }) return failed(ProblemCode.CONFLICT)
             if (op.id in mutableState.value) return failed(ProblemCode.CONFLICT)
             pending[op.id] = op
-            publish(op, if (kind == TransferKind.IMPORT || kind == TransferKind.RESTORE) TransferPhase.VALIDATING else TransferPhase.PREPARING)
+            publish(op, if (kind == TransferKind.IMPORT || kind == TransferKind.RESTORE) TransferPhase.VALIDATING else TransferPhase.PREPARING, replaceOwner = true)
             op.job = task(op, preparing = true) {
                 val preview = work(op)
                 currentCoroutineContext().ensureActive()
@@ -302,6 +303,7 @@ class TransferCoordinator(
                                 is OperationResult.Failed -> TransferPhase.FAILED
                             }
                             if (phase == TransferPhase.UNCONFIRMED) frozen.value = true
+                            op.terminalPhase.value = phase
                             val problem = when (result) {
                                 is OperationResult.Failed -> result.problem
                                 OperationResult.UnconfirmedCommit -> Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN)
@@ -325,7 +327,8 @@ class TransferCoordinator(
     private suspend fun await(op: Pending, job: Deferred<OperationResult<Unit>>): OperationResult<Unit> = try {
         job.await()
     } catch (cancelled: CancellationException) {
-        val terminal = state.value[op.id]?.transfer?.phase
+        // New admission may already have replaced the public record before this waiter resumes.
+        val terminal = op.terminalPhase.value
         if (terminal == TransferPhase.COMPLETED) OperationResult.Completed(Unit)
         else if (terminal == TransferPhase.UNCONFIRMED) OperationResult.UnconfirmedCommit
         else if (op.revoked.value) OperationResult.Cancelled else {
@@ -344,10 +347,12 @@ class TransferCoordinator(
     }
 
     // Called only under the tiny state lock. No callback, IO, SQL or resource cleanup here.
-    private fun publish(op: Pending, phase: TransferPhase, preview: TransferPreview? = null, problem: Problem? = null, epoch: Long? = null) {
+    private fun publish(op: Pending, phase: TransferPhase, preview: TransferPreview? = null, problem: Problem? = null, epoch: Long? = null, replaceOwner: Boolean = false) {
         val old = mutableState.value[op.id]
         val shown = preview ?: old?.preview
-        mutableState.value = mutableState.value + (op.id to TransferOperationState(op.owner, op.kind,
+        // Admission replaces this owner's terminal outcome atomically with the new operation.
+        val records = if (replaceOwner) mutableState.value.filterValues { it.ownerId != op.owner } else mutableState.value
+        mutableState.value = records + (op.id to TransferOperationState(op.owner, op.kind,
             TransferState(op.id, phase, op.entries, op.bytes, problem), shown, epoch ?: old?.stateCommittedEpoch))
     }
 

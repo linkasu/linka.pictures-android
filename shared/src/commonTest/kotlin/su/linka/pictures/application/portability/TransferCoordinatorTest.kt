@@ -16,6 +16,40 @@ class TransferCoordinatorTest {
         try { withContext(Dispatchers.IO) { rig.block() } } finally { rig.clean() }
     }
 
+    @Test fun stateKeepsOnlyLatestOperationPerOwnerAndRetainsTerminalUntilNextAdmission() = runTest { fresh {
+        add(); linkaInput()
+        val workflow = coordinator()
+        val other = workflow.prepareImport("other", "other").ok()
+        var previous: OperationId? = null
+        repeat(5) {
+            previous?.let { old ->
+                assertEquals(TransferPhase.COMPLETED, workflow.state.value[old]!!.transfer.phase)
+            }
+            val id = workflow.prepareImport("owner", "repeated").ok()
+            previous?.let { old -> assertFalse(old in workflow.state.value) }
+            assertEquals(setOf(other, id), workflow.state.value.keys)
+            assertEquals(TransferPhase.AWAITING_CONFIRMATION, workflow.state.value[other]!!.transfer.phase)
+            workflow.prepareImport("owner", "conflict").problem(ProblemCode.CONFLICT)
+            assertEquals(setOf(other, id), workflow.state.value.keys)
+            workflow.confirm("owner", id, capability, TransferConfirmation.ImportNew).ok()
+            assertEquals(TransferPhase.COMPLETED, workflow.state.value[id]!!.transfer.phase)
+            assertEquals(setOf(other, id), workflow.state.value.keys)
+            previous = id
+        }
+        workflow.revokePending("other")
+        assertEquals(TransferPhase.CANCELLED, workflow.state.value[other]!!.transfer.phase)
+        val otherNext = workflow.prepareImport("other", "other next").ok()
+        assertEquals(setOf(otherNext, previous), workflow.state.value.keys)
+        assertEquals(TransferPhase.COMPLETED, workflow.state.value[previous]!!.transfer.phase)
+        workflow.revokePending("other")
+        workflow.close("owner", capability).ok()
+        assertEquals(setOf(otherNext), workflow.state.value.keys)
+        assertEquals(TransferPhase.CANCELLED, workflow.state.value[otherNext]!!.transfer.phase)
+        workflow.prepareImport("owner", "closed owner").problem(ProblemCode.STALE_REQUEST)
+        assertEquals(setOf(otherNext), workflow.state.value.keys)
+        assertEquals(0, privateFiles.temporaryCount)
+    } }
+
     @Test fun importIsPreviewOnlyAndNewNeverOverwritesSameName() = runTest { fresh {
         add(); linkaInput()
         val original = input.copyOf()
