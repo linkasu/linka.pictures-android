@@ -223,4 +223,38 @@ class LocalAssistantAccessTest {
         assertIs<AssistantState.Protected>(access(store).state.value)
         denied(gate.check(ProtectedAction.CREATE_BACKUP, null, "a"))
     }
+
+    @Test fun systemPromptSuspensionRevokesCapabilitiesAndGuardsWithoutCancellingItsOwnRequest() = runTest {
+        val store = Store()
+        val owner = Owner()
+        val gate = access(store, owner)
+        val capability = assertIs<OperationResult.Completed<AssistantCapability>>(gate.unlock("", "editor")).value
+        val previousGuard = gate.guard(ProtectedAction.CREATE_BOARD, capability, "editor")
+        owner.proof = {
+            gate.suspendForSystemPrompt()
+            denied(previousGuard())
+            denied(gate.check(ProtectedAction.CREATE_BOARD, capability, "editor"))
+            assertTrue(owner.cancellations.isEmpty())
+            OperationResult.Completed(Unit)
+        }
+        assertIs<OperationResult.Completed<Unit>>(gate.resetPasswordWithDeviceOwner("new", "reset"))
+        assertEquals(1, store.writes)
+    }
+
+    @Test fun replacingAnOwnerContextCancelsItsPreviousNativeRequest() = runTest {
+        val owner = Owner()
+        val gate = access(owner = owner)
+        owner.proof = {
+            gate.guard(ProtectedAction.CREATE_BOARD, null, "reset")
+            assertEquals(0, owner.cancellations.size)
+            // A new explicit reset replaces this same owner's pending challenge before writer admission.
+            val replacement = launch(start = CoroutineStart.UNDISPATCHED) {
+                gate.resetPasswordWithDeviceOwner("replacement", "reset")
+            }
+            replacement.cancel()
+            OperationResult.Completed(Unit)
+        }
+        denied(gate.resetPasswordWithDeviceOwner("original", "reset"))
+        assertEquals(1, owner.cancellations.size)
+    }
 }

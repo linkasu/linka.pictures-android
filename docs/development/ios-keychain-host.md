@@ -2,6 +2,8 @@
 
 5 ноября 2026. **Runtime BLOCKED; не G4 PASS.** `KeychainCredentialStore` скомпилирован для обеих ARM Native-целей, но реальное чтение/запись ещё не подтверждены. Normal app/root не подключены.
 
+Позднее пользователь явно разрешил проверить/use **существующую Apple Development identity только для собственного isolated legitimate test-host/Keychain group**. Read-only `security find-identity -v -p codesigning` дал **0 valid identities**. Это разрешение не распространяется на создание сертификатов/аккаунтов, profiles fetch, production signing или store upload; они не выполнялись. Отсутствующий identity остаётся prerequisite, а не повод повторять ad-hoc AMFI путь. [Текущие native mechanics](native-owner-verification.md).
+
 ## Реализация
 
 Один generic-password record, default service `su.linka.pictures.assistant.v1`, account `credential`. Data Protection Keychain, synchronizable=false, WhenUnlockedThisDeviceOnly, authentication UI запрещён для store operations (fresh-owner verification — другой модуль). Размер1..8192 bytes, CFData передаёт byte length, никаких C-string passwords. CF dictionaries/data/result освобождаются на всех путях. Синхронный последний guard непосредственно перед Add/Update, без delete/add fallback или слепого retry. Known success → Completed, native error/исключение после возможного mutation сверяет exact old/new независимым read; нет доказательства → UnconfirmedCommit. Read failure не становится отсутствующим record.

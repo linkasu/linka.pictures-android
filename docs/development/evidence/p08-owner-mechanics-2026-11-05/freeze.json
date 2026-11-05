@@ -1,0 +1,14 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p08-owner-native-vmw6wsmr/frozen-owner-test.apk",
+  "sha256": "3ebf2268f17abc9cd908b091da1008629f6884f27f1f13e033cba754aad43a7a",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "classes": [
+    "su.linka.pictures.access.AndroidDeviceOwnerVerifierTest"
+  ],
+  "expectedTests": 2,
+  "sources": {
+    "shared/src/androidMain/kotlin/su/linka/pictures/access/AndroidDeviceOwnerVerifier.kt": "916c9188bda61221d783cf08ed3353d6ee25846786e307faf4b98752a0ee3ccb",
+    "shared/src/commonMain/kotlin/su/linka/pictures/access/OwnerVerificationRequest.kt": "6e47610806baf742968a3cf97fbb0c89396c0af02ca6b6ef53fcb0f6dda69c3d"
+  }
+}

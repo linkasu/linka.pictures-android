@@ -24,6 +24,7 @@ internal class LocalAssistantAccess private constructor(
         val protected: Boolean,
         val ready: Boolean = true,
         val revision: Any = Any(),
+        val guardRevision: Any = Any(),
         val owners: Map<String, OwnerContext> = emptyMap(),
     )
 
@@ -48,9 +49,11 @@ internal class LocalAssistantAccess private constructor(
         if (check(action, capability, ownerId) !is OperationResult.Completed) return { denied() }
         val ticket = context(ownerId, replace = false) ?: return { denied() }
         val revision = gate.value.revision
+        val guardRevision = gate.value.guardRevision
         return {
             val snapshot = gate.value
-            if (!current(ownerId, ticket, revision, snapshot)) denied() else check(action, capability, ownerId, snapshot)
+            if (snapshot.guardRevision !== guardRevision || !current(ownerId, ticket, revision, snapshot)) denied()
+            else check(action, capability, ownerId, snapshot)
         }
     }
 
@@ -106,6 +109,8 @@ internal class LocalAssistantAccess private constructor(
             availability = verification.availability()
             mutableState.value = presentation()
             if (availability != OwnerVerificationAvailability.AVAILABLE) return@withLock failed(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE)
+            currentCoroutineContext().ensureActive()
+            if (permit() !is OperationResult.Completed) return@withLock denied()
             when (val proof = verification.verify(requestId, ownerId)) {
                 is OperationResult.Completed -> Unit
                 else -> return@withLock proof
@@ -145,6 +150,16 @@ internal class LocalAssistantAccess private constructor(
         }
     }
 
+    // Only the root's owned system presentation uses this; real background still calls revokeAll().
+    internal fun suspendForSystemPrompt() {
+        gate.update { previous -> previous.copy(guardRevision = Any(), owners = previous.owners.filterValues { it.requestId != null }) }
+    }
+
+    internal fun isVerificationCurrent(requestId: RequestId, ownerId: String): Boolean {
+        val snapshot = gate.value
+        return snapshot.ready && snapshot.owners[ownerId]?.requestId == requestId
+    }
+
     private fun context(ownerId: String, replace: Boolean, requestId: RequestId? = null): Any? {
         if (!validOwner(ownerId)) return null
         val created = OwnerContext(requestId = requestId)
@@ -153,7 +168,10 @@ internal class LocalAssistantAccess private constructor(
             if (!previous.ready) return null
             if (!replace) previous.owners[ownerId]?.let { return it.ticket }
             if (ownerId !in previous.owners && previous.owners.size >= 64) return null
-            if (gate.compareAndSet(previous, previous.copy(owners = previous.owners + (ownerId to created)))) return created.ticket
+            if (gate.compareAndSet(previous, previous.copy(owners = previous.owners + (ownerId to created)))) {
+                if (replace) previous.owners[ownerId]?.requestId?.let { try { verification.cancel(it) } catch (_: Exception) { } }
+                return created.ticket
+            }
         }
     }
 

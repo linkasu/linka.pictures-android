@@ -1,0 +1,88 @@
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :shared:prepareIosAudioDecoder
+{"status": "VERIFIED_FASTPATH", "manifest": "/Volumes/data/linka/linka.pictures-android/shared/build/ios-audio-decoder/linka-audio-decoder-manifest.json"}
+
+> Task :shared:cinteropLinkaAudioDecoderIosArm64 UP-TO-DATE
+> Task :shared:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleMain SKIPPED
+> Task :shared:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonMain SKIPPED
+> Task :shared:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosArm64Main SKIPPED
+> Task :shared:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosMain SKIPPED
+> Task :shared:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeMain SKIPPED
+> Task :shared:generateActualResourceCollectorsForIosArm64Main SKIPPED
+> Task :shared:generateComposeResClass SKIPPED
+> Task :shared:generateExpectResourceCollectorsForCommonMain SKIPPED
+
+> Task :shared:compileKotlinIosArm64
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/commonMain/kotlin/su/linka/pictures/access/PasswordCrypto.kt:3:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/commonMain/kotlin/su/linka/pictures/storage/StoragePinsLock.kt:3:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/iosMain/kotlin/su/linka/pictures/access/PasswordCrypto.kt:11:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/iosMain/kotlin/su/linka/pictures/storage/StoragePinsLock.kt:5:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+
+> Task :shared:cinteropLinkaAudioDecoderIosSimulatorArm64 UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :shared:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+
+> Task :shared:compileKotlinIosSimulatorArm64
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/commonMain/kotlin/su/linka/pictures/access/PasswordCrypto.kt:3:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/commonMain/kotlin/su/linka/pictures/storage/StoragePinsLock.kt:3:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/iosMain/kotlin/su/linka/pictures/access/PasswordCrypto.kt:11:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/iosMain/kotlin/su/linka/pictures/storage/StoragePinsLock.kt:5:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+
+> Task :shared:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForAppleTest SKIPPED
+> Task :shared:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonTest SKIPPED
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :shared:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForIosTest SKIPPED
+> Task :shared:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForNativeTest SKIPPED
+> Task :shared:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :shared:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :shared:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :shared:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :shared:iosSimulatorArm64ProcessResources UP-TO-DATE
+> Task :shared:iosSimulatorArm64MainKlibrary
+> Task :shared:compileTestKotlinIosSimulatorArm64
+> Task :shared:convertXmlValueResourcesForIosSimulatorArm64AppHostTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForIosSimulatorArm64AppHostTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForIosSimulatorArm64AppHostTest NO-SOURCE
+> Task :shared:assembleIosSimulatorArm64AppHostTestResources UP-TO-DATE
+> Task :shared:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :shared:copyTestComposeResourcesForIosSimulatorArm64 UP-TO-DATE
+> Task :shared:linkDebugTestIosSimulatorArm64
+
+BUILD SUCCESSFUL in 58s
+17 actionable tasks: 6 executed, 11 up-to-date
