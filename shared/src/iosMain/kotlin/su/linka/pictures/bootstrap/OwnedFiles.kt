@@ -33,6 +33,7 @@ internal class OwnedFiles(private val native: PlatformFilesPort, private val own
             val result = owned(ownerId) {
                 when (val chosen = native.chooseDestination(suggestedName, mediaType, ownerId)) {
                     is OperationResult.Completed -> {
+                        if (chosen.value.ownerId != ownerId) return@owned OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED))
                         val handle = Destination(chosen.value)
                         destination = handle
                         val admitted = locked {
@@ -58,10 +59,12 @@ internal class OwnedFiles(private val native: PlatformFilesPort, private val own
         try { operation() } finally { locked { jobs[owner]?.let { it -= job; if (it.isEmpty()) jobs.remove(owner) } } }
     }
 
-    fun revoke(owner: String) {
+    fun revoke(owner: String): Problem? {
         val (pending, handles) = locked { jobs.remove(owner).orEmpty().toList() to destinations.filter { it.ownerId == owner } }
-        pending.forEach { it.cancel() }
-        handles.forEach { runCatching { it.close() } }
+        val cleanup = CleanupAttempts()
+        pending.forEach { job -> cleanup.attempt { job.cancel() } }
+        handles.forEach { handle -> cleanup.attempt { handle.close() } }
+        return cleanup.problem
     }
 
     private inner class Destination(private val native: ExportDestination) : ExportDestination by native {

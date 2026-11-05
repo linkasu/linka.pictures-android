@@ -73,15 +73,26 @@ private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) 
                 val foreground by window.foreground.collectAsState()
                 val images by graph.thumbnails.images.collectAsState()
                 val problem by graph.thumbnails.problem.collectAsState()
+                val notice by graph.notice.collectAsState()
                 Column(Modifier.fillMaxSize()) {
+                    notice.problem?.let { Text("Ошибка: ${it.code}. Доступ закрыт; перезапустите приложение после устранения причины.") }
                     problem?.let { Text("Не удалось загрузить изображение: ${it.code}") }
                     val communication = session
-                    if (communication == null) Text("Переоткрываем сообщение после восстановления…")
-                    else LinkaApp(graph.storage.library, graph.storage.media, graph.storage.messages,
-                        graph.access, graph.audio, graph.files, graph.preparation, graph.inspection,
-                        graph.ids, window.scope, communication, foreground, images,
-                        { graph.thumbnails.request(window.id, it) },
-                        { root.openOwner(it, window) }, root::closeOwner, root::libraryReplaced)
+                    if (notice.replacementEpoch != null) {
+                        Text(if (notice.problem != null) "Библиотека заменена, прежнее сообщение очищено. Требуется перезапуск."
+                            else "Библиотека заменена. Открываем новое сообщение…")
+                    } else if (communication == null) Text("Открываем сообщение…")
+                    else {
+                        val message by communication.state.collectAsState()
+                        if (notice.problem != null) Text("Текущее сообщение (только чтение): ${message.renderedText}")
+                        ReadOnlyProduct(notice.readOnly, message.renderedText) {
+                            LinkaApp(graph.storage.library, graph.storage.media, graph.storage.messages,
+                                graph.access, graph.audio, graph.files, graph.preparation, graph.inspection,
+                                graph.ids, window.scope, communication, foreground, images,
+                                { graph.thumbnails.request(window.id, it) },
+                                { root.openOwner(it, window) }, root::closeOwner, root::libraryReplaced)
+                        }
+                    }
                 }
             }
         }

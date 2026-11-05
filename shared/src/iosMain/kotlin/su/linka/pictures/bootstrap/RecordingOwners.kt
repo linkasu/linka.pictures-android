@@ -14,6 +14,7 @@ import kotlin.coroutines.resume
 internal class RecordingOwners(
     private val foreground: (String) -> Boolean,
     private val onPrompt: () -> Unit,
+    private val denied: () -> Problem?,
 ) {
     private data class Pending(val owner: String, val job: Job)
     private val lock = NSLock()
@@ -22,10 +23,12 @@ internal class RecordingOwners(
     fun bind(audio: AudioPort): AudioPort = object : AudioPort by audio {
         override fun play(request: PlaybackRequest) {
             locked { pending.clear() }
+            if (denied() != null) { audio.interrupt(); return }
             audio.play(request)
         }
         override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> {
             locked { pending.clear() }
+            denied()?.let { return OperationResult.Failed(it) }
             return audio.synthesize(request)
         }
         override fun stop(ownerId: String, requestId: RequestId?) {
@@ -37,6 +40,7 @@ internal class RecordingOwners(
             audio.interrupt()
         }
         override suspend fun record(request: RecordingRequest): OperationResult<TemporaryFile> {
+            denied()?.let { return OperationResult.Failed(it) }
             val caller = Pending(request.owner.id, currentCoroutineContext().job)
             val admitted = locked { if (request.id in pending) false else { pending.clear(); pending[request.id] = caller; true } }
             if (!admitted) return OperationResult.Failed(Problem(ProblemCode.CONFLICT))

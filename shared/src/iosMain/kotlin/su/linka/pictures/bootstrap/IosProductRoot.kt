@@ -16,6 +16,7 @@ import kotlin.native.ref.WeakReference
 import su.linka.pictures.access.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.communication.CommunicationSession
+import su.linka.pictures.application.communication.MessageSavePhase
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.audio.AudioCoordinator
 import su.linka.pictures.domain.PortableSettings
@@ -34,13 +35,19 @@ internal sealed interface RootState {
 /** One writer/audio/session per process; UI owners and native presenters remain window-specific. */
 internal class IosProductRoot {
     private val job = SupervisorJob()
-    val scope = CoroutineScope(job + Dispatchers.Main.immediate)
+    private val failures = CoroutineExceptionHandler { _, _ ->
+        // Completion handlers can report rather than throw to cancel(); do not lose that cleanup failure.
+        val report = { recordCleanup(CleanupAttempts(Problem(ProblemCode.IO_FAILURE))) }
+        if (NSThread.isMainThread) report() else NSOperationQueue.mainQueue.addOperationWithBlock(report)
+    }
+    val scope = CoroutineScope(job + Dispatchers.Main.immediate + failures)
     private val mutableState = MutableStateFlow<RootState>(RootState.Loading)
     val state = mutableState.asStateFlow()
     private val owners = OwnerWindows()
     private val windows = mutableMapOf<String, Window>() // UIKit/Main only.
     private val observers = mutableListOf<Any>()
     private val reload = Mutex()
+    private val recovery = RootRecovery()
     private var storage: StorageRuntime? = null
     private var temporaryRoot: Path? = null
     private var access: LocalAssistantAccess? = null
@@ -67,7 +74,7 @@ internal class IosProductRoot {
             get() = nativeReference?.get()
             set(value) {
                 nativeReference = value?.let(::WeakReference)
-                value?.windowScene?.let { sceneReference = WeakReference(it) }
+                sceneReference = value?.windowScene?.let(::WeakReference)
             }
     }
 
@@ -81,6 +88,7 @@ internal class IosProductRoot {
         val thumbnails: ThumbnailLoader,
         val ids: IdSource,
         val session: StateFlow<CommunicationSession?>,
+        val notice: StateFlow<RootNotice>,
     )
 
     init {
@@ -103,8 +111,12 @@ internal class IosProductRoot {
             val native = notice?.`object` as? UIWindow ?: return@observe
             windows.values.filter { it.native === native }.forEach { window ->
                 owners.setActive(window.id, false)
-                owners.owners(window.id).forEach { owner -> access?.revokeOwner(owner); files?.revoke(owner) }
-                audio?.interrupt()
+                val cleanup = CleanupAttempts(recovery.notice.value.problem)
+                val affected = owners.owners(window.id)
+                affected.forEach { owner -> cleanup.attempt { access?.revokeOwner(owner) } }
+                cleanup.attempt { audio?.interrupt() }
+                affected.forEach { owner -> cleanup.attempt { revokeFiles(owner) } }
+                recordCleanup(cleanup)
             }
         }
         observe(UIWindowDidBecomeVisibleNotification) { updateWindows(); notifyForeground() }
@@ -138,21 +150,29 @@ internal class IosProductRoot {
     fun closeOwner(owner: String) {
         // Registry invalidation precedes access cancellation, files cleanup and child-scope cancellation.
         owners.close(owner)
-        access?.revokeOwner(owner)
-        audio?.stop(owner)
-        files?.revoke(owner)
+        val cleanup = CleanupAttempts(recovery.notice.value.problem)
+        cleanup.attempt { access?.revokeOwner(owner) }
+        cleanup.attempt { audio?.stop(owner) }
+        cleanup.attempt { revokeFiles(owner) }
+        recordCleanup(cleanup)
     }
 
     fun closeWindow(window: Window) {
         check(NSThread.isMainThread)
         if (windows.remove(window.id) !== window) return
         val closedOwners = owners.closeWindow(window.id)
-        closedOwners.forEach { owner -> access?.revokeOwner(owner); audio?.stop(owner); files?.revoke(owner) }
-        audio?.interrupt()
-        graph?.thumbnails?.remove(window.id)
         window.native = null
         window.foreground.value = false
-        window.scope.cancel()
+        val cleanup = CleanupAttempts(recovery.notice.value.problem)
+        closedOwners.forEach { owner -> cleanup.attempt { access?.revokeOwner(owner) } }
+        closedOwners.forEach { owner -> cleanup.attempt { audio?.stop(owner) } }
+        cleanup.attempt { audio?.interrupt() }
+        closedOwners.forEach { owner -> cleanup.attempt { revokeFiles(owner) } }
+        cleanup.attempt { graph?.thumbnails?.remove(window.id) }
+        val child = window.scope.coroutineContext[Job]
+        child?.children?.toList()?.forEach { worker -> cleanup.attempt { worker.cancel() } }
+        cleanup.attempt { child?.cancel() }
+        recordCleanup(cleanup)
     }
 
     fun libraryReplaced(epoch: Long) {
@@ -165,14 +185,36 @@ internal class IosProductRoot {
                     val actual = store.library.listing.value.epoch
                     if (epoch > actual) throw RootFailure(Problem(ProblemCode.STALE_REQUEST))
                     if (actual <= lastEpoch) return@withLock
-                    access?.revokeAll()
-                    audio?.interrupt()
-                    windows.values.flatMap { owners.owners(it.id) }.forEach { files?.revoke(it) }
-                    closeSession()
-                    if (closed) return@withLock
-                    settings.value = store.library.settings().required()
-                    createSession(store, checkNotNull(audio))
-                    lastEpoch = actual
+                    if (!recovery.beginReplacement(actual)) { closeSession(); return@withLock }
+                    val cleanup = CleanupAttempts()
+                    cleanup.attempt { access?.revokeAll() }
+                    cleanup.attempt { audio?.interrupt() }
+                    windows.values.flatMap { owners.owners(it.id) }.forEach { owner -> cleanup.attempt { revokeFiles(owner) } }
+                    cleanup.problem?.let { throw RootFailure(it) }
+                    val nextSettings = store.library.settings().required()
+                    val parent = SupervisorJob(job)
+                    var published = false
+                    var candidate: CommunicationSession? = null
+                    try {
+                        val next = CommunicationSession(store.library, store.messages, store.media, checkNotNull(audio), ids,
+                            CoroutineScope(scope.coroutineContext + parent))
+                        candidate = next
+                        val loaded = next.state.first { it.savePhase != MessageSavePhase.LOADING }
+                        if (loaded.problem != null) throw RootFailure(loaded.problem)
+                        if (loaded.savePhase != MessageSavePhase.SAVED || loaded.stamp.epoch != actual || store.library.listing.value.epoch != actual)
+                            throw RootFailure(Problem(ProblemCode.STALE_REQUEST))
+                        recovery.notice.value.problem?.let { throw RootFailure(it) }
+                        closeSession()?.let { throw RootFailure(it) }
+                        if (closed) return@withLock
+                        settings.value = nextSettings
+                        sessionJob = parent
+                        session.value = next
+                        lastEpoch = actual
+                        published = true
+                        recovery.replacementReady()
+                    } finally {
+                        if (!published) retireSession(candidate, parent)
+                    }
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: RootFailure) { fail(failure.problem) }
@@ -218,13 +260,13 @@ internal class IosProductRoot {
                     if (controller != null && controller.presentedViewController == null) assistant.suspendForSystemPrompt()
                     controller
                 }
-            }, owners::active, scope)
+            }, { owner -> recovery.denied() == null && owners.active(owner) }, scope)
         val ownedFiles = OwnedFiles(nativeFiles, owners)
         files = ownedFiles
         val decoder = IosAudioDecoder(ownedFiles)
         val inspection = IosMediaInspectionPort(decoder::inspect)
         settings.value = store.library.settings().required()
-        val recording = RecordingOwners(::ownerForeground, assistant::suspendForSystemPrompt)
+        val recording = RecordingOwners(::ownerForeground, assistant::suspendForSystemPrompt, recovery::denied)
         val backend = IosAudioBackend(ownedFiles, inspection, decoder::decodeToWave, recording::permission,
             { UIApplication.sharedApplication.applicationState == UIApplicationState.UIApplicationStateActive }, scope)
         val coordinator = AudioCoordinator(backend, store.media, ownedFiles, scope) { settings.value?.languageTag }
@@ -233,8 +275,8 @@ internal class IosProductRoot {
         val thumbnails = ThumbnailLoader(store.media, IosThumbnailDecoder(inspection)::decode, scope)
         createSession(store, port)
         lastEpoch = store.library.listing.value.epoch
-        val ready = Graph(store, assistant, port, ownedFiles, IosImagePreparationPort(ownedFiles, inspection), inspection,
-            thumbnails, ids, session.asStateFlow())
+        val ready = Graph(store, RootAssistantAccess(assistant, recovery), port, ownedFiles, IosImagePreparationPort(ownedFiles, inspection), inspection,
+            thumbnails, ids, session.asStateFlow(), recovery.notice)
         graph = ready
         mutableState.value = RootState.Ready(ready)
         updateWindows()
@@ -259,51 +301,64 @@ internal class IosProductRoot {
             CoroutineScope(scope.coroutineContext + parent))
     }
 
-    private suspend fun closeSession() {
+    private suspend fun closeSession(): Problem? {
         val old = session.value
         session.value = null
-        old?.close()
         val parent = sessionJob
-        parent?.cancelAndJoin()
         sessionJob = null
+        return retireSession(old, parent)
+    }
+
+    private suspend fun retireSession(old: CommunicationSession?, parent: Job?): Problem? = withContext(NonCancellable) {
+        val cleanup = CleanupAttempts()
+        cleanup.attempt { old?.close() }
+        parent?.children?.toList()?.forEach { worker -> cleanup.attempt { worker.cancel() } }
+        cleanup.attempt { parent?.cancel() }
+        cleanup.suspending { parent?.join() }
+        cleanup.problem
     }
 
     private fun ownerForeground(owner: String): Boolean {
         check(NSThread.isMainThread)
         val window = owners.window(owner)?.let(windows::get) ?: return false
-        return !closed && owners.active(owner) && active(window)
+        return recovery.denied() == null && owners.active(owner) && snapshot(window).active
     }
 
-    private fun active(window: Window): Boolean {
-        val native = window.controller?.viewIfLoaded?.window ?: return false
-        return !native.hidden && UIApplication.sharedApplication.applicationState == UIApplicationState.UIApplicationStateActive &&
-            (native.windowScene?.activationState?.let { it == UISceneActivationStateForegroundActive } ?: true)
+    private fun snapshot(window: Window): RootWindowSnapshot {
+        val current = window.controller?.viewIfLoaded?.window
+        if (window.native == null && current != null) window.native = current
+        val application = UIApplication.sharedApplication.applicationState
+        return rootWindowSnapshot(!closed && windows[window.id] === window && window.controller != null,
+            current, window.native, application == UIApplicationState.UIApplicationStateActive,
+            application == UIApplicationState.UIApplicationStateBackground, { it.hidden },
+            { it.windowScene?.activationState?.let { state -> state == UISceneActivationStateForegroundActive } ?: true },
+            { it.windowScene?.activationState == UISceneActivationStateBackground })
     }
 
     private fun updateWindows() {
         windows.values.toList().forEach { window ->
             if (window.controller == null) { closeWindow(window); return@forEach }
-            window.controller?.viewIfLoaded?.window?.let { window.native = it }
-            owners.setActive(window.id, !closed && active(window))
-            val native = window.controller?.viewIfLoaded?.window
+            val snapshot = snapshot(window)
+            owners.setActive(window.id, snapshot.active)
             // Inactive (including our OS prompts) is not a real-background UI event.
-            window.foreground.value = !closed && native != null && !native.hidden &&
-                UIApplication.sharedApplication.applicationState != UIApplicationState.UIApplicationStateBackground &&
-                native.windowScene?.activationState != UISceneActivationStateBackground
+            window.foreground.value = snapshot.foreground
         }
     }
 
     private fun background(scene: UIScene?) {
         val affected = windows.values.filter { scene == null || it.scene === scene }
+        val affectedOwners = affected.flatMap { owners.owners(it.id) }
+        affected.forEach { owners.setActive(it.id, false) }
+        val cleanup = CleanupAttempts(recovery.notice.value.problem)
         // Security/audio revocation is synchronous and strictly before the UI's background state.
-        if (scene == null) access?.revokeAll()
-        else affected.flatMap { owners.owners(it.id) }.forEach { access?.revokeOwner(it) }
-        audio?.interrupt()
+        if (scene == null) cleanup.attempt { access?.revokeAll() }
+        else affectedOwners.forEach { owner -> cleanup.attempt { access?.revokeOwner(owner) } }
+        cleanup.attempt { audio?.interrupt() }
         affected.forEach { window ->
-            owners.setActive(window.id, false)
             window.foreground.value = false
-            owners.owners(window.id).forEach { files?.revoke(it) }
         }
+        affectedOwners.forEach { owner -> cleanup.attempt { revokeFiles(owner) } }
+        recordCleanup(cleanup)
     }
 
     private fun notifyForeground() {
@@ -315,30 +370,54 @@ internal class IosProductRoot {
     }
 
     private fun fail(problem: Problem) {
-        mutableState.value = RootState.Failed(problem)
-        close()
+        val committed = storage?.library?.listing?.value?.epoch?.takeIf { it > lastEpoch && graph != null }
+        val action = recovery.fail(problem, graph != null, committed)
+        val primary = checkNotNull(recovery.notice.value.problem)
+        val cleanup = CleanupAttempts(primary)
+        // Actual native block is permanent, not a presentation-only unavailable flag.
+        cleanup.attempt { access?.block(primary) }
+        cleanup.attempt { audio?.interrupt() }
+        windows.values.flatMap { owners.owners(it.id) }.forEach { owner -> cleanup.attempt { revokeFiles(owner) } }
+        when (action) {
+            RootFailureAction.CLOSE_STARTUP -> { mutableState.value = RootState.Failed(primary); close() }
+            RootFailureAction.KEEP_VISIBLE_SESSION -> Unit // Keep the same graph, editor composition and in-memory phrase.
+            RootFailureAction.INVALIDATE_REPLACED_SESSION -> scope.launch { reload.withLock { closeSession() } }
+        }
+    }
+
+    private fun revokeFiles(owner: String) { files?.revoke(owner)?.let { throw RootFailure(it) } }
+
+    private fun recordCleanup(cleanup: CleanupAttempts) {
+        val problem = cleanup.problem ?: return
+        if (closed) {
+            recovery.fail(problem, false)
+            mutableState.value = RootState.Failed(checkNotNull(recovery.notice.value.problem))
+        } else if (recovery.notice.value.problem == null) fail(problem)
     }
 
     fun close() {
         check(NSThread.isMainThread)
         if (!closing.compareAndSet(false, true)) return
-        access?.revokeAll()
-        audio?.interrupt()
-        windows.values.toList().forEach(::closeWindow)
-        observers.forEach { runCatching { NSNotificationCenter.defaultCenter.removeObserver(it) } }
+        windows.keys.forEach { owners.setActive(it, false) }
+        val attempts = CleanupAttempts(recovery.notice.value.problem)
+        attempts.attempt { access?.revokeAll() }
+        attempts.attempt { audio?.interrupt() }
+        windows.values.toList().forEach { window -> attempts.attempt { closeWindow(window) } }
+        observers.forEach { token -> attempts.attempt { NSNotificationCenter.defaultCenter.removeObserver(token) } }
         observers.clear()
         // Independent but owned cleanup survives cancellation of every root/UI worker.
-        val cleanup = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        val cleanup = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + failures)
         cleanup.launch {
             withContext(NonCancellable) {
-                runCatching { reload.withLock { closeSession() } }
-                runCatching { job.cancelAndJoin() }
-                runCatching { storage?.close() }.onFailure {
-                    mutableState.value = RootState.Failed(Problem(ProblemCode.IO_FAILURE))
-                }
-                runCatching { withContext(Dispatchers.IO) {
+                attempts.suspending { reload.withLock { closeSession()?.let { throw RootFailure(it) } } }
+                job.children.toList().forEach { worker -> attempts.attempt { worker.cancel() } }
+                attempts.attempt { job.cancel() }
+                attempts.suspending { job.join() }
+                attempts.suspending { storage?.close() }
+                attempts.suspending { withContext(Dispatchers.IO) {
                     temporaryRoot?.let { FileSystem.SYSTEM.deleteRecursively(it, mustExist = false) }
                 } }
+                recordCleanup(attempts)
             }
             cleanup.cancel()
         }

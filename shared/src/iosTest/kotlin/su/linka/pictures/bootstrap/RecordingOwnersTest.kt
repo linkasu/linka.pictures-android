@@ -24,7 +24,7 @@ class RecordingOwnersTest {
             override fun finishRecording(ownerId: String, requestId: RequestId) { error("Not used") }
         }
         val owners = RecordingOwners({ error("A revoked permission callback must not query UIKit/AVAudioSession") },
-            { error("No native permission prompt is authorized by this test") })
+            { error("No native permission prompt is authorized by this test") }, { null })
         val audio = owners.bind(native)
         val id = RequestId("owned-recording")
         val worker = launch(start = CoroutineStart.UNDISPATCHED) {
