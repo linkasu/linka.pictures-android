@@ -17,10 +17,26 @@ internal class IosAudioDecoder(private val files: PlatformFilesPort) {
     private data class Identity(val device: Long, val inode: ULong)
     private data class Owned(val file: TemporaryFile, val identity: Identity)
 
-    private companion object {
-        val processDecoder = Mutex()
-        val cancellation = staticCFunction<COpaquePointer?, Int> { pointer ->
+    internal data class Decoded(val status: Int, val duration: Long, val mediaType: String)
+
+    internal companion object {
+        private val processDecoder = Mutex()
+        private val cancellation = staticCFunction<COpaquePointer?, Int> { pointer ->
             try { if (pointer?.asStableRef<Job>()?.get()?.isActive == false) 1 else 0 } catch (_: Throwable) { 1 }
+        }
+
+        fun mapDecoded(status: Int, format: Int, duration: Long): Decoded {
+            if (status != LINKA_AUDIO_OK) return Decoded(status, duration, "")
+            val type = when (format) {
+                LINKA_AUDIO_OGG -> "audio/ogg"
+                LINKA_AUDIO_MP3 -> "audio/mpeg"
+                LINKA_AUDIO_AMR -> "audio/amr"
+                LINKA_AUDIO_3GP -> "audio/3gpp"
+                LINKA_AUDIO_MP4 -> "audio/mp4"
+                LINKA_AUDIO_WAV -> "audio/wav"
+                else -> return Decoded(LINKA_AUDIO_INVALID, 0, "")
+            }
+            return Decoded(status, duration, type)
         }
     }
 
@@ -82,8 +98,6 @@ internal class IosAudioDecoder(private val files: PlatformFilesPort) {
         }
     }
 
-    private data class Decoded(val status: Int, val duration: Long, val mediaType: String)
-
     private suspend fun native(file: LocalFile, output: Int): Decoded {
         val job = currentCoroutineContext().job
         val reference = StableRef.create(job)
@@ -91,17 +105,8 @@ internal class IosAudioDecoder(private val files: PlatformFilesPort) {
             memScoped {
                 val result = alloc<LinkaAudioResult>()
                 val status = linka_audio_decode(file.path, output, cancellation, reference.asCPointer(), result.ptr)
-                val type = when (result.format) {
-                    LINKA_AUDIO_OGG -> "audio/ogg"
-                    LINKA_AUDIO_MP3 -> "audio/mpeg"
-                    LINKA_AUDIO_AMR -> "audio/amr"
-                    LINKA_AUDIO_3GP -> "audio/3gpp"
-                    LINKA_AUDIO_MP4 -> "audio/mp4"
-                    LINKA_AUDIO_WAV -> "audio/wav"
-                    else -> return@memScoped Decoded(LINKA_AUDIO_INVALID, 0, "")
-                }
                 currentCoroutineContext().ensureActive()
-                Decoded(status, result.duration_millis, type)
+                mapDecoded(status, result.format, result.duration_millis)
             }
         } finally { reference.dispose() }
     }

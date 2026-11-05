@@ -301,3 +301,23 @@ hashes, no make/configure/simulator execution, followed by a successful default 
 Current C/header/Kotlin safety implementation is unchanged from correction `6963fa1`; its
 native same-TU/corpus/scoped Kotlin evidence above remains applicable. Full main Kotlin
 lifecycle/physical/RSS/legal/shipping and AMFI gates are not closed by producer verification.
+
+## Kotlin status-mapping correction after b5b83f2
+
+Primary found that the unknown-format guard from6963fa1 also intercepted legitimate
+early native failures with format0, replacing their status with INVALID before checking
+coroutine cancellation. `native()` now always calls ensureActive immediately after the
+C return, then applies the shared pure `mapDecoded` helper. Only OK results require a
+known format/MIME; non-OK statuses are preserved with empty MIME. Unknown successful
+formats remain INVALID for both inspect and decodeToWave, never successful WAV output.
+
+`shared/src/iosTest/kotlin/su/linka/pictures/platform/audio/IosAudioDecoderMappingTest.kt`
+covers all five failure statuses with format0, all six known successful formats/duration,
+and unknown successful formats0/Int.MAX_VALUE. These iosTest tests are **pending primary's
+root binding compile/execution**, not claimed as executed here.
+
+Scoped production Kotlin+cinterop compile PASS:
+`build/ios-ffmpeg-preflight/076506e9-158c-4b30-9db8-0914d8665428/result.json`.
+It invoked only scoped_kotlin against the existing corrected simulator prefix; no C/native
+corpus or FFmpeg rebuild/runtime execution. Main Kotlin lifecycle remains unproven until
+real root binding. Root Gradle, native code and producer implementation are unchanged.
