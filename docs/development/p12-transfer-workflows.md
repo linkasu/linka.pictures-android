@@ -23,8 +23,15 @@ Guard callbacks, picker, FS и SQL под этим mutex не выполняют
 - `confirm(ownerId, operationId, capability, confirmation)` принимает только
   соответствующий `TransferConfirmation`: ImportNew, ImportReplace(id, revision),
   WriteFile, ReplaceWholeLibrary, ReturnToRecovery, DeleteRecovery.
-- `cancel(ownerId, operationId, capability)` и `close(ownerId, capability)`
-  явно проверяют owner/capability. Close освобождает операции владельца и закрывает
+- `cancel(ownerId, operationId, capability)` — safe stop, а не protected mutation
+  или разрешение выдать данные. Достаточно live opaque operationId и того же owner;
+  stale/null capability после picker/background revoke не блокирует отмену.
+  Переданная capability чужого owner даёт UNAUTHORIZED; чужая операция или stale ID
+  не допускаются. Cancel не вызывает gate/unlock/prompt, закрывает собственные
+  private handles и запрещает следующие admissions/chunks, но не обещает rollback
+  уже подтверждённого commit или внешней partial-копии.
+- `close(ownerId, capability)` по-прежнему проверяет owner/capability через gate,
+  освобождает операции владельца и закрывает
   этот owner для новых admissions; новый UI owner получает новый идентификатор.
 - `revokePending(ownerId)` — lifecycle invalidation, а не авторизация. Root вызывает
   её при background/picker interruption. Порядок обязателен: сначала синхронный
@@ -70,6 +77,14 @@ confirm с актуальной capability. Только application созда�
 Существующий native adapter отвечает за foreground, bounded chunk checks и
 Completed только после flush/close. После admission внешняя пустая/partial копия
 может остаться; workflow не удаляет её и не обещает внешний rollback.
+
+Export preview содержит BoardTransferReport из **того же** leased PublishedBoard:
+pages и CONTENT cards, число уникальных image/recording AssetIds и сумма actual
+validated ZIP media entry sizes из существующего CheckedZip. Повторные ссылки
+не удваивают media counts/bytes. Canonical uniform export имеет
+`layoutNormalized=false`. Report не перечитывает текущий listing/новую revision;
+edit во время picker не меняет preview или уже подготовленный export. Library
+документ и исходные media workflow не изменяет.
 
 Restore захватывает expected library revision, MessageStamp и epoch при prepare;
 confirm их не обновляет. ReplaceWholeLibrary вызывает существующий replaceLibrary,
@@ -137,6 +152,16 @@ terminal сохраняется, закрытый owner не открывает�
   --tests 'su.linka.pictures.application.portability.TransferCoordinatorTest' \
   :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 --console=plain
 ```
+
+Integration correction после `f54b8b9`: заполнен export board report из leased
+snapshot/проверенного ZIP и уточнена safe-stop матрица cancel без новой authority.
+Добавлены тесты repeated media refs + edit во время picker + unchanged source
+bytes, stale/null capability после revoke, owner isolation и running partial stop.
+Прежние 15 тестов сохранены. Confirm/close guards, protected actions и production
+ports/storage/native/UI не изменены. PASS: 18/18 focused JVM tests, 0 failures/errors/
+skips; затем той же командой correction gate выше собраны обе Native KLIB
+(JVM task в combined run UP-TO-DATE после успешного focused запуска).
+Android compile повторно не запускался; Native compile-only не является OS proof.
 
 Root перед отменой своего child scope обязан сначала синхронно отозвать access,
 затем дождаться `close` / `revokePending` для всех остающихся owners и лишь после

@@ -2,6 +2,8 @@ package su.linka.pictures.application.portability
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
+import okio.Buffer
+import okio.buffer
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
@@ -15,6 +17,95 @@ class TransferCoordinatorTest {
         val rig = TransferTestRig.fresh()
         try { withContext(Dispatchers.IO) { rig.block() } } finally { rig.clean() }
     }
+
+    @Test fun exportReportCountsUniqueMediaFromCapturedBoardAndCheckedArchiveBeforeConcurrentEdit() = runTest { fresh {
+        val imageBytes = "SYNTHETIC_IMAGE_repeated".encodeToByteArray()
+        val audioBytes = "SYNTHETIC_AUDIO_repeated".encodeToByteArray()
+        val image = runtime.media.prepare(Buffer().write(imageBytes), MediaKind.IMAGE, "image/test").ok()
+        val audio = runtime.media.prepare(Buffer().write(audioBytes), MediaKind.AUDIO, "audio/test").ok()
+        val original = board().copy(pages = listOf(
+            BoardPage(PageId("first"), 1, 2, (0..1).map { position ->
+                BoardCell(position, CellKind.CONTENT, CardDocument(CardId("card-$position"), "original-$position",
+                    image.asset.id, SpeechSource.Recording(audio.asset.id)))
+            }),
+            BoardPage(PageId("second"), 1, 2, listOf(
+                BoardCell(0, CellKind.CONTENT, CardDocument(CardId("third"), "original-third",
+                    image.asset.id, SpeechSource.Recording(audio.asset.id))), BoardCell(1, CellKind.EMPTY))),
+        ))
+        try { runtime.library.addBoard(original, permit()).ok() }
+        finally { image.lease.close(); audio.lease.close() }
+        val edited = board(name = "newer board").copy(pages = listOf(BoardPage(PageId("new"), 1, 1, emptyList())))
+        choose = {
+            runtime.library.replaceBoard(edited, 1, permit()).ok()
+            assertEquals(0, runtime.media.collectGarbage().ok().removedAssets)
+        }
+        val workflow = coordinator()
+        val id = workflow.prepareExport("owner", BoardId("board")).ok()
+        val expected = BoardTransferReport(2, 3, 1, 1, (imageBytes.size + audioBytes.size).toLong(), false)
+        assertEquals(original.name, workflow.state.value[id]!!.preview!!.name)
+        assertEquals(expected, workflow.state.value[id]!!.preview!!.board)
+        val media = runtime.media.acquire(setOf(image.asset.id, audio.asset.id)).ok()
+        try {
+            assertContentEquals(imageBytes, runtime.media.source(image.asset.id, media).ok().buffer().use { it.readByteArray() })
+            assertContentEquals(audioBytes, runtime.media.source(audio.asset.id, media).ok().buffer().use { it.readByteArray() })
+            workflow.confirm("owner", id, capability, TransferConfirmation.WriteFile).ok()
+            assertEquals(expected, workflow.state.value[id]!!.preview!!.board)
+            val source = runtime.library.board(BoardId("board")).ok()
+            try { assertEquals(edited, source.board.document); assertEquals(2L, source.board.revision) }
+            finally { source.lease.close() }
+            input = external.copyOf()
+            val imported = workflow.prepareImport("owner", "captured export").ok()
+            assertEquals(expected, workflow.state.value[imported]!!.preview!!.board)
+            workflow.cancel("owner", imported, null).ok()
+            assertContentEquals(imageBytes, runtime.media.source(image.asset.id, media).ok().buffer().use { it.readByteArray() })
+            assertContentEquals(audioBytes, runtime.media.source(audio.asset.id, media).ok().buffer().use { it.readByteArray() })
+        } finally { media.close() }
+        assertEquals(0, privateFiles.temporaryCount)
+        assertEquals(0, privateFiles.openHandles)
+    } }
+
+    @Test fun safeStopAfterPickerRevocationNeedsNoFreshCapabilityAndCannotStopAnotherOwner() = runTest { fresh {
+        add()
+        val workflow = coordinator()
+        choose = { permitted = false }
+        val foreign = workflow.prepareExport("other", BoardId("board")).ok()
+        for (staleOrAbsent in listOf(capability, null)) {
+            val id = workflow.prepareExport("owner", BoardId("board")).ok()
+            val checksBefore = checks
+            workflow.cancel("owner", foreign, staleOrAbsent).problem(ProblemCode.STALE_REQUEST)
+            workflow.cancel("other", foreign, capability).problem(ProblemCode.UNAUTHORIZED)
+            workflow.cancel("owner", id, AssistantCapability("foreign", "other")).problem(ProblemCode.UNAUTHORIZED)
+            assertEquals(TransferPhase.AWAITING_CONFIRMATION, workflow.state.value[id]!!.transfer.phase)
+            workflow.cancel("owner", id, staleOrAbsent).ok()
+            assertEquals(checksBefore, checks)
+            assertEquals(TransferPhase.CANCELLED, workflow.state.value[id]!!.transfer.phase)
+            assertEquals(TransferPhase.AWAITING_CONFIRMATION, workflow.state.value[foreign]!!.transfer.phase)
+        }
+        workflow.cancel("other", foreign, null).ok()
+        assertEquals(0, writes); assertTrue(external.isEmpty()); assertEquals(3, closes)
+        assertEquals(0, guards); assertEquals(0, checks)
+        assertEquals(0, privateFiles.temporaryCount)
+    } }
+
+    @Test fun safeStopRunningWriteAfterGateRevocationWithoutCapabilityPreservesOnlyAdmittedPartial() = runTest { fresh {
+        add()
+        val workflow = coordinator()
+        val id = workflow.prepareExport("owner", BoardId("board")).ok()
+        val entered = CompletableDeferred<Unit>()
+        chunk = { permitted = false; entered.complete(Unit); awaitCancellation() }
+        coroutineScope {
+            val writing = async { workflow.confirm("owner", id, capability, TransferConfirmation.WriteFile) }
+            entered.await()
+            val checksBefore = checks
+            workflow.cancel("owner", id, null).ok()
+            assertEquals(checksBefore, checks)
+            assertEquals(OperationResult.Cancelled, writing.await())
+        }
+        assertEquals(TransferPhase.CANCELLED, workflow.state.value[id]!!.transfer.phase)
+        assertEquals(32, external.size); assertEquals(1, writes); assertEquals(1, closes)
+        assertEquals(0, privateFiles.temporaryCount)
+        assertEquals(0, privateFiles.openHandles)
+    } }
 
     @Test fun stateKeepsOnlyLatestOperationPerOwnerAndRetainsTerminalUntilNextAdmission() = runTest { fresh {
         add(); linkaInput()

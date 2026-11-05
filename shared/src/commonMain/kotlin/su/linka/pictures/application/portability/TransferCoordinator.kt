@@ -83,9 +83,16 @@ class TransferCoordinator(
             op.resources.add { files.discard(output) }
             op.output = output
             currentCoroutineContext().ensureActive()
-            countArchive(op, output, ZipProfile.LINKA)
+            val items = countArchive(op, output, ZipProfile.LINKA)
+            val document = board.board.document
+            val cards = document.pages.flatMap { page -> page.cells.filter { it.kind == CellKind.CONTENT }.map { it.card!! } }
+            val report = BoardTransferReport(document.pages.size, cards.size,
+                cards.mapNotNull { it.image }.toSet().size,
+                cards.mapNotNull { (it.speech as? SpeechSource.Recording)?.assetId }.toSet().size,
+                items.filter { !it.directory && it.name.startsWith("media/") }.sumOf { it.size },
+                layoutNormalized = false)
             destination(op, "board.linka")
-            TransferPreview(op.kind, name = board.board.document.name)
+            TransferPreview(op.kind, name = document.name, board = report)
         }
 
     suspend fun prepareBackup(ownerId: String): OperationResult<OperationId> =
@@ -138,10 +145,11 @@ class TransferCoordinator(
         currentCoroutineContext().ensureActive()
     }
 
-    private suspend fun countArchive(op: Pending, file: LocalFile, profile: ZipProfile) {
+    private suspend fun countArchive(op: Pending, file: LocalFile, profile: ZipProfile): List<ZipItem> {
         val items = take(codecBoundary { CheckedZip.open(files, file, profile).items })
         op.entries = items.size
         op.bytes = items.sumOf { it.size }
+        return items
     }
 
     private suspend fun prepare(
@@ -226,10 +234,9 @@ class TransferCoordinator(
     }
 
     suspend fun cancel(ownerId: String, operationId: OperationId, capability: AssistantCapability?): OperationResult<Unit> {
+        if (capability != null && capability.owner != ownerId) return failed(ProblemCode.UNAUTHORIZED)
         val op = lock.withLock { pending[operationId]?.takeIf { it.owner == ownerId } }
             ?: return failed(ProblemCode.STALE_REQUEST)
-        val allowed = gate.check(action(op.kind), capability, ownerId)
-        if (allowed !is OperationResult.Completed) return allowed
         revoke(op)
         return OperationResult.Completed(Unit)
     }
