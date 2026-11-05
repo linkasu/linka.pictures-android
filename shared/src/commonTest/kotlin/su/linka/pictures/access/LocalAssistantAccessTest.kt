@@ -104,6 +104,29 @@ class LocalAssistantAccessTest {
         assertEquals(0, store.writes)
     }
 
+    @Test fun unavailableOsVerificationPreservesLegacyUnlockAndCannotResetOrReplaceItsPassword() = runTest {
+        val original = bytes(legacy("старый пароль"))
+        val store = Store(original.copyOf())
+        val owner = Owner().also { it.available = OwnerVerificationAvailability.UNAVAILABLE }
+        val gate = access(store, owner)
+        gate.refreshPrerequisites()
+        val state = assertIs<AssistantState.Protected>(gate.state.value)
+        assertTrue(state.legacy)
+        assertEquals(OwnerVerificationAvailability.UNAVAILABLE, state.verification)
+        denied(gate.unlock("неверный пароль", "a"))
+        val capability = assertIs<OperationResult.Completed<AssistantCapability>>(gate.unlock(" \tстарый пароль\n", "a")).value
+        assertIs<OperationResult.Completed<Unit>>(gate.check(ProtectedAction.EDIT_BOARD, capability, "a"))
+        for (result in listOf(
+            gate.setPassword("новый пароль", "a", capability),
+            gate.resetPasswordWithDeviceOwner("новый пароль", "a"),
+        )) assertEquals(ProblemCode.OWNER_VERIFICATION_UNAVAILABLE, assertIs<OperationResult.Failed>(result).problem.code)
+        assertEquals(0, owner.verifications)
+        assertEquals(0, store.writes)
+        assertContentEquals(original, store.bytes)
+        assertTrue(assertIs<AssistantState.Protected>(gate.state.value).legacy)
+        assertIs<OperationResult.Completed<AssistantCapability>>(access(store, owner).unlock("старый пароль", "b"))
+    }
+
     @Test fun ownerResetNeedsFreshProofAndRevokeDefeatsLateSuccess() = runTest {
         val store = Store(bytes(legacy("")))
         val owner = Owner()

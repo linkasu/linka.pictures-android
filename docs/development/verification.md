@@ -38,6 +38,8 @@ Root `prepareIosAudioDecoder` → два обычных per-target CInterop, man
 
 Android changed image path проверен готовым main APK, без пересборки в lane: [**24/24 API21 и24/24 API35**](p06-main-image-envelope-runtime.md). Files [**19/19 API35 и2/2 changed API21**](evidence/p06-files-path-2026-11-05/) дополняют прежние19 API21. API35 только approved runtime `-feature -WiFiPacketStream`: [crash/workaround](api35-netsim-crash.md), не default emulator/network acceptance. Прежние63/54 не повторялись и не складываются в новый total.
 
+После явного compatibility decision для21/22 добавлена одна common policy regression. Только invalidated checks: `:shared:jvmTest --tests su.linka.pictures.access.LocalAssistantAccessTest :shared:linkDebugTestIosSimulatorArm64` PASS; затем explicit owned iOS17 spawn с `--ktest_filter=su.linka.pictures.access.LocalAssistantAccessTest.*`: **12/12 JVM,12/12 Native,9762ms**. Native availability/root/OS prompts этим не доказаны. Full257/361 выше — предыдущий полный gate; новый полный258/362 не исполнялся и не заявляется.
+
 ---
 
 This verifies ordinary bootstrap builds and dependency interoperability,
