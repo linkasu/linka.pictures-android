@@ -40,6 +40,7 @@
 | P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | `974d8752`→`22fffdb`, review fixes `9c000326`→`ad9ceaa`; integrated bounded codec, Native/JVM common suite и pure peer oracle PASS; native inspector/полный runtime round-trip OPEN |
 | Shared audio prerequisite | `pokazhi-p06-audio-coordinator` / `implementation/p06-audio-coordinator` | `db767de7`→`a8d857c`, review fixes `b4b172cb`→`0d5e8ba`; общий coordinator принят,102/102 JVM+iOS17 вместе с P03/P05. Не native P06/P07 codec/permissions acceptance |
 | Android audio/inspection | `pokazhi-p06-android-audio` / `implementation/p06-android-audio` | Запущен от `8381a14`: platform audio backend/реальный bounded media inspector и отдельные instrumented tests; в lane только compile, без устройств/mic/permission grants; runtime acceptance COORD позже |
+| Backup codec prerequisite | `pokazhi-p12-backup-codec` / `implementation/p12-backup-codec` | Запущен от `6571729`: отдельный open schema1 backup codec и общий ZIP engine с LINKA/BACKUP профилями. Только приватные temp/snapshot ports, без external save/picker/authorization/live restore/UI; G4 не принят |
 
 ### Первая implementation/review волна после G2
 
