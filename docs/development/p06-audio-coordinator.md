@@ -44,3 +44,17 @@ Focused JVM audio tests: **25/25 PASS**, 0 skipped. Coherent-diff review про�
 Финальный повтор после review: та же команда и окружение, BUILD SUCCESSFUL (4s). `:shared:jvmTest` без filters — **77/77 PASS**, 0 skipped (36 audio, включая прежние 25, + неизменённые 41). `:shared:compileKotlinIosSimulatorArm64` — **PASS**; `git diff --check` чистый. Native runtime/реальные OS/delete faults этим не доказываются, выполнение Native tests после integration остаётся COORD.
 
 Не выполнялись устройства/simulators, native audio/permissions/codecs/OS sessions, реальный storage IO, сеть, CI/push/signing или установка приложения. Существующие 41 тест не редактировались; последующий Native runtime/integration gate выполняет COORD.
+
+## COORD integration verification
+
+После просмотра production implementation и exact review delta интегрированы
+`db767de7` → `a8d857c`, `b4b172cb` → `0d5e8ba`. Main gate с P03/P05:
+**102/102 JVM**, Native test link, оба Shared.framework, Android debug assembly;
+BUILD SUCCESSFUL in47s. Состав — прежние66 main tests +36 audio regressions.
+На подтверждённом owned iOS17.0/21A328 через public simctl spawn:
+**102/102 PASS**,24073ms, без filters/skips. Raw log только в approved temp:
+`p06-shared-audio-integrated-native-ios17.log`.
+
+Это реальное Native выполнение **общего** кода с controlled backend fakes,
+а не работа AVFoundation/Android audio, permission/mic или legacy codecs.
+Physical cleanup при OS refusal остаётся best-effort; этот gate его не доказывает.

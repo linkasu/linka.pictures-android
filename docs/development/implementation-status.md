@@ -21,7 +21,7 @@
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
 | P01 / G1 | Не принят целиком. Android21 ARM64 и API35 прошли SQL/callback/focus/IME на final APK886 после root-focus fix и согласования D8. iOS17.0 через Chrome/MCP установлен, native SQLite и public UI XCTest прошли. ARMv7 guest не загрузился в текущем Emulator даже с classic; codec candidates проверяются отдельно |
 | P02 / G2 | **Зафиксирован:** normal bootstrap `bb4f920`→`a371877`, `iosApp/`, модели/команды/ports, streaming snapshots, schema/epoch/ownership handoff, C4. JVM14/14 и Native iOS17 14/14, Unicode16 1093 вектора, Android/оба frameworks/unsigned iOS builds успешны. Это не реализация P03–P14 и не G1 PASS |
-| P03–P14 / G3–G5 | **P03 и common P05 интегрированы** после review: P05 `22fffdb`/`ad9ceaa`, объединённый JVM66/66 и Native iOS17 66/66, pure Electron oracle PASS. P04 и shared audio ещё исправляются. Native adapters/UI/реальные данные не подключены; G3–G5 не приняты целиком |
+| P03–P14 / G3–G5 | **P03, common P05 и shared audio интегрированы** после review; общий JVM102/102 и Native iOS17 102/102. P04 ещё исправляется. Android native audio/inspection handoff подготовлен с отдельным instrumented test APK, без установки. Native adapters/UI/реальные данные не подключены; G3–G5 не приняты целиком |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
 | P16 / G7 | Не начат; внешние review/signing/store permissions отдельно, публикация не разрешена |
 
@@ -38,7 +38,7 @@
 | D / P03 | `pokazhi-p03-communication` / `implementation/p03-communication` | `ce76a873`→`38a34d6`, review corrections `d54acecb`→`9cd6a0d`; integrated common state machine, bounded saves/quarantine, JVM и iOS17 41/41 |
 | S / P04 | `pokazhi-p04-storage` / `implementation/p04-storage` | В работе от `0816394`: SQL/media/drafts/snapshot/recovery, fault tests; safety review COORD до любых реальных данных |
 | P / P05 | `pokazhi-p05-linka-codec` / `implementation/p05-linka-codec` | `974d8752`→`22fffdb`, review fixes `9c000326`→`ad9ceaa`; integrated bounded codec, Native/JVM common suite и pure peer oracle PASS; native inspector/полный runtime round-trip OPEN |
-| Shared audio prerequisite | `pokazhi-p06-audio-coordinator` / `implementation/p06-audio-coordinator` | Запущен от `08b7e64`: общий AudioCoordinator по frozen AudioPort/NativeAudioBackend, owner/request/cancel/preflight/temp ownership tests. Не native P06/P07 codec/permissions acceptance |
+| Shared audio prerequisite | `pokazhi-p06-audio-coordinator` / `implementation/p06-audio-coordinator` | `db767de7`→`a8d857c`, review fixes `b4b172cb`→`0d5e8ba`; общий coordinator принят,102/102 JVM+iOS17 вместе с P03/P05. Не native P06/P07 codec/permissions acceptance |
 
 ### Первая implementation/review волна после G2
 

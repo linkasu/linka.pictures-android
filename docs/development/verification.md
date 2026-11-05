@@ -257,3 +257,21 @@ has `su.linka.pictures`,1.4/code5,min21,ARMv7+ARM64; it was **not installed**.
 No production data binding, real migration/restore, normal app launch,
 ARMv7 runtime, physical/AAC, shipping codecs or release acceptance was performed.
 G0/G1 remain partial under the user's already authorized conditional order.
+
+## Android native-adapter test target preparation
+
+After shared AudioCoordinator integration, main common suites are **102/102**
+on JVM and owned iOS17; see [P06 common evidence](p06-audio-coordinator.md#coord-integration-verification).
+COORD added only shared `androidInstrumentedTest` dependencies already used in
+the project: JUnit4.13.2, androidx.test core1.6.1/runner1.6.2, coroutines-test1.10.2,
+and the standard AndroidJUnitRunner setting. No production dependency/version
+or normal app identity changed.
+
+`:shared:assembleDebugAndroidTest --no-daemon` **BUILD SUCCESSFUL in30s**,
+47 tasks. APK is `shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk`.
+Actual aapt manifest: package **su.linka.pictures.shared.test**, min21, target
+instrumentation package **the same test package**, runner AndroidJUnitRunner;
+packaged ARMv7/ARM64 retained. This is a self-instrumented library test app,
+not an update of `su.linka.pictures`. It was **not installed or launched**;
+at preparation there are no new native-adapter tests yet. Compile success is
+not native MediaCodec/TTS/recording/permission/device evidence.

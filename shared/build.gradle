@@ -52,6 +52,14 @@ kotlin {
                 implementation 'com.google.firebase:firebase-analytics'
             }
         }
+        androidInstrumentedTest {
+            dependencies {
+                implementation 'junit:junit:4.13.2'
+                implementation 'androidx.test:core:1.6.1'
+                implementation 'androidx.test:runner:1.6.2'
+                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+            }
+        }
     }
 }
 
@@ -62,6 +70,7 @@ android {
     defaultConfig {
         minSdk 21
         targetSdk 34
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
