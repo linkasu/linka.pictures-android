@@ -8,6 +8,10 @@
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>MinimumOSVersion</key><string>17.0</string>
     <key>LSRequiresIPhoneOS</key><true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Микрофон нужен только по вашей команде для записи звука карточки.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Face ID подтверждает владельца устройства при явном изменении защиты помощника.</string>
     <key>UILaunchScreen</key><dict/>
     <key>UISupportedInterfaceOrientations</key>
     <array>
