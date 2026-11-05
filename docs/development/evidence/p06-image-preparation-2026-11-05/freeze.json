@@ -1,0 +1,11 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-image-c61ce9fc-cf6a-4842-8e2c-2b414897a8cb/frozen-image-test.apk",
+  "sha256": "3474531b710bc8f781da086029d15c6b4d36f570e227dc4629820113cb0c0604",
+  "bytes": 16047420,
+  "package": "su.linka.pictures.shared.test",
+  "targetPackage": "su.linka.pictures.shared.test",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "total_compiled": 52,
+  "focused": 15
+}
