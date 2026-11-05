@@ -337,6 +337,8 @@ Undo очистки эфемерен и ограничен: сохранённы
 
 Уменьшение сетки не удаляет overflow: содержательные карточки остаются на последующих страницах или в доступном редакторском содержимом и учитываются в счётчиках. Нормализация не требует новой категоризации или автосортировки.
 
+Каноническая сетка uniform1×1: imported spans валидируются и нормализуются к1, содержимое и явные EMPTY metadata сохраняются. Opaque metadata не становятся скрытой геометрией после editor resize/move; экспорт отражает фактическую сетку.
+
 ### Конфликт ревизий
 
 Даже без сервера возможны два окна или два экземпляра редактора одной доски.
@@ -486,6 +488,12 @@ ZIP удобен для обмена, но не обязан быть рабоч
 
 Один storage writer согласует библиотечные commit, restore и GC. Порядок: подготовка/валидация файлов → короткий serialized commit → cleanup. Picker, TTS, декодирование и большие копирования не ожидаются под DB write lock.
 
+Реализованный StorageRuntime использует schema1, optimistic revisions и монотонный restore epoch. Все mutations проверяют epoch, expected revision и свежий guard непосредственно перед mutation/COMMIT. Порядок lock — writerMutex→pinsLock; под pins lock нет SQL/FS/callbacks. Process pins — per-asset refcounts, GC lookup O(1), retain/close не клонируют всю карту. Blocking SQL/FS/hash/snapshot работают вне UI dispatcher.
+
+При первоначальном открытии существующие DB/WAL/journal копируются потоково в собственный stable probe; SQLite открывает только копию до признания схемы. SHM не копируется и source не checkpoint-ится при unknown/corrupt schema. Предпосылка — один runtime/writer на принадлежащем приложению root; это не backup произвольной чужой live DB. Цена startup copy/hash metadata пока не измерена.
+
+Подтверждённый COMMIT возвращает Completed; ошибка refresh оставляет доказанный новый epoch/revision с cached items/IO_FAILURE. После ошибки COMMIT/ROLLBACK сомнительный writer закрывается, одна bounded reconciliation выполняется независимым соединением. Нет доказательства old/new durable state — **UnconfirmedCommit**, quarantine запрещает writes/GC/автоповтор. Видимое сообщение остаётся, восстановление — explicit close/reopen и authoritative read без replay. Обычный Failed/Cancelled до commit не означает этот неопределённый исход. [Точная atomicity/fault policy](../development/code-contracts.md#неопределённый-commit-обязательный-fail-closed-протокол).
+
 ### Очистка
 
 Медиа нельзя удалять, пока на него ссылается:
@@ -511,6 +519,8 @@ ZIP удобен для обмена, но не обязан быть рабоч
 
 Речь не запускается; активный платформенный request, авторизация помощника, recording=true и undo не восстанавливаются как активные.
 
+CommunicationSession отображает выбор немедленно и ограничивает сохранения одним in-flight и одним latest pending snapshot. Заменённый pending освобождает lease; очереди всей истории нет. UnconfirmedCommit приостанавливает команды/undo/saves, а не очищает фразу.
+
 ## 2.10. Форматы, импорт и перенос
 
 ### `.linka` остаётся пользовательским контрактом
@@ -527,9 +537,11 @@ ZIP удобен для обмена, но не обязан быть рабоч
 
 Новые внутренние идентификаторы не обязаны совпадать со старыми числовыми `id`.
 
-Контейнер — ZIP с корневым `config.json`. Reader принимает только определённый fixtures whitelist legacy 1.x и pages/3.0, а не любую строку version. Writer создаёт standard pages/3.0 для двустороннего обмена с обследованным Electron. Legacy writer Android1.4 не обязателен. Quiz/match/неизвестный mode **на любой странице отклоняет весь набор до публикации**, без частичного импорта или сведения к standard; неизвестная активная функция/версия не угадывается по наличию cards.
+Контейнер — ZIP с корневым `config.json`. Reader принимает whitelist **1.0/1.2/2.0/3.0**, а не любую строку version. Writer создаёт standard pages/3.0 для двустороннего обмена с обследованным Electron. Legacy writer Android1.4 не обязателен. Quiz/match/неизвестный mode **на любой странице отклоняет весь набор до публикации**, без частичного импорта или сведения к standard; неизвестная активная функция/версия не угадывается по наличию cards.
 
 Сохраняются поддерживаемые root version/withoutSpace/directSet/description/pages, page ID/mode/rows/columns/cards и card ID/cardType/title/imagePath/audioPath/width/height/audioText/audioVoice. Дополнительные неисполняемые metadata пассивно сохраняются, не становятся разрешением исполнять функции. Wire type3 преобразуется в empty по принятому правилу; placeholder не становится живой карточкой и не получает новый ID при каждом save. Исходный архив неизменен, экспорт описывает фактическую доску, не обещает побайтовое равенство.
+
+На непосредственном уровне root/page/card ключи action/actions/command/commands/event/events/script/scripts/navigation отвергают весь архив, даже с null. Вложенные opaque metadata не сканируются на эти слова и не исполняются. Native SQL-bound IDs/names/MIME и actual serialized text проверяются на NUL/ill-formed UTF16 до bind; обычный Unicode не trim/normalize/replace. Корректные escaped NUL metadata остаются данными. Backspace использует Unicode16 extended graphemes, не code points. [Native text evidence](../development/native-text-boundary.md).
 
 ### Проверка файла
 
@@ -551,7 +563,9 @@ ZIP удобен для обмена, но не обязан быть рабоч
 
 Валидация JSON без проверки медиа не означает успешный перенос.
 
-Бюджеты не превышают приёмные лимиты обследованного Electron: 2000 entries и 500 MiB. Точная семантика лимита и отдельные streamed/per-file/image budgets требуют фиксации и тестов в P05; число JSON-объектов не заменяет byte limit. Проверка выполняется до commit и по ходу чтения, не после неограниченной распаковки. `UUID..wav` допустим как basename; опасен компонент пути `..`, а не любое вхождение двух точек.
+Бюджеты LINKA не превышают приёмные лимиты обследованного Electron: 2000 entries и 500 MiB. Точные streamed/per-file/image/name/JSON budgets зафиксированы и проверены в [code-contracts](../development/code-contracts.md). Проверка выполняется до commit и по ходу чтения, не после неограниченной распаковки. `UUID..wav` допустим как basename; опасен компонент пути `..`, а не любое вхождение двух точек.
+
+Один CheckedZip обслуживает два фиксированных профиля LINKA/BACKUP, не два parser-а. Size/CRC/hash и реальные compressed/output budgets проверяются; строгая canonicality DEFLATE не доказана: публичный Okio prefetch может поглотить trailing compressed bytes. Это не исключение payload/resource checks и не обещание отклонить все noncanonical representations.
 
 ### Совместимость аудио
 
@@ -568,11 +582,15 @@ ZIP удобен для обмена, но не обязан быть рабоч
 
 WAV, OGG, MP3, 3GPP/AMR-NB и вложенные media проверяются реальными fixtures отдельно на Android21/iOS17. Decoder/transcoder требует проверки лицензии, памяти и ARMv7/ARM64/iOS17. Расширение или принудительный MIME audio/mp3 не доказывают декодирование. Native codec gaps остаются OPEN до приёмки адаптеров. Временный source URI не постоянная ссылка: внутренняя копия завершается до публикации.
 
+Android audio/inspection реализованы частично; raw-AMR21 исправлен прямой подачей валидированных NB packets в MediaCodec, runtime исправления проверяется отдельно. На iOS native OS paths не покрыли Vorbis/AMR; минимальный LGPL-only FFmpeg — isolated candidate preflight, не shipping dependency. Static build не заменяет actual PCM/cancel/RSS/physical proof или source/notices/relink/App Store acceptance. Immutable source не перекодируется на месте.
+
 ### Экспорт набора и резервная копия — разные вещи
 
 **Экспорт набора** переносит одну доску.
 
 **Полная резервная копия** — отдельный versioned открытый формат с отдельным расширением, не `.linka` и не формат Electron. Roots: `boards/drafts/settings/media`; включены опубликованные доски, черновики редактора, их медиа и переносимые настройки.
+
+Реализованный BackupCodec: `.linkabackup`, schema1, manifest header/settings/counts, потоки PublishedBoard/StoredDraft/RetainedArchive и exact asset closure. Fixed BACKUP profile —60000 entries/2GiB; retained ARCHIVE проверяется raw/hash-only, не запускается decoder. Snapshot потоковый, не aggregate всей библиотеки в памяти. Codec не заменяет protected workflow или native external-file authority.
 
 В интерфейсе нельзя называть экспорт одной доски полной резервной копией приложения.
 
@@ -582,7 +600,7 @@ Backup исключает MessageDraft/message, undo/историю разгов
 
 Перед выдачей файла показывается предупреждение: **копия не зашифрована, содержит изображения, голос и черновики; системный cloud-провайдер может вынести её с устройства**. Шифрование/пароль backup не добавляются.
 
-Restore проверяет весь файл и место в staging, показывает состав и полную замену. После подтверждения **до замены** сохраняется внутренний recovery-снимок прежней библиотеки; если его создать нельзя, замена не начинается. Один writer атомарно переключает библиотеку и переносимые настройки; при ошибке прежняя библиотека остаётся рабочей. MessageDraft после успеха пуст, речь не запускается, текущая защита помощника/устройства не меняется. Recovery хранится до подтверждённой проверки результата или явного отказа от возврата; управление показывает место и удаление, без бесконечной цепочки снимков.
+Restore проверяет весь файл и место в staging, показывает состав и полную замену. После подтверждения **до замены** сохраняется внутренний recovery-снимок прежней библиотеки; если его создать нельзя, замена не начинается. Один writer атомарно переключает entries/drafts/settings/refs, повышает epoch и очищает MessageDraft. До commit ошибка оставляет прежнюю библиотеку рабочей; UnconfirmedCommit не выдаётся за доказанный rollback. Речь не запускается, защита/credentials не меняются. Существующий singleton recovery не перезаписывается молча; return меняет current/recovery местами, GC учитывает обе стороны. Управление удалением — отдельное protected+confirmed действие.
 
 Импорт обычного набора по умолчанию создаёт новый BoardID, даже при совпадении имени; замена — отдельное подтверждение с объектом и последствиями. Остальные доски/черновики и pinned snapshots фразы сохраняются.
 
