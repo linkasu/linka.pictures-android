@@ -251,3 +251,12 @@ visibility PASS; peer status неизменен, собственный syntheti
 полный Electron runtime/media round-trip, native inspector или ARMv7.
 Ограничение strict deflate canonicality выше принято COORD явно, не скрыто
 под проверками CRC/size, которые такого свойства не доказывают.
+
+Uniform correction интегрирована отдельно: `0d95e42c` → `5b58e2f`.
+COORD просмотрел production simplification и semantic regressions; combined
+main gate: **105/105 JVM**, оба Shared.framework, Native test link и Android
+assembly, BUILD SUCCESSFUL in49s. На owned iOS17.0/21A328 — **105/105 PASS**,
+26099ms; raw log `p05-uniform-integrated-native-ios17.log` только в approved temp.
+Четыре actual Kotlin writer fixtures повторно прошли pure peer oracle из main:
+uniform import/edit/sparse visibility, metadata/audio bytes, compact padding.
+Original spans намеренно нормализованы по R04, прочее содержимое не обрезано.
