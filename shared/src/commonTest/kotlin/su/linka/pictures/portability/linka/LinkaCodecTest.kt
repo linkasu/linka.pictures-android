@@ -115,6 +115,11 @@ class LinkaCodecTest {
     }
     private suspend fun read(rig: CodecTestRig, json: String, vararg media: SyntheticEntry): PreparedBoard =
         rig.codec.read(rig.input(syntheticZip(listOf(configEntry(json)) + media)), "test").value()
+    private suspend fun exportedConfig(rig: CodecTestRig, file: LocalFile): JsonObject {
+        var config: JsonObject? = null
+        LinkaZip.open(rig, file).visit { entry, source -> if (entry.name == "config.json") config = boundedJson(source.buffer().readUtf8()) }
+        return config!!
+    }
     private fun assertFailure(result: OperationResult<*>, code: ProblemCode) = assertEquals(code, assertIs<OperationResult.Failed>(result).problem.code)
     private fun clean(rig: CodecTestRig, leases: Int = 0) {
         assertEquals(0, rig.openSources); assertEquals(0, rig.openSinks); assertEquals(leases, rig.openLeases); assertTrue(rig.temporary.isEmpty())
@@ -213,14 +218,21 @@ class LinkaCodecTest {
         val wide = card("wide").changed("width", JsonPrimitive(8)).changed("height", JsonPrimitive(1))
         val root = simple.changed("pages", JsonArray(listOf(simple["pages"]!!.jsonArray[0].jsonObject
             .changed("rows", JsonPrimitive(2)).changed("columns", JsonPrimitive(2))
-            .changed("cards", JsonArray(listOf(JsonNull, wide, card("covered"), card("next"), buildJsonObject { put("id", "placeholder"); put("cardType", 3); put("custom", true) }))))))
+            .changed("cards", JsonArray(listOf(JsonNull, wide, card("covered"), card("next"),
+                buildJsonObject { put("id", "placeholder"); put("cardType", 3); put("custom", true) },
+                buildJsonObject { put("id", "space"); put("cardType", 1); put("title", " "); put("custom", "space metadata") }))))))
         val rig = CodecTestRig()
         val board = read(rig, root.toString())
         assertEquals(3, board.report.cards)
         assertTrue(board.report.layoutNormalized)
         assertEquals(1, board.document.pages.first().cells.first().position)
         assertEquals(listOf("wide", "covered", "next"), board.document.pages.flatMap { it.cells }.mapNotNull { it.card?.label })
-        assertEquals(CellKind.EMPTY, board.document.pages.last().cells.last().kind)
+        assertEquals(2, board.document.pages.size)
+        assertEquals(listOf(1, 2, 3), board.document.pages.first().cells.map { it.position })
+        assertEquals(listOf(0, 1), board.document.pages.last().cells.map { it.position })
+        assertEquals(CellKind.EMPTY, board.document.pages.last().cells.first().kind)
+        assertEquals(CellKind.SPACE, board.document.pages.last().cells.last().kind)
+        assertEquals(JsonPrimitive(true), boundedJson(board.document.pages.last().cells.first().extensionsJson)["custom"])
         val idCalls = rig.idCalls
         val output = rig.codec.write(PublishedBoard(board.document, 1), board.lease).value()
         assertEquals(idCalls, rig.idCalls)
@@ -242,18 +254,22 @@ class LinkaCodecTest {
         prepared.close(); clean(rig)
     }
 
-    @Test fun writerRejectsKnownFieldOverridesAndCoveredContentRatherThanHidingIt() = runTest {
+    @Test fun writerRejectsKnownFieldOverridesButNormalizesOpaqueGeometry() = runTest {
         val rig = CodecTestRig()
         val board = read(rig, cardConfig(card("one"), card("two"), columns = 2))
         val page = board.document.pages.single()
         val first = page.cells.first()
         val overridden = first.copy(card = first.card!!.copy(extensionsJson = """{"title":"override"}"""))
         val overlapping = first.copy(extensionsJson = """{"width":2}""")
-        for (cell in listOf(overridden, overlapping)) {
-            val changed = board.document.copy(pages = listOf(page.copy(cells = listOf(cell, page.cells[1]))))
-            assertFailure(rig.codec.write(PublishedBoard(changed, 1), board.lease), ProblemCode.INVALID_DATA)
-            clean(rig, leases = 1)
-        }
+        val invalid = board.document.copy(pages = listOf(page.copy(cells = listOf(overridden, page.cells[1]))))
+        assertFailure(rig.codec.write(PublishedBoard(invalid, 1), board.lease), ProblemCode.INVALID_DATA)
+        clean(rig, leases = 1)
+        val uniform = board.document.copy(pages = listOf(page.copy(cells = listOf(overlapping, page.cells[1]))))
+        val output = rig.codec.write(PublishedBoard(uniform, 1), board.lease).value()
+        val cards = exportedConfig(rig, output)["pages"]!!.jsonArray.single().jsonObject["cards"]!!.jsonArray
+        assertEquals(listOf("one", "two"), cards.map { it.jsonObject.string("title") })
+        assertTrue(cards.all { it.jsonObject["width"] == JsonPrimitive(1) && it.jsonObject["height"] == JsonPrimitive(1) })
+        rig.discard(output); clean(rig, leases = 1)
         board.close(); clean(rig)
     }
 
@@ -506,18 +522,96 @@ class LinkaCodecTest {
         }
     }
 
-    @Test fun spanningContentIsVisibleToPeerAfterSparseWriterPadding() = runTest {
+    @Test fun spanningContentIsUniformAndVisibleToPeer() = runTest {
         val rig = CodecTestRig()
-        val json = cardConfig(card("wide").changed("width", JsonPrimitive(2)), card("covered"), card("last"), rows = 2, columns = 2)
-        val board = read(rig, json)
-        assertEquals(listOf(0, 2, 3), board.document.pages.single().cells.map { it.position })
+        val json = cardConfig(card("wide").changed("width", JsonPrimitive(2)).changed("custom", JsonPrimitive("card metadata")), card("covered"), card("last"), rows = 2, columns = 2)
+        val root = boundedJson(json)
+        val page = root["pages"]!!.jsonArray.single().jsonObject.changed("custom", JsonPrimitive("page metadata"))
+        val original = syntheticZip(listOf(configEntry(root.changed("custom", JsonPrimitive("root metadata")).changed("pages", JsonArray(listOf(page))).toString())))
+        val input = rig.input(original)
+        val board = rig.codec.read(input, "test").value()
+        assertTrue(board.report.layoutNormalized)
+        assertEquals(listOf(0, 1, 2), board.document.pages.single().cells.map { it.position })
+        assertTrue(board.document.pages.single().cells.all { boundedJson(it.extensionsJson)["width"] == JsonPrimitive(1) && boundedJson(it.extensionsJson)["height"] == JsonPrimitive(1) })
         val output = rig.codec.write(PublishedBoard(board.document, 1), board.lease).value()
         println("P05_SPARSE_ZIP_HEX=" + rig.raw(output).toByteString().hex())
         val again = rig.codec.read(output, "test").value()
         assertEquals(1, again.document.pages.size)
         assertEquals(listOf("wide", "covered", "last"), again.document.pages.single().cells.mapNotNull { it.card?.label })
-        assertEquals(listOf(0, 2, 3), again.document.pages.single().cells.filter { it.card != null }.map { it.position })
+        assertEquals(listOf(0, 1, 2), again.document.pages.single().cells.filter { it.card != null }.map { it.position })
+        assertFalse(again.report.layoutNormalized)
+        assertEquals("root metadata", boundedJson(again.document.extensionsJson).string("custom"))
+        assertEquals("page metadata", boundedJson(again.document.pages.single().extensionsJson).string("custom"))
+        assertEquals("card metadata", boundedJson(again.document.pages.single().cells.first().card!!.extensionsJson).string("custom"))
+        assertContentEquals(original, rig.raw(input))
         rig.discard(output); again.close(); board.close(); clean(rig)
+    }
+
+    @Test fun movedAndResizedCellsExportUniformlyWithoutParsingTheirOpaqueGeometry() = runTest {
+        val rig = CodecTestRig()
+        val wide = card("wide", audio = "nested/UUID..wav").changed("width", JsonPrimitive(2))
+            .changed("audioText", JsonPrimitive("editor text")).changed("audioVoice", JsonPrimitive("voice"))
+            .changed("custom", JsonPrimitive("card metadata"))
+        val json = cardConfig(wide, card("covered"), card("last"), rows = 2, columns = 2)
+        val original = syntheticZip(listOf(configEntry(json), SyntheticEntry("nested/UUID..wav", byteArrayOf(3, 4, 5))))
+        val input = rig.input(original)
+        val board = rig.codec.read(input, "test").value()
+        val page = board.document.pages.single()
+        val moved = listOf(page.cells[2].copy(position = 0), page.cells[0].copy(position = 1, extensionsJson = """{"width":2,"height":8}"""), page.cells[1].copy(position = 3))
+        val edited = board.document.copy(pages = listOf(page.copy(rows = 1, columns = 4, cells = moved)))
+        val output = rig.codec.write(PublishedBoard(edited, 2), board.lease).value()
+        println("P05_EDITED_ZIP_HEX=" + rig.raw(output).toByteString().hex())
+        val again = rig.codec.read(output, "test").value()
+        assertEquals(listOf(0, 1, 3), again.document.pages.single().cells.filter { it.card != null }.map { it.position })
+        assertEquals(listOf("last", "wide", "covered"), again.document.pages.single().cells.mapNotNull { it.card?.label })
+        assertEquals("card metadata", boundedJson(again.document.pages.single().cells[1].card!!.extensionsJson).string("custom"))
+        assertEquals(board.document.assetIds(), again.document.assetIds())
+        assertContentEquals(original, rig.raw(input))
+        assertEquals("""{"width":2,"height":8}""", edited.pages.single().cells[1].extensionsJson)
+        rig.discard(output); again.close(); board.close(); clean(rig)
+    }
+
+    @Test fun originalSpanValuesAreValidatedAndReportedButNeverBecomeCanonicalGeometry() = runTest {
+        for (span in listOf(JsonNull, JsonPrimitive(1), JsonPrimitive(0), JsonPrimitive(-1), JsonPrimitive(1.5), JsonPrimitive(2), JsonPrimitive(1e100))) {
+            val rig = CodecTestRig()
+            val board = read(rig, cardConfig(card("x").changed("width", span).changed("height", span)))
+            assertEquals(span != JsonNull && span != JsonPrimitive(1), board.report.layoutNormalized)
+            val ext = boundedJson(board.document.pages.single().cells.single().extensionsJson)
+            assertEquals(JsonPrimitive(1), ext["width"]); assertEquals(JsonPrimitive(1), ext["height"])
+            board.close(); clean(rig)
+        }
+        for (bad in listOf(JsonPrimitive("2"), JsonPrimitive(true), JsonObject(emptyMap()), JsonArray(emptyList()))) {
+            val rig = CodecTestRig()
+            val json = cardConfig(card("x").changed("width", JsonPrimitive(2)).changed("height", bad))
+            assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(json)))), "test"), ProblemCode.INVALID_DATA)
+            clean(rig)
+        }
+        val rig = CodecTestRig()
+        val nonFinite = cardConfig(card("x").changed("width", JsonPrimitive(2))).replace("\"width\":2", "\"width\":1e309")
+        assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(nonFinite)))), "test"), ProblemCode.INVALID_DATA)
+        clean(rig)
+    }
+
+    @Test fun writerOmitsOnlyImplicitTrailingPaddingAndKeepsHolesAndExplicitEmptyMetadata() = runTest {
+        val rig = CodecTestRig()
+        val root = boundedJson(cardConfig(rows = 64, columns = 64))
+        val page = root["pages"]!!.jsonArray.single().jsonObject.changed("cards", JsonArray(listOf(JsonNull, JsonNull, JsonNull, card("at three"), JsonNull, JsonNull,
+            buildJsonObject { put("id", "explicit empty"); put("cardType", 2); put("custom", "keep empty metadata") })))
+        val board = read(rig, root.changed("pages", JsonArray(listOf(page))).toString())
+        val output = rig.codec.write(PublishedBoard(board.document, 1), board.lease).value()
+        println("P05_HOLES_ZIP_HEX=" + rig.raw(output).toByteString().hex())
+        val cards = exportedConfig(rig, output)["pages"]!!.jsonArray.single().jsonObject["cards"]!!.jsonArray
+        assertEquals(7, cards.size)
+        for (position in listOf(0, 1, 2, 4, 5)) assertEquals(JsonPrimitive(2), cards[position].jsonObject["cardType"])
+        assertEquals("keep empty metadata", cards[6].jsonObject.string("custom"))
+        val again = rig.codec.read(output, "test").value()
+        assertEquals(3, again.document.pages.single().cells.single { it.card != null }.position)
+        assertEquals("keep empty metadata", boundedJson(again.document.pages.single().cells.last().extensionsJson).string("custom"))
+        rig.discard(output); again.close(); board.close(); clean(rig)
+        val empty = read(rig, cardConfig(rows = 64, columns = 64))
+        val emptyOutput = rig.codec.write(PublishedBoard(empty.document, 1), empty.lease).value()
+        assertTrue(exportedConfig(rig, emptyOutput)["pages"]!!.jsonArray.single().jsonObject["cards"]!!.jsonArray.isEmpty())
+        rig.discard(emptyOutput); empty.close(); clean(rig)
     }
 
     @Test fun exactBoundaryValuesAndNonContentMetadataRemainSupported() = runTest {

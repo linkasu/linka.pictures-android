@@ -4,13 +4,12 @@ import kotlinx.serialization.json.*
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.ports.IdSource
 import su.linka.pictures.domain.*
-import kotlin.math.floor
 
 private val rootFields = setOf("version", "withoutSpace", "directSet", "description", "pages", "rows", "columns", "cards")
 private val pageFields = setOf("id", "mode", "rows", "columns", "cards")
 private val cardFields = setOf("id", "cardType", "title", "imagePath", "audioPath", "width", "height", "audioText", "audioVoice")
 
-internal data class WireCard(val raw: JsonObject, val type: Int, val title: String, val image: String?, val audio: String?, val width: Int, val height: Int)
+internal data class WireCard(val raw: JsonObject, val type: Int, val title: String, val image: String?, val audio: String?, val width: Double, val height: Double)
 internal data class WirePage(val raw: JsonObject, val rows: Int, val columns: Int, val cards: List<WireCard?>)
 internal data class LinkaWire(val raw: JsonObject, val pages: List<WirePage>, val literal: Boolean, val direct: Boolean, val description: String?) {
     val references: Map<String, MediaKind> get() {
@@ -86,38 +85,25 @@ internal data class LinkaWire(val raw: JsonObject, val pages: List<WirePage>, va
         for (page in pages) {
             val capacity = page.rows * page.columns
             val cells = mutableListOf<MutableList<BoardCell>>()
-            val occupied = mutableListOf<BooleanArray>()
             fun ensure(index: Int) {
                 limit(result.size + index + 1 <= 256)
-                while (cells.size <= index) { cells.add(mutableListOf()); occupied.add(BooleanArray(capacity)) }
+                while (cells.size <= index) cells.add(mutableListOf())
             }
             ensure(0)
             for ((index, card) in page.cards.withIndex()) {
                 if (card == null) continue
-                var target = index
-                while (true) {
-                    ensure(target / capacity)
-                    if (!occupied[target / capacity][target % capacity] ||
-                        card.type in 2..3 && cells[target / capacity].none { it.position == target % capacity }) break
-                    target++
-                }
-                val segment = target / capacity
-                val position = target % capacity
-                var width = minOf(card.width, page.columns - position % page.columns)
-                var height = minOf(card.height, page.rows - position / page.columns)
-                if ((0 until height).any { y -> (0 until width).any { x -> occupied[segment][position + y * page.columns + x] } }) {
-                    width = 1; height = 1
-                }
-                normalized = normalized || target != index || segment > 0 || width != card.width || height != card.height || card.type == 3
-                for (y in 0 until height) for (x in 0 until width) occupied[segment][position + y * page.columns + x] = true
+                val segment = index / capacity
+                val position = index % capacity
+                ensure(segment)
+                normalized = normalized || segment > 0 || card.width != 1.0 || card.height != 1.0 || card.type == 3
                 val extras = card.raw.filterKeys { it !in cardFields }.toMutableMap()
                 card.raw["id"]?.let { extras["id"] = it }
                 // Source IDs and editor speech metadata are passive interchange data, never internal identity/fallback.
                 for (key in listOf("audioText", "audioVoice")) card.raw[key]?.let { extras[key] = it }
                 val cellExtras = if (card.type == 0) mutableMapOf<String, JsonElement>() else extras
                 if (card.type != 0) card.raw["title"]?.let { cellExtras["title"] = it }
-                cellExtras["width"] = JsonPrimitive(width)
-                cellExtras["height"] = JsonPrimitive(height)
+                cellExtras["width"] = JsonPrimitive(1)
+                cellExtras["height"] = JsonPrimitive(1)
                 val content = if (card.type == 0) CardDocument(
                     CardId(next()), card.title, card.image?.let { assets.getValue(it) },
                     card.audio?.let { SpeechSource.Recording(assets.getValue(it), card.raw.string("audioText"), card.raw.string("audioVoice")) } ?: SpeechSource.None,
@@ -128,7 +114,7 @@ internal data class LinkaWire(val raw: JsonObject, val pages: List<WirePage>, va
             for ((index, pageCells) in cells.withIndex()) {
                 val extras = page.raw.filterKeys { it !in pageFields }.toMutableMap()
                 if (index == 0) page.raw["id"]?.let { extras["id"] = it }
-                result.add(BoardPage(PageId(next()), page.rows, page.columns, pageCells.sortedBy { it.position }, JsonObject(extras).toString()))
+                result.add(BoardPage(PageId(next()), page.rows, page.columns, pageCells, JsonObject(extras).toString()))
             }
         }
         val document = BoardDocument(boardId, name, result,
@@ -144,12 +130,12 @@ private fun sourceId(id: JsonElement?) {
     checkData(id is JsonPrimitive && (id.isString || id.booleanOrNull == null && id.doubleOrNull?.isFinite() == true))
     if (id is JsonPrimitive && id.isString) passive(JsonObject(mapOf("id" to id)))
 }
-private fun span(value: JsonElement?): Int {
-    if (value == null || value == JsonNull) return 1
+private fun span(value: JsonElement?): Double {
+    if (value == null || value == JsonNull) return 1.0
     checkData(value is JsonPrimitive && !value.isString)
     val n = value.jsonPrimitive.doubleOrNull ?: fail(ProblemCode.INVALID_DATA)
     checkData(n.isFinite())
-    return floor(n).coerceIn(1.0, Int.MAX_VALUE.toDouble()).toInt()
+    return n
 }
 
 internal fun encodeWire(document: BoardDocument, paths: Map<AssetId, String>): JsonObject {
@@ -184,8 +170,8 @@ internal fun encodeWire(document: BoardDocument, paths: Map<AssetId, String>): J
         fields["columns"] = JsonPrimitive(page.columns)
         reserve(JsonObject(fields))
         val byPosition = page.cells.associateBy { it.position }
-        val occupied = BooleanArray(page.capacity)
-        fields["cards"] = JsonArray((0 until page.capacity).map { position ->
+        val length = (page.cells.maxOfOrNull { it.position } ?: -1) + 1
+        fields["cards"] = JsonArray((0 until length).map { position ->
             // Electron filters null slots before placement; explicit empty cards keep sparse indices intact.
             val cell = byPosition[position] ?: return@map reserve(buildJsonObject {
                 put("id", "${page.id.value}:$position"); put("cardType", 2)
@@ -201,15 +187,8 @@ internal fun encodeWire(document: BoardDocument, paths: Map<AssetId, String>): J
             }
             data["id"] = card?.let { JsonPrimitive(it.id.value) } ?: JsonPrimitive("${page.id.value}:$position")
             data["cardType"] = JsonPrimitive(when (cell.kind) { CellKind.CONTENT -> 0; CellKind.SPACE -> 1; CellKind.EMPTY -> 2 })
-            val width = span(cellExt["width"])
-            val height = span(cellExt["height"])
-            checkData(width <= page.columns - position % page.columns && height <= page.rows - position / page.columns)
-            if (cell.kind != CellKind.EMPTY) {
-                checkData((0 until height).none { y -> (0 until width).any { x -> occupied[position + y * page.columns + x] } })
-            }
-            for (y in 0 until height) for (x in 0 until width) occupied[position + y * page.columns + x] = true
-            data["width"] = JsonPrimitive(width)
-            data["height"] = JsonPrimitive(height)
+            data["width"] = JsonPrimitive(1)
+            data["height"] = JsonPrimitive(1)
             if (card != null) {
                 data["title"] = JsonPrimitive(card.label)
                 card.image?.let { data["imagePath"] = JsonPrimitive(paths.getValue(it)) }

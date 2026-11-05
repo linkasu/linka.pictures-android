@@ -46,18 +46,24 @@ runtime files или чужих media.
   `content:`, `ph:`, `assets-library:`; никаких local handles в extensions.
 - Root/page/card unknown JSON хранится на соответствующем domain object.
   Codec-controlled passive source `id` находится в extensions того же уровня;
-  cell extensions содержат normalized width/height (и passive данные non-content
+  cell extensions содержат normalized width=height=1 (и passive данные non-content
   card). Это не внутренние IDs: новые уникальные IDs выдаёт IdSource один раз на
   read, одинаковые source IDs не объединяют карточки. Writer экспортирует
   внутренние unique page/card IDs, не внешние numeric/duplicate IDs из extensions;
   source IDs остаются пассивными в исходном imported document, write их не меняет.
   Повторный read — новый import с новыми IDs. Known fields не могут быть подменены
   extensions; EMPTY wire IDs детерминированы page ID и позицией, без IdSource.
-- Spans clamped к доступной области, covered content/space переносится в свободные
-  slots/дополнительные pages; content не теряется. Sparse slots при writer становятся
-  explicit type2: Electron иначе фильтрует null и сдвигает индексы. Type3 становится
-  EMPTY; write не вызывает IdSource. Non-content с непустыми image/audio references
-  отклоняется, поскольку domain не может владеть таким содержимым без потери.
+- По принятому COORD R04 canonical geometry — uniform 1×1. Входные width/height
+  проверяются как finite numeric, затем нормализуются в 1; original span !=1,
+  placeholder или overflow выставляют layoutNormalized. Каждый existing slot
+  сохраняет input sequence/holes; overflow переносится на следующие pages без
+  span-packing/auto-sort и без потери content/space/empty metadata. Writer не
+  реанимирует старую opaque геометрию после move/resize, всегда пишет 1×1.
+  Nontrailing sparse slots становятся explicit type2 (Electron фильтрует null).
+  Неявный trailing padding не генерируется: array заканчивается последней explicit
+  позицией; explicit EMPTY с metadata сохраняется. Type3 становится EMPTY; write
+  не вызывает IdSource. Non-content с непустыми image/audio references отклоняется,
+  поскольку domain не может владеть таким содержимым без потери.
 - withoutSpace задаёт LITERAL и title, directSet — DIRECT. audioPath даёт Recording;
   audioText/audioVoice — editor metadata, никогда fallback. None не превращается в
   Tts. Writer Tts возвращает SPEECH_MATERIALIZATION_REQUIRED, materialization — P12.
@@ -143,6 +149,46 @@ compressed bytes **не доказано**. Эти bytes не исполняют
 deflate decoder и новые библиотеки не добавлялись. Решение о необходимости более
 строгой canonicality остаётся COORD, это не заявленный PASS.
 
+## R04 uniform geometry correction перед P11
+
+Base `9c0003262988d23f23f8db8425f2bf22662a020a`. Из production изменён только
+`LinkaWire.kt`: удалены occupied arrays, поиск свободного span rectangle и overlap
+rejection writer. Read размещает existing элементы по исходному индексу modulo
+capacity, неизвестные поля/source IDs/editor speech metadata остаются пассивными.
+Оригинальные finite numeric размеры нужны только для layoutNormalized и не
+становятся canonical geometry. Writer валидирует старые known size values, но
+не использует их для размещения/границ и всегда экспортирует 1×1. Новых domain
+полей, span model, UI/layout engine, ports/deps/migrations нет. Name budgets,
+cancellation guards, ZIP/media/audio/passive/ID policies не изменялись.
+
+В том же writer loop реализован bonus: отсутствие implicit trailing padding
+(64×64 с последним explicit EMPTY на позиции6 экспортирует 7 элементов, не4096;
+полностью пустая страница — cards=[]). Промежуточные holes и explicit EMPTY
+metadata сохраняются. Прежний overlap-rejection test обновлён на успешный uniform
+export при old opaque width2, а защита от known-field overrides сохранена.
+Ни один существующий regression не удалён/пропущен.
+
+Три новых regression tests: move/resize без разбора opaque geometry (включая
+старые width2/height8), finite/invalid span values и layoutNormalized, compact
+trailing padding с holes/explicit EMPTY metadata. Прежние span/sparse/overflow
+tests усилены: covered content не теряется, SPACE/EMPTY и их metadata остаются
+на исходных uniform slots; source ZIP bytes неизменны; page overflow bounds и
+UUID..wav tests сохранены. Pure Node oracle читает четыре фактических новых
+Kotlin writer ZIP: standard/audio fixture, uniform span import, edited board,
+64×64 holes/EMPTY. Проверки count/text/mode/metadata/visibility не ослаблены.
+
+После focused tests и correctness review полный локальный `:shared:jvmTest` —
+**42/42** (прежние 35 + 4 name/cancellation regressions + 3 новых), codec suite
+**28/28**, failures/errors/skipped = 0 по XML. Native main/test compilation
+(`:shared:compileKotlinIosSimulatorArm64`,
+`:shared:compileTestKotlinIosSimulatorArm64`) — PASS. Повторный pure Node
+v22.22.2 oracle на E `c540646e…` для всех четырёх новых writer-output — PASS,
+включая actual uniform placements, edited recording metadata/bytes и compact
+padding. Production diff: только `LinkaWire.kt`, +16/−37. Native executor не
+запускался: integration/actual Native execution остаётся COORD. Исходные spans
+намеренно не round-trip по принятому R04; strict deflate canonicality и native
+decoder/device limits остаются ранее описанными непроверенными gates.
+
 Команда focused проверки:
 
 ```sh
@@ -167,14 +213,18 @@ status. Synthetic ZIP создаётся с `wx` только в собстве�
 input, что в common test), `openLinkaZip` для фактического Kotlin writer-output3.0
 с synthetic image/audio bytes, mapping standard/description/direct/literal и
 recording metadata. Отдельный writer-output проверяется через
-`getCardGridPlacements`: sparse/span content остаётся на 0/2/3 и не covered.
+`getCardGridPlacements`: span import нормализован в uniform slots 0/1/2, после
+move/resize — 0/1/3; все content имеют placement 1×1 и не covered. Дополнительно
+проверены sparse slot3, explicit EMPTY metadata на6 и отсутствие trailing
+padding в raw writer array. Root/page/card passive metadata, recording editor
+metadata и synthetic audio bytes проверены независимо от нормализации геометрии.
 Peer normalizer намеренно теряет некоторые passive metadata; их сохранность
 доказывает common codec round-trip, а не чужой normalizer.
 
 После focused JVM test oracle воспроизводится так:
 
 ```sh
-python3 -c 'import json,xml.etree.ElementTree as E; r=E.parse("shared/build/test-results/jvmTest/TEST-su.linka.pictures.portability.linka.LinkaCodecTest.xml").getroot(); s=r.findtext("system-out", "").splitlines(); get=lambda prefix:next(x.split("=",1)[1] for x in s if x.startswith(prefix)); print(json.dumps({"writer":get("P05_WRITER_ZIP_HEX="),"sparse":get("P05_SPARSE_ZIP_HEX=")}))' \
+python3 -c 'import json,xml.etree.ElementTree as E; r=E.parse("shared/build/test-results/jvmTest/TEST-su.linka.pictures.portability.linka.LinkaCodecTest.xml").getroot(); s=r.findtext("system-out", "").splitlines(); markers={"writer":"P05_WRITER_ZIP_HEX=","sparse":"P05_SPARSE_ZIP_HEX=","edited":"P05_EDITED_ZIP_HEX=","holes":"P05_HOLES_ZIP_HEX="}; print(json.dumps({k:next(x.split("=",1)[1] for x in s if x.startswith(v)) for k,v in markers.items()}))' \
   | /Users/aacidov/.nvm/versions/node/v22.22.2/bin/node \
     shared/src/commonTest/kotlin/su/linka/pictures/portability/linka/peer_oracle.cjs
 ```
