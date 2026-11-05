@@ -1,0 +1,23 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p08-image-runtime-46be1b23-d735-46cc-b0a7-5ac4391fef00/frozen-p08-image-test.apk",
+  "sha256": "8e656c99ebed14717dfef498eb0fe50974a6d129a31f82d81b7d1d2d85d42504",
+  "bytes": 16142734,
+  "package": "su.linka.pictures.shared.test",
+  "targetPackage": "su.linka.pictures.shared.test",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "total_compiled": 54,
+  "counts": {
+    "PasswordCryptoAndroidTest": 2,
+    "AndroidMediaInspectionPortTest": 9,
+    "DecodedFloatPcmTest": 4,
+    "LegacyCodecDecodeTest": 5,
+    "RawAmrPacketsTest": 6,
+    "AndroidImagePreparationPortTest": 15,
+    "PcmWaveFileTest": 2,
+    "AndroidAudioBackendTest": 11
+  },
+  "merge_commit": "34c1f9d4735752d5fbcba3e7252562b38df7ab1f",
+  "merged_main": "a0d23154ec3cdd687d43f7d5b0b887629d7cfeed",
+  "image_commit": "93abfed"
+}
