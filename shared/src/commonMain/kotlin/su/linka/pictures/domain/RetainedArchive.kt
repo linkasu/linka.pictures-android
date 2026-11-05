@@ -1,6 +1,7 @@
 package su.linka.pictures.domain
 
 import kotlinx.serialization.Serializable
+import su.linka.pictures.text.isNativeText
 
 @Serializable enum class RetainedReason { INVALID_ARCHIVE, UNSUPPORTED_VERSION, UNSUPPORTED_MEDIA, IO_FAILURE }
 
@@ -12,5 +13,5 @@ data class RetainedArchive(
     val archive: AssetId,
     val reason: RetainedReason,
 ) {
-    init { require(revision > 0) }
+    init { require(revision > 0 && isNativeText(name)) }
 }

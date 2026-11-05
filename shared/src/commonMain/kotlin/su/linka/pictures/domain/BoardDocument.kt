@@ -1,6 +1,7 @@
 package su.linka.pictures.domain
 
 import kotlinx.serialization.Serializable
+import su.linka.pictures.text.isNativeText
 
 @Serializable enum class InteractionMode { COMPOSE, DIRECT }
 @Serializable enum class InputStyle { CARDS, LITERAL }
@@ -63,6 +64,7 @@ data class BoardDocument(
     val extensionsJson: String = "{}",
 ) {
     init {
+        require(isNativeText(name))
         require(pages.isNotEmpty() && pages.size <= 256)
         require(pages.map { it.id }.toSet().size == pages.size)
         val cards = pages.flatMap { it.cells }.mapNotNull { it.card?.id }
