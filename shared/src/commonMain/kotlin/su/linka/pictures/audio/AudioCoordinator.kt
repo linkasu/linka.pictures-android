@@ -13,6 +13,7 @@ class AudioCoordinator internal constructor(
     private val media: MediaStore,
     private val files: PlatformFilesPort,
     scope: CoroutineScope,
+    private val defaultLanguage: () -> String? = { null },
 ) : AudioPort {
     private data class Control(
         val desired: AudioWork? = null,
@@ -240,19 +241,23 @@ class AudioCoordinator internal constructor(
         current(work)
         val playback = work.playback
         if (playback != null) {
+            val language = if (playback.plan.segments.any { it is SpeechSegment.Text && it.languageTag == null }) defaultLanguage() else null
+            val segments = playback.plan.segments.map {
+                if (it is SpeechSegment.Text && it.languageTag == null) it.copy(languageTag = language) else it
+            }
             val prepared = mutableListOf<Prepared>()
             val capability = voices.value
             val voice = capability.copy(voices = capability.voices.toList())
-            val hasText = playback.plan.segments.any { it is SpeechSegment.Text && it.text.isNotBlank() }
-            if (playback.plan.segments.any { it is SpeechSegment.Text && !isNativeText(it.text) }) return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
+            val hasText = segments.any { it is SpeechSegment.Text && it.text.isNotBlank() }
+            if (segments.any { it is SpeechSegment.Text && (!isNativeText(it.text) || (it.languageTag != null && !isNativeText(it.languageTag))) }) return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
             if (hasText) {
                 work.voiceSnapshot.value = voice
-                for (text in playback.plan.segments.filterIsInstance<SpeechSegment.Text>().filter { it.text.isNotBlank() }) {
+                for (text in segments.filterIsInstance<SpeechSegment.Text>().filter { it.text.isNotBlank() }) {
                     val checked = voiceProblem(voice, text.languageTag, playback.preferredVoiceId)
                     if (checked != null) return OperationResult.Failed(checked)
                 }
             }
-            for (segment in playback.plan.segments) {
+            for (segment in segments) {
                 current(work)
                 when (segment) {
                     is SpeechSegment.Recording -> {
@@ -296,9 +301,9 @@ class AudioCoordinator internal constructor(
             current(work)
             return OperationResult.Completed(null)
         }
-        val synthesis = work.synthesis
+        val synthesis = work.synthesis?.let { it.copy(languageTag = it.languageTag ?: defaultLanguage()) }
         if (synthesis != null) {
-            if (!isNativeText(synthesis.text)) return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
+            if (!isNativeText(synthesis.text) || (synthesis.languageTag != null && !isNativeText(synthesis.languageTag))) return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
             val voice = voices.value
             voiceProblem(voice, synthesis.languageTag, synthesis.preferredVoiceId)?.let { return OperationResult.Failed(it) }
             if (synthesis.text.length > voice.maxTextLength) return OperationResult.Failed(Problem(ProblemCode.LIMIT_EXCEEDED))

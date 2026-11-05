@@ -16,13 +16,13 @@ class AudioCoordinatorTest {
         fun next() { tasks.removeFirst().run() }
         val pending get() = tasks.size
     }
-    private class Fixture(val test: TestScope) {
+    private class Fixture(val test: TestScope, defaultLanguage: () -> String? = { null }) {
         val backend = NativeAudioFake()
         val media = AudioMediaFake()
         val files = AudioFilesFake()
         val uncaught = mutableListOf<Throwable>()
         val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(test.testScheduler) + CoroutineExceptionHandler { _, failure -> uncaught += failure })
-        val coordinator = AudioCoordinator(backend, media, files, scope)
+        val coordinator = AudioCoordinator(backend, media, files, scope, defaultLanguage)
         val owner = AudioOwner("communication", AudioPurpose.COMMUNICATION)
         val asset = AssetId("a".repeat(64))
         val clip = LocalFile("immutable")
@@ -39,6 +39,116 @@ class AudioCoordinatorTest {
             scope.cancel(); test.runCurrent()
             assertTrue(uncaught.isEmpty(), "No cleanup exception may escape the coordinator")
         }
+    }
+
+    @Test fun unsupportedDefaultRejectsMixedPlanBeforeInspectionOrFirstRecording() = runTest {
+        val f = Fixture(this) { "zz-ZZ" }
+        f.play(segments = listOf(SpeechSegment.Recording(f.asset), SpeechSegment.Text("текст")))
+        assertEquals(ProblemCode.VOICE_UNAVAILABLE, f.coordinator.state.value.problem?.code)
+        assertTrue(f.backend.calls.isEmpty())
+        assertTrue(f.backend.inspected.isEmpty())
+        assertEquals(0, f.media.open)
+        f.close()
+    }
+
+    @Test fun supportedDefaultIsPassedToSpeechAndQueriedOnceForAllChunks() = runTest {
+        var queries = 0
+        val f = Fixture(this) { queries++; "ru-RU" }
+        f.backend.voices.value = f.backend.voices.value.copy(maxTextLength = 2)
+        f.play(segments = listOf(SpeechSegment.Text("абвг"), SpeechSegment.Text("де")))
+        assertEquals(listOf("tts:аб:ru-RU:null", "tts:вг:ru-RU:null", "tts:де:ru-RU:null"), f.backend.calls)
+        assertEquals(1, queries)
+        assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+        f.close()
+    }
+
+    @Test fun explicitSpeechLanguageOverridesDefaultWithoutQueryingIt() = runTest {
+        val f = Fixture(this) { error("Explicit language must not query defaults") }
+        f.play(segments = listOf(SpeechSegment.Text("текст", "ru-RU")))
+        assertEquals(listOf("tts:текст:ru-RU:null"), f.backend.calls)
+        f.close()
+        val mixed = Fixture(this) { "en-US" }
+        mixed.backend.voices.value = mixed.backend.voices.value.copy(voices = mixed.backend.voices.value.voices + LocalVoice("en", "en-US", "English"))
+        mixed.play(segments = listOf(SpeechSegment.Text("текст", "ru-RU"), SpeechSegment.Text("text")))
+        assertEquals(listOf("tts:текст:ru-RU:null", "tts:text:en-US:null"), mixed.backend.calls)
+        mixed.close()
+    }
+
+    @Test fun defaultChangesDuringPlaybackOnlyAffectNextWork() = runTest {
+        var language = "ru-RU"
+        var queries = 0
+        val f = Fixture(this) { queries++; language }
+        f.backend.audible = { language = "zz-ZZ"; OperationResult.Completed(Unit) }
+        f.play(segments = listOf(SpeechSegment.Recording(f.asset), SpeechSegment.Text("один"), SpeechSegment.Text("два")))
+        assertEquals(listOf("clip:immutable", "tts:один:ru-RU:null", "tts:два:ru-RU:null"), f.backend.calls)
+        assertEquals(1, queries)
+        assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+        f.play("next")
+        assertEquals(2, queries)
+        assertEquals(ProblemCode.VOICE_UNAVAILABLE, f.coordinator.state.value.problem?.code)
+        assertEquals(3, f.backend.calls.size)
+        f.close()
+    }
+
+    @Test fun synthesisResolvesImplicitLanguageAndPreservesExplicitLanguage() = runTest {
+        for (explicit in listOf(false, true)) {
+            var queries = 0
+            val f = Fixture(this) { queries++; "zz-ZZ" }
+            f.backend.synthesis = { request ->
+                assertEquals("ru-RU", request.languageTag)
+                OperationResult.Completed(TemporaryFile("synthesized"))
+            }
+            val request = f.synth(language = if (explicit) "ru-RU" else null)
+            runCurrent()
+            if (explicit) assertIs<OperationResult.Completed<*>>(request.await())
+            else {
+                assertEquals(ProblemCode.VOICE_UNAVAILABLE, assertIs<OperationResult.Failed>(request.await()).problem.code)
+                assertTrue(f.backend.calls.isEmpty())
+                assertTrue(f.backend.inspected.isEmpty())
+            }
+            assertEquals(if (explicit) 0 else 1, queries)
+            f.close()
+        }
+        var queries = 0
+        val f = Fixture(this) { queries++; "ru-RU" }
+        f.backend.synthesis = { request ->
+            assertEquals("ru-RU", request.languageTag)
+            OperationResult.Completed(TemporaryFile("implicit"))
+        }
+        val request = f.synth(); runCurrent()
+        assertIs<OperationResult.Completed<*>>(request.await())
+        assertEquals(1, queries)
+        f.close()
+    }
+
+    @Test fun malformedDefaultAndExplicitLanguagesRejectWholePlanAndSynthesis() = runTest {
+        for (language in listOf("ru\u0000-RU", "ru\uD800", "ru\uDC00")) {
+            for (explicit in listOf(false, true)) {
+                val f = Fixture(this) { if (explicit) error("Explicit language must win") else language }
+                f.play(segments = listOf(SpeechSegment.Recording(f.asset), SpeechSegment.Text("текст", if (explicit) language else null)))
+                assertEquals(ProblemCode.INVALID_DATA, f.coordinator.state.value.problem?.code)
+                assertTrue(f.backend.calls.isEmpty())
+                assertTrue(f.backend.inspected.isEmpty())
+                assertEquals(0, f.media.open)
+                val request = f.synth(language = if (explicit) language else null); runCurrent()
+                assertEquals(ProblemCode.INVALID_DATA, assertIs<OperationResult.Failed>(request.await()).problem.code)
+                assertTrue(f.backend.calls.isEmpty())
+                assertTrue(f.backend.inspected.isEmpty())
+                f.close()
+            }
+        }
+    }
+
+    @Test fun recordingOnlyNeverQueriesDefaultLanguageOrRequiresTts() = runTest {
+        val f = Fixture(this) { error("Recording must not query TTS defaults") }
+        f.backend.voices.value = VoiceCapability(VoiceStatus.MISSING_VOICE)
+        f.play(segments = listOf(SpeechSegment.Recording(f.asset)))
+        assertEquals(AudioPhase.COMPLETED, f.coordinator.state.value.phase)
+        f.backend.recording = { _, _ -> OperationResult.Completed(TemporaryFile("recorded")) }
+        val request = f.record(); runCurrent()
+        assertIs<OperationResult.Completed<*>>(request.await())
+        assertEquals(listOf("clip:immutable", "record"), f.backend.calls)
+        f.close()
     }
 
     @Test fun malformedOrNulSpeechNeverStartsAnySegmentOrSynthesis() = runTest {
