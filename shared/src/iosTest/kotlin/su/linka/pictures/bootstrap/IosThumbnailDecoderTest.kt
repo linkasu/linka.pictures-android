@@ -8,6 +8,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
 import okio.*
 import okio.Path.Companion.toPath
+import okio.ByteString.Companion.decodeBase64
 import platform.CoreFoundation.*
 import platform.CoreGraphics.*
 import platform.Foundation.*
@@ -44,6 +45,27 @@ class IosThumbnailDecoderTest {
         for (side in listOf(-1, 0, 257, Int.MAX_VALUE)) {
             assertEquals(OperationResult.Failed(Problem(ProblemCode.LIMIT_EXCEEDED)),
                 decoder.decode(LocalFile("/not-owned-and-never-opened.png"), side))
+        }
+    }
+
+    @Test fun asymmetricPngRetainsTopLeftRowOrderWithoutFlipOrTranspose() = runTest {
+        withContext(Dispatchers.IO) {
+            // Standard RGBA PNG: row 0 RED/GREEN, row 1 BLUE/WHITE; no orientation metadata.
+            val bytes = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR4nGP4z8DwHwyBNBgAAEnICff5q7YNAAAAAElFTkSuQmCC".decodeBase64()!!
+            val path = (NSTemporaryDirectory() + NSUUID().UUIDString + ".png").toPath()
+            try {
+                FileSystem.SYSTEM.write(path) { write(bytes) }
+                val before = FileSystem.SYSTEM.source(path).buffer().use { it.readByteString().sha256() }
+                val image = assertIs<OperationResult.Completed<androidx.compose.ui.graphics.ImageBitmap>>(
+                    decoder.decode(LocalFile(path.toString()), 2)).value
+                assertEquals(2, image.width)
+                assertEquals(2, image.height)
+                assertEquals(ImageBitmapConfig.Argb8888, image.config)
+                val actual = IntArray(4)
+                image.readPixels(actual)
+                assertContentEquals(intArrayOf(0xffff0000.toInt(), 0xff00ff00.toInt(), 0xff0000ff.toInt(), 0xffffffff.toInt()), actual)
+                assertEquals(before, FileSystem.SYSTEM.source(path).buffer().use { it.readByteString().sha256() })
+            } finally { FileSystem.SYSTEM.delete(path, mustExist = false) }
         }
     }
 
