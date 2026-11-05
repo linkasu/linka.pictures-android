@@ -263,4 +263,42 @@ class AndroidPlatformFilesPortTest {
             destination.close()
         } finally {f.close()}
     }
+    @Test fun guardClosingDestinationBeforeOpenCannotAdmitProviderTruncate() = runBlocking {
+        val f = FilesTestRig()
+        try {
+            val source = f.temporary("private source".toByteArray())
+            val before = f.provider.file.readBytes()
+            val destination = completed(f.port.chooseDestination("closed-by-guard", "application/octet-stream", "owner"))
+            var checks = 0
+            val result = destination.write(source) {
+                if (++checks == 2) destination.close() // This guard is immediately before the external open.
+                OperationResult.Completed(Unit)
+            }
+            assertEquals(OperationResult.Cancelled, result)
+            assertEquals(2, checks)
+            assertEquals(0, f.provider.writes)
+            assertArrayEquals(before, f.provider.file.readBytes())
+            assertEquals(0, f.provider.deletes)
+            code(ProblemCode.STALE_REQUEST, destination.write(source) { OperationResult.Completed(Unit) })
+        } finally { f.close() }
+    }
+    @Test fun ownerRevokedDuringSuccessfulGuardCannotAdmitProviderOpen() = runBlocking {
+        val f = FilesTestRig()
+        try {
+            val source = f.temporary("private source".toByteArray())
+            val before = f.provider.file.readBytes()
+            val destination = completed(f.port.chooseDestination("revoked-by-guard", "application/octet-stream", "owner"))
+            var checks = 0
+            val result = destination.write(source) {
+                if (++checks == 2) f.active.set(false)
+                OperationResult.Completed(Unit)
+            }
+            assertEquals(OperationResult.Cancelled, result)
+            assertEquals(2, checks)
+            assertEquals(0, f.provider.writes)
+            assertArrayEquals(before, f.provider.file.readBytes())
+            assertEquals(0, f.provider.deletes)
+            destination.close()
+        } finally { f.close() }
+    }
 }

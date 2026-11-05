@@ -1,0 +1,178 @@
+{
+  "base": "3727d6c0010850beb90ec2be73e77524d4fd9a21",
+  "freeze": {
+    "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-files-admission-bf732b9a-1b57-45da-a529-52973870ba67/frozen-admission-test.apk",
+    "sha256": "5dff891cad6e254a8d6232c7143e2a18d5e70b05e083d113b595cb4ec08f8cfc",
+    "package": "su.linka.pictures.shared.test",
+    "minSdk": 21,
+    "targetSdk": 34,
+    "focused": 19,
+    "total": 82,
+    "api35": "runtime OPEN"
+  },
+  "serial": "emulator-5554",
+  "avd": "linka_platform_probe_api21_arm64",
+  "sdk": 21,
+  "abi": "arm64-v8a",
+  "passed": 19,
+  "failed": 0,
+  "skipped": 0,
+  "assumptions": 0,
+  "seconds": 0.19,
+  "api35": "runtime OPEN; no restart or renderer change",
+  "capture_sha256": "0486c0f3904d528c92e7bb098c265d019381295a3da5dc1dd56913b4023a28f8",
+  "results": [
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "invalidLeafMimeAndSyncMainCallsFailWithoutFilesystemWork",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "1"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "ownerRevokedDuringSuccessfulGuardCannotAdmitProviderOpen",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "2"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "destinationClosedDuringOpenCannotWriteChunksOrBecomeReusable",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "3"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "physicalUnlinkFailureDoesNotReviveHandleOrKillRemainingCleanup",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "4"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "pickActualStreamBudgetCannotBeBypassedByProviderMetadata",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "5"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "pickRejectsForeignUriAndUnsafeMetadataRatherThanUsingThemAsPaths",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "6"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "cancellationAfterCopyBeforeCallerDispatchDiscardsUndeliveredTempWithoutMainIo",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "7"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "nonemptyOwnedTempCannotBeTruncatedAndMediaSourceCannotReadCredentialsOrSymlinks",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "8"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "guardClosingDestinationBeforeOpenCannotAdmitProviderTruncate",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "9"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "knownOversizedPrivateInputFailsBeforeProviderOpenAndOwnerRevocationIsRespected",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "10"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "providerOpenFailureNeverReportsCompletedAndKeepsPrivateSource",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "11"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "chunkGuardRevocationStopsAndMayLeavePartialProviderDocumentWithoutRollbackOrDelete",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "12"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "pickCopiesActualBytesAndClosesCursorAndTransientProviderStreamWithMinimalIntents",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "13"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "uuidTempRegistryNeverUsesDisplayNameAsPathOrAcceptsForeignIdentity",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "14"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "destinationWritesExactBytesOnceAndCloseForbidsLateWrite",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "15"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "discardOnMainInvalidatesImmediatelyAndUnlinksOnlyOnIo",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "16"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "cancelAndBackgroundAfterRequesterNeverReturnLateOwnedFile",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "17"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "rootAndCallerCancellationDismissOnlyOwnedRequestAndNoPickerResultIsReplayed",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "18"
+    },
+    {
+      "numtests": "19",
+      "stream": ".",
+      "id": "AndroidJUnitRunner",
+      "test": "choosingDestinationDoesNotWriteAndGuardAndPrivateSourceAreCheckedBeforeTruncate",
+      "class": "su.linka.pictures.platform.files.AndroidPlatformFilesPortTest",
+      "current": "19"
+    }
+  ]
+}

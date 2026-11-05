@@ -131,6 +131,9 @@ internal class AndroidPlatformFilesPort(
                         live(ownerId)
                         if (state.get() != DestinationState.WRITING) NativeFileRules.cancelled()
                         NativeFileRules.value(guard())
+                        // The guard itself may close/revoke; this final check admits only the next IO step.
+                        live(ownerId)
+                        if (state.get() != DestinationState.WRITING) NativeFileRules.cancelled()
                     }
                     authorized()
                     // Resolve/open the private source before any external open/truncate.
