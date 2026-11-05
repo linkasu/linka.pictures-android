@@ -11,6 +11,12 @@
 - Domain не импортирует платформу, Compose, filesystem или JSON DOM. Сериализация моделей — внутренняя schema, а не совместимость с Electron.
 - `LocalFile` — sandbox handle, не постоянные данные. Только `TemporaryFile` разрешён для `discard`; immutable media нельзя удалить cleanup picker-а.
 
+## Handoff P08 и native external files
+
+COORD policy: [access-policy.md](access-policy.md). `AssistantGate.check/guard(action, capability, ownerId)` требуют explicit owner, capability другого owner не переносится. `guard` захватывает owner context+credential generation и отзывается даже без lock. Секреты/новый verifier не входят в SQLite schema1 или restore. PBKDF2-HMAC-SHA1/1300000/salt16/output32, exact versioned UTF16-hex encoding и legacy-input-only trim; алгоритм встроенный Java/CommonCrypto, не собственная криптография. Core policy реализуется отдельно от native credential storage/реальной OS owner verification; G4 до них OPEN. Unknown credential commit — Unavailable/quarantine, не silent Unprotected.
+
+`PlatformFilesPort.save(picker+write)` удалён до native binding: `chooseDestination(suggestedName, mediaType, ownerId): OperationResult<ExportDestination>`. Destination предоставляет ownerId, single-use `suspend write(file: LocalFile, guard: CommitGuard): OperationResult<Unit>` и idempotent `close()`. Выбор может создать пустой файл, но **не передаёт содержимое**. Workflow после picker на foreground показывает конкретную выдачу и получает свежую авторизацию; сам destination не capability. Последний guard перед внешним open/truncate — irreversible authority boundary; повторная проверка между bounded chunks. После неё cancel/IO/revoke могут оставить внешнюю частичную копию, rollback чужого provider не обещается, provider file cleanup-ом не удаляется. Handle/URI не persisted и не попадает в JSON, закрытый/чужой/stale owner не пишет. Native adapters ещё не реализованы, все существующие test fakes обновляются вместе с port.
+
 ## Модели и режимы
 
 ID не равны имени. AssetId — lowercase SHA256 фактических bytes; другие IDs генерирует `IdSource` (случайные UUID на платформах). Внешние numeric/повторяющиеся IDs хранятся пассивно; новые внутренние IDs выдаются один раз на import, не на каждый save.

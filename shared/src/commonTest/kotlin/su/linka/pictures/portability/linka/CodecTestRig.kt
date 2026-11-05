@@ -81,7 +81,7 @@ internal class CodecTestRig : PlatformFilesPort, MediaStore, MediaInspectionPort
         if (failDiscardAfterRemoval) throw IOException("synthetic cleanup failure")
     }
     override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = error("unused")
-    override suspend fun save(file: LocalFile, suggestedName: String, ownerId: String): OperationResult<Unit> = error("unused")
+    override suspend fun chooseDestination(suggestedName: String, mediaType: String, ownerId: String): OperationResult<ExportDestination> = error("unused")
 
     override suspend fun prepare(source: Source, kind: MediaKind, mediaType: String): OperationResult<PreparedMedia> {
         prepares++

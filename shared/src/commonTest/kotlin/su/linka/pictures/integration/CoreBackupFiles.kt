@@ -68,7 +68,7 @@ internal class CoreBackupFiles(private val fs: FileSystem, root: Path) : Platfor
     }
 
     override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = error("No picker in core integration")
-    override suspend fun save(file: LocalFile, suggestedName: String, ownerId: String): OperationResult<Unit> = error("No external export in core integration")
+    override suspend fun chooseDestination(suggestedName: String, mediaType: String, ownerId: String): OperationResult<ExportDestination> = error("No external export in core integration")
 
     override fun close() {
         var failure: Throwable? = null

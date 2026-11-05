@@ -45,12 +45,16 @@ kotlin {
             }
         }
         androidMain {
+            kotlin.srcDir('src/javaMain/kotlin')
             dependencies {
                 implementation 'androidx.annotation:annotation:1.8.1'
                 implementation 'net.lingala.zip4j:zip4j:2.11.5'
                 implementation project.dependencies.platform('com.google.firebase:firebase-bom:33.5.1')
                 implementation 'com.google.firebase:firebase-analytics'
             }
+        }
+        jvmMain {
+            kotlin.srcDir('src/javaMain/kotlin')
         }
         androidInstrumentedTest {
             dependencies {

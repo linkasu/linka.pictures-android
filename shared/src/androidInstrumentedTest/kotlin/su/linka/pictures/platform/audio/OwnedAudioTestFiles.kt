@@ -32,7 +32,7 @@ internal class OwnedAudioTestFiles : PlatformFilesPort, AutoCloseable {
     }
     override fun close() { root.walkBottomUp().forEach { check(it.delete() || !it.exists()) } }
     override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = error("Not used")
-    override suspend fun save(file: LocalFile, suggestedName: String, ownerId: String): OperationResult<Unit> = error("Not used")
+    override suspend fun chooseDestination(suggestedName: String, mediaType: String, ownerId: String): OperationResult<ExportDestination> = error("Not used")
     override fun source(file: LocalFile): OperationResult<Source> = error("Not used")
     override fun sink(file: TemporaryFile): OperationResult<Sink> = error("Not used")
 }

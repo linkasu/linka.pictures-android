@@ -21,7 +21,7 @@ internal class AudioFilesFake : PlatformFilesPort {
         discarded += file
     }
     override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = unused()
-    override suspend fun save(file: LocalFile, suggestedName: String, ownerId: String): OperationResult<Unit> = unused()
+    override suspend fun chooseDestination(suggestedName: String, mediaType: String, ownerId: String): OperationResult<ExportDestination> = unused()
     override fun createTemporaryFile(suggestedName: String, mediaType: String): OperationResult<TemporaryFile> = unused()
     override fun source(file: LocalFile): OperationResult<Source> = unused()
     override fun sink(file: TemporaryFile): OperationResult<Sink> = unused()

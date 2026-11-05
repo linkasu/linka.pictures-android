@@ -2,6 +2,7 @@ package su.linka.pictures.application.ports
 
 import kotlinx.coroutines.flow.StateFlow
 import su.linka.pictures.application.OperationResult
+import su.linka.pictures.application.Problem
 
 enum class ProtectedAction {
     CREATE_BOARD, EDIT_BOARD, APPLY_DRAFT, RENAME_BOARD, DELETE_BOARD, DELETE_DRAFT,
@@ -14,8 +15,8 @@ class AssistantCapability internal constructor(internal val token: String, val o
 typealias CommitGuard = () -> OperationResult<Unit>
 
 interface AssistantGate {
-    fun check(action: ProtectedAction, capability: AssistantCapability?): OperationResult<Unit>
-    fun guard(action: ProtectedAction, capability: AssistantCapability?): CommitGuard = { check(action, capability) }
+    fun check(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): OperationResult<Unit>
+    fun guard(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): CommitGuard
 }
 
 enum class OwnerVerificationAvailability { UNKNOWN, AVAILABLE, UNAVAILABLE }
@@ -24,6 +25,7 @@ sealed interface AssistantState {
     data object Initializing : AssistantState
     data class Unprotected(val verification: OwnerVerificationAvailability) : AssistantState
     data class Protected(val legacy: Boolean, val verification: OwnerVerificationAvailability) : AssistantState
+    data class Unavailable(val problem: Problem) : AssistantState
 }
 
 interface AssistantAccess : AssistantGate {
