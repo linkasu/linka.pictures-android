@@ -17,6 +17,8 @@ import su.linka.pictures.application.authoring.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.components.LabeledActionButton
+import su.linka.pictures.ui.images.VisibleImageDemand
+import su.linka.pictures.ui.images.DemandVisibleImages
 import su.linka.pictures.ui.editor.AuthoringFeedback
 import su.linka.pictures.ui.editor.editable
 import su.linka.pictures.ui.editor.authoringFieldColors
@@ -31,6 +33,7 @@ fun CardEditorScreen(
     onCommand: (AuthoringCommand) -> Unit,
     images: Map<AssetId, ImageBitmap> = emptyMap(),
     modifier: Modifier = Modifier,
+    onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
 ) {
     val form = state.draft?.form as? EditorForm.Card ?: return
     val enabled = state.editable()
@@ -40,6 +43,8 @@ fun CardEditorScreen(
     val change: (String, String, SpeechChoice, Boolean) -> Unit = { label, text, choice, useLabel ->
         dispatch(AuthoringAction.ChangeCard(label, text, choice, useLabel))
     }
+    VisibleImageDemand(Triple(state.epoch, ownerId, state.draft.id), onImagesNeeded) {
+    DemandVisibleImages(form.cardId, setOfNotNull(form.image))
     Surface(modifier.fillMaxSize(), color = palette.background, contentColor = palette.text) {
       Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(12.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -101,5 +106,6 @@ fun CardEditorScreen(
             Text("Это не применение к доске. После закрытия формы используйте «Применить к доске» в редакторе.")
         }
       }
+    }
     }
 }

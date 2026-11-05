@@ -23,6 +23,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
 import su.linka.pictures.application.communication.CommunicationCommand
 import su.linka.pictures.application.communication.CommunicationState
@@ -31,6 +33,7 @@ import su.linka.pictures.application.ports.VoiceCapability
 import su.linka.pictures.domain.AssetId
 import su.linka.pictures.domain.CommandId
 import su.linka.pictures.ui.components.LabeledActionButton
+import su.linka.pictures.ui.images.VisibleImageDemand
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
@@ -42,12 +45,22 @@ fun CommunicationScreen(
     onOpenLibrary: () -> Unit,
     images: Map<AssetId, ImageBitmap> = emptyMap(),
     modifier: Modifier = Modifier,
+    showPageButtons: Boolean = true,
+    onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
 ) {
     val presentation = remember(state, voices) { communicationPresentation(state, voices) }
     var input by rememberSaveable(state.stamp.epoch) { mutableStateOf("") }
+    var inputFocused by remember { mutableStateOf(false) }
     val palette = LocalLinkaPalette.current
     val dispatch: (CommunicationCommand) -> Unit = { if (presentation.commandsEnabled) onCommand(it) }
-    Surface(modifier.fillMaxSize(), color = palette.background, contentColor = palette.text) {
+    VisibleImageDemand(state.stamp.epoch, onImagesNeeded) {
+    val paging = Modifier.communicationPaging(inputFocused, presentation.commandsEnabled) { direction ->
+        val pages = state.board?.document?.pages.orEmpty()
+        pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled)?.let {
+            dispatch(CommunicationCommand.ChangePage(CommandId(ids.next()), pages[it].id))
+        }
+    }
+    Surface(modifier.fillMaxSize().then(paging), color = palette.background, contentColor = palette.text) {
         CompositionLocalProvider(LocalContentAlpha provides 1f) {
             Column(
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(8.dp),
@@ -62,6 +75,8 @@ fun CommunicationScreen(
                                 { if (presentation.commandsEnabled) onOpenLibrary() },
                                 input, { if (presentation.commandsEnabled) input = it },
                                 Modifier.weight(1f).fillMaxWidth(),
+                                showPageButtons,
+                                { inputFocused = it },
                             )
                         }
                     }
@@ -105,5 +120,21 @@ fun CommunicationScreen(
                 )
             }
         }
+    }
+    }
+}
+
+@Composable
+private fun Modifier.communicationPaging(textFocused: Boolean, enabled: Boolean, onPage: (Int) -> Unit): Modifier {
+    val activation = remember { PageKeyActivation() }
+    return onFocusChanged { if (!it.hasFocus) activation.reset() }.onPreviewKeyEvent { event ->
+        val direction = when (event.key) {
+            Key.PageUp -> -1
+            Key.PageDown -> 1
+            else -> return@onPreviewKeyEvent false
+        }
+        if (event.type != KeyEventType.KeyDown && event.type != KeyEventType.KeyUp) false
+        else activation.event(direction, event.type == KeyEventType.KeyDown, textFocused,
+            event.isAltPressed || event.isCtrlPressed || event.isMetaPressed || event.isShiftPressed, enabled, onPage)
     }
 }

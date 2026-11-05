@@ -41,6 +41,8 @@ import su.linka.pictures.domain.BoardPage
 import su.linka.pictures.domain.CardId
 import su.linka.pictures.domain.CellKind
 import su.linka.pictures.ui.components.CommunicationCard
+import su.linka.pictures.ui.images.DemandVisibleImages
+import su.linka.pictures.ui.images.visibleRowImages
 import su.linka.pictures.ui.theme.LinkaTargets
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
@@ -94,6 +96,7 @@ internal fun CommunicationGrid(
                 verticalArrangement = Arrangement.spacedBy(gap),
             ) {
                 items(page.rows, key = { it }) { row ->
+                    DemandVisibleImages(page.id to row, visibleRowImages(page, row))
                     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                         for (column in 0 until page.columns) {
                             val position = row * page.columns + column

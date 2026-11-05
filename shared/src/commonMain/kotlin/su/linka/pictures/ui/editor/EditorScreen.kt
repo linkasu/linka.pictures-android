@@ -22,6 +22,9 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.card.CardEditorScreen
 import su.linka.pictures.ui.components.LabeledActionButton
+import su.linka.pictures.ui.images.VisibleImageDemand
+import su.linka.pictures.ui.images.DemandVisibleImages
+import su.linka.pictures.ui.images.visibleRowImages
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
@@ -33,9 +36,10 @@ fun EditorScreen(
     onCommand: (AuthoringCommand) -> Unit,
     images: Map<AssetId, ImageBitmap> = emptyMap(),
     modifier: Modifier = Modifier,
+    onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
 ) {
     if (state.draft?.form is EditorForm.Card) {
-        CardEditorScreen(state, ownerId, capability, ids, onCommand, images, modifier)
+        CardEditorScreen(state, ownerId, capability, ids, onCommand, images, modifier, onImagesNeeded)
         return
     }
     val dispatch: (AuthoringAction) -> Unit = { onCommand(AuthoringCommand(CommandId(ids.next()), ownerId, capability, it)) }
@@ -52,6 +56,7 @@ fun EditorScreen(
     var showSettings by rememberSaveable(draft?.id?.value) { mutableStateOf(false) }
     val page = document?.pages?.firstOrNull { it.id.value == selectedPage } ?: document?.pages?.firstOrNull()
     val pageIndex = document?.pages?.indexOf(page) ?: -1
+    VisibleImageDemand(Triple(state.epoch, ownerId, draft?.id), onImagesNeeded) {
     Surface(modifier.fillMaxSize(), color = palette.background, contentColor = palette.text) {
       Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(12.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -153,6 +158,7 @@ fun EditorScreen(
                     LabeledActionButton("Отменить перемещение", true, false, { moveSource = null }, Modifier.fillMaxWidth())
                 }
                 if (page != null && !showSettings && gridForm == null) items((0 until page.rows).toList(), key = { "${page.id.value}:$it" }) { row ->
+                    DemandVisibleImages(page.id to row, visibleRowImages(page, row))
                     EditorPageCells(page, row, structural, moveSource, { moveSource = it }, dispatch, images)
                 }
                 item {
@@ -180,5 +186,6 @@ fun EditorScreen(
             confirmButton = { LabeledActionButton("Удалить черновик", true, true,
                 { confirmDelete = false; dispatch(AuthoringAction.DeleteDraft) }) },
             dismissButton = { LabeledActionButton("Оставить черновик", true, false, { confirmDelete = false }) })
+    }
     }
 }

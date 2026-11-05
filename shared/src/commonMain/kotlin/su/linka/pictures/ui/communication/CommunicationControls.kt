@@ -14,7 +14,11 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -38,6 +42,8 @@ internal fun CommunicationControls(
     input: String,
     onInputChange: (String) -> Unit,
     modifier: Modifier,
+    showPageButtons: Boolean,
+    onInputFocusChange: (Boolean) -> Unit,
 ) {
     val palette = LocalLinkaPalette.current
     val scroll = rememberScrollState()
@@ -45,6 +51,12 @@ internal fun CommunicationControls(
         if (!presentation.commandsEnabled) scroll.scrollTo(0)
     }
     fun id() = CommandId(ids.next())
+    fun changePage(direction: Int): Boolean {
+        val pages = state.board?.document?.pages.orEmpty()
+        val target = pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) ?: return false
+        onCommand(CommunicationCommand.ChangePage(id(), pages[target].id))
+        return true
+    }
     Column(
         modifier.verticalScroll(scroll),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -65,8 +77,15 @@ internal fun CommunicationControls(
         )
         val pages = state.board?.document?.pages.orEmpty()
         if (presentation.page != null) {
-            Text("Страница ${presentation.pageIndex + 1} из ${pages.size}")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Страница ${presentation.pageIndex + 1} из ${pages.size}", modifier = Modifier.semantics {
+                customActions = listOfNotNull(
+                    if (pageTarget(presentation.pageIndex, pages.size, -1, presentation.commandsEnabled) != null)
+                        CustomAccessibilityAction("Предыдущая страница") { changePage(-1) } else null,
+                    if (pageTarget(presentation.pageIndex, pages.size, 1, presentation.commandsEnabled) != null)
+                        CustomAccessibilityAction("Следующая страница") { changePage(1) } else null,
+                )
+            })
+            if (showPageButtons) FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 LabeledActionButton(
                     "Предыдущая страница", presentation.commandsEnabled && presentation.pageIndex > 0, false,
                     { pages.getOrNull(presentation.pageIndex - 1)?.let { onCommand(CommunicationCommand.ChangePage(id(), it.id)) } },
@@ -80,13 +99,15 @@ internal fun CommunicationControls(
         Text(presentation.audioStatus, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         Text(presentation.voiceStatus)
         if (presentation.composing) {
+            DisposableEffect(Unit) { onDispose { onInputFocusChange(false) } }
             OutlinedTextField(
                 value = input,
                 onValueChange = onInputChange,
                 enabled = presentation.commandsEnabled,
                 label = { Text("Текст для добавления") },
                 minLines = 2, maxLines = 5,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp, max = 160.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp, max = 160.dp)
+                    .onFocusChanged { onInputFocusChange(it.isFocused) },
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     textColor = palette.text, disabledTextColor = palette.disabledText,
                     backgroundColor = palette.surface, cursorColor = palette.primary,

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import su.linka.pictures.application.communication.CommunicationState
 import su.linka.pictures.domain.AssetId
 import su.linka.pictures.domain.MessagePart
+import su.linka.pictures.ui.images.DemandVisibleImages
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
@@ -54,6 +55,7 @@ internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(pictures, key = { it.id.value }) { part ->
+                DemandVisibleImages(part.id, setOfNotNull(part.snapshot.image))
                 Box(Modifier.size(96.dp).border(1.dp, palette.border)) {
                     val image = images[part.snapshot.image]
                     if (image != null) Image(

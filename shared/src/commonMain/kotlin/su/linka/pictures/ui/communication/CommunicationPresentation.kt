@@ -92,6 +92,29 @@ internal fun communicationPresentation(state: CommunicationState, voices: VoiceC
 
 private const val unconfirmedMessage = "Результат сохранения не подтверждён. Нельзя считать операцию сохранённой или отменённой. Сообщение остаётся на экране, действия заблокированы. Полностью закройте приложение и откройте его заново для проверки данных. Не повторяйте операцию до проверки."
 
+internal fun pageTarget(index: Int, count: Int, direction: Int, enabled: Boolean): Int? =
+    (index + direction).takeIf { enabled && index in 0 until count && it in 0 until count && direction in listOf(-1, 1) }
+
+/** Like a button, activate on release; native key repeat never changes multiple pages. */
+internal class PageKeyActivation {
+    private var pressed: Int? = null
+    fun reset() { pressed = null }
+    fun event(direction: Int, down: Boolean, textFocused: Boolean, modified: Boolean, enabled: Boolean = true, activate: (Int) -> Unit): Boolean {
+        if (!enabled || textFocused || modified || direction !in listOf(-1, 1)) {
+            reset()
+            return false
+        }
+        if (down) {
+            if (pressed == null) pressed = direction
+        } else {
+            val fire = pressed == direction
+            reset()
+            if (fire) activate(direction)
+        }
+        return true
+    }
+}
+
 internal fun communicationSlots(page: BoardPage): List<BoardCell?> {
     val cells = page.cells.associateBy { it.position }
     return List(page.capacity) { cells[it] }
