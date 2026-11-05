@@ -37,4 +37,12 @@ class NativeTextContractTest {
         val card = CardDocument(CardId("card"), "left\u0000right")
         assertEquals(card, Json.decodeFromString<CardDocument>(Json.encodeToString(card)))
     }
+
+    @Test fun deserializationCannotBypassIdentifierOrNameGuards() {
+        assertFailsWith<IllegalArgumentException> { Json.decodeFromString<BoardId>("\"left\\u0000right\"") }
+        assertFailsWith<IllegalArgumentException> { Json.decodeFromString<AssetId>("\"../unsafe\"") }
+        val good = BoardDocument(BoardId("board"), "GOOD_NAME", listOf(page))
+        val invalid = Json.encodeToString(good).replace("GOOD_NAME", "left\\u0000right")
+        assertFailsWith<IllegalArgumentException> { Json.decodeFromString<BoardDocument>(invalid) }
+    }
 }

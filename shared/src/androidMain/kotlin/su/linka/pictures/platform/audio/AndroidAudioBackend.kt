@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.RequestId
+import su.linka.pictures.text.isNativeText
 import java.io.File
 import java.io.FileInputStream
 import java.util.UUID
@@ -243,6 +244,7 @@ internal class AndroidAudioBackend(
 
     override suspend fun speak(text: String, languageTag: String?, voiceId: String?, requestId: RequestId): OperationResult<Unit> = operate(requestId) { call ->
         withContext(Dispatchers.Main.immediate) {
+            if (!isNativeText(text)) throw NativeAudioFailure(ProblemCode.INVALID_DATA)
             if (text.isBlank()) return@withContext OperationResult.Completed(Unit)
             val tts = voice(call, languageTag, voiceId)
             if (text.length > TextToSpeech.getMaxSpeechInputLength()) throw NativeAudioFailure(ProblemCode.LIMIT_EXCEEDED)
@@ -277,6 +279,7 @@ internal class AndroidAudioBackend(
         return OperationResult.Completed(file)
     }
     override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> = operate(request.id) { call ->
+        if (!isNativeText(request.text)) throw NativeAudioFailure(ProblemCode.INVALID_DATA)
         if (request.text.length > TextToSpeech.getMaxSpeechInputLength()) throw NativeAudioFailure(ProblemCode.LIMIT_EXCEEDED)
         if (request.text.isBlank()) throw NativeAudioFailure(ProblemCode.SPEECH_UNAVAILABLE)
         val file = temporary(call, "speech")

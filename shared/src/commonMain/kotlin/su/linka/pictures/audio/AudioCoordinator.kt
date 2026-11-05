@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.RequestId
+import su.linka.pictures.text.isNativeText
 
 class AudioCoordinator internal constructor(
     private val backend: NativeAudioBackend,
@@ -243,6 +244,7 @@ class AudioCoordinator internal constructor(
             val capability = voices.value
             val voice = capability.copy(voices = capability.voices.toList())
             val hasText = playback.plan.segments.any { it is SpeechSegment.Text && it.text.isNotBlank() }
+            if (playback.plan.segments.any { it is SpeechSegment.Text && !isNativeText(it.text) }) return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
             if (hasText) {
                 work.voiceSnapshot.value = voice
                 for (text in playback.plan.segments.filterIsInstance<SpeechSegment.Text>().filter { it.text.isNotBlank() }) {
@@ -296,6 +298,7 @@ class AudioCoordinator internal constructor(
         }
         val synthesis = work.synthesis
         if (synthesis != null) {
+            if (!isNativeText(synthesis.text)) return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
             val voice = voices.value
             voiceProblem(voice, synthesis.languageTag, synthesis.preferredVoiceId)?.let { return OperationResult.Failed(it) }
             if (synthesis.text.length > voice.maxTextLength) return OperationResult.Failed(Problem(ProblemCode.LIMIT_EXCEEDED))

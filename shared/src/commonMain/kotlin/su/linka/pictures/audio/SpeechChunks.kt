@@ -4,9 +4,11 @@ import su.linka.pictures.application.OperationResult
 import su.linka.pictures.application.Problem
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.text.graphemeBoundaries
+import su.linka.pictures.text.isNativeText
 
 internal fun speechChunks(text: String, maximum: Int): OperationResult<List<String>> {
     if (maximum <= 0) return OperationResult.Failed(Problem(ProblemCode.LIMIT_EXCEEDED))
+    if (!isNativeText(text)) return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
     if (text.isBlank()) return OperationResult.Completed(emptyList())
     val boundaries = graphemeBoundaries(text)
     val chunks = mutableListOf<String>()

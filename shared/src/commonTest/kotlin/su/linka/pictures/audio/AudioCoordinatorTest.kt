@@ -41,6 +41,24 @@ class AudioCoordinatorTest {
         }
     }
 
+    @Test fun malformedOrNulSpeechNeverStartsAnySegmentOrSynthesis() = runTest {
+        for (value in listOf("left\u0000right", "left\uD800right", "left\uDC00right")) {
+            val f = Fixture(this)
+            f.play(segments = listOf(SpeechSegment.Recording(f.asset), SpeechSegment.Text(value)))
+            assertEquals(ProblemCode.INVALID_DATA, f.coordinator.state.value.problem?.code)
+            assertTrue(f.backend.calls.isEmpty())
+            assertTrue(f.backend.inspected.isEmpty())
+            assertEquals(0, f.media.open)
+            val synthesis = f.synth(text = value)
+            runCurrent()
+            assertEquals(ProblemCode.INVALID_DATA, assertIs<OperationResult.Failed>(synthesis.await()).problem.code)
+            assertTrue(f.backend.calls.isEmpty())
+            assertTrue(f.files.discarded.isEmpty())
+            assertEquals(ProblemCode.INVALID_DATA, assertIs<OperationResult.Failed>(speechChunks(value, 4000)).problem.code)
+            f.close()
+        }
+    }
+
     @Test fun mixedPlanIsFullyInspectedThenPlayedInOrderWithoutFallbackOrWhitespaceSpeech() = runTest {
         val f = Fixture(this)
         f.backend.audible = { assertEquals(listOf(f.clip), f.backend.inspected); OperationResult.Completed(Unit) }

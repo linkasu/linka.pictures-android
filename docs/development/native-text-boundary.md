@@ -38,3 +38,11 @@ Regression first ran red: `NativeTextContractTest` had 2 failures/3 tests becaus
 IDs/names/media types accepted lossy values. After model guards, the focused
 class passed 3/3 on JVM. Full codec/audio/native integration checks are recorded
 by their owning gates; this focused result alone is not G4/release acceptance.
+
+An additional deserialization regression verifies that generated inline-value
+serializers and BoardDocument decoding cannot bypass ID/name guards. Shared JSON
+and speech regressions cover escaped/raw surrogates (also keys/nested values),
+exact valid pairs/decomposed accents, escaped NUL metadata, whole-plan rejection
+before clip inspection and before synthesis, and early LINKA-name refusal before
+media preparation. The final focused set passed **8/8 on JVM**; the full Native
+gate is still required after all owning changes are integrated.

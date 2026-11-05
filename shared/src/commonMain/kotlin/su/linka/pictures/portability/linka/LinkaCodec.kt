@@ -8,6 +8,7 @@ import su.linka.pictures.application.portability.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.portability.zip.*
+import su.linka.pictures.text.isNativeText
 
 class LinkaCodec(
     private val media: MediaStore,
@@ -21,6 +22,7 @@ class LinkaCodec(
         var finalLease: MediaLease? = null
         try {
             limit(name.length <= 65536)
+            checkData(isNativeText(name))
             val zip = CheckedZip.open(files, file, ZipProfile.LINKA)
             val staged = mutableMapOf<String, Triple<TemporaryFile, String, Long>>()
             var config: String? = null

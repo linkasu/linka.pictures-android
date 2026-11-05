@@ -116,6 +116,19 @@ class AndroidAudioBackendTest {
             assertTrue(f.files.created.isEmpty())
         } finally { f.close() }
     }
+    @Test fun malformedOrNulSpeechDoesNotReachVoiceOrTempCreation() = runBlocking {
+        val f = Fixture { error("Invalid speech must not request microphone") }
+        try {
+            for (value in listOf("left\u0000right", "left\uD800right", "left\uDC00right")) {
+                assertEquals(ProblemCode.INVALID_DATA,
+                    (f.backend.speak(value, null, null, RequestId("invalid-speech")) as OperationResult.Failed).problem.code)
+                assertEquals(ProblemCode.INVALID_DATA,
+                    (f.backend.synthesize(SynthesisRequest(RequestId("invalid-synthesis"), AudioOwner("test", AudioPurpose.SYNTHESIS), value, null)) as OperationResult.Failed).problem.code)
+            }
+            assertTrue(f.files.created.isEmpty())
+        } finally { f.close() }
+    }
+
     @Test fun synthesisOverPlatformLimitNeverCreatesTempOrCallsPermission() = runBlocking {
         val f = Fixture { error("Synthesis must not request microphone permission") }
         try {

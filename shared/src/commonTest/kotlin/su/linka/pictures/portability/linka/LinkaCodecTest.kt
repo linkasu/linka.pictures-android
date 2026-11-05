@@ -23,6 +23,17 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 class LinkaCodecTest {
+    @Test fun lossyNativeNameIsRejectedBeforePreparingAnyMedia() = runTest {
+        for (name in listOf("left\u0000right", "left\uD800right", "left\uDC00right")) {
+            val rig = CodecTestRig()
+            val input = rig.input(syntheticZip(listOf(configEntry(cardConfig(card("x", image = "image"))), SyntheticEntry("image", byteArrayOf(1, 2)))))
+            assertFailure(rig.codec.read(input, name), ProblemCode.INVALID_DATA)
+            assertEquals(0, rig.prepares)
+            assertEquals(0, rig.inspections)
+            clean(rig)
+        }
+    }
+
     @Test fun zipFilenameBudgetUsesUtf8BytesBeforeCentralOrLocalNameAllocation() = runTest {
         for (directory in listOf(false, true)) {
             val name = if (directory) "é".repeat(2047) + "a/" else "é".repeat(2048)

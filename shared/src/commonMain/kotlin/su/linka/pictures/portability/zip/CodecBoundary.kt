@@ -5,6 +5,7 @@ import su.linka.pictures.application.OperationResult
 import su.linka.pictures.application.Problem
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.text.archivePathCollisionKey
+import su.linka.pictures.text.isWellFormedUtf16
 
 internal const val ARCHIVE_LIMIT = 500L * 1024 * 1024
 internal const val MEDIA_LIMIT = 64L * 1024 * 1024
@@ -42,6 +43,7 @@ internal fun safePath(path: String): String {
 
 // Bound nesting and decoded strings before constructing the JSON DOM; reject duplicate object keys.
 internal fun boundedJson(text: String): JsonObject {
+    checkData(isWellFormedUtf16(text))
     limit(text.encodeToByteArray().size.toLong() <= CONFIG_LIMIT)
     val objects = mutableListOf<MutableSet<String>?>()
     var i = 0
@@ -77,7 +79,16 @@ internal fun boundedJson(text: String): JsonObject {
         }
     }
     checkData(objects.isEmpty())
-    return wireJson.parseToJsonElement(text) as? JsonObject ?: fail(ProblemCode.INVALID_DATA)
+    val root = wireJson.parseToJsonElement(text) as? JsonObject ?: fail(ProblemCode.INVALID_DATA)
+    fun strings(value: JsonElement) {
+        when (value) {
+            is JsonObject -> value.forEach { (key, child) -> checkData(isWellFormedUtf16(key)); strings(child) }
+            is JsonArray -> value.forEach(::strings)
+            is JsonPrimitive -> if (value.isString) checkData(isWellFormedUtf16(value.content))
+        }
+    }
+    strings(root)
+    return root
 }
 
 internal fun JsonObject.string(key: String, default: String? = null): String? {
