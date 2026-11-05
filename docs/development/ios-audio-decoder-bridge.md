@@ -213,3 +213,91 @@ Current C SHA `68007a6207c9c7a0765cbf91d5a780173ef87bb9ee4088e302f7c38c9c8de236`
 Corrected bridge archive simulator SHA `d6884a4f2f816552409a1d4f4d6e61faeec9315d98545234521e82ba4c47417e`,
 device SHA `66f53b802c97dc9512be26dfd9892836eb863e24d8fa872438d70b7a96e6bf6d`.
 Earlier hashes/results above remain baseline evidence, not silently replaced.
+
+## Stable build producer for primary's CInterop wiring
+
+Producer implementation is separate from the correction commit. No root Gradle edits.
+Run from the repository containing this script; output may be primary's separate checkout.
+`OUTPUT_ROOT` must be an explicit absolute generated directory under a `build` component,
+without `..`/symlink ancestors, e.g. primary's `shared/build/ios-audio-decoder`.
+
+One explicit seed using the existing corrected, owned cache UUID:
+
+```sh
+python3 -B scripts/build-ios-audio-decoder.py \
+  --reuse-build-run 07666875-ebfb-4c5b-96e1-095d192671b4 \
+  --gradle-output-root "$OUTPUT_ROOT"
+```
+
+Normal Gradle prepare command after seeding (no cache UUID/personal source-prefix arguments):
+
+```sh
+python3 -B scripts/build-ios-audio-decoder.py --gradle-output-root "$OUTPUT_ROOT"
+```
+
+For invocation from another working directory, use the producer script's absolute location;
+source/cache ownership always resolves from that script's checkout, not the caller's cwd.
+`--prove` is never implied by Gradle/publishing. No simulator is booted/launched by these
+commands. A fresh empty output without a cache argument uses the existing official signed
+source intake/build path for both targets; no ready preflight457 is rerun as acceptance.
+
+Published self-contained tree, no symlinks or tracked binaries:
+
+```text
+<root>/linka-audio-decoder-manifest.json
+<root>/iosArm64/{include/,lib/,linka_audio_decoder.def}
+<root>/iosSimulatorArm64/{include/,lib/,linka_audio_decoder.def}
+```
+
+Defs have exactly the header/package/staticLibraries/linkerOpts shown above, with absolute
+include/library paths pointing to their **published target prefix**, never the source cache.
+Primary should register **one** prepare task, then during normal target configuration set
+each binding's `definitionFile` to `<root>/<target>/linka_audio_decoder.def` and configure
+both `cinteropLinkaAudioDecoderIosArm64` and `cinteropLinkaAudioDecoderIosSimulatorArm64`
+to `dependsOn(prepareTask)`. Do not infer producer freshness only from output-file existence;
+the prepare task must invoke the verifier on every use (no Gradle up-to-date skip bypassing
+the script's current-toolchain validation). Match Kotlin min17 compile/link settings.
+
+Manifest schema1 records current C/header hashes, exact source8.1.2 tar pin/signer, flags,
+toolchain/SDK/clang version, per-target configs/components/make-config hashes and text,
+library hashes, complete file+directory inventory and ownership root. Every exact invocation
+rechecks these and each archive's arm64/platform/min17 object metadata. It returns
+`VERIFIED_FASTPATH` **before Preflight construction**: no new run, extraction, configure,
+make, compiler, copy or runtime execution; xcode/xcrun/lipo/otool/ar inspection is read-only.
+
+Changed C/header with intact compatible publication rebuilds only changed bridge archives
+against verified published FFmpeg libraries/headers. It rechecks the cached official tar
+and PGP signature and reads installed headers against tar members (fixed arm64 generated
+avconfig/ffversion checked explicitly), without extracting. Explicit `--reuse-build-run`
+also verifies exact configure/toolchain arguments, config/make hashes, libraries and headers;
+unchanged bridge is copied rather than recompiled. Default update requires the recorded
+official tar/key/signature cache still to exist; otherwise it fails with explicit reseed
+required. Toolchain/flags changes do not reuse incompatible native libraries.
+
+Nonempty unknown/mutated outputs fail **before writing**; no auto-repair/overwrite. The
+caller owns/serializes this generated directory (one prepare task, no concurrent writers).
+Publication replaces verified generated files and installs the manifest last. Interruption
+can leave a mixed tree; next invocation fails closed, requiring explicit owner recovery,
+not silent deletion or guessing. This is local integrity/provenance verification, not an
+authentication boundary against a user deliberately forging both manifest and artifacts.
+
+Actual initial publication run: `450d72c6-7466-49e5-8629-cb0e22c02969`, both targets verified.
+Final producer selfcheck: **16/16 PASS**, evidence
+`build/ios-ffmpeg-preflight/producer-selfcheck-sahbya48/result.json`:
+
+```sh
+python3 -B scripts/test-ios-audio-decoder-outputs.py \
+  --published-root "$OUTPUT_ROOT" \
+  --reuse-build-run 07666875-ebfb-4c5b-96e1-095d192671b4
+```
+
+Uses only new owned clones, retaining the original publication/cache unchanged. Actual CLI
+checks cover unknown-nonempty refusal, tampered header/lib/def/config/components/make config,
+extra directory, wrong-platform bridge even with matching recorded hash, cached header/tar
+tamper refusal, exact fastpath with unchanged hashes/mtimes/no new run and trapped build/copy
+entry points, explicit seed with unchanged bridge/no compiler, and stale-C fingerprint update.
+The latter records exactly two real bridge compiles (one per target), unchanged FFmpeg library
+hashes, no make/configure/simulator execution, followed by a successful default fastpath.
+Current C/header/Kotlin safety implementation is unchanged from correction `6963fa1`; its
+native same-TU/corpus/scoped Kotlin evidence above remains applicable. Full main Kotlin
+lifecycle/physical/RSS/legal/shipping and AMFI gates are not closed by producer verification.

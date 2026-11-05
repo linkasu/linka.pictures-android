@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import runpy
@@ -11,6 +12,7 @@ import struct
 import wave
 
 PREFLIGHT = runpy.run_path(str(Path(__file__).with_name("preflight-ios-ffmpeg.py")))
+OUTPUTS = runpy.run_path(str(Path(__file__).with_name('ios_audio_decoder_outputs.py')))
 Preflight = PREFLIGHT["Preflight"]
 require = PREFLIGHT["require"]
 sha = PREFLIGHT["sha"]
@@ -20,7 +22,7 @@ FLAGS = [x for x in PREFLIGHT["FLAGS"] if not x.startswith(("--enable-ffmpeg", "
 FLAGS += ["--disable-avfilter", "--disable-pthreads", "--disable-w32threads", "--disable-os2threads"]
 
 
-def target(task, sdk, triple, cached=None):
+def target(task, sdk, triple, cached=None, build_tests=False):
     build = task.root / sdk
     build.mkdir()
     prefix = build / "install"
@@ -36,8 +38,15 @@ def target(task, sdk, triple, cached=None):
     if cached:
         previous = cached['development_targets'][sdk]
         old = Path(previous['prefix'])
-        require(previous['config_sha256'] == sha(old.parent / 'config.h') and
-                previous['components_sha256'] == sha(old.parent / 'config_components.h'), 'cached configuration changed')
+        old_config = Path(previous.get('config_directory', old.parent))
+        require([x for x in previous['configure'] if not x.startswith('--prefix=')] ==
+                [x for x in flags if not x.startswith('--prefix=')], 'cached target/toolchain/flags mismatch')
+        require(previous['config_sha256'] == sha(old_config / 'config.h') and
+                previous['components_sha256'] == sha(old_config / 'config_components.h') and
+                previous['make_config_sha256'] == sha(old_config / 'ffbuild/config.mak'), 'cached configuration changed')
+        archive = next(Path(x['path']) for x in cached['downloads'] if x['url'] == PREFLIGHT['SOURCE'])
+        OUTPUTS['verify_headers'](old, archive)
+        require(sha(old / 'include/linka_audio_decoder.h') == previous['bridge_header_sha256'], 'cached bridge header changed')
         prefix.mkdir()
         (prefix / 'lib').mkdir()
         (prefix / 'include').mkdir()
@@ -48,7 +57,7 @@ def target(task, sdk, triple, cached=None):
             shutil.copytree(old / 'include' / f'lib{name}', prefix / 'include' / f'lib{name}')
         (build / 'ffbuild').mkdir()
         for name in ('config.h', 'config_components.h', 'ffbuild/config.mak'):
-            shutil.copyfile(old.parent / name, build / name)
+            shutil.copyfile(old_config / name, build / name)
         flags = previous['configure']
     else:
         task.run([task.source / "configure", *flags], cwd=build, timeout=180)
@@ -70,9 +79,13 @@ def target(task, sdk, triple, cached=None):
     obj = build / "linka_audio_decoder.o"
     compile_flags = [tools["clang"], "-target", triple, "-isysroot", sysroot.strip(), "-std=c17", "-O2",
         "-Wall", "-Wextra", "-Werror", "-Werror=partial-availability", "-I", prefix / "include", "-I", header.parent]
-    task.run([*compile_flags, "-c", source, "-o", obj], timeout=120)
     bridge = prefix / "lib/liblinka_audio_decoder.a"
-    task.run([tools["ar"], "rcs", bridge, obj])
+    if cached and previous['bridge_source_sha256'] == sha(source) and previous['bridge_header_sha256'] == sha(header):
+        require(sha(old / 'lib' / bridge.name) == previous['libraries'][bridge.name]['sha256'], 'cached bridge changed')
+        shutil.copyfile(old / 'lib' / bridge.name, bridge)
+    else:
+        task.run([*compile_flags, "-c", source, "-o", obj], timeout=120)
+        task.run([tools["ar"], "rcs", bridge, obj])
     with (prefix / "include/linka_audio_decoder.h").open("xb") as output:
         output.write(header.read_bytes())
     platform = {"7", "IOSSIMULATOR"} if sdk == "iphonesimulator" else {"2", "IOS"}
@@ -86,7 +99,7 @@ def target(task, sdk, triple, cached=None):
         task.result['development_targets'][sdk]['ffmpeg_reused_from'] = previous['prefix']
     task.save()
     executable = build / "bridge-test"
-    if sdk == "iphonesimulator":
+    if sdk == "iphonesimulator" and build_tests:
         task.run([*compile_flags, task.project / "scripts/test-ios-audio-decoder.c", "-L", prefix / "lib",
             "-llinka_audio_decoder", "-lavformat", "-lavcodec", "-lswresample", "-lavutil", "-lm", "-pthread",
             "-framework", "CoreFoundation", "-framework", "CoreVideo", "-framework", "CoreMedia", "-o", executable], timeout=120)
@@ -345,15 +358,45 @@ def main():
     parser.add_argument('--reuse-build-run', help='owned completed development UUID; reverify source/libs, rebuild only bridge')
     parser.add_argument('--prove', action='store_true', help='run only the owned iOS17 simulator; never automatic on build')
     parser.add_argument('--compile-kotlin', action='store_true', help='independent generated cinterop compile proof, not root integration')
+    parser.add_argument('--gradle-output-root', help='explicit absolute generated build directory; verified stable prefixes for both targets')
     args = parser.parse_args()
     PREFLIGHT["self_test"]()
+    published = None
+    output_root = OUTPUTS['output_root'](args.gradle_output_root) if args.gradle_output_root else None
+    if output_root:
+        project = Path(__file__).resolve().parents[1]
+        env = dict(os.environ, DEVELOPER_DIR=PREFLIGHT['DEVELOPER'])
+        published, exact = OUTPUTS['inspect'](output_root, project, FLAGS, env)
+        if exact and not args.prove and not args.compile_kotlin:
+            print(json.dumps(dict(status='VERIFIED_FASTPATH', manifest=str(output_root / OUTPUTS['MANIFEST']))))
+            return
     task = Preflight()
     print(task.root, flush=True)
     try:
         _, xcode = task.run(["xcodebuild", "-version"])
         require(xcode.startswith("Xcode 27.2\n"), "Xcode version")
         cached = None
-        if args.reuse_build_run:
+        if (published and not args.reuse_build_run and not args.verified_source_run and
+            published['provenance']['flags'] == FLAGS and published['toolchain'] == OUTPUTS['toolchain'](task.env)):
+            cached = dict(development_targets={}, downloads=published['source_downloads'], signature=published['signature'])
+            for target_name, (sdk, _) in OUTPUTS['TARGETS'].items():
+                record = dict(published['targets'][target_name])
+                directory = task.root / f'cached-config-{sdk}'
+                (directory / 'ffbuild').mkdir(parents=True)
+                (directory / 'config.h').write_text(record['config_text'])
+                (directory / 'config_components.h').write_text(record['components_text'])
+                # make config is correspondence only; target() never executes make on cached inputs.
+                (directory / 'ffbuild/config.mak').write_text(record.get('make_config_text', ''))
+                record.update(prefix=str(output_root / target_name), config_directory=str(directory))
+                cached['development_targets'][sdk] = record
+            archive_record = next(x for x in cached['downloads'] if x['url'] == PREFLIGHT['SOURCE'])
+            archive = Path(archive_record['path'])
+            require(sha(archive) == SOURCE_SHA, 'published source archive cache unavailable/changed; reseed explicitly')
+            _, signature = task.run(['gpgv', '--homedir', archive.parent / 'gnupg', '--keyring', archive.parent / 'release-key.gpg',
+                                    '--status-fd', '1', archive.parent / 'source.asc', archive])
+            require(f"[GNUPG:] VALIDSIG {PREFLIGHT['FINGERPRINT']} " in signature, 'published source signature')
+            task.result.update(downloads=cached['downloads'], signature=cached['signature'], source_inspection={})
+        elif args.reuse_build_run:
             import uuid
             require(str(uuid.UUID(args.reuse_build_run)) == args.reuse_build_run, 'invalid owned cache UUID')
             cached = json.loads((task.root.parent / args.reuse_build_run / 'result.json').read_text())
@@ -366,16 +409,20 @@ def main():
             task.result.update(downloads=cached['downloads'], signature=cached['signature'], source_inspection=cached['source_inspection'],
                                development_cache=args.reuse_build_run)
         else:
-            require(args.verified_source_run, 'provide verified source or completed build cache')
-            task.reuse_source(args.verified_source_run)
+            if args.verified_source_run:
+                task.reuse_source(args.verified_source_run)
+            else:
+                task.intake()
         require(next(x['sha256'] for x in task.result['downloads'] if x['url'] == PREFLIGHT['SOURCE']) == SOURCE_SHA, "pinned release SHA")
-        prefix, executable = target(task, 'iphonesimulator', 'arm64-apple-ios17.0-simulator', cached)
+        prefix, executable = target(task, 'iphonesimulator', 'arm64-apple-ios17.0-simulator', cached, args.prove)
         if args.prove:
             fixtures = task.fixtures()
             proof(task, executable, fixtures)
         if args.compile_kotlin:
             scoped_kotlin(task, prefix)
         target(task, 'iphoneos', 'arm64-apple-ios17.0', cached)
+        if output_root:
+            OUTPUTS['publish'](task, output_root, FLAGS, published)
         task.result['status'] = 'DEVELOPMENT_PROOF_PASS' if args.prove else 'BUILD_ONLY'
     except Exception as error:
         task.result.update(status='STOP', error=str(error))
