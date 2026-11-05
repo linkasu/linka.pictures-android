@@ -3,16 +3,12 @@
 package su.linka.pictures.platform.audio
 
 import kotlinx.cinterop.*
-import okio.Buffer
-import okio.use
 import platform.AVFAudio.*
 import platform.AudioToolbox.*
 import platform.CoreAudioTypes.*
 import platform.CoreFoundation.*
-import platform.posix.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
-import su.linka.pictures.text.isNativeText
 
 internal class IosSynthWriterFailure(val operation: String, val status: Int) : Exception("$operation: OSStatus=$status")
 
@@ -22,7 +18,9 @@ internal class IosSynthWriter(files: PlatformFilesPort, file: TemporaryFile, pri
     private var frames = 0L
 
     init {
-        validateReservation(files, file)
+        validateAudioReservation(files, file)
+        if (!format.sampleRate.isFinite() || format.sampleRate !in 8000.0..192000.0 || format.channelCount !in 1u..8u)
+            throw IosAudioFailure(ProblemCode.UNSUPPORTED_MEDIA)
         try {
             memScoped {
                 val output = alloc<AudioStreamBasicDescription>()
@@ -78,24 +76,4 @@ internal class IosSynthWriter(files: PlatformFilesPort, file: TemporaryFile, pri
         if (status != 0) throw IosSynthWriterFailure(operation, status)
     }
 
-    private fun validateReservation(files: PlatformFilesPort, file: TemporaryFile) {
-        if (!isNativeText(file.path) || !file.path.startsWith('/') || !file.path.endsWith(".wav", ignoreCase = true))
-            throw IosAudioFailure(ProblemCode.INVALID_DATA)
-        if (!format.sampleRate.isFinite() || format.sampleRate !in 8000.0..192000.0 || format.channelCount !in 1u..8u)
-            throw IosAudioFailure(ProblemCode.UNSUPPORTED_MEDIA)
-        // TemporaryFile source is an ownership check in the files port, not a path-only open.
-        val source = when (val result = files.source(file)) {
-            is OperationResult.Completed -> result.value
-            is OperationResult.Failed -> throw IosAudioFailure(result)
-            OperationResult.Cancelled -> throw IosAudioFailure(OperationResult.Cancelled)
-            OperationResult.UnconfirmedCommit -> throw IosAudioFailure(OperationResult.UnconfirmedCommit)
-        }
-        source.use { if (it.read(Buffer(), 1) != -1L) throw IosAudioFailure(ProblemCode.CONFLICT) }
-        memScoped {
-            val metadata = alloc<stat>()
-            if (lstat(file.path, metadata.ptr) != 0) throw IosAudioFailure(ProblemCode.IO_FAILURE)
-            if ((metadata.st_mode.toInt() and S_IFMT) != S_IFREG || metadata.st_nlink.toLong() != 1L || metadata.st_size != 0L)
-                throw IosAudioFailure(ProblemCode.CONFLICT)
-        }
-    }
 }

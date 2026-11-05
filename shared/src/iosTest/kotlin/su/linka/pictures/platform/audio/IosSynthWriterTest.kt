@@ -202,9 +202,11 @@ class IosSynthWriterTest {
     }
 
     // Base factory is extensionless; this fixture owns its private .wav reservation, not a production override.
-    private class Reservation {
+    internal class Reservation(filename: String = "reservation.wav") {
         val root = NSTemporaryDirectory().toPath() / "p07-synth-${NSUUID().UUIDString}"
-        val file = TemporaryFile((root / "reservation.wav").toString(), "reservation.wav", "audio/wav")
+        val file = TemporaryFile((root / filename).toString(), filename, "audio/wav")
+        var discarded = 0
+            private set
         private var registered = true
         init { FileSystem.SYSTEM.createDirectories(root); FileSystem.SYSTEM.openReadWrite(file.path.toPath(), mustCreate = true).close() }
         val files = object : PlatformFilesPort {
@@ -212,9 +214,9 @@ class IosSynthWriterTest {
                 if (registered && file === this@Reservation.file) OperationResult.Completed(FileSystem.SYSTEM.source(file.path.toPath()))
                 else OperationResult.Failed(Problem(ProblemCode.NOT_FOUND))
             override fun discard(file: TemporaryFile) {
-                check(file === this@Reservation.file); registered = false; FileSystem.SYSTEM.delete(file.path.toPath(), mustExist = false)
+                check(file === this@Reservation.file); discarded++; registered = false; FileSystem.SYSTEM.delete(file.path.toPath(), mustExist = false)
             }
-            override fun createTemporaryFile(suggestedName: String, mediaType: String): OperationResult<TemporaryFile> = error("Already reserved")
+            override fun createTemporaryFile(suggestedName: String, mediaType: String): OperationResult<TemporaryFile> = OperationResult.Completed(file)
             override fun sink(file: TemporaryFile): OperationResult<Sink> = error("Native writer only")
             override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = error("No picker")
             override suspend fun chooseDestination(suggestedName: String, mediaType: String, ownerId: String): OperationResult<ExportDestination> = error("No export")

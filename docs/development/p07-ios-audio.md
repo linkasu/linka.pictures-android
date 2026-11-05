@@ -108,8 +108,8 @@ Final native output:
 ```text
 P07-A runtime: Version 17.0 (Build 21A328); UDID=DD0F9A3F-DC32-4373-BA08-400FECE3A1CC
 P07-A ExtAudioFile: Version 17.0 (Build 21A328); UDID=DD0F9A3F-DC32-4373-BA08-400FECE3A1CC
-[==========] 22 tests from 3 test cases ran. (1323 ms total)
-[  PASSED  ] 22 tests.
+[==========] 26 tests from 3 test cases ran. (606 ms total)
+[  PASSED  ] 26 tests.
 ```
 
 Tests cover native voice metadata and unavailable explicit selection, actual
@@ -139,7 +139,8 @@ The budget tests write bounded buffers repeatedly, not full-clip allocations.
 An initial byte-budget fixture used the simple eight-channel AVAudioFormat
 initializer, which returned nil on iOS 17 before reaching the writer. It was
 corrected to stereo 192 kHz, still reaching 64 MiB well before 600 s. No native
-format fallback or production limit was changed; the final 22-test run passed.
+format fallback or production limit was changed; the writer-correction 22-test
+run passed, followed by the ownership-review 26-test run above.
 
 Native ExtAudioFileDispose failure (e.g. disk flush failure) and an OSStatus
 ExtAudioFileWrite I/O fault were not artificially injected: no existing native
@@ -151,3 +152,39 @@ No `iosSimulatorArm64Test`, `allTests`, positive TTS, recording, real foreground
 physical route or 10-minute wall-clock tests were run. These runtime gates
 remain OPEN. CoreAudio file finalization/conversion is proven separately on
 iOS 17; it is not TTS, microphone, real foreground or root decoder proof.
+
+## Ownership review fix after `368b078`
+
+Confirmed root cause: `temporary()` assigned `call.temporary` before checking
+the returned handle. A nonempty existing `.wav` factory alias correctly caused
+CONFLICT, but `operate.finally` then discarded that pre-existing source temp.
+The backend-level synthesis regression was run before the fix with:
+
+```sh
+xcrun simctl spawn DD0F9A3F-DC32-4373-BA08-400FECE3A1CC \
+  /Volumes/data/linka/linka-pokazhi-p07-ios-audio/shared/build/bin/iosSimulatorArm64/debugTest/test.kexe \
+  '--ktest_filter=su.linka.pictures.platform.audio.IosAudioBackendTest.factoryExistingNonemptyWavIsNotClaimedOrDiscardedBySynthesis'
+# RED: Expected <0>, actual <1>. (discard count)
+```
+
+`validateAudioReservation` now shares the complete worker-side path/authority/
+empty/regular/no-symlink/single-link guard between backend reservation and native
+writer. Backend claims only after all checks succeed, with no intervening
+suspension. Rejected factory results are neither claimed nor discarded. Writer
+still revalidates immediately before native EraseFile creation.
+
+Playback rejects equal normalized input/output paths before claiming the
+compatibility temp. A distinct valid late temp is still claimed before the
+next job/current check and cleaned on cancellation, as before.
+
+Four additional backend tests exercise existing-nonempty synthesis aliases
+(CONFLICT, unchanged bytes/SHA-256, live source handle, zero discard), malformed
+extension/foreign authority/symlink/hardlink factory results (no discard),
+direct/normalized playback source aliases, and a noncooperative factory returning
+a fresh valid reservation after stop (exactly one owned discard). The latter
+does not start native TTS. Prior late-decoder cleanup and all previous 22 cases
+also pass. Both native targets compile; the final filtered iOS 17 runtime run
+is **26/26 PASS**. A test-only symlink-size expectation was corrected to compare
+the unchanged link metadata rather than treating link-path length as data size.
+No permission, normal app host, AMFI, root, ports, files, access or decoder
+implementation was changed for this review fix.

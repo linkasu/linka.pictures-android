@@ -6,9 +6,12 @@ import kotlinx.cinterop.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 import okio.*
+import okio.Path.Companion.toPath
 import platform.AVFAudio.*
 import platform.Foundation.*
 import platform.UIKit.UIApplicationDidEnterBackgroundNotification
+import platform.posix.link
+import platform.posix.symlink
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.RequestId
@@ -25,8 +28,9 @@ class IosAudioBackendTest {
 
     private fun backend(scope: CoroutineScope, foreground: Boolean = true,
                         permission: suspend (RequestId) -> OperationResult<Unit> = { OperationResult.Failed(Problem(ProblemCode.PERMISSION_DENIED)) },
+                        platformFiles: PlatformFilesPort = files,
                         prepare: suspend (LocalFile) -> OperationResult<TemporaryFile> = { error("No decoder expected") }) =
-        IosAudioBackend(files, inspection, prepare, permission, { foreground }, scope)
+        IosAudioBackend(platformFiles, inspection, prepare, permission, { foreground }, scope)
 
     @BeforeTest fun mainDispatcher() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @AfterTest fun resetMain() { Dispatchers.resetMain() }
@@ -94,6 +98,98 @@ class IosAudioBackendTest {
             assertProblem(ProblemCode.SPEECH_UNAVAILABLE, backend.synthesize(synthesis.copy(text = " ")))
             assertEquals(0, files.created)
         } finally { owner.cancel() }
+    }
+
+    @Test fun factoryExistingNonemptyWavIsNotClaimedOrDiscardedBySynthesis() = runTest {
+        withContext(Dispatchers.IO) {
+            val reservation = IosSynthWriterTest.Reservation()
+            val owner = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+            try {
+                val path = reservation.file.path.toPath()
+                FileSystem.SYSTEM.write(path) { writeUtf8("existing source bytes must survive") }
+                val before = FileSystem.SYSTEM.read(path) { readByteString() }
+                val backend = backend(owner, platformFiles = reservation.files)
+                val request = SynthesisRequest(RequestId("factory-alias"), AudioOwner("test", AudioPurpose.SYNTHESIS), "hello", "en-US", "p07.nonexistent.voice")
+                assertProblem(ProblemCode.CONFLICT, backend.synthesize(request))
+                assertEquals(0, reservation.discarded)
+                assertEquals(before, FileSystem.SYSTEM.read(path) { readByteString() })
+                assertEquals(before.sha256(), FileSystem.SYSTEM.read(path) { readByteString().sha256() })
+                assertIs<OperationResult.Completed<Source>>(reservation.files.source(reservation.file)).value.close()
+            } finally { owner.cancel(); reservation.cleanup() }
+        }
+    }
+
+    @Test fun playbackSourceAliasIsRejectedBeforeCompatibilityTempClaim() = runTest {
+        withContext(Dispatchers.IO) {
+            val reservation = IosSynthWriterTest.Reservation()
+            val owner = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+            try {
+                val path = reservation.file.path.toPath()
+                FileSystem.SYSTEM.write(path) { writeUtf8("canonical playback source") }
+                val before = FileSystem.SYSTEM.read(path) { readByteString() }
+                val backend = backend(owner, platformFiles = reservation.files, prepare = { OperationResult.Completed(reservation.file) })
+                assertProblem(ProblemCode.CONFLICT, backend.playClip(reservation.file, RequestId("play-alias")))
+                assertProblem(ProblemCode.CONFLICT, backend.playClip(LocalFile("${reservation.root}/./reservation.wav"), RequestId("normalized-play-alias")))
+                assertEquals(0, reservation.discarded)
+                assertEquals(before, FileSystem.SYSTEM.read(path) { readByteString() })
+                assertIs<OperationResult.Completed<Source>>(reservation.files.source(reservation.file)).value.close()
+            } finally { owner.cancel(); reservation.cleanup() }
+        }
+    }
+
+    @Test fun invalidFactoryReservationsNeverAcquireDiscardOwnership() = runTest {
+        withContext(Dispatchers.IO) {
+            for (kind in listOf("extension", "foreign", "symlink", "hardlink")) {
+                val reservation = IosSynthWriterTest.Reservation(if (kind == "extension") "reservation.invalid" else "reservation.wav")
+                val owner = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+                try {
+                    if (kind == "symlink" || kind == "hardlink") {
+                        val target = reservation.root / "target.wav"
+                        FileSystem.SYSTEM.openReadWrite(target, mustCreate = true).close()
+                        FileSystem.SYSTEM.delete(reservation.file.path.toPath())
+                        assertEquals(0, if (kind == "symlink") symlink(target.toString(), reservation.file.path) else link(target.toString(), reservation.file.path))
+                    }
+                    val factory = if (kind == "foreign") object : PlatformFilesPort by reservation.files {
+                        override fun source(file: LocalFile): OperationResult<Source> = OperationResult.Failed(Problem(ProblemCode.NOT_FOUND))
+                    } else reservation.files
+                    val previousSize = FileSystem.SYSTEM.metadata(reservation.file.path.toPath()).size
+                    val backend = backend(owner, platformFiles = factory)
+                    val request = SynthesisRequest(RequestId("invalid-$kind"), AudioOwner("test", AudioPurpose.SYNTHESIS), "hello", "en-US", "p07.nonexistent.voice")
+                    assertProblem(when (kind) {
+                        "extension" -> ProblemCode.INVALID_DATA
+                        "foreign" -> ProblemCode.NOT_FOUND
+                        else -> ProblemCode.CONFLICT
+                    }, backend.synthesize(request))
+                    assertEquals(0, reservation.discarded)
+                    assertTrue(FileSystem.SYSTEM.exists(reservation.file.path.toPath()))
+                    assertIs<OperationResult.Completed<Source>>(reservation.files.source(reservation.file)).value.buffer().use { assertTrue(it.exhausted()) }
+                    assertEquals(previousSize, FileSystem.SYSTEM.metadata(reservation.file.path.toPath()).size)
+                } finally { owner.cancel(); reservation.cleanup() }
+            }
+        }
+    }
+
+    @Test fun validFreshFactoryResultAfterStopIsClaimedBeforeSuspensionAndDiscarded() = runTest {
+        withContext(Dispatchers.IO) {
+            val reservation = IosSynthWriterTest.Reservation()
+            val owner = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+            try {
+                val id = RequestId("late-factory")
+                lateinit var backend: IosAudioBackend
+                val factory = object : PlatformFilesPort by reservation.files {
+                    override fun createTemporaryFile(suggestedName: String, mediaType: String): OperationResult<TemporaryFile> {
+                        backend.stop(id) // Non-cooperative factory still delivers its valid new reservation.
+                        return OperationResult.Completed(reservation.file)
+                    }
+                }
+                backend = backend(owner, platformFiles = factory)
+                val request = SynthesisRequest(id, AudioOwner("test", AudioPurpose.SYNTHESIS), "hello", "en-US", "p07.nonexistent.voice")
+                assertEquals(OperationResult.Cancelled, backend.synthesize(request))
+                assertEquals(1, reservation.discarded)
+                assertFalse(FileSystem.SYSTEM.exists(reservation.file.path.toPath()))
+                assertProblem(ProblemCode.NOT_FOUND, reservation.files.source(reservation.file))
+            } finally { owner.cancel(); reservation.cleanup() }
+        }
     }
 
     @Test fun initializationReportsActualAvailableVoiceMetadata() = runTest {

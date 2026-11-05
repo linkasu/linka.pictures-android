@@ -6,7 +6,7 @@ import kotlinx.coroutines.*
 import kotlinx.cinterop.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import okio.use
+import okio.Path.Companion.toPath
 import platform.AVFAudio.*
 import platform.Foundation.*
 import platform.UIKit.UIApplicationDidEnterBackgroundNotification
@@ -196,12 +196,8 @@ internal class IosAudioBackend(
     }
     private fun temporary(call: IosAudioCall): TemporaryFile {
         val file = value(files.createTemporaryFile("audio-${NSUUID().UUIDString}.wav", "audio/wav"))
+        validateAudioReservation(files, file)
         call.temporary = file
-        if (!file.path.endsWith(".wav", ignoreCase = true)) throw IosAudioFailure(ProblemCode.UNSUPPORTED_MEDIA)
-        val source = value(files.source(file))
-        source.use {
-            if (it.read(okio.Buffer(), 1) != -1L) throw IosAudioFailure(ProblemCode.CONFLICT)
-        }
         return file
     }
     private suspend fun validated(call: IosAudioCall, file: TemporaryFile): OperationResult<TemporaryFile> {
@@ -214,6 +210,7 @@ internal class IosAudioBackend(
 
     override suspend fun playClip(file: LocalFile, requestId: RequestId): OperationResult<Unit> = operate(requestId) { call ->
         val prepared = value(preparePlaybackClip(file))
+        if (prepared.path.toPath(normalize = true) == file.path.toPath(normalize = true)) throw IosAudioFailure(ProblemCode.CONFLICT)
         call.temporary = prepared
         current(call)
         value(inspection.audio(prepared))
