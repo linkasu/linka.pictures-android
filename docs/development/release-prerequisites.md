@@ -103,8 +103,10 @@ AudioToolbox/VideoToolbox/SecureTransport, external libraries) сохраняю�
 Включены только demuxers `ogg,amr,mov,wav,mp3`, decoders
 `vorbis,amrnb,pcm_s16le,mp3`, protocol `file`, swresample; линкуются
 avformat/avcodec/avutil/swresample. GPL/NONFREE/VERSION3/NETWORK и внешние
-LIBVORBIS/LIBMP3LAME/LIBX264 выключены. **AAC decoder не включён**; AAC приёмку
-нельзя закрыть успешным AMR-in-3GP тестом или этим baseline.
+LIBVORBIS/LIBMP3LAME/LIBX264 выключены. Обязательные форматы R10/K3 —
+WAV/OGG/MP3/AMR-NB/3GPP; отдельного требования к Advanced Audio Coding decoder нет.
+AAC в R16/R17/physical-AAC gates означает augmentative and alternative communication
+(альтернативную и дополнительную коммуникацию): usability-сценарии, а не аудиокодек.
 
 Qualified legal/shipping owner должен письменно закрыть exact corresponding source
 и build recipe delivery, copyright/license notices (включая UI/distribution),
@@ -125,8 +127,9 @@ patent obligations для выбранных codecs/юрисдикций и App 
 | Firebase / billing | Cloud account owner / OPEN | Явно разрешить project, credentials и расходы | Manual cloud=true, sign=false; обе existing instrumentation/Robo команды PASS; сохранить run/result IDs без secrets |
 | Android signing | Release custodian / OPEN | Отдельное разрешение использовать существующий release key | Main, оба флага true, успешные build+cloud; проверить AAB signature/identity и cleanup; не upload в магазин |
 | Android store policy | Android release owner / OPEN | Store access только после разрешения | Проверить target в release manifest, ABI inventory, 16 KB ELF/zip/runtime evidence и Play validation; подтвердить actual package/versionCode из store history |
-| ARMv7 physical / AAC | Android device + audio owner / OPEN | Авторизованный physical device и scoped test launch; любые нужные runtime permissions отдельно | Реальное выполнение согласованной ARMv7/audio fixture matrix с AAC; записать device/API/ABI и decoded duration/output; emulator/AMR proof не заменяют |
-| iOS Keychain2 | iOS signing + security owner / BLOCKED | **Сначала** разрешение на legitimate signed Xcode test-host, app identity/profiles/credentials | Выполнить оба настоящих app-host теста по [Keychain host report](ios-keychain-host.md); сохранить 2/2 runtime evidence и exact entitlements; core/compile/ad-hoc AMFI failure не PASS |
+| ARMv7 physical codec/ABI proof | Android device + audio owner / OPEN | Авторизованный physical device и scoped test launch; любые нужные runtime permissions отдельно | Реальное выполнение согласованной ARMv7/audio fixture matrix для WAV/OGG/MP3/AMR-NB/3GPP по existing R10/K3 contract; записать device/API/ABI и decoded duration/output; emulator proof не заменяет physical execution |
+| AAC usability (R16/R17/physical-AAC) | Product + accessibility owner / OPEN | Согласованные AAC-usability scenarios и разрешение на scoped physical test | Проверить согласованные сценарии альтернативной/дополнительной коммуникации на physical device; codec/ABI proof не заменяет usability evidence; новый аудиоформат не требуется |
+| iOS Keychain2 | iOS signing + security owner / BLOCKED: identity availability — none | **GRANTED**: проверить/use existing Apple Development identity только для собственного isolated legitimate signed host. Новые certs/accounts и profiles fetch не разрешены | По report primary, `security find-identity` показал 0 valid identities; новых поисков здесь нет. Actual Keychain2 остаётся BLOCKED. При наличии разрешённой identity выполнить оба настоящих app-host теста по [Keychain host report](ios-keychain-host.md), сохранить 2/2 runtime evidence и exact entitlements; без обхода AMFI; core/compile/ad-hoc failure не PASS |
 | iOS archive/privacy | iOS release + privacy owner / OPEN | Разрешение на signing/archive, затем отдельно store access/upload | Штатный archive, SDK/deployment metadata, actual bundled privacy manifest/report, dependency inventory, review approved reasons и App Privacy answers |
 | FFmpeg shipping/legal | Qualified legal owner + release owner / OPEN | Продуктовое решение о поставке после legal review | Сверить exact source/config/libs с archive; обеспечить source/notices/relink/EULA/patent/AppStore checklist и записать approval scope |
 
