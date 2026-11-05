@@ -14,6 +14,7 @@ import okio.Path
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
+import su.linka.pictures.text.isNativeText
 
 internal class StorageAbort(val result: OperationResult<Nothing>) : Exception()
 internal fun <T> OperationResult<T>.required(): T = when (this) {
@@ -219,6 +220,7 @@ class StorageRuntime private constructor(
     companion object {
         suspend fun open(root: Path, fileSystem: FileSystem, driver: SQLiteDriver): OperationResult<StorageRuntime> = storageWorker { attempt {
             storageActive()
+            if (!isNativeText(root.toString())) fail(ProblemCode.INVALID_DATA)
             require(root.isAbsolute)
             val existing = fileSystem.metadataOrNull(root)
             if (existing != null && (!existing.isDirectory || existing.symlinkTarget != null)) fail(ProblemCode.INVALID_DATA)

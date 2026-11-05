@@ -7,6 +7,7 @@ import okio.blackholeSink
 import okio.buffer
 import okio.use
 import su.linka.pictures.application.ProblemCode
+import su.linka.pictures.text.isNativeText
 
 internal class StorageFailure(val code: ProblemCode) : Exception(code.name)
 
@@ -16,7 +17,10 @@ private fun SQLiteStatement.bind(values: Array<out Any?>) {
     values.forEachIndexed { index, value ->
         when (value) {
             null -> bindNull(index + 1)
-            is String -> bindText(index + 1, value)
+            is String -> {
+                if (!isNativeText(value)) fail(ProblemCode.INVALID_DATA)
+                bindText(index + 1, value)
+            }
             is Long -> bindLong(index + 1, value)
             is Int -> bindLong(index + 1, value.toLong())
             else -> error("Unsupported binding")

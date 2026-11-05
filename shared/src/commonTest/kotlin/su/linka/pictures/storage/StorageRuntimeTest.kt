@@ -1858,4 +1858,105 @@ class StorageRuntimeTest {
             assertTrue(fs.list(root).none { it.name.startsWith("probe-") })
         } finally { runtime.close() }
     } }
+
+    @Test fun malformedMessageJsonNeverChangesVersionOrReferences() = runTest { fresh { root ->
+        val runtime = open(root)
+        val image = media(runtime)
+        try {
+            val old = message(image.asset.id, version = 7)
+            runtime.messages.saveMessage(old).ok()
+            val before = fingerprint(runtime)
+            for (bad in listOf("left\uD800right", "left\uDC00right")) {
+                val value = StoredMessage(0, 8, MessageDraft(listOf(MessagePart.Text(MessagePartId("text"), bad))))
+                runtime.messages.saveMessage(value).problem(ProblemCode.INVALID_DATA)
+                assertEquals(before, fingerprint(runtime))
+                assertEquals(old, runtime.messages.message().ok())
+            }
+        } finally { image.lease.close(); runtime.close() }
+    } }
+
+    @Test fun malformedCardLabelJsonCannotPublishOrReplaceAValidBoard() = runTest { fresh { root ->
+        val runtime = open(root)
+        try {
+            val original = board()
+            runtime.library.addBoard(original, permit()).ok()
+            val before = fingerprint(runtime)
+            for (bad in listOf("left\uD800right", "left\uDC00right")) {
+                val invalid = original.copy(name = "valid e\u0301 😀", pages = original.pages.map { page ->
+                    page.copy(cells = page.cells.map { cell -> cell.copy(card = cell.card?.copy(label = bad)) })
+                })
+                runtime.library.replaceBoard(invalid, 1, permit()).problem(ProblemCode.INVALID_DATA)
+                runtime.library.addBoard(invalid.copy(id = BoardId("new")), permit()).problem(ProblemCode.INVALID_DATA)
+                assertEquals(before, fingerprint(runtime))
+                assertEquals(1, runtime.library.listing.value.revision)
+                val preserved = runtime.library.board(original.id).ok()
+                assertEquals(original, preserved.board.document)
+                preserved.lease.close()
+            }
+        } finally { runtime.close() }
+    } }
+
+    @Test fun escapedNulJsonDataAndValidUnicodePersistExactlyWithoutNormalization() = runTest { fresh { root ->
+        var runtime = open(root)
+        val text = "  left\u0000right e\u0301 😀  "
+        val original = board().copy(name = "  valid e\u0301 😀  ", pages = board().pages.map { page ->
+            page.copy(cells = page.cells.map { cell -> cell.copy(card = cell.card?.copy(label = text, extensionsJson = "{\"opaque\":\"left\\u0000right\"}")) })
+        })
+        val stored = StoredMessage(0, 3, MessageDraft(listOf(MessagePart.Text(MessagePartId("text"), text))))
+        try {
+            assertTrue(encode(original).contains("\\u0000"))
+            assertFalse('\u0000' in encode(original))
+            runtime.library.addBoard(original, permit()).ok()
+            runtime.messages.saveMessage(stored).ok()
+            runtime.library.snapshot().ok().close()
+        } finally { runtime.close() }
+        runtime = open(root)
+        try {
+            val loaded = runtime.library.board(original.id).ok()
+            try { assertEquals(original, loaded.board.document) } finally { loaded.lease.close() }
+            assertEquals(stored, runtime.messages.message().ok())
+            assertEquals(original.name, runtime.library.listing.value.items.single().name)
+        } finally { runtime.close() }
+    } }
+
+    @Test fun corruptRawJsonTextIsRejectedButEscapedNulDataIsDecodedExactly() {
+        for (bad in listOf("left\uD800right", "left\uDC00right", "left\u0000right")) {
+            val raw = "{\"schema\":1,\"value\":\"$bad\"}"
+            assertEquals(ProblemCode.INVALID_DATA, assertFailsWith<StorageFailure> { decode<String>(raw) }.code)
+        }
+        assertEquals("left\u0000right", decode<String>("{\"schema\":1,\"value\":\"left\\u0000right\"}"))
+    }
+
+    @Test fun nulRootIsRejectedBeforeFilesystemOrDriverCalls() = runTest { fresh { root ->
+        var metadataCalls = 0
+        val guarded = object : ForwardingFileSystem(fs) {
+            override fun metadataOrNull(path: Path): FileMetadata? {
+                metadataCalls++
+                error("invalid root must not reach FS")
+            }
+        }
+        val driver = TrackingDriver()
+        val before = tree(root)
+        StorageRuntime.open((root.toString() + "\u0000tail").toPath(), guarded, driver).problem(ProblemCode.INVALID_DATA)
+        assertEquals(0, metadataCalls)
+        assertTrue(driver.paths.isEmpty())
+        assertEquals(before, tree(root))
+    } }
+
+    @Test fun sharedStringBindingRejectsUnsafeTextWithoutChangingTheActualDriver() = runTest { fresh { root ->
+        val runtime = open(root)
+        try {
+            val before = fingerprint(runtime)
+            for (bad in listOf("left\u0000right", "left\uD800right", "left\uDC00right")) {
+                runtime.libraryStore.locked { runtime.db.rows("SELECT ?", bad) }.problem(ProblemCode.INVALID_DATA)
+                runtime.libraryStore.locked { runtime.db.exec("SELECT ?", bad) }.problem(ProblemCode.INVALID_DATA)
+                assertEquals(before, fingerprint(runtime))
+            }
+            for (good in listOf("", "  Кириллица e\u0301 😀  ", "'\"; --\n", "\\u0000", encode("left\u0000right"))) {
+                val actual = runtime.libraryStore.locked { runtime.db.rows("SELECT ?", good).single().single() }.ok()
+                assertEquals(good, actual)
+                runtime.libraryStore.locked { runtime.db.exec("SELECT ?", good) }.ok()
+            }
+        } finally { runtime.close() }
+    } }
 }

@@ -10,6 +10,8 @@
 - Порученные cherry-picks: `601291e` → `98ce03a`, `01e2adb` → `8b05662`.
 - База собственного implementation diff: `8b05662463661189c2a96dd11f465331420e3aac`.
 - База COORD review corrections: `04ec421fbcd07cad0def5a3595380b023281557e`.
+- База native-text follow-up: `fa87e2373fd1f5e80a1984e2698ffb8833d6c424`;
+  frozen `28c4208` cherry-picked без конфликтов как `8ce9598`. Другой main код не импортировался.
 - SAFE PROBE-COPY принят COORD в `0f2f821`; его contracts прочитаны через git show,
   commit не cherry-picked, другие lanes не интегрировались.
 - Собственный diff: commonMain/commonTest `storage/**`, этот отчёт и принятые COORD
@@ -69,6 +71,28 @@ probe folders дают INVALID_DATA без source open/cleanup unknowns. Known s
 - Corrupt source, nonempty version0, incomplete/altered schema1 отказывают без source open.
 
 ## COMMIT outcome и ownership
+
+### Native text write boundary
+
+COORD `28c4208` даёт non-normalizing NativeText predicate и guards plain-bound model IDs,
+names/MIME. Storage дополнительно проверяет **сериализованную** строку в `StorageJson.encode`
+перед SQL binding / UTF8 filesystem write, и вход `decode` для corrupt columns. Raw NUL или
+malformed UTF16 дают INVALID_DATA; никаких replacement/trim/SQL escaping. Root.toString
+проверяется тем же predicate до первого FS/driver call. Public API/schema не менялись.
+Последняя общая граница — String-ветка `SQLiteStatement.bind`: каждый String проверяется
+до `bindText`, включая plain columns, lookup IDs, swapRows и ATTACH paths. Actual driver
+не подменяется. `exec/rows("SELECT ?", value)` отвергают raw NUL/high/low surrogate,
+сохраняют ordinary Unicode, whitespace, quotes и ASCII JSON escape без изменений.
+
+Это не запрет NUL в message/card/opaque JSON data: стандартный JSON escape `\u0000`
+проходит native boundary и декодируется в прежние UTF16 units. Valid emoji, decomposed accent
+и whitespace сохраняются ровно. Native audio/interchange validation остаётся у COORD.
+
+До guard два actual SQLite regressions были красными: malformed MessageDraft и card.label
+могли успешно publish. После guard malformed high/low surrogate не меняют old DB fingerprint,
+message version/refs, board revision/document; escaped NUL и valid Unicode проходят save,
+snapshot и close/reopen с exact equality. Отдельно проверены corrupt raw JSON и root NUL
+без единого FS metadata / SQLite driver call. Frozen NativeTextContractTest3 не ослаблялся.
 
 Suspend ports, factory open/close, initial probe и reconciliation сами исполняют blocking
 SQL/FS/hash/copy на Dispatchers.IO. Caller на Main не должен оборачивать saves в IO.
@@ -175,6 +199,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 - Native TEST boundary обнаружила JVM-only ForwardingSink в delayed-write fixture;
   заменён на обычный common `Sink by sink`, без ослабления assertions.
 - Expect/actual class Beta warnings оставлены видимыми, suppressions/root flags не добавлялись.
+- Native-text follow-up focused: **82 storage + 3 frozen NativeText tests PASS**;
+  final `:shared:jvmTest` — **99/99 PASS**, 0 failures/errors/skipped
+  (82 storage + existing14 + frozen NativeText3).
+- Native-text final `:shared:compileKotlinIosSimulatorArm64` и
+  `:shared:compileTestKotlinIosSimulatorArm64` — **PASS**, без Native execution.
 - XML evidence: `shared/build/test-results/jvmTest/TEST-*.xml`.
 - Явный `okio.use` сохраняет Closeable boundary на Native; JVM-only use не принимался за proof.
 
