@@ -46,3 +46,9 @@ exact valid pairs/decomposed accents, escaped NUL metadata, whole-plan rejection
 before clip inspection and before synthesis, and early LINKA-name refusal before
 media preparation. The final focused set passed **8/8 on JVM**; the full Native
 gate is still required after all owning changes are integrated.
+
+Integrated storage additionally guards every actual String SQL bind, serialized
+JSON encode/decode, and runtime root before FS access. In main `152cbb9`, the
+combined codec/audio/storage test suite passed **213/213 on JVM and owned iOS17**,
+including 82 real SQLite storage regressions. This closes the demonstrated text
+loss path for tested boundaries, not migration/authorization/release acceptance.

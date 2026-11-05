@@ -30,6 +30,7 @@
 - [Журнал исполнения всего плана и открытые gates](../development/implementation-status.md).
 - [Изолированный iOS startup и native SQLite smoke на iOS26.5](ios-platform-runtime.md).
 - [Изолированный Android35 UI/SQLite/callback runtime](android-platform-runtime.md).
+- [Android native audio: actual device suite, legacy corpus и открытый raw-AMR21 gap](android-native-audio-evidence.md).
 - [Проверенные codec-ограничения iOS17 и AMR fixture без микрофона](codec-preflight-summary.md).
 
 Это частичные результаты P00/preflight, не завершённый аудит и не доказательство готовности целевого приложения. Исходные документы/скриншоты сохранены в Git до запуска независимых worktrees; `docs/c4/` пока не приводилась к новому контракту P02.
