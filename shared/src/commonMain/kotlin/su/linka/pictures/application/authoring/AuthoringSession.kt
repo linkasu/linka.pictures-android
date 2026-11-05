@@ -40,12 +40,12 @@ class AuthoringSession(
     private var applyRequested = false
     private var loading = 0L
     private var mediaGeneration = 0L
-    private var mediaJob: Job? = null
+    private val mediaWork = MutableStateFlow<Job?>(null)
     private var request: RequestId? = null
     private var activeMutation = false
     private val seen = mutableSetOf<CommandId>()
 
-    private data class Save(val draft: EditorDraft, val revision: Long, val lease: MediaLease, val permit: WritePermit)
+    private data class Save(val draft: EditorDraft, val revision: Long, val lease: MediaLease, val permit: WritePermit, val generation: Long)
 
     init {
         sessionScope.launch {
@@ -53,7 +53,7 @@ class AuthoringSession(
             finally {
                 lease.close()
                 pendingSave?.lease?.close()
-                mediaJob?.cancel()
+                mediaWork.value?.cancel()
                 owner?.let { audio.stop(it) }
             }
         }
@@ -72,6 +72,7 @@ class AuthoringSession(
         if (state.value.ownerId != null && state.value.ownerId != command.ownerId) return false
         if (command.action == AuthoringAction.Background || command.action == AuthoringAction.Revoke) {
             lifecycle.update { it + 1 }
+            mediaWork.value?.cancel()
             audio.stop(command.ownerId)
         }
         return events.trySend { handle(command) }.isSuccess
@@ -94,7 +95,10 @@ class AuthoringSession(
         }
         when (val checked = gate.check(protected, command.capability, command.ownerId)) {
             is OperationResult.Completed -> Unit
-            else -> { failure(checked); return }
+            else -> {
+                if (owner != null && checked is OperationResult.Failed && checked.problem.code == ProblemCode.UNAUTHORIZED) pause()
+                failure(checked); return
+            }
         }
         if (owner == null) {
             owner = command.ownerId
@@ -240,7 +244,7 @@ class AuthoringSession(
 
     private fun load(block: suspend () -> OperationResult<Loaded>) {
         val generation = ++loading
-        val token = lifecycle.value
+        val token = resumedAt
         val access = gate.guard(ProtectedAction.EDIT_BOARD, capability, owner!!)
         mutableState.value = state.value.copy(phase = AuthoringPhase.LOADING, problem = null)
         sessionScope.launch(Dispatchers.Default) {
@@ -317,7 +321,7 @@ class AuthoringSession(
         when (val retained = lease.retain(draft.assetIds())) {
             is OperationResult.Completed -> {
                 val save = Save(snapshot(draft), revision, retained.value, permit(
-                    if (draft.boardId == null) ProtectedAction.CREATE_BOARD else ProtectedAction.EDIT_BOARD))
+                    if (draft.boardId == null) ProtectedAction.CREATE_BOARD else ProtectedAction.EDIT_BOARD), resumedAt)
                 mutableState.value = state.value.copy(savePhase = DraftSavePhase.SAVING)
                 if (activeSave) {
                     pendingSave?.lease?.close()
@@ -357,7 +361,12 @@ class AuthoringSession(
                 // A previously reported failure remains visible until an explicit successful retry/apply.
             }
             is OperationResult.Failed -> {
-                mutableState.value = state.value.copy(savePhase = DraftSavePhase.FAILED, problem = result.problem)
+                val supersededAuthorization = result.problem.code == ProblemCode.UNAUTHORIZED && save.generation != resumedAt &&
+                    state.value.phase == AuthoringPhase.EDITING && resumedAt == lifecycle.value
+                if (!supersededAuthorization) {
+                    mutableState.value = state.value.copy(savePhase = DraftSavePhase.FAILED, problem = result.problem)
+                    if (result.problem.code == ProblemCode.UNAUTHORIZED) pause()
+                }
                 if (result.problem.code == ProblemCode.CONFLICT || result.problem.code == ProblemCode.STALE_REQUEST) {
                     conflict(result.problem.code)
                 }
@@ -372,7 +381,7 @@ class AuthoringSession(
         val next = pendingSave
         pendingSave = null
         if (next != null) {
-            if (result is OperationResult.Completed && state.value.phase != AuthoringPhase.PAUSED &&
+            if (state.value.phase != AuthoringPhase.PAUSED &&
                 state.value.phase != AuthoringPhase.CONFLICT && resumedAt == lifecycle.value) startSave(next)
             else next.lease.close()
         }
@@ -437,6 +446,7 @@ class AuthoringSession(
     }
 
     private fun pause() {
+        lifecycle.update { it + 1 }
         cancelMedia()
         loading++
         applyRequested = false
@@ -612,7 +622,7 @@ class AuthoringSession(
     private fun cancelMedia() {
         mediaGeneration++
         stopAudio()
-        mediaJob?.cancel(); mediaJob = null
+        mediaWork.value?.cancel(); mediaWork.value = null
         mutableState.value = state.value.copy(mediaBusy = false)
     }
 
@@ -620,11 +630,12 @@ class AuthoringSession(
         val form = state.value.draft?.form as? EditorForm.Card ?: return
         cancelMedia()
         val generation = mediaGeneration
-        val token = lifecycle.value
+        val token = resumedAt
         val access = gate.guard(ProtectedAction.EDIT_BOARD, capability, owner!!)
         request = id
         mutableState.value = state.value.copy(mediaBusy = true)
-        mediaJob = sessionScope.launch(Dispatchers.Default) {
+        val effect = sessionScope.launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
+            if (token != lifecycle.value) return@launch
             val result = operation(block)
             var transferred = false
             try {
@@ -635,7 +646,7 @@ class AuthoringSession(
                         if (result is OperationResult.Completed) result.value.lease.close()
                     } else {
                         mutableState.value = state.value.copy(mediaBusy = false)
-                        mediaJob = null
+                        mediaWork.value = null
                         when (result) {
                             is OperationResult.Completed -> {
                                 val prepared = result.value
@@ -655,6 +666,9 @@ class AuthoringSession(
                 }.isSuccess
             } finally { if (!transferred && result is OperationResult.Completed) result.value.lease.close() }
         }
+        mediaWork.value = effect
+        // Registration precedes start: background cancellation also wins before the worker executes.
+        if (token != lifecycle.value) effect.cancel() else effect.start()
     }
 
     private suspend fun preparePickedImage(): OperationResult<PreparedMedia> {
@@ -701,10 +715,13 @@ class AuthoringSession(
         val result = media.prepare(source.value, kind, type)
         if (result is OperationResult.Completed) {
             val value = result.value
-            if (value.asset.kind != kind || value.asset.id !in value.lease.assets || value.asset.byteCount <= 0 ||
-                value.asset.byteCount > 64L * 1024 * 1024) {
+            if (value.asset.kind != kind || value.asset.id !in value.lease.assets || value.asset.byteCount <= 0) {
                 value.lease.close()
                 return OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))
+            }
+            if (value.asset.byteCount > 64L * 1024 * 1024) {
+                value.lease.close()
+                return OperationResult.Failed(Problem(ProblemCode.LIMIT_EXCEEDED))
             }
             try { currentCoroutineContext().ensureActive() }
             catch (cancelled: CancellationException) { value.lease.close(); throw cancelled }
@@ -724,12 +741,15 @@ class AuthoringSession(
         val assets = if (segment is SpeechSegment.Recording) setOf(segment.assetId) else emptySet()
         when (val retained = lease.retain(assets)) {
             is OperationResult.Completed -> {
+                val token = resumedAt
+                if (token != lifecycle.value) { retained.value.close(); return }
                 val id = RequestId(ids.next())
                 request = id
                 val audioOwner = AudioOwner(owner!!, AudioPurpose.PREVIEW)
                 mutableState.value = state.value.copy(audio = AudioState(id, audioOwner, AudioPhase.PREPARING))
                 audio.play(PlaybackRequest(id, audioOwner,
                     SpeechPlan(listOf(segment), if (form.useLabelForSpeech) form.label else form.speechText), retained.value))
+                if (token != lifecycle.value) audio.stop(owner!!, id)
             }
             else -> failure(retained)
         }

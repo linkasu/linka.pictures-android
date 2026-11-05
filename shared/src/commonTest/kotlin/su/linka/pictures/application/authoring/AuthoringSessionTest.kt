@@ -337,4 +337,78 @@ class AuthoringSessionTest {
         f.await { it.problem?.code == ProblemCode.LIMIT_EXCEEDED && !it.mediaBusy }
         assertEquals(form, f.session.state.value.draft!!.form)
     } }
+
+    @Test fun backgroundBetweenMediaAuthorizationAndWorkerRegistrationCannotStartRecording() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        f.native.recording = CompletableDeferred()
+        f.native.beforeGuard = { f.send(AuthoringAction.Background) }
+        f.send(AuthoringAction.Record)
+        f.await { it.phase == AuthoringPhase.PAUSED }
+        f.finish()
+        assertEquals(0, f.native.recordCalls.value)
+    } }
+
+    @Test fun deletedSourceBoardCannotBeResurrectedByApply() = runTest { fresh { f ->
+        val doc = BoardDocument(BoardId("deleted"), "Удалённая", listOf(BoardPage(PageId("page"), 1, 1, emptyList())))
+        val permit = WritePermit(0) { OperationResult.Completed(Unit) }
+        assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, permit))
+        f.send(AuthoringAction.EditBoard(doc.id)); f.saved()
+        val draft = f.session.state.value.draft!!
+        assertIs<OperationResult.Completed<Unit>>(f.runtime.library.deleteBoard(doc.id, 1, permit))
+        f.send(AuthoringAction.Apply); f.await { it.phase == AuthoringPhase.CONFLICT }
+        assertEquals(ProblemCode.CONFLICT, f.session.state.value.problem?.code)
+        assertTrue(f.runtime.library.listing.value.items.isEmpty())
+        val retained = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(draft.id)).value
+        assertEquals(draft, retained.draft.draft); retained.lease.close()
+    } }
+
+    @Test fun pageReorderingAndCrossPageCellSwapPreserveIdentitiesAndEmptyMetadata() = runTest { fresh { f ->
+        val card = CardDocument(CardId("move"), "Переместить", extensionsJson = "{\"card\":1}")
+        val a = BoardPage(PageId("a"), 1, 2, listOf(BoardCell(0, CellKind.CONTENT, card)))
+        val b = BoardPage(PageId("b"), 1, 2, listOf(BoardCell(1, CellKind.EMPTY, extensionsJson = "{\"empty\":1}")))
+        val doc = BoardDocument(BoardId("move"), "Порядок", listOf(a, b))
+        assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, WritePermit(0) { OperationResult.Completed(Unit) }))
+        f.send(AuthoringAction.EditBoard(doc.id)); f.saved()
+        f.send(AuthoringAction.MovePage(b.id, 0))
+        f.await { it.draft?.document?.pages?.first()?.id == b.id }
+        f.send(AuthoringAction.MoveCell(a.id, 0, b.id, 1))
+        val swapped = f.await { it.draft?.document?.pages?.first()?.cells?.firstOrNull()?.card?.id == card.id && it.savePhase == DraftSavePhase.SAVED }.draft!!.document
+        assertEquals(card, swapped.pages[0].cells.single().card)
+        assertEquals("{\"empty\":1}", swapped.pages[1].cells.single().extensionsJson)
+        f.send(AuthoringAction.SetCell(a.id, 0, CellKind.SPACE))
+        f.await { it.draft?.document?.pages?.get(1)?.cells?.single()?.kind == CellKind.SPACE && it.savePhase == DraftSavePhase.SAVED }
+        assertEquals("{\"empty\":1}", f.session.state.value.draft!!.document.pages[1].cells.single().extensionsJson)
+    } }
+
+    @Test fun authorizationFailurePermanentlyInvalidatesOldPermitEvenIfGateLaterOpens() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeCard("Новый текст", "", SpeechChoice.TTS, true))
+        val old = f.nextSave()
+        f.native.authorized = false
+        f.send(AuthoringAction.Preview)
+        f.await { it.phase == AuthoringPhase.PAUSED && it.problem?.code == ProblemCode.UNAUTHORIZED }
+        f.native.authorized = true
+        assertEquals(ProblemCode.UNAUTHORIZED, assertIs<OperationResult.Failed>(old.permit.check()).problem.code)
+        old.reply.complete(OperationResult.Completed(Unit))
+        f.await { it.phase == AuthoringPhase.PAUSED && it.savePhase == DraftSavePhase.FAILED }
+        f.send(AuthoringAction.Resume)
+        f.nextSave().reply.complete(OperationResult.Completed(Unit))
+        f.saved()
+    } }
+
+    @Test fun resumedLatestSnapshotSurvivesLateUnauthorizedCompletionFromOldGeneration() = runTest { fresh { f ->
+        f.start(); f.library.delayed = true
+        f.details("Сохранить после возобновления")
+        val old = f.nextSave()
+        f.send(AuthoringAction.Background); f.await { it.phase == AuthoringPhase.PAUSED }
+        f.send(AuthoringAction.Resume); f.await { it.phase == AuthoringPhase.EDITING }
+        old.reply.complete(OperationResult.Completed(Unit))
+        val fresh = f.nextSave()
+        assertEquals(old.draft, fresh.draft)
+        assertEquals(old.expected, fresh.expected)
+        assertIs<OperationResult.Completed<Unit>>(fresh.permit.check())
+        fresh.reply.complete(OperationResult.Completed(Unit))
+        assertEquals(AuthoringPhase.EDITING, f.saved().phase)
+    } }
 }

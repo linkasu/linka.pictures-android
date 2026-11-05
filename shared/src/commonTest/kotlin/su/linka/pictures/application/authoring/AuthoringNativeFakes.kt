@@ -16,6 +16,8 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
     val pickEntered = CompletableDeferred<Unit>()
     var ignorePickCancellation = false
     var authorized = true
+    var beforeGuard: (() -> Unit)? = null
+    val recordCalls = MutableStateFlow(0)
     var throwOnSource = false
     var audioDuration = 1000L
     var imageSize = ImageInfo(100, 100, "image/png")
@@ -51,11 +53,17 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
     override fun interrupt() { state.value.owner?.let { stop(it.id) } }
     override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> = OperationResult.Completed(temporary())
     override suspend fun record(request: RecordingRequest): OperationResult<TemporaryFile> {
+        recordCalls.value++
         state.value = AudioState(request.id, request.owner, AudioPhase.RECORDING)
         return recording?.await() ?: OperationResult.Cancelled
     }
     override fun finishRecording(ownerId: String, requestId: RequestId) { recording?.complete(OperationResult.Completed(temporary())) }
     override fun check(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): OperationResult<Unit> =
         if (authorized) OperationResult.Completed(Unit) else OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED))
-    override fun guard(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): CommitGuard = { check(action, capability, ownerId) }
+    override fun guard(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): CommitGuard {
+        val callback = beforeGuard
+        beforeGuard = null
+        callback?.invoke()
+        return { check(action, capability, ownerId) }
+    }
 }
