@@ -706,6 +706,8 @@ class StorageRuntimeTest {
             } }
             val result = runtime.library.addBoard(board(), permit()).ok()
             assertEquals(1, result.revision)
+            assertEquals(0, runtime.library.listing.value.epoch)
+            assertEquals(1, runtime.library.listing.value.revision)
             assertEquals(ProblemCode.IO_FAILURE, runtime.library.listing.value.refreshProblem?.code)
             assertFalse(runtime.quarantined)
             driver.before = null
@@ -1166,7 +1168,7 @@ class StorageRuntimeTest {
 
     @Test fun probeCleanupFailureForbidsLiveOpenAndDoesNotClaimOldProbeFolders() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).close()
+        open(root).close() // Known schema1 preserves foreign folders; version0 must now refuse them.
         val unknown = root / "probe-existing-unknown"
         fs.createDirectory(unknown)
         fs.write(unknown / "sentinel") { writeUtf8("not owned by this open") }
@@ -1632,5 +1634,228 @@ class StorageRuntimeTest {
         StorageRuntime.open(root, fs, driver).problem(ProblemCode.IO_FAILURE)
         assertEquals(before, tree(root))
         assertEquals(1, driver.paths.size)
+    } }
+
+    @Test fun restoreRefreshFailurePublishesPrecommitStampAndInvalidatesLateOldBoard() = runTest { fresh { root ->
+        val driver = FaultDriver()
+        val gate = IoGate()
+        var delay = false
+        val files = object : ForwardingFileSystem(fs) {
+            override fun source(file: Path): Source {
+                val source = super.source(file)
+                if (!delay || file.parent?.parent?.name != "media") return source
+                delay = false
+                return object : ForwardingSource(source) {
+                    override fun read(sink: Buffer, byteCount: Long): Long { gate.block(); return super.read(sink, byteCount) }
+                }
+            }
+        }
+        val runtime = open(root, files, driver)
+        val audio = runtime.media.prepare(Buffer().writeUtf8("old audio"), MediaKind.AUDIO, "audio/test").ok()
+        var late: Deferred<OperationResult<LeasedBoard>>? = null
+        var snapshot: SnapshotReader? = null
+        val builder = runtime.library.createSnapshotBuilder().ok()
+        try {
+            runtime.library.addBoard(recordingBoard("old", audio.asset.id), permit()).ok()
+            runtime.messages.saveMessage(StoredMessage(0, 3, MessageDraft(mode = InteractionMode.DIRECT))).ok()
+            builder.addBoard(PublishedBoard(board("new"), 1)).ok()
+            snapshot = builder.seal(17, PortableSettings()).ok()
+            val cached = runtime.library.listing.value.items
+            delay = true
+            late = async(Dispatchers.Default) { runtime.library.board(BoardId("old")) }
+            withContext(Dispatchers.Default) { withTimeout(10_000) { gate.entered.await() } }
+            var postcommitStampReads = 0
+            driver.after = { sql -> if (sql == "COMMIT") {
+                driver.after = null
+                driver.before = { query ->
+                    if (query.startsWith("SELECT epoch FROM library_meta") || query.startsWith("SELECT revision FROM library_meta")) {
+                        postcommitStampReads++
+                        throw IOException("stamp must already be captured")
+                    }
+                    if (query.startsWith("SELECT id,name,kind,revision,payload_json,order_index")) throw IOException("injected listing refresh")
+                }
+            } }
+            runtime.library.replaceLibrary(snapshot, 1, MessageStamp(0, 3), permit()).ok()
+            val listing = runtime.library.listing.value
+            assertEquals(1, listing.epoch)
+            assertEquals(2, listing.revision)
+            assertEquals(cached, listing.items)
+            assertEquals(ProblemCode.IO_FAILURE, listing.refreshProblem?.code)
+            assertEquals(0, postcommitStampReads)
+            driver.before = null
+            runtime.library.renameBoard(BoardId("new"), "stale", 1, permit()).problem(ProblemCode.STALE_REQUEST)
+            runtime.messages.saveMessage(StoredMessage(0, 99, MessageDraft())).problem(ProblemCode.STALE_REQUEST)
+            gate.release.complete(Unit)
+            val old = late.await().ok()
+            try { assertNotEquals(runtime.library.listing.value.epoch, old.epoch) } finally { old.lease.close() }
+            assertEquals(StoredMessage(1, 0, MessageDraft()), runtime.messages.message().ok())
+        } finally {
+            gate.release.complete(Unit)
+            driver.before = null; driver.after = null
+            late?.join()
+            snapshot?.close(); builder.close(); audio.lease.close(); runtime.close()
+        }
+    } }
+
+    @Test fun registryThousandsOfLivePinsRetainAndCloseIndependently() = runTest {
+        val pins = StoragePins()
+        val ids = List(5000) { AssetId(it.toString(16).padStart(64, '0')) }
+        val leases = ids.map { pins.pin(setOf(it)) }
+        assertTrue(ids.all(pins::pinned))
+        coroutineScope {
+            (0 until 8).map { lane -> async(Dispatchers.Default) {
+                for (index in lane until ids.size step 8) {
+                    val id = ids[index]
+                    val retained = leases[index].retain(setOf(id)).ok()
+                    leases[index].close(); leases[index].close()
+                    assertTrue(pins.pinned(id))
+                    assertTrue(pins.allows(id, retained))
+                    assertFalse(pins.allows(id, leases[index]))
+                    retained.close(); retained.close()
+                    assertFalse(pins.pinned(id))
+                }
+            } }.awaitAll()
+        }
+        assertTrue(ids.none(pins::pinned))
+        val foreign = StoragePins().pin(setOf(ids[0]))
+        assertFalse(pins.allows(ids[0], foreign))
+        foreign.close()
+        val own = pins.pin(setOf(ids[0]))
+        pins.stopRetains()
+        own.retain(setOf(ids[0])).problem(ProblemCode.STALE_REQUEST)
+        assertTrue(pins.pinned(ids[0]))
+        own.close()
+        assertFalse(pins.pinned(ids[0]))
+    }
+
+    @Test fun registryRetainRacingParentCloseNeverResurrectsClosedHandle() = runTest {
+        val pins = StoragePins()
+        val id = AssetId("a".repeat(64))
+        repeat(100) {
+            val parent = pins.pin(setOf(id))
+            val children = coroutineScope {
+                val retainers = (0 until 8).map { async(Dispatchers.Default) { parent.retain(setOf(id)) } }
+                val closing = async(Dispatchers.Default) { parent.close() }
+                retainers.awaitAll().also { closing.await() }
+            }
+            for (child in children) when (child) {
+                is OperationResult.Completed -> { assertTrue(pins.allows(id, child.value)); child.value.close(); child.value.close() }
+                else -> child.problem(ProblemCode.STALE_REQUEST)
+            }
+            assertFalse(pins.pinned(id))
+            parent.retain(setOf(id)).problem(ProblemCode.STALE_REQUEST)
+        }
+    }
+
+    @Test fun stageThousandsOfPinsSealOrCloseLinearlyWhileGcKeepsOwnersSafe() = runTest {
+        for (seal in listOf(false, true)) fresh { root ->
+            val runtime = open(root)
+            val media = media(runtime)
+            val stage = SnapshotStage.create(runtime)
+            var reader: SnapshotReader? = null
+            try {
+                stage.addBoard(PublishedBoard(board(asset = media.asset.id), 1)).ok()
+                stage.addAsset(media.asset).ok()
+                coroutineScope {
+                    val collector = async(Dispatchers.Default) { repeat(16) { assertEquals(0, runtime.media.collectGarbage().ok().removedAssets) } }
+                    (0 until 8).map { async(Dispatchers.Default) {
+                        repeat(625) { stage.attach(media.lease.retain(setOf(media.asset.id)).ok()) }
+                    } }.awaitAll()
+                    collector.await()
+                }
+                if (seal) reader = stage.seal(0, PortableSettings()).ok() else stage.close()
+                media.lease.close()
+                if (seal) assertEquals(0, runtime.media.collectGarbage().ok().removedAssets)
+                reader?.close()
+                stage.close()
+                val late = runtime.mediaStore.pin(setOf(media.asset.id))
+                assertEquals(ProblemCode.STALE_REQUEST, assertFailsWith<StorageFailure> { stage.attach(late) }.code)
+                assertEquals(1, runtime.media.collectGarbage().ok().removedAssets)
+            } finally { reader?.close(); stage.close(); media.lease.close(); runtime.close() }
+        }
+    }
+
+    @Test fun snapshotCaptureCancellationStopsAfterEachCurrentMetadataWriteAndReleasesPins() = runTest {
+        for (target in listOf("board-0.json", "draft-0.json", "asset-0.json")) fresh { root ->
+            val gate = IoGate()
+            val names = mutableListOf<String>()
+            var armed = false
+            val files = object : ForwardingFileSystem(fs) {
+                override fun sink(file: Path, mustCreate: Boolean): Sink {
+                    val sink = super.sink(file, mustCreate)
+                    if (!armed || file.parent?.name?.startsWith("snapshot-") != true) return sink
+                    names += file.name
+                    if (file.name != target) return sink
+                    return object : Sink by sink { override fun close() { sink.close(); gate.block() } }
+                }
+            }
+            val runtime = open(root, files)
+            val media = listOf(media(runtime, "first"), media(runtime, "second"))
+            val parent = Job()
+            var work: Job? = null
+            val handedOff = AtomicReference<SnapshotReader?>(null)
+            val failure = AtomicReference<Throwable?>(null)
+            try {
+                for (index in 0..1) {
+                    runtime.library.addBoard(board("board-$index", media[index].asset.id), permit()).ok()
+                    runtime.library.saveDraft(draft(board("draft-doc-$index", media[index].asset.id)).copy(id = DraftId("draft-$index")), null, permit()).ok()
+                    media[index].lease.close()
+                }
+                val oldMessage = message(media[0].asset.id)
+                runtime.messages.saveMessage(oldMessage).ok()
+                val before = fingerprint(runtime)
+                armed = true
+                work = CoroutineScope(Dispatchers.Default + parent).launch {
+                    try { handedOff.store(runtime.library.snapshot().ok()) } catch (error: Throwable) { failure.store(error) }
+                }
+                withContext(Dispatchers.Default) { withTimeout(10_000) { gate.entered.await() } }
+                parent.cancel()
+                gate.release.complete(Unit)
+                work.join()
+                assertIs<CancellationException>(failure.load())
+                assertNull(handedOff.load())
+                val expected = listOf("board-0.json", "board-1.json", "draft-0.json", "draft-1.json", "asset-0.json")
+                assertEquals(expected.take(expected.indexOf(target) + 1), names)
+                assertEquals(before, fingerprint(runtime))
+                assertEquals(oldMessage, runtime.messages.message().ok())
+                for (index in 0..1) {
+                    runtime.library.deleteBoard(BoardId("board-$index"), 1, permit()).ok()
+                    runtime.library.deleteDraft(DraftId("draft-$index"), 1, permit()).ok()
+                }
+                runtime.messages.saveMessage(StoredMessage(0, 2, MessageDraft())).ok()
+                assertEquals(2, runtime.media.collectGarbage().ok().removedAssets)
+            } finally {
+                parent.cancel(); gate.release.complete(Unit)
+                withContext(NonCancellable) { work?.join(); handedOff.load()?.close(); media.forEach { it.lease.close() }; runtime.close() }
+            }
+            assertTrue(fs.list(root / "staging").none { it.name.startsWith("snapshot-") })
+        }
+    }
+
+    @Test fun emptyVersionZeroRefusesUnrecognizedOriginalEntriesWithoutSourceOpen() = runTest {
+        for (name in listOf("legacyfile.maybe.zip", "future.bin", "probe-old-empty")) fresh { root ->
+            val path = root / "library.sqlite3"
+            BundledSQLiteDriver().open(path.toString()).close()
+            if (name.startsWith("probe-")) fs.createDirectory(root / name) else fs.write(root / name) { writeUtf8("owned synthetic legacy bytes") }
+            val before = tree(root)
+            val driver = TrackingDriver()
+            driver.onOpen = { assertNotEquals(path.toString(), it) }
+            StorageRuntime.open(root, fs, driver).problem(ProblemCode.INVALID_DATA)
+            assertEquals(before, tree(root))
+            assertEquals(1, driver.paths.size)
+        }
+    }
+
+    @Test fun emptyVersionZeroAcceptsOnlyKnownEmptyOwnedDirectoriesAndItsOwnProbe() = runTest { fresh { root ->
+        BundledSQLiteDriver().open((root / "library.sqlite3").toString()).close()
+        fs.createDirectory(root / "media")
+        fs.createDirectory(root / "staging")
+        val runtime = open(root)
+        try {
+            assertEquals(0, runtime.library.listing.value.epoch)
+            assertEquals(0, runtime.library.listing.value.revision)
+            assertTrue(runtime.library.listing.value.items.isEmpty())
+            assertTrue(fs.list(root).none { it.name.startsWith("probe-") })
+        } finally { runtime.close() }
     } }
 }

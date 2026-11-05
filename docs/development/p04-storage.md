@@ -9,16 +9,19 @@
 - Ветка: `implementation/p04-storage`.
 - Порученные cherry-picks: `601291e` → `98ce03a`, `01e2adb` → `8b05662`.
 - База собственного implementation diff: `8b05662463661189c2a96dd11f465331420e3aac`.
+- База COORD review corrections: `04ec421fbcd07cad0def5a3595380b023281557e`.
 - SAFE PROBE-COPY принят COORD в `0f2f821`; его contracts прочитаны через git show,
   commit не cherry-picked, другие lanes не интегрировались.
-- Собственный diff: только commonMain/commonTest `storage/**` и этот отчёт.
+- Собственный diff: commonMain/commonTest `storage/**`, этот отчёт и принятые COORD
+  androidMain/jvmMain/iosMain `storage/StoragePinsLock.kt` bindings.
   Нет изменений ports/models/dependencies/root build/UI/startup/access/migration,
   legacy/protection DB, installations, permissions, secrets, push или CI.
 
 ## Initial schema probe: source не открывается SQLite до acceptance
 
 Точный factory API сохранён: `StorageRuntime.open(root, fileSystem, driver)`;
-`library`, `messages`, `media`, suspend `close()`. Native wrappers не потребовались.
+`library`, `messages`, `media`, suspend `close()`. Native SQL factories не потребовались;
+единственный platform helper — tiny `StoragePinsLock` (ReentrantLock / Foundation NSLock).
 
 Для существующей DB `InitialSchemaProbe` создаёт новый UUID child под root с mustCreate.
 Потоково копируются main DB и присутствующие WAL/journal. SHM не копируется. Потоковые
@@ -43,6 +46,10 @@ Single runtime/sandbox/process без внешних writers — явная пр
 обнаруживает проверяемые изменения, но не обещает atomic cross-file backup чужой живой DB.
 При cleanup failure — IO_FAILURE без live open. Может остаться только собственный новый
 probe directory; следующий open создаёт другой UUID и не присваивает/не чистит старые folders.
+Для version0-empty DB original entries снимаются до текущего probe: допускаются только
+own DB/known sidecars и пустые media/staging directories. Legacy/future files и старые
+probe folders дают INVALID_DATA без source open/cleanup unknowns. Known schema1 по-прежнему
+сохраняет чужие folders/sentinels. Новый probe текущего open не считается foreign entry.
 
 ### Source-mutation proof
 
@@ -80,6 +87,9 @@ Quarantine/closed runtime не запускает новую metadata cleanup.
 epoch/optimistic revisions проверяются заново после media preflight.
 
 - Успешно наблюдаемый COMMIT → Completed, даже при последующем refresh/cleanup failure.
+  Все library commits захватывают epoch/revision в transaction result до COMMIT. При
+  refresh failure cached items помечаются IO_FAILURE с доказанным новым stamp, без
+  postcommit stamp query; COMMIT_OUTCOME_UNKNOWN/quarantine имеет приоритет.
 - COMMIT/ROLLBACK exception → suspect writer закрывается и никогда не переиспользуется.
 - После успешного close — одна bounded independent reconciliation: новый connection,
   `busy_timeout=1000`, `query_only=ON`, consistent read. Streaming SHA256 fingerprints
@@ -98,7 +108,7 @@ epoch/optimistic revisions проверяются заново после media 
 - Frozen schema1, WAL/FULL/foreign_keys, bound values, strict versioned JSON marker.
 - Board/draft optimistic writers; unfinished form refusal; конфликт/удаление source сохраняют draft.
 - Message epoch/version coalescing/idempotence, atomic refs; stale epoch не оживляет фразу.
-- Immutable actual SHA256 bytes, typed LocalFile, independent CAS leases, all-or-nothing acquire.
+- Immutable actual SHA256 bytes, typed LocalFile, independent refcounted leases, all-or-nothing acquire.
 - `AssetRoles` проверяет declared metadata.kind: image refs → IMAGE, recording refs → AUDIO,
   retained raw archive → ARCHIVE, включая open forms/message snapshots/recovery. Один hash
   в конфликтующих ролях отвергается. Writers, startup validation, seal и restore используют
@@ -126,18 +136,45 @@ epoch/optimistic revisions проверяются заново после media 
 
 ## Verification и оставшиеся границы
 
-Focused JVM suite: **69/69 storage tests PASS** на actual bundled SQLite; existing common14
-не менялись. После correctness review выполнен финальный quality gate:
+### COORD review corrections
+
+- `StoragePins` — mutable per-asset refcounts и per-lease identity/closed state под одним
+  standard platform lock. O(1) pinned; O(sizeOfLease) pin/retain/close. Нет handle-map clones,
+  scans всех lease handles, SQL/IO/runtime/external callbacks под lock. Input sets копируются
+  до lock; public assets snapshot отделён от private owned IDs. Lock order writerMutex →
+  pinsLock; retain/close не обращаются к writer. Stop-retains — отдельный короткий memory flag.
+- Stage pins — immutable singly-linked PinNode stack: O(1) CAS attach, iterative O(N) close
+  один раз при seal/close; независимость/idempotence/foreign-owner checks сохраняются.
+- Consistent snapshot metadata capture **держит writerMutex при O(metadata) staging IO**,
+  то есть другие writers стоят в очереди. Это принятый shortcut, не nonblocking read pool.
+  Original caller cancellation проверяется перед каждым document/asset и после его write;
+  отмена закрывает own stage/pins, не меняет library/ref counters и не отдаёт reader.
+- Реальные regressions: successful restore + listing failure публикует новый stamp без
+  postcommit epoch/revision reads, old permit/message stale, late old board имеет старый epoch.
+  Direct registry 5000 live IDs + parallel retain/close, parent-close race, stage 5000 pins
+  seal/close с parallel GC используют один маленький media file, не тысячи SQL commits.
+  Delayed board/draft/asset staging write + real Job cancel останавливается на текущем ряду,
+  DB fingerprint прежний, refs не текут, close дожидается cleanup без зависания.
+  Version0 legacy/future/old-probe fixtures отказывают с неизменным source tree.
+
+Focused JVM review suite: **76/76 storage tests PASS** на actual bundled SQLite; прежние69
+и existing common14 сохранены. После coherent delta review выполнены финальные checks:
 
 ```text
 JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 ANDROID_HOME=/Users/aacidov/Library/Android/sdk
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-./gradlew :shared:jvmTest :shared:compileKotlinIosSimulatorArm64 --console=plain
+./gradlew :shared:jvmTest :shared:compileKotlinIosSimulatorArm64 :shared:compileTestKotlinIosSimulatorArm64 --console=plain
 ```
 
-- `:shared:jvmTest` — **83/83 PASS**, 0 failures/errors/skipped (69 storage + existing14).
-- `:shared:compileKotlinIosSimulatorArm64` — **PASS**, actual compilation, не Native execution.
+- Baseline `04ec421`: JVM **83/83 PASS**, Native MAIN compilation PASS.
+- Review final `:shared:jvmTest` — **90/90 PASS**, 0 failures/errors/skipped
+  (76 storage + existing14).
+- Review `:shared:compileKotlinIosSimulatorArm64` — **PASS**.
+- Review `:shared:compileTestKotlinIosSimulatorArm64` — **PASS**, не Native execution.
+- Native TEST boundary обнаружила JVM-only ForwardingSink в delayed-write fixture;
+  заменён на обычный common `Sink by sink`, без ослабления assertions.
+- Expect/actual class Beta warnings оставлены видимыми, suppressions/root flags не добавлялись.
 - XML evidence: `shared/build/test-results/jvmTest/TEST-*.xml`.
 - Явный `okio.use` сохраняет Closeable boundary на Native; JVM-only use не принимался за proof.
 
@@ -157,7 +194,8 @@ untrusted replace и corrupt recovery/startup. Exact old DB fingerprint/epoch/re
 
 В коде явно отмечены performance shortcuts: startup copy/hash O(metadata DB bytes) и
 streaming full-state fingerprints на commits O(metadata size). Large-library throughput
-не измерялся; aggregate library model в RAM не строится. Existing active owners должны
+не измерялся; snapshot capture также очередит writers на O(metadata) FS writes с per-document
+cancellation. Aggregate library model в RAM не строится. Existing active owners должны
 завершаться при явной смене runtime/session; foreign/closed leases не принимаются.
 
 Native integrated execution после интеграции, Android/device/codec/physical/power-loss gates,

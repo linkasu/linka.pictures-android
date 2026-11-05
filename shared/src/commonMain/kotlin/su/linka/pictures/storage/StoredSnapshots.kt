@@ -5,6 +5,7 @@ package su.linka.pictures.storage
 import androidx.sqlite.SQLiteConnection
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.sync.withLock
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
@@ -17,36 +18,48 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
     suspend fun builder(): OperationResult<SnapshotBuilder> = library.locked(mutation = true) { SnapshotStage.create(runtime) }
 
     suspend fun snapshot(): OperationResult<SnapshotReader> = runtime.operation {
-        val reader = runtime.writer.withLock { runtime.available(); capture() }
+        val context = currentCoroutineContext()
+        val reader = runtime.writer.withLock { runtime.available(); capture { context.ensureStorageActive() } }
         try {
+            storageActive()
             reader.assets().collect { runtime.mediaStore.verify(it) }
-            runtime.writer.withLock { runtime.available() }
+            runtime.writer.withLock { runtime.available(); storageActive() }
             reader
         } catch (error: Throwable) { reader.close(); throw error }
     }
 
-    private fun capture(): SnapshotReader {
+    // shortcut: consistent metadata capture queues writers across O(metadata) staging IO;
+    // cancellation is checked per document/asset, not a nonblocking/read-pool snapshot.
+    private fun capture(checkActive: () -> Unit): SnapshotReader {
+        checkActive()
         val stage = SnapshotStage.create(runtime)
         try {
             var order = -1L
             while (true) {
+                checkActive()
                 val row = db.rows("SELECT order_index,kind,revision,payload_json FROM entries WHERE order_index>? ORDER BY order_index LIMIT 1", order).singleOrNull() ?: break
                 order = row[0]!!.toLong()
                 if (row[1] == "BOARD") stage.board(PublishedBoard(decode(row[3]!!), row[2]!!.toLong()))
                 else stage.retained(decode(row[3]!!))
+                checkActive()
             }
             var previous = ""
             while (true) {
+                checkActive()
                 val row = db.rows("SELECT id,version,payload_json FROM drafts WHERE id>? ORDER BY id LIMIT 1", previous).singleOrNull() ?: break
                 previous = row[0]!!
                 stage.draft(StoredDraft(row[1]!!.toLong(), decode(row[2]!!)))
+                checkActive()
             }
             previous = ""
             while (true) {
+                checkActive()
                 val row = db.rows("SELECT DISTINCT asset_id FROM asset_refs WHERE owner_kind IN ('BOARD','DRAFT','RETAINED') AND asset_id>? ORDER BY asset_id LIMIT 1", previous).singleOrNull() ?: break
                 previous = row[0]!!
                 stage.asset(runtime.mediaStore.asset(AssetId(previous)))
+                checkActive()
             }
+            checkActive()
             return stage.sealLocked(runtime.epoch(), runtime.revision(), library.readSettings())
         } finally { stage.close() }
     }

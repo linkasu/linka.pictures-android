@@ -15,7 +15,8 @@ import su.linka.pictures.domain.*
 
 internal class SnapshotStage(private val runtime: StorageRuntime, private val directory: Path) : SnapshotBuilder {
     private enum class Owner { BUILDER, READER, CLOSED }
-    private data class Ownership(val owner: Owner, val pins: List<MediaLease> = emptyList())
+    private class PinNode(val value: MediaLease, val next: PinNode?)
+    private data class Ownership(val owner: Owner, val pins: PinNode? = null)
     private val ownership = AtomicReference(Ownership(Owner.BUILDER))
     private val entryIds = mutableSetOf<BoardId>()
     private val draftIds = mutableSetOf<DraftId>()
@@ -40,11 +41,19 @@ internal class SnapshotStage(private val runtime: StorageRuntime, private val di
         requireBuilder()
     }
 
-    private fun attach(pin: MediaLease) {
+    internal fun attach(pin: MediaLease) {
         while (true) {
             val old = ownership.load()
             if (old.owner != Owner.BUILDER) { pin.close(); fail(ProblemCode.STALE_REQUEST) }
-            if (ownership.compareAndSet(old, old.copy(pins = old.pins + pin))) return
+            if (ownership.compareAndSet(old, old.copy(pins = PinNode(pin, old.pins)))) return
+        }
+    }
+
+    private fun closePins(head: PinNode?) {
+        var current = head
+        while (current != null) {
+            current.value.close()
+            current = current.next
         }
     }
 
@@ -115,8 +124,8 @@ internal class SnapshotStage(private val runtime: StorageRuntime, private val di
         while (true) {
             val old = ownership.load()
             if (old.owner != Owner.BUILDER) { lease.close(); fail(ProblemCode.STALE_REQUEST) }
-            if (ownership.compareAndSet(old, Ownership(Owner.READER, listOf(lease)))) {
-                old.pins.forEach { it.close() }
+            if (ownership.compareAndSet(old, Ownership(Owner.READER, PinNode(lease, null)))) {
+                closePins(old.pins)
                 return reader
             }
         }
@@ -130,7 +139,7 @@ internal class SnapshotStage(private val runtime: StorageRuntime, private val di
             val old = ownership.load()
             if (old.owner != owner) return
             if (ownership.compareAndSet(old, Ownership(Owner.CLOSED))) {
-                old.pins.forEach { it.close() }
+                closePins(old.pins)
                 // This directory was minted by this stage, never supplied by a document.
                 runtime.cleanup { runtime.fs.deleteRecursively(directory, mustExist = false) }
                 return
@@ -142,7 +151,7 @@ internal class SnapshotStage(private val runtime: StorageRuntime, private val di
 
     internal fun abandon() {
         val old = ownership.exchange(Ownership(Owner.CLOSED))
-        old.pins.forEach { it.close() }
+        closePins(old.pins)
         // Quarantine leaves staged files untouched for authoritative reopen, not rollback cleanup.
     }
 

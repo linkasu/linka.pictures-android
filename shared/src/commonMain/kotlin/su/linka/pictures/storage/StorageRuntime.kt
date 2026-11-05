@@ -111,6 +111,7 @@ class StorageRuntime private constructor(
                 break
             }
         }
+        mediaStore.stopRetains()
         // Once closing is accepted, cancellation must not strand DB handles.
         storageWorker {
             drained.await()
@@ -224,12 +225,17 @@ class StorageRuntime private constructor(
             fileSystem.createDirectories(root)
             // Never claim an unrelated/legacy directory as a fresh storage root.
             val names = setOf("library.sqlite3", "library.sqlite3-wal", "library.sqlite3-shm", "library.sqlite3-journal", "media", "staging")
+            val originalNames = fileSystem.list(root).map { it.name }.toSet()
             for (name in names) {
                 if (fileSystem.metadataOrNull(root / name)?.symlinkTarget != null) fail(ProblemCode.INVALID_DATA)
             }
             if (!fileSystem.exists(root / "library.sqlite3") && fileSystem.list(root).isNotEmpty()) fail(ProblemCode.INVALID_DATA)
             fun emptySchemaRoot() {
-                if (listOf("media", "staging").any { fileSystem.exists(root / it) && fileSystem.list(root / it).isNotEmpty() }) fail(ProblemCode.INVALID_DATA)
+                if (originalNames.any { it !in names }) fail(ProblemCode.INVALID_DATA)
+                for (name in listOf("media", "staging")) {
+                    val metadata = fileSystem.metadataOrNull(root / name) ?: continue
+                    if (!metadata.isDirectory || metadata.symlinkTarget != null || fileSystem.list(root / name).isNotEmpty()) fail(ProblemCode.INVALID_DATA)
+                }
             }
             val accepted = if (fileSystem.exists(root / "library.sqlite3")) {
                 InitialSchemaProbe.read(root, fileSystem, driver) { probe, version ->

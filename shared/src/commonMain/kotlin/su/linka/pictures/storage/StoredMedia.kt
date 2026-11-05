@@ -1,8 +1,5 @@
-@file:OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
-
 package su.linka.pictures.storage
 
-import kotlin.concurrent.atomics.AtomicReference
 import kotlin.random.Random
 import kotlinx.coroutines.sync.withLock
 import okio.*
@@ -23,51 +20,17 @@ internal fun mediaByteCount(kind: MediaKind, current: Long, added: Long): Long {
 }
 
 internal class StoredMedia(private val runtime: StorageRuntime) : MediaStore {
-    private data class Pins(val next: Long = 0, val handles: Map<Long, Set<AssetId>> = emptyMap())
-    private val pins = AtomicReference(Pins())
+    private val pins = StoragePins()
     private val fs get() = runtime.fs
     private val db get() = runtime.db
     internal fun path(id: AssetId): Path = runtime.root / "media" / id.value.take(2) / id.value
 
-    private inner class Lease(val handle: Long, override val assets: Set<AssetId>) : MediaLease {
-        val owner = this@StoredMedia
-        override fun retain(assets: Set<AssetId>): OperationResult<MediaLease> {
-            while (true) {
-                if (!runtime.accepting) return OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
-                val old = pins.load()
-                val own = old.handles[handle]
-                    ?: return OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
-                if (!own.containsAll(assets)) return OperationResult.Failed(Problem(ProblemCode.MISSING_ASSET))
-                val next = runtime.next(old.next)
-                if (pins.compareAndSet(old, Pins(next, old.handles + (next to assets.toSet())))) {
-                    return OperationResult.Completed(Lease(next, assets.toSet()))
-                }
-            }
-        }
-
-        override fun close() {
-            while (true) {
-                val old = pins.load()
-                if (handle !in old.handles) return
-                if (pins.compareAndSet(old, old.copy(handles = old.handles - handle))) return
-            }
-        }
-    }
-
-    internal fun pin(ids: Set<AssetId>): MediaLease {
-        while (true) {
-            val old = pins.load()
-            val next = runtime.next(old.next)
-            if (pins.compareAndSet(old, Pins(next, old.handles + (next to ids.toSet())))) return Lease(next, ids.toSet())
-        }
-    }
-
-    private fun pinned(id: AssetId): Boolean = pins.load().handles.values.any { id in it }
+    internal fun pin(ids: Set<AssetId>): MediaLease = pins.pin(ids)
+    internal fun stopRetains() = pins.stopRetains()
+    private fun pinned(id: AssetId): Boolean = pins.pinned(id)
     private fun checkLease(id: AssetId, lease: MediaLease) {
         if (!runtime.accepting) fail(ProblemCode.STALE_REQUEST)
-        val local = lease as? Lease ?: fail(ProblemCode.STALE_REQUEST)
-        // Inner-class identity alone does not establish runtime ownership.
-        if (local.owner !== this || id !in (pins.load().handles[local.handle] ?: emptySet())) fail(ProblemCode.STALE_REQUEST)
+        if (!pins.allows(id, lease)) fail(ProblemCode.STALE_REQUEST)
     }
 
     internal fun asset(id: AssetId): MediaAsset {

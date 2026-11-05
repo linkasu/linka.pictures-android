@@ -8,12 +8,13 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 
 internal class StoredLibrary(internal val runtime: StorageRuntime) : LibraryStore {
+    private data class Committed<T>(val value: T, val epoch: Long, val revision: Long)
     internal val db get() = runtime.db
     private val mutableListing = MutableStateFlow(LibraryListing(0, 0, emptyList()))
     override val listing: StateFlow<LibraryListing> = mutableListing
     private val snapshots = StoredSnapshots(runtime)
 
-    internal fun refresh() {
+    internal fun refresh(epoch: Long = runtime.epoch(), revision: Long = runtime.revision()) {
         val items = buildList {
             var previous = -1L
             while (true) {
@@ -26,12 +27,15 @@ internal class StoredLibrary(internal val runtime: StorageRuntime) : LibraryStor
                 add(LibraryEntrySummary(BoardId(row[0]!!), row[1]!!, row[3]!!.toLong(), kind, count))
             }
         }
-        mutableListing.value = LibraryListing(runtime.epoch(), runtime.revision(), items)
+        mutableListing.value = LibraryListing(epoch, revision, items)
     }
 
-    internal fun refreshAfterCommit() {
-        try { refresh() } catch (error: Exception) {
-            mutableListing.value = mutableListing.value.copy(refreshProblem = Problem(ProblemCode.IO_FAILURE))
+    private fun refreshAfterCommit(epoch: Long, revision: Long) {
+        if (runtime.quarantined) { unconfirmed(); return }
+        try { refresh(epoch, revision) } catch (error: Exception) {
+            if (runtime.quarantined) unconfirmed() else {
+                mutableListing.value = mutableListing.value.copy(epoch = epoch, revision = revision, refreshProblem = Problem(ProblemCode.IO_FAILURE))
+            }
         }
     }
 
@@ -58,10 +62,10 @@ internal class StoredLibrary(internal val runtime: StorageRuntime) : LibraryStor
         val result = runtime.transaction(permit) {
             val value = block()
             db.exec("UPDATE library_meta SET revision=? WHERE singleton=1", revision)
-            value
+            Committed(value, runtime.epoch(), revision)
         }
-        refreshAfterCommit()
-        return result
+        refreshAfterCommit(result.epoch, result.revision)
+        return result.value
     }
 
     internal fun readBoard(id: BoardId): PublishedBoard {
