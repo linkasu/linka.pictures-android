@@ -1,0 +1,8 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-empty-26b285ac-10d1-4914-ac73-aec5e76b25ee/frozen-empty-test.apk",
+  "sha256": "1488554c9280ab1d2f0094a820e373fb9adf447639564cfb9941ee0ed00e9751",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "package": "su.linka.pictures.shared.test",
+  "focus": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest#emptyIsInvalidButWhitespaceAndArgbEndpointsRemainExplicitAndValid"
+}

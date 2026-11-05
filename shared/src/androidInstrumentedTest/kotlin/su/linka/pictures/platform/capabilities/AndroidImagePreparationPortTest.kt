@@ -159,14 +159,16 @@ class AndroidImagePreparationPortTest {
         }
     }
 
-    @Test fun emptyAndWhitespaceRequestsRemainExplicitValidImagesAndArgbEndpointsAreAllowed() = runBlocking {
+    @Test fun emptyIsInvalidButWhitespaceAndArgbEndpointsRemainExplicitAndValid() = runBlocking {
         Fixture().use { f ->
-            val empty = completed(f.service.imageFromText(TextImageRequest("", 0, 0xffffffffL)))
+            code(ProblemCode.INVALID_DATA, f.service.imageFromText(TextImageRequest("", 0, 0xffffffffL)))
+            assertTrue(f.files.created.isEmpty())
+            val singleSpace = completed(f.service.imageFromText(TextImageRequest(" ", 0, 0xffffffffL)))
             val spaces = "   \n "
             val layout = withContext(Dispatchers.IO) { f.service.textLayout(TextImageRequest(spaces, 0xffffffffL, 0)) }
             assertEquals(spaces, layout.text.toString()); assertEquals(2, layout.lineCount)
             val transparent = completed(f.service.imageFromText(TextImageRequest(spaces, 0xffffffffL, 0)))
-            val first = BitmapFactory.decodeFile(empty.path)
+            val first = BitmapFactory.decodeFile(singleSpace.path)
             val second = BitmapFactory.decodeFile(transparent.path)
             try {
                 assertEquals(1024, first.width); assertTrue(first.height > 64)

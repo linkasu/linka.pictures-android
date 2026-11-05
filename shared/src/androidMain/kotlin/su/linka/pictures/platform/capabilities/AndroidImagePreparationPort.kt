@@ -80,7 +80,7 @@ internal class AndroidImagePreparationPort(
     @Suppress("DEPRECATION")
     internal fun textLayout(request: TextImageRequest): StaticLayout {
         if (request.text.length > 4096) throw ImagePreparationFailure(ProblemCode.LIMIT_EXCEEDED)
-        if (!isNativeText(request.text) || request.foregroundArgb !in 0L..0xffffffffL || request.backgroundArgb !in 0L..0xffffffffL) {
+        if (request.text.isEmpty() || !isNativeText(request.text) || request.foregroundArgb !in 0L..0xffffffffL || request.backgroundArgb !in 0L..0xffffffffL) {
             throw ImagePreparationFailure(ProblemCode.INVALID_DATA)
         }
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).also {
