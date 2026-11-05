@@ -1,8 +1,11 @@
+@file:OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
+
 package su.linka.pictures.migration
 
 import androidx.sqlite.*
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlin.random.Random
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.test.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.toList
@@ -14,6 +17,7 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.portability.linka.*
 import su.linka.pictures.storage.StorageRuntime
+import su.linka.pictures.storage.StorageAbort
 
 // Real SQLite and filesystem; callback credentials/inspection are NOT access-store/native proof.
 class LegacyUpgradeTest {
@@ -425,4 +429,177 @@ class LegacyUpgradeTest {
             assertContentEquals(bytes, fs.read(leftover) { readByteArray() })
         }
     }
+
+    @Test fun sqlCommitGuardNeverReadsAdmissionFilesystem() = runTest { owned { rig ->
+        rig.source("board")
+        rig.raw("broken", byteArrayOf(1, 2, 3))
+        val inTransaction = AtomicReference(false)
+        val driver = object : SQLiteDriver {
+            override fun open(fileName: String): SQLiteConnection {
+                val connection = BundledSQLiteDriver().open(fileName)
+                return object : SQLiteConnection by connection {
+                    override fun prepare(sql: String): SQLiteStatement {
+                        val statement = connection.prepare(sql)
+                        return object : SQLiteStatement by statement {
+                            override fun step(): Boolean {
+                                val result = statement.step()
+                                if (sql == "BEGIN IMMEDIATE") inTransaction.store(true)
+                                if (sql == "COMMIT" || sql == "ROLLBACK") inTransaction.store(false)
+                                return result
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val asserting = object : ForwardingFileSystem(fs) {
+            private fun check(path: Path) {
+                if (path == rig.root || path.parent == rig.root || path.parent == rig.root / "libraries") {
+                    assertFalse(inTransaction.load(), "admission filesystem I/O inside SQL transaction: $path")
+                }
+            }
+            override fun metadataOrNull(path: Path): FileMetadata? { check(path); return super.metadataOrNull(path) }
+            override fun canonicalize(path: Path): Path { check(path); return super.canonicalize(path) }
+            override fun source(file: Path): Source { check(file); return super.source(file) }
+        }
+        val opened = rig.coordinator(asserting, driver).open().ok()
+        assertEquals(1, opened.report.imported)
+        assertEquals(1, opened.report.retained)
+        opened.runtime.close()
+    } }
+
+    private class CloseFaultDriver : SQLiteDriver {
+        var opens = 0
+        var closeAttempts = 0
+        var failClose = false
+        var failSnapshot = false
+        private val actual = mutableListOf<SQLiteConnection>()
+        override fun open(fileName: String): SQLiteConnection {
+            opens++
+            val connection = BundledSQLiteDriver().open(fileName)
+            actual += connection
+            return object : SQLiteConnection by connection {
+                override fun close() {
+                    closeAttempts++
+                    if (failClose) throw IOException("synthetic owned close failure")
+                    connection.close()
+                    actual.remove(connection)
+                }
+                override fun prepare(sql: String): SQLiteStatement {
+                    val statement = connection.prepare(sql)
+                    return object : SQLiteStatement by statement {
+                        override fun step(): Boolean {
+                            if (failSnapshot && sql.startsWith("SELECT order_index,kind,revision,payload_json")) {
+                                failClose = true
+                                throw StorageAbort(OperationResult.Failed(Problem(ProblemCode.INTEGRITY_FAILURE)))
+                            }
+                            return statement.step()
+                        }
+                    }
+                }
+            }
+        }
+        fun cleanup() { actual.toList().forEach { it.close() }; actual.clear() }
+    }
+
+    @Test fun closeFailureBeforeActivationBlocksSameCoordinatorWithoutNewWriter() = runTest { owned { rig ->
+        val original = rig.source("board")
+        val driver = CloseFaultDriver()
+        rig.prepare = { rig.initialized = true; driver.failClose = true; OperationResult.Completed(Unit) }
+        val coordinator = rig.coordinator(driver = driver)
+        try {
+            coordinator.open().problem(ProblemCode.IO_FAILURE)
+            assertFalse(fs.exists(rig.root / "active"))
+            assertEquals(MigrationPhase.BLOCKED, coordinator.state.value.phase)
+            assertTrue(coordinator.state.value.requiresRestart)
+            val opens = driver.opens
+            driver.failClose = false
+            coordinator.open(true).problem(ProblemCode.IO_FAILURE)
+            assertEquals(opens, driver.opens)
+            assertTrue(driver.closeAttempts >= 2)
+            assertContentEquals(original, fs.read(rig.legacy / "board") { readByteArray() })
+        } finally { driver.cleanup() }
+    } }
+
+    @Test fun existingActiveReadFailureKeepsPrimaryWhenOwnedCloseFailsAndNeverOpensSecondWriter() = runTest { owned { rig ->
+        val original = rig.source("board")
+        rig.coordinator().open().ok().runtime.close()
+        val active = fs.read(rig.root / "active") { readByteArray() }
+        val sentinel = rig.home / "sentinel"
+        fs.write(sentinel) { writeUtf8("untouched") }
+        val driver = CloseFaultDriver().also { it.failSnapshot = true }
+        val coordinator = rig.coordinator(driver = driver)
+        try {
+            coordinator.open().problem(ProblemCode.INTEGRITY_FAILURE)
+            assertEquals(MigrationPhase.BLOCKED, coordinator.state.value.phase)
+            assertTrue(coordinator.state.value.requiresRestart)
+            val opens = driver.opens
+            coordinator.open(true).problem(ProblemCode.IO_FAILURE)
+            assertEquals(opens, driver.opens)
+            assertTrue(driver.closeAttempts >= 2)
+            assertContentEquals(active, fs.read(rig.root / "active") { readByteArray() })
+            assertContentEquals(original, fs.read(rig.legacy / "board") { readByteArray() })
+            assertEquals("untouched", fs.read(sentinel) { readUtf8() })
+        } finally { driver.cleanup() }
+    } }
+
+    @Test fun atomicPermitRevokesOnPhaseNonceEpochJobAndCloseWithoutAnyFilesystem() {
+        val authority = MigrationAuthority()
+        val job = Job()
+        fun start(epoch: Long = 0): WritePermit {
+            authority.begin("owned", epoch)
+            authority.advance("owned", MigrationPhase.COPYING_VALIDATING)
+            return authority.permit(job)
+        }
+        val permit = start()
+        permit.check().ok()
+        authority.advance("owned", MigrationPhase.ACCESS_READY)
+        permit.check().problem(ProblemCode.STALE_REQUEST)
+        val oldGeneration = start()
+        start()
+        oldGeneration.check().problem(ProblemCode.STALE_REQUEST)
+        val oldEpoch = start()
+        start(1)
+        oldEpoch.check().problem(ProblemCode.STALE_REQUEST)
+        val revoked = start()
+        authority.revoke()
+        revoked.check().problem(ProblemCode.STALE_REQUEST)
+        val cancelled = start()
+        job.cancel()
+        assertFailsWith<CancellationException> { cancelled.check() }
+    }
+
+    @Test fun atomicRevocationBeforeActualSqliteCommitRollsBackPublication() = runTest { owned { rig ->
+        val authority = MigrationAuthority()
+        val driver = object : SQLiteDriver {
+            override fun open(fileName: String): SQLiteConnection {
+                val connection = BundledSQLiteDriver().open(fileName)
+                return object : SQLiteConnection by connection {
+                    override fun prepare(sql: String): SQLiteStatement {
+                        val statement = connection.prepare(sql)
+                        return object : SQLiteStatement by statement {
+                            override fun step(): Boolean = statement.step().also {
+                                if (sql.startsWith("INSERT OR REPLACE INTO entries")) authority.revoke()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val root = rig.home / "guard-sqlite"
+        val runtime = StorageRuntime.open(root, fs, driver).ok()
+        try {
+            authority.begin("owned", runtime.library.listing.value.epoch)
+            authority.advance("owned", MigrationPhase.COPYING_VALIDATING)
+            val permit = authority.permit(currentCoroutineContext())
+            var checks = 0
+            val watched = WritePermit(permit.epoch) { checks++; permit.check() }
+            val board = BoardDocument(BoardId("stable"), "synthetic", listOf(BoardPage(PageId("page"), 1, 1, emptyList())))
+            runtime.library.addBoard(board, watched).problem(ProblemCode.STALE_REQUEST)
+            assertEquals(2, checks, "revoke must deny the final precommit guard, not merely preflight")
+        } finally { runtime.close() }
+        val reopened = StorageRuntime.open(root, fs, BundledSQLiteDriver()).ok()
+        assertTrue(reopened.library.listing.value.items.isEmpty())
+        reopened.close()
+    } }
 }

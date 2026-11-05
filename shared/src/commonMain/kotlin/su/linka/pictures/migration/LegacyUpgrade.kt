@@ -1,9 +1,6 @@
-@file:OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
-
 package su.linka.pictures.migration
 
 import androidx.sqlite.SQLiteDriver
-import kotlin.concurrent.atomics.AtomicReference
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -34,14 +31,15 @@ internal class LegacyUpgrade(
     private val mutableState = MutableStateFlow(MigrationReport())
     val state: StateFlow<MigrationReport> = mutableState.asStateFlow()
     private var frozen = false
+    private var closeBlocked = false
+    private var pendingRuntime: StorageRuntime? = null
+    private val authority = MigrationAuthority()
 
     suspend fun open(resumeInterrupted: Boolean = false): OperationResult<LegacyOpenedLibrary> = storageWorker {
         writer.withLock {
-            if (frozen) return@withLock OperationResult.UnconfirmedCommit
-            var stage: StorageRuntime? = null
+            if (frozen) return@withLock if (closeBlocked) OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)) else OperationResult.UnconfirmedCommit
             var record: AdmissionRecord? = null
             var activated = false
-            val live = AtomicReference(true)
             try {
                 val result = attempt {
                     checkRoots()
@@ -61,42 +59,37 @@ internal class LegacyUpgrade(
                         val id = ids.next()
                         if (!safeMigrationId(id)) reject(ProblemCode.INVALID_DATA)
                         val fresh = AdmissionRecord(migrationId = id, sourceDigest = initial.digest, phase = MigrationPhase.INVENTORY, total = initial.entries.size)
-                        admission.write("journal", fresh) { if (files.exists(root / "journal") || files.exists(root / "active")) reject(ProblemCode.CONFLICT) }
+                        writeJournal(fresh) { if (files.exists(root / "journal") || files.exists(root / "active")) reject(ProblemCode.CONFLICT) }
                         files.createDirectories(root / "libraries")
                         files.createDirectory(root / "libraries" / id, mustCreate = true)
                         fresh
                     }
                     record = journal
                     val generation = root / "libraries" / journal.migrationId
-                    val runtime = StorageRuntime.open(generation, files, driver).required()
-                    stage = runtime
+                    val runtime = openOwned(generation)
                     val nativeFiles = createFiles(generation)
                     val expected = initial.entries.indices.map { stableId(journal.migrationId, it) }.toSet()
                     val listing = runtime.library.listing.value
+                    authority.begin(journal.migrationId, listing.epoch)
                     listing.refreshProblem?.let { throw StorageAbort(OperationResult.Failed(it)) }
                     if (listing.items.any { it.id !in expected } || runtime.library.drafts().required().isNotEmpty()) reject(ProblemCode.CONFLICT)
                     record = journal.copy(phase = MigrationPhase.COPYING_VALIDATING,
                         imported = listing.items.count { it.kind == LibraryEntryKind.BOARD },
                         retained = listing.items.count { it.kind == LibraryEntryKind.RETAINED_ARCHIVE })
-                    admission.write("journal", record!!)
+                    writeJournal(record!!)
                     update(record!!)
                     val caller = currentCoroutineContext()
-                    val permit = WritePermit(listing.epoch) {
-                        caller.ensureStorageActive()
-                        try {
-                            migrationGuard(live, journal.migrationId, initial.digest, MigrationPhase.COPYING_VALIDATING)
-                            OperationResult.Completed(Unit)
-                        } catch (abort: StorageAbort) { abort.result }
-                    }
+                    val permit = authority.permit(caller)
+                    val beforeWrite = { verifyCoordinator(journal.migrationId, initial.digest, MigrationPhase.COPYING_VALIDATING) }
                     for ((index, entry) in initial.entries.withIndex()) {
                         storageActive()
                         val id = stableId(journal.migrationId, index)
                         if (listing.items.any { it.id == id }) continue
-                        importEntry(entry, id, initial.settings.boardGrid[entry.path.name] ?: 3, runtime, nativeFiles, permit)
+                        importEntry(entry, id, initial.settings.boardGrid[entry.path.name] ?: 3, runtime, nativeFiles, permit, beforeWrite)
                         val actual = runtime.library.listing.value
                         actual.refreshProblem?.let { throw StorageAbort(OperationResult.Failed(it)) }
                         record = record!!.copy(imported = actual.items.count { it.kind == LibraryEntryKind.BOARD }, retained = actual.items.count { it.kind == LibraryEntryKind.RETAINED_ARCHIVE })
-                        admission.write("journal", record!!)
+                        writeJournal(record!!)
                         update(record!!)
                     }
                     val desired = PortableSettings(boards = initial.entries.mapIndexed { index, entry ->
@@ -104,35 +97,36 @@ internal class LegacyUpgrade(
                         stableId(journal.migrationId, index) to BoardPresentation(value == 2 || value == 3)
                     }.toMap())
                     if (runtime.library.settings().required() != desired) {
+                        beforeWrite()
                         runtime.library.saveSettings(desired, runtime.library.listing.value.revision, permit).required()
                     }
                     val report = validateStage(runtime, record!!)
                     // A killed/unknown credential callback must never be implicitly retried on startup.
                     record = record!!.copy(phase = MigrationPhase.UNCONFIRMED)
-                    admission.write("journal", record!!)
+                    writeJournal(record!!)
                     prepareCredentials().required()
                     storageActive()
                     validateCredentials().required()
                     record = record!!.copy(phase = MigrationPhase.ACCESS_READY, credentialsInitialized = true)
-                    admission.write("journal", record!!)
-                    runtime.close()
-                    stage = null
+                    writeJournal(record!!)
+                    if (closeOwned() != null) reject(ProblemCode.IO_FAILURE)
                     record = record!!.copy(phase = MigrationPhase.READY_TO_PUBLISH)
-                    admission.write("journal", record!!)
+                    writeJournal(record!!)
                     val committed = record!!.copy(phase = MigrationPhase.COMMITTED)
+                    val activationGuard = authority.guard(caller, MigrationPhase.READY_TO_PUBLISH)
                     admission.write("active", committed) {
-                        migrationGuard(live, journal.migrationId, initial.digest, MigrationPhase.READY_TO_PUBLISH)
+                        verifyCoordinator(journal.migrationId, initial.digest, MigrationPhase.READY_TO_PUBLISH)
                         validateCredentials().required()
                         if (inventory(files, legacySets, readSettings()).digest != initial.digest) reject(ProblemCode.INTEGRITY_FAILURE)
-                        storageActive()
+                        activationGuard().required()
                     }
                     activated = true
                     update(committed)
-                    live.store(false)
+                    authority.revoke()
                     // A late cancellation or progress failure cannot revoke confirmed activation.
                     withContext(NonCancellable) {
                         CoroutineScope(Dispatchers.IO + NonCancellable).async {
-                            try { admission.write("journal", committed) } catch (_: Exception) { }
+                            try { writeJournal(committed) } catch (_: Exception) { }
                             openActive(committed, report.detailProblems)
                         }.await()
                     }
@@ -153,8 +147,9 @@ internal class LegacyUpgrade(
                 mutableState.value = mutableState.value.copy(phase = MigrationPhase.CANCELLED, error = Problem(ProblemCode.INTERRUPTED))
                 throw cancelled
             } finally {
-                live.store(false)
-                stage?.let { try { it.close() } catch (_: Exception) { frozen = true } }
+                authority.revoke()
+                closeOwned()
+                if (closeBlocked) markCloseBlocked()
             }
         }
     }
@@ -206,21 +201,23 @@ internal class LegacyUpgrade(
         checkGeneration(active.migrationId, requireDatabase = true)
         validateCredentials().required()
         val generation = root / "libraries" / active.migrationId
-        val runtime = StorageRuntime.open(generation, files, driver).required()
+        val runtime = openOwned(generation)
         try {
             val problems = retainedProblems(runtime) + details
-            return LegacyOpenedLibrary(runtime, createFiles(generation), MigrationReport(MigrationPhase.COMMITTED, active.total, active.imported, active.retained, problems))
-        } catch (error: Throwable) { runtime.close(); throw error }
+            val opened = LegacyOpenedLibrary(runtime, createFiles(generation), MigrationReport(MigrationPhase.COMMITTED, active.total, active.imported, active.retained, problems))
+            pendingRuntime = null
+            return opened
+        } catch (error: Throwable) { closeOwned(); throw error }
     }
 
-    private fun migrationGuard(live: AtomicReference<Boolean>, id: String, digest: String, phase: MigrationPhase) {
-        if (!live.load() || files.exists(root / "active")) reject(ProblemCode.STALE_REQUEST)
+    private fun verifyCoordinator(id: String, digest: String, phase: MigrationPhase) {
+        if (frozen || files.exists(root / "active")) reject(ProblemCode.STALE_REQUEST)
         val current = admission.read("journal") ?: reject(ProblemCode.STALE_REQUEST)
         if (current.migrationId != id || current.sourceDigest != digest || current.phase != phase) reject(ProblemCode.STALE_REQUEST)
         checkGeneration(id, requireDatabase = true)
     }
 
-    private suspend fun importEntry(entry: LegacyEntry, id: BoardId, grid: Int, runtime: StorageRuntime, nativeFiles: PlatformFilesPort, permit: WritePermit) {
+    private suspend fun importEntry(entry: LegacyEntry, id: BoardId, grid: Int, runtime: StorageRuntime, nativeFiles: PlatformFilesPort, permit: WritePermit, beforeWrite: () -> Unit) {
         val temporary = nativeFiles.createTemporaryFile("legacy.linka", "application/zip").required()
         try {
             val hash = HashingSource.sha256(files.source(entry.path))
@@ -242,6 +239,7 @@ internal class LegacyUpgrade(
             when (val decoded = readBoard(temporary, entry.path.name, runtime.media, nativeFiles)) {
                 is OperationResult.Completed -> decoded.value.use { prepared ->
                     val behavior = prepared.document.behavior.copy(defaultMode = if (grid == 1 || grid == 3) InteractionMode.COMPOSE else InteractionMode.DIRECT)
+                    beforeWrite()
                     runtime.library.addBoard(prepared.document.copy(id = id, behavior = behavior), permit).required()
                 }
                 is OperationResult.Failed -> {
@@ -251,9 +249,11 @@ internal class LegacyUpgrade(
                         ProblemCode.INVALID_DATA, ProblemCode.UNSAFE_ARCHIVE, ProblemCode.INTEGRITY_FAILURE, ProblemCode.MISSING_ASSET, ProblemCode.LIMIT_EXCEEDED -> RetainedReason.INVALID_ARCHIVE
                         else -> throw StorageAbort(decoded)
                     }
+                    beforeWrite()
                     val archive = runtime.media.prepare(nativeFiles.source(temporary).required(), MediaKind.ARCHIVE, "application/octet-stream").required()
                     archive.lease.use {
                         if (archive.asset.id.value != entry.hash || archive.asset.byteCount != entry.size) reject(ProblemCode.INTEGRITY_FAILURE)
+                        beforeWrite()
                         runtime.library.retainArchive(RetainedArchive(id, entry.path.name, 1, archive.asset.id, reason), permit).required()
                     }
                     mutableState.value = mutableState.value.copy(detailProblems = mutableState.value.detailProblems + (id to decoded.problem))
@@ -305,6 +305,41 @@ internal class LegacyUpgrade(
 
     private fun update(record: AdmissionRecord) {
         mutableState.value = mutableState.value.copy(phase = record.phase, total = record.total, imported = record.imported, retained = record.retained, error = null)
+    }
+
+    private suspend fun writeJournal(record: AdmissionRecord, guard: suspend () -> Unit = {}) {
+        try {
+            admission.write("journal", record, guard)
+            authority.advance(record.migrationId, record.phase)
+        } catch (error: Throwable) {
+            authority.revoke()
+            throw error
+        }
+    }
+
+    private suspend fun openOwned(generation: Path): StorageRuntime {
+        if (pendingRuntime != null || closeBlocked) reject(ProblemCode.IO_FAILURE)
+        return StorageRuntime.open(generation, files, driver).required().also { pendingRuntime = it }
+    }
+
+    private suspend fun closeOwned(): Throwable? {
+        val runtime = pendingRuntime ?: return null
+        return try {
+            runtime.close()
+            pendingRuntime = null
+            null
+        } catch (error: Throwable) {
+            closeBlocked = true
+            frozen = true
+            authority.revoke()
+            markCloseBlocked()
+            error
+        }
+    }
+
+    private fun markCloseBlocked() {
+        mutableState.value = mutableState.value.copy(phase = MigrationPhase.BLOCKED,
+            error = mutableState.value.error ?: Problem(ProblemCode.IO_FAILURE), requiresRestart = true)
     }
 
     private fun stableId(id: String, index: Int) = BoardId("legacy-$id-$index")

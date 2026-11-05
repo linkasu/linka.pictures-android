@@ -19,6 +19,7 @@ internal data class MigrationReport(
     val retained: Int = 0,
     val detailProblems: Map<BoardId, Problem> = emptyMap(),
     val error: Problem? = null,
+    val requiresRestart: Boolean = false,
 )
 
 internal data class LegacyUpgradeSettings(val boardGrid: Map<String, Int>, val parentEnabled: Boolean)
