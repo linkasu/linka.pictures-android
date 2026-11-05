@@ -8,6 +8,9 @@ import okio.FileSystem
 import su.linka.pictures.application.*
 import su.linka.pictures.application.authoring.*
 import su.linka.pictures.application.communication.CommunicationSession
+import su.linka.pictures.application.communication.CommunicationCommand
+import su.linka.pictures.application.communication.CommunicationState
+import su.linka.pictures.application.communication.MessageSavePhase
 import su.linka.pictures.application.library.LibraryController
 import su.linka.pictures.application.portability.TransferPhase
 import su.linka.pictures.application.portability.TransferConfirmation
@@ -48,17 +51,35 @@ class ProductNavigationTest {
         var closeFailure = false
         val uncaught = MutableStateFlow(0)
         val stopCalls = MutableStateFlow(0)
+        val interrupts = MutableStateFlow(0)
+        val stops = MutableStateFlow<List<Pair<String, RequestId?>>>(emptyList())
+        val active = MutableStateFlow<PlaybackRequest?>(null)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, _ -> uncaught.update { it + 1 } })
         val audio = object : AudioPort by native {
+            override fun play(request: PlaybackRequest) {
+                active.value?.let { stop(it.owner.id, it.id) }
+                native.play(request)
+                active.value = request
+            }
             override fun stop(ownerId: String, requestId: RequestId?) {
                 stopCalls.update { it + 1 }
+                stops.update { it + (ownerId to requestId) }
                 if (stopFailure) error("Injected stop failure")
-                native.stop(ownerId, requestId)
+                val playing = active.value
+                if (playing?.owner?.id == ownerId && (requestId == null || requestId == playing.id)) {
+                    active.value = null
+                    native.stop(ownerId, requestId)
+                } else if (native.state.value.owner?.id == ownerId &&
+                    (requestId == null || native.state.value.requestId == requestId)) native.stop(ownerId, requestId)
+            }
+            override fun interrupt() {
+                interrupts.update { it + 1 }
+                native.state.value.owner?.let { stop(it.id, native.state.value.requestId) }
             }
         }
         private val serial = MutableStateFlow(0)
         val ids = IdSource { "p13-${serial.updateAndGet { it + 1 }}" }
-        val communication = CommunicationSession(runtime.library, runtime.messages, runtime.media, native, ids, scope)
+        val communication = CommunicationSession(runtime.library, runtime.messages, runtime.media, audio, ids, scope)
         val controller = LibraryController(runtime.library, access)
         val events = MutableStateFlow<List<String>>(emptyList())
         val closedWhileActive = MutableStateFlow<List<Boolean>>(emptyList())
@@ -74,6 +95,9 @@ class ProductNavigationTest {
         fun send(route: ProductRoute, action: AuthoringAction) = route.editor!!.send(AuthoringCommand(CommandId(ids.next()), route.owner, route.capability.value, action))
         suspend fun await(route: ProductRoute, predicate: (AuthoringState) -> Boolean) = withContext(Dispatchers.Default) {
             withTimeout(10_000) { route.editor!!.state.first(predicate) }
+        }
+        suspend fun awaitCommunication(predicate: (CommunicationState) -> Boolean) = withContext(Dispatchers.Default) {
+            withTimeout(10_000) { communication.state.first(predicate) }
         }
         suspend fun finish() {
             stopFailure = false; closeFailure = false; access.revokeFailure = false
@@ -160,6 +184,75 @@ class ProductNavigationTest {
         f.navigation.open(ProductPage.COMMUNICATION)
         assertNull(f.navigation.route.value)
         assertTrue(f.access.open.value.isEmpty())
+    } }
+
+    @Test fun composePlaybackSurvivesBrowsingAndBoardNavigationButProtectedEntryStopsIt() = runTest { fresh { f ->
+        val first = BoardDocument(BoardId("speaking"), "Исходная доска", listOf(
+            BoardPage(PageId("first"), 1, 1, listOf(BoardCell(0, CellKind.CONTENT,
+                CardDocument(CardId("want"), "Хочу", speech = SpeechSource.Tts("Хочу"))))),
+            BoardPage(PageId("second"), 1, 1, listOf(BoardCell(0, CellKind.CONTENT,
+                CardDocument(CardId("other-page-card"), "Другая страница", speech = SpeechSource.Tts("Другое")))))))
+        val other = BoardDocument(BoardId("other-board"), "Другая доска", listOf(
+            BoardPage(PageId("other-board-page"), 1, 1, listOf(BoardCell(0, CellKind.CONTENT,
+                CardDocument(CardId("other-board-card"), "Другая доска", speech = SpeechSource.Tts("Новый текст")))))))
+        fun permit() = WritePermit(f.runtime.library.listing.value.epoch) { OperationResult.Completed(Unit) }
+        assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(first, permit()))
+        assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(other, permit()))
+        f.awaitCommunication { it.savePhase == MessageSavePhase.SAVED }
+        f.communication.dispatch(CommunicationCommand.OpenBoard(CommandId(f.ids.next()), first.id))
+        f.awaitCommunication { it.message.cursor?.boardId == first.id && it.savePhase == MessageSavePhase.SAVED }
+        f.communication.dispatch(CommunicationCommand.Select(CommandId(f.ids.next()), PageId("first"), 0))
+        f.awaitCommunication { it.renderedText == "Хочу" && it.savePhase == MessageSavePhase.SAVED }
+        f.communication.dispatch(CommunicationCommand.Speak(CommandId(f.ids.next())))
+        val request = withContext(Dispatchers.Default) { withTimeout(10_000) { f.active.first { it != null }!! } }
+        f.awaitCommunication { it.audio.requestId == request.id && it.audio.phase == AudioPhase.PLAYING }
+        assertEquals(AudioPurpose.COMMUNICATION, request.owner.purpose)
+        assertEquals(InteractionMode.COMPOSE, f.communication.state.value.message.mode)
+        val interrupts = f.interrupts.value
+        val stops = f.stops.value.size
+
+        f.navigation.open(ProductPage.LIBRARY)
+        assertSame(request, f.active.value)
+        f.navigation.open(ProductPage.COMMUNICATION)
+        f.communication.dispatch(CommunicationCommand.ChangePage(CommandId(f.ids.next()), PageId("second")))
+        f.awaitCommunication { it.message.cursor?.pageId == PageId("second") && it.savePhase == MessageSavePhase.SAVED }
+        f.navigation.open(ProductPage.LIBRARY)
+        f.communication.dispatch(CommunicationCommand.OpenBoard(CommandId(f.ids.next()), other.id))
+        f.navigation.open(ProductPage.COMMUNICATION)
+        f.awaitCommunication { it.message.cursor?.boardId == other.id && it.savePhase == MessageSavePhase.SAVED }
+        assertSame(request, f.active.value)
+        assertSame(request.plan, f.active.value!!.plan)
+        assertEquals("Хочу", request.plan.renderedText)
+        assertEquals(request.id, f.communication.state.value.audio.requestId)
+        assertEquals(AudioPhase.PLAYING, f.communication.state.value.audio.phase)
+        assertEquals(interrupts, f.interrupts.value)
+        assertTrue(f.stops.value.drop(stops).none { it.first == request.owner.id })
+        assertEquals(1, f.native.played.size)
+
+        var playing = request
+        for ((index, page) in listOf(ProductPage.EDITOR, ProductPage.SETTINGS, ProductPage.ACCESS, ProductPage.TRANSFER).withIndex()) {
+            f.navigation.open(page, AuthoringAction.EditBoard(other.id))
+            f.awaitCommunication { it.audio.phase == AudioPhase.IDLE }
+            assertNull(f.active.value)
+            assertEquals(interrupts + index + 1, f.interrupts.value)
+            assertTrue(f.stops.value.any { it.first == playing.owner.id && it.second == playing.id })
+            val exitStops = f.stops.value.size
+            f.navigation.open(ProductPage.LIBRARY)
+            f.navigation.open(ProductPage.COMMUNICATION)
+            val target = if (index % 2 == 0) first.id else other.id
+            f.communication.dispatch(CommunicationCommand.OpenBoard(CommandId(f.ids.next()), target))
+            f.awaitCommunication { it.message.cursor?.boardId == target && it.savePhase == MessageSavePhase.SAVED }
+            assertTrue(f.stops.value.drop(exitStops).none { it.first == playing.owner.id })
+            assertNull(f.active.value)
+            assertEquals(interrupts + index + 1, f.interrupts.value)
+            assertEquals(index + 1, f.native.played.size)
+            if (page != ProductPage.TRANSFER) {
+                f.communication.dispatch(CommunicationCommand.Speak(CommandId(f.ids.next())))
+                playing = withContext(Dispatchers.Default) { withTimeout(10_000) { f.active.first { it != null }!! } }
+                f.awaitCommunication { it.audio.requestId == playing.id && it.audio.phase == AudioPhase.PLAYING }
+                assertEquals("Хочу", playing.plan.renderedText)
+            }
+        }
     } }
 
     @Test fun disposalRevokesOldGuardBeforeThrowingAudioStopAndStillCleansOwner() = runTest { fresh { f ->

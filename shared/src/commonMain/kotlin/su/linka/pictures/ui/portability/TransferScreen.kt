@@ -24,7 +24,7 @@ internal fun transferPhaseLabel(phase: TransferPhase): String = when (phase) {
 
 @Composable
 internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator, gate: AssistantGate,
-    owner: String, capability: AssistantCapability?, enabled: Boolean, boardId: BoardId?,
+    owner: String, capability: AssistantCapability?, enabled: Boolean, foreground: Boolean, boardId: BoardId?,
     access: @Composable () -> Unit, onBack: () -> Unit) {
     val operations by transfer.state.collectAsState()
     val listing by library.listing.collectAsState()
@@ -84,18 +84,19 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
         }
         Action("Обновить сведения о точке восстановления", canPrepare) { scope.launch { recovery = library.recovery() } }
         current?.let { operation ->
+            val readiness = transferReadiness(operation, owner, capability, gate, enabled, foreground, busy)
             Text(transferPhaseLabel(operation.transfer.phase), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             if (operation.kind == TransferKind.EXPORT || operation.kind == TransferKind.BACKUP)
                 Text("Если запись отменена или прервана, внешний файл мог сохраниться частично. Проверьте файл назначения перед передачей другим людям.")
             Text("Проверено записей архива: ${operation.transfer.processedEntries}; байт: ${operation.transfer.processedBytes}.")
+            if (operation.transfer.phase == TransferPhase.AWAITING_CONFIRMATION && !readiness.fresh)
+                Text("После выбора файла войдите повторно / разрешите команды выше. Старый доступ мог быть отозван; выбор файла не предоставляет доступ.")
             operation.preview?.let { preview ->
                 preview.name?.let { Text("Доска: «$it»") }
                 preview.board?.let { Text("Страниц: ${it.pages}; карточек: ${it.cards}; изображений: ${it.images}; записей: ${it.recordings}; байт медиа: ${it.mediaBytes}.${if (it.layoutNormalized) " Сетка нормализована для приложения." else ""}") }
                 preview.snapshot?.let { Text("Досок: ${it.boards}; черновиков: ${it.drafts}; сохранённых нечитаемых архивов: ${it.retained}; медиа: ${it.assets}; байт медиа: ${it.assetBytes}.") }
                 preview.expectedLibraryRevision?.let { Text("Подтверждение относится к версии библиотеки $it и показанному сообщению. При изменении данных операция будет отклонена.") }
-                val canConfirm = enabled && capability != null && !busy && operation.transfer.phase == TransferPhase.AWAITING_CONFIRMATION
-                if (operation.transfer.phase == TransferPhase.AWAITING_CONFIRMATION && capability == null)
-                    Text("Перед подтверждением явно откройте доступ кнопкой «Разблокировать этот экран» / «Разрешить команды в этом экране» выше. Выбор файла не предоставляет доступ.")
+                val canConfirm = readiness.canConfirm
                 when (operation.kind) {
                     TransferKind.IMPORT -> {
                         Action("Подтверждаю импорт «${preview.name}» как новой доски", canConfirm) { confirm(TransferConfirmation.ImportNew) }
@@ -124,7 +125,7 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
                 }
             }
             operation.transfer.problem?.let { Feedback(OperationResult.Failed(it)) }
-            if (!terminal && operation.transfer.phase != TransferPhase.UNCONFIRMED) Action("Отменить текущую операцию", enabled) {
+            if (!terminal && operation.transfer.phase != TransferPhase.UNCONFIRMED) Action("Отменить текущую операцию", readiness.canCancel) {
                 scope.launch { result = transfer.cancel(owner, operation.transfer.id, capability) }
             }
         }

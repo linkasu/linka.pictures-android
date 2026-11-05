@@ -57,11 +57,17 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
         try {
             val previous = mutableRoute.value
             previous?.let { beginClose(it) }
-            cleanup(previous) { audio.interrupt() }
-            cleanup(previous) { communication.dispatch(CommunicationCommand.Stop(CommandId(ids.next()))) }
             val closed = previous?.let { close(it) } ?: true
             mutableRoute.value = null
             if (!closed || disposed || page == ProductPage.COMMUNICATION || problem.value?.code == ProblemCode.IO_FAILURE) return@withLock
+            when (page) {
+                ProductPage.EDITOR, ProductPage.SETTINGS, ProductPage.ACCESS, ProductPage.TRANSFER -> {
+                    cleanup { audio.interrupt() }
+                    cleanup { communication.dispatch(CommunicationCommand.Stop(CommandId(ids.next()))) }
+                    if (problem.value?.code == ProblemCode.IO_FAILURE) return@withLock
+                }
+                else -> Unit
+            }
             currentCoroutineContext().ensureActive()
             val owner = "product-${ids.next()}"
             val child = CoroutineScope(rootScope.coroutineContext + SupervisorJob(rootScope.coroutineContext[Job]))

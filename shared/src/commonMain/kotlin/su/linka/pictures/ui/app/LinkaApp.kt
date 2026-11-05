@@ -108,7 +108,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                     dark, { dark = it }, { settings = it }, accessPanel, { navigate(ProductPage.LIBRARY) })
                 ProductPage.ACCESS -> ProductScaffold("Защита помощника", { navigate(ProductPage.LIBRARY) }) { accessPanel() }
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
-                    commandsEnabled, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })
+                    commandsEnabled, isForeground, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })
                 ProductPage.EDITOR -> ProductEditor(current, ids, capability, isForeground, commandsEnabled, images, accessPanel,
                     { editorAssets = it }, { navigate(ProductPage.LIBRARY) })
                 ProductPage.COMMUNICATION -> Unit

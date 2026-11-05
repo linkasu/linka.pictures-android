@@ -120,8 +120,11 @@ LibraryStore предоставляется уже открытым; его API 
   свежий application guard в TransferCoordinator. После background нужен новый
   explicit prepare/выбор файла, старый pending не оживает. Возможный частичный
   внешний файл после cancel/failure указан отдельно.
-- Каждый переход останавливает audio, отзывает outgoing owner и закрывает scope;
-  editor/transfer не хранятся в вечной map. Общение продолжает использовать исходные
+- Выход отзывает outgoing product owner, останавливает только его audio и закрывает
+  scope; editor/transfer не хранятся в вечной map. Browse Library / возврат в
+  communication / смена страницы или доски сохраняют текущий COMPOSE immutable
+  playback plan. Только вход в editor/settings/access/transfer явно останавливает
+  communication playback. Общение продолжает использовать исходные
   mode/page/message semantics. Для выхода из PAUSED без доступных credentials есть
   отдельное именованное подтверждение потери **только unsaved памяти**: это lifecycle
   disposal owner, не unauthenticated SQL/delete/apply и не собственный domain reducer.
@@ -297,3 +300,111 @@ Combined команда выше — BUILD SUCCESSFUL, 17 s; decoder producer VE
 только существующие expect/actual beta warnings. `git diff --check` — PASS.
 OS prompts/devices, native root bindings, signing и screenshots не выполнялись
 повторно и не объявляются доказанными этой correction.
+
+## Correction K2 после 7c1cb7e — navigation не меняет immutable playback plan
+
+Нормативная матрица COORD уточнена: прежняя формулировка "любой переход stop"
+неверна для COMPOSE. Communication → Library → OpenBoard → Communication — это
+browse; речь должна продолжать **тот же** immutable PlaybackRequest/SpeechPlan.
+Existing CommunicationSession.OpenBoard/ChangePage уже поддерживают эту семантику;
+ошибка находилась в безусловных interrupt/Stop в ProductNavigation.open.
+
+Принятая матрица binding:
+
+| Переход / событие | Audio |
+|---|---|
+| Открыть Library для просмотра | Не interrupt и не CommunicationCommand.Stop |
+| Вернуться в communication | Не interrupt/Stop и не автоматический Speak |
+| Выбрать другую страницу / доску | Existing domain navigation, прежний immutable plan остаётся |
+| Войти в editor/settings/access/transfer | Явный interrupt + CommunicationCommand.Stop |
+| Закрыть outgoing product owner | Только audio.stop этого owner; чужой CSession owner не трогается |
+| Real background / root closing app | Root синхронный interrupt и existing cleanup, без изменений |
+| ModeChange/Select/Backspace/Clear | Existing domain policy; нового reducer и авто replay нет |
+
+Revoke-first/failure-safe cleanup из 7c1cb7e сохраняется. Новый owner не создаётся
+после неполного закрытия. Communication stop на protected entry выполняется только
+после успешного outgoing cleanup; browse не воздействует на чужую communication
+lease/plan. Public LinkaApp signature, ports, native/root, P10 не меняются.
+
+Новый public navigation integration test использует real file-backed StorageRuntime,
+реальный CommunicationSession и owner-aware fake AudioPort с активным playback,
+а не просто счётчик void callbacks. Он проверяет request/plan identity, PLAYING,
+отсутствие comm-owner stop/interrupt в browse и incoming OpenBoard, а затем явную
+остановку во всех четырёх protected-entry destinations и отсутствие auto Speak
+после возврата. Fake stop чужого owner не переводит активную comm речь в IDLE.
+
+```sh
+env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :shared:jvmTest \
+  --tests 'su.linka.pictures.ui.app.ProductNavigationTest.composePlaybackSurvivesBrowsingAndBoardNavigationButProtectedEntryStopsIt' \
+  --console=plain
+```
+
+На 7c1cb7e до исправления команда дала **1 test, 1 failed / AssertionError**:
+после `open(LIBRARY)` expected same PlaybackRequest, actual null. После изменения
+только условия в ProductNavigation.open тот же тест — **PASS**, BUILD SUCCESSFUL,
+13 s. Для завершения всех queued domain events используются наблюдаемые cursor /
+save / audio state и явные domain navigation barriers, не fixed waits.
+
+Первый общий K2 gate: прежние P13 suites вместе с новым navigation regression
+**PASS**, Android shared и оба Native shared compile **PASS**, BUILD SUCCESSFUL,
+38 s. Прежние cleanup/security corrections не откатываются. После следующей
+readiness-коррекции выполняется итоговый объединённый gate.
+
+## Transfer readiness после own picker
+
+Ненулевой AssistantCapability не означает действующий доступ: собственный picker
+отзывает прежний token, не обязательно меняя его remembered object reference.
+UI readiness теперь проверяет канонический sync gate.check для конкретного
+TransferKind: IMPORT_BOARD, EXPORT_BOARD, CREATE_BACKUP, RESTORE_BACKUP (restore и
+return recovery), DELETE_RECOVERY. Это только presentation check: fresh WritePermit /
+commit guard по-прежнему создаётся **в application** перед фактической записью.
+
+Confirm доступен только для своего AWAITING_CONFIRMATION, при enabled, !busy и
+fresh nonnull capability с успешным gate.check. При awaiting + !fresh инструкция
+«После выбора файла войдите повторно / разрешите команды выше» показывается и для
+старого **nonnull** token. Успешный explicit unlock меняет capability flow и readiness;
+ни auto reauth/reset, ни auto confirm или повторного picker нет.
+
+Cancel readiness отделена от business enabled/freshness: своя pending operation
+может быть отменена в foreground даже при busy и revoked/null capability.
+В UI передаётся настоящий isForeground существующего LinkaApp, публичная сигнатура
+entry не меняется. P12 application safeStop с проверкой same owner + opaque op ID
+поставляется отдельной P12 lane: здесь **не** меняется coordinator.cancel и не
+объявляется доказанной application ownership policy до принятия того dependency.
+Confirm/deleteRecovery/restore guards не ослабляются; внешние contents не выдаются
+до отдельного fresh application confirm.
+
+Pure TransferReadinessTest использует FakeGateRevoked с реальным отказом старому
+nonnull token, новым действующим token, проверкой action mapping каждого kind,
+phase/enabled/busy matrix и отдельной foreground/ownership cancellation matrix.
+
+Readiness regression до замены извлечённого nonnull-критерия каноническим check:
+**1 test, 1 failed / AssertionError** на stale nonnull capability. После исправления
+все **4/4 TransferReadinessTest PASS**, BUILD SUCCESSFUL, 27 s.
+
+```sh
+env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :shared:jvmTest \
+  --tests 'su.linka.pictures.ui.portability.TransferReadinessTest.staleNonnullPickerCapabilityCannotConfirmAndFreshUnlockEnablesEveryKind' \
+  --console=plain
+```
+
+Общий итог K2 + transfer readiness: **26/26 PASS**, 0 failures/errors/skipped
+(LibraryController 6, ProductNavigation 12, ProductPresentation 4, TransferReadiness 4).
+Все прежние failure-safe cleanup regressions из 7c1cb7e проходят. Android shared,
+iosArm64 и iosSimulatorArm64 compile **PASS**, BUILD SUCCESSFUL, 34 s. Только
+существующие expect/actual beta warnings, decoder VERIFIED_FASTPATH.
+
+```sh
+env JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew \
+  :shared:jvmTest \
+  --tests 'su.linka.pictures.application.library.LibraryControllerTest' \
+  --tests 'su.linka.pictures.ui.app.ProductNavigationTest' \
+  --tests 'su.linka.pictures.ui.app.ProductPresentationTest' \
+  --tests 'su.linka.pictures.ui.portability.TransferReadinessTest' \
+  :shared:compileDebugKotlinAndroid \
+  :shared:compileKotlinIosArm64 \
+  :shared:compileKotlinIosSimulatorArm64 --console=plain
+```
+
+Это не native OS playback/picker proof, не app-host/signing/device acceptance.
+Application P12 safeStop integration остаётся отдельным dependency, не UI bypass.
