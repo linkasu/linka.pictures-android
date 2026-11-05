@@ -52,9 +52,16 @@ The shell must also close handles on owner close; the owner predicate is checked
 at callback/copy/write boundaries, not polled by an invented timer.
 
 Destination state is NEW → WRITING → terminal; close during IO marks CLOSING,
-retains scope until streams close, and prevents subsequent chunks. Close is
-idempotent. The state lock linearizes close with the exclusive provider open
-and guarded writes; it is not used by `discard` or held by registry operations.
+retains scope until streams close, and prevents subsequent admissions. Close is
+idempotent and never waits for provider IO. The tiny state lock covers only
+FSM/current-request/foreground/owner checks and the synchronous guard/admission,
+never metadata, open, reads, writes, flush or close. The last successful admission
+authorizes that one in-flight syscall/chunk: close after admission may leave an
+empty or partial provider file, but forbids every later admission. State and
+cancellation are checked again after blocking units; revoked work cannot return
+Completed. After IO finishes, the terminal outcome is linearized against close
+under that same tiny state lock. This lock is independent of `discard` and the
+handle registry.
 After choosing, the workflow must reauthorize and explicitly call write with its
 fresh guard. Owner/current request/foreground, cancellation and guard are checked
 immediately before must-create external open and between bounded chunks. Output
@@ -75,6 +82,25 @@ pretending that those controls are OS authorization. Cleanup tests await an
 injected filesystem deletion latch, not a public test-only drain API. Existing
 22 ImageIO image tests remain, with only the fake's new destination method updated.
 
+Correction regressions hold provider open/write on injected filesystem latches,
+then require close to return while those latches remain held, keep scope alive
+until stream closure and permit no later unit. Both tests failed before the fix
+with `close waited for provider IO`. Close is exercised on a worker so even a
+regression cannot freeze Main; waits are criterion-based and bounded, not sleeps.
+
+Selection close detaches and clears observer tokens, continuation and scope
+under its tiny lock, then removes/releases them outside it. Cleanup attempts all
+tokens even if one removal fails. A 32-cycle isolated native notification-center
+check verifies explicit retained-token count zero, exactly 96 removals and no
+callbacks after close, not GC/ARC timing or a measured leak-free process heap.
+The existing internal await seam injects presentation/dismiss callbacks in tests;
+throwing dismissal/removal preserves original Cancelled/Failed/cancellation,
+and dismissal failure without a primary is propagated for IO_FAILURE mapping.
+UI dismissal remains Main-only; best-effort Foundation scope/observer close is
+any-thread and no longer adds a Main dispatcher hop to port cleanup finally.
+Await cleanup tests inject callbacks and replace the Main dispatcher; they are
+not tests of a real UIKit presentation, security scope or OS foreground gate.
+
 Build (JDK 17, existing Android SDK, Xcode 27.2):
 
 ```sh
@@ -87,7 +113,7 @@ After verifying the existing available booted device's exact UDID, name
 ```sh
 xcrun simctl spawn DD0F9A3F-DC32-4373-BA08-400FECE3A1CC \
   "$PWD/shared/build/bin/iosSimulatorArm64/debugTest/test.kexe" \
-  '--ktest_filter=su.linka.pictures.platform.files.IosPlatformFilesPortTest.*:su.linka.pictures.platform.capabilities.IosImagePreparationPortTest.*'
+  '--ktest_filter=su.linka.pictures.platform.files.*:su.linka.pictures.platform.capabilities.IosImagePreparationPortTest.*'
 ```
 
 No default allTests/runtime selection, user files, permission prompts, device
@@ -98,8 +124,20 @@ owner teardown/root wiring, and physical device behavior. Local synthetic tests
 prove none of those gates. Full/JVM suites and real provider acceptance are not
 claimed.
 
-Final focused run on the owner-checked UDID above: **44/44 passed** (1033 ms):
+Pre-correction focused run on the owner-checked UDID above: **44/44 passed** (1033 ms):
 22 files tests plus all 22 pre-existing image tests. Native runtime reported
 `Version 17.0 (Build 21A328)`. Both iosArm64 and iosSimulatorArm64 main compilations
 and the simulator test link succeeded; new adapter files have no opt-in warnings.
 Logs in approved temp: `p07-files-final-build.log`, `p07-files-final-native.log`.
+
+Final correction run: **53/53 passed** (694 ms): 25 files, 6 selection-lifecycle
+and all 22 image tests, on the same owner-checked iOS 17.0 (21A328) UDID. Both
+Native main targets compiled and the simulator tests linked. The admitted-open
+and admitted-write close tests passed while their provider latches remained held;
+they allow exactly the already-admitted empty-file/chunk effect and no subsequent
+write, and verify release only after streams close. A native source can return
+less than the requested 64 KiB; the test checks the actual admitted byte count.
+Correction logs in approved temp: `p07-files-correction-red-native.log`,
+`p07-files-correction-final-build.log`, `p07-files-correction-final-native.log`.
+No ad-hoc Keychain host, AMFI workaround or real picker/iCloud/UI acceptance run
+was attempted.

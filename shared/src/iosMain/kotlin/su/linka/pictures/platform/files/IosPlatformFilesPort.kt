@@ -128,7 +128,7 @@ class IosPlatformFilesPort internal constructor(
             return problem(ProblemCode.IO_FAILURE)
         } finally {
             if (!published) result?.let(::discard)
-            withContext(NonCancellable + Dispatchers.Main) { selection?.close() }
+            selection?.close()
         }
     }
 
@@ -153,7 +153,7 @@ class IosPlatformFilesPort internal constructor(
         } catch (_: Exception) {
             return problem(ProblemCode.IO_FAILURE)
         } finally {
-            if (!transferred) withContext(NonCancellable + Dispatchers.Main) { selection?.close() }
+            if (!transferred) selection?.close()
         }
     }
 

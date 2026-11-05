@@ -45,16 +45,14 @@ internal suspend fun selectIosFile(
         val controller = UIDocumentPickerViewController(forOpeningContentTypes = listOf(type), asCopy = false)
         controller.allowsMultipleSelection = false
         controller.delegate = selection
-        try {
-            selection.await(controller, host)
-            selection
-        } finally {
-            // Cancellation also reaches this path; dismiss only our exact controller.
-            withContext(NonCancellable + Dispatchers.Main) {
+        selection.await(
+            present = { host.presentViewController(controller, true, null) },
+            dismiss = {
                 controller.delegate = null
                 if (controller.presentingViewController != null) controller.dismissViewControllerAnimated(false, null)
-            }
-        }
+            },
+        )
+        selection
     } catch (failure: Throwable) {
         selection.close()
         throw failure
@@ -66,6 +64,8 @@ internal suspend fun selectIosFile(
 internal class IosFileSelection(
     private val ownerId: String,
     private val ownerActive: (String) -> Boolean,
+    private val center: NSNotificationCenter = NSNotificationCenter.defaultCenter,
+    private val removeObserver: (Any) -> Unit = { center.removeObserver(it) },
 ) : NSObject(), UIDocumentPickerDelegateProtocol {
     private val lock = NSRecursiveLock()
     private var closed = false
@@ -76,16 +76,16 @@ internal class IosFileSelection(
     private var continuation: CancellableContinuation<Unit>? = null
     private var backgroundAction: (() -> Unit)? = null
     private val observers = mutableListOf<Any>()
+    internal val retainedObserverCount: Int get() = locked { observers.size }
     val url: NSURL get() = locked { selected ?: fail(ProblemCode.INVALID_DATA) }
     var onBackground: (() -> Unit)?
         get() = locked { backgroundAction }
         set(value) {
-            val invoke = locked { backgroundAction = value; revoked }
+            val invoke = locked { if (!closed) backgroundAction = value; closed || revoked }
             if (invoke) value?.invoke()
         }
 
     init {
-        val center = NSNotificationCenter.defaultCenter
         observers += center.addObserverForName(UIApplicationWillResignActiveNotification, null, NSOperationQueue.mainQueue) {
             locked { active = false }
         }
@@ -101,14 +101,33 @@ internal class IosFileSelection(
         requestsLocked { requests[ownerId] === this } && ownerActive(ownerId)
 
     fun revoke() {
-        val action = locked { revoked = true; continuation?.cancel(); backgroundAction }
+        val (pending, action) = locked {
+            revoked = true
+            val pending = continuation
+            continuation = null
+            pending to backgroundAction
+        }
+        runCatching { pending?.cancel() }
         action?.invoke()
     }
 
-    suspend fun await(controller: UIDocumentPickerViewController, host: UIViewController) {
-        suspendCancellableCoroutine<Unit> { pending ->
-            locked { continuation = pending }
-            host.presentViewController(controller, true, null)
+    suspend fun await(present: (CancellableContinuation<Unit>) -> Unit, dismiss: () -> Unit) {
+        var primary: Throwable? = null
+        try {
+            suspendCancellableCoroutine<Unit> { pending ->
+                locked { continuation = pending }
+                present(pending)
+            }
+        } catch (failure: Throwable) {
+            primary = failure
+            throw failure
+        } finally {
+            try {
+                // Dismiss only our controller, on Main, even after cancellation.
+                withContext(NonCancellable + Dispatchers.Main) { dismiss() }
+            } catch (failure: Throwable) {
+                if (primary == null) throw failure
+            }
         }
     }
 
@@ -129,17 +148,23 @@ internal class IosFileSelection(
     }
 
     fun close() {
-        val acquired = locked {
+        val (pending, acquired, tokens) = locked {
             if (closed) return
             closed = true
-            continuation?.cancel()
+            val pending = continuation
             continuation = null
             backgroundAction = null
-            selected.takeIf { scoped }.also { selected = null; scoped = false }
+            val acquired = selected.takeIf { scoped }
+            selected = null
+            scoped = false
+            val tokens = observers.toList()
+            observers.clear()
+            Triple(pending, acquired, tokens)
         }
-        acquired?.stopAccessingSecurityScopedResource()
         requestsLocked { if (requests[ownerId] === this) requests.remove(ownerId) }
-        observers.forEach { NSNotificationCenter.defaultCenter.removeObserver(it) }
+        runCatching { pending?.cancel() }
+        runCatching { acquired?.stopAccessingSecurityScopedResource() }
+        tokens.forEach { token -> runCatching { removeObserver(token) } }
     }
 
     private inline fun <T> locked(block: () -> T): T {

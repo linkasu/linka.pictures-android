@@ -22,6 +22,10 @@ class IosPlatformFilesPortTest {
         var live = true
         var releases = 0
         var providerOpens = 0
+        var providerWrites = 0
+        var providerBytesAdmitted = 0L
+        var onProviderOpen: (() -> Unit)? = null
+        var onProviderWrite: (() -> Unit)? = null
         var fakeSize = false
         var refuseDelete = false
         var afterRead: (() -> Unit)? = null
@@ -29,8 +33,18 @@ class IosPlatformFilesPortTest {
         val deleted = CompletableDeferred<Unit>()
         val fs = object : ForwardingFileSystem(FileSystem.SYSTEM) {
             override fun sink(file: Path, mustCreate: Boolean): Sink {
-                if (file.parent == provider) providerOpens++
-                return super.sink(file, mustCreate)
+                if (file.parent != provider) return super.sink(file, mustCreate)
+                providerOpens++
+                onProviderOpen?.invoke()
+                val output = super.sink(file, mustCreate)
+                return object : Sink by output {
+                    override fun write(source: Buffer, byteCount: Long) {
+                        providerWrites++
+                        providerBytesAdmitted += byteCount
+                        onProviderWrite?.invoke()
+                        output.write(source, byteCount)
+                    }
+                }
             }
             override fun source(file: Path): Source {
                 val input = super.source(file)
@@ -319,6 +333,60 @@ class IosPlatformFilesPortTest {
         assertEquals(before, hash(file.path.toPath()))
         assertEquals(1, releases)
     } }
+
+    @Test fun closeDoesNotWaitForAdmittedProviderOpen() = runTest { closeWhileProviderBlocked(blockOpen = true) }
+
+    @Test fun closeDoesNotWaitForAdmittedProviderWrite() = runTest { closeWhileProviderBlocked(blockOpen = false) }
+
+    @Test fun releaseFailurePreservesDeniedAndCancelledResults() = runTest { fixture {
+        val file = temporary()
+        for (primary in listOf(problem(ProblemCode.UNAUTHORIZED), OperationResult.Cancelled)) {
+            val destination = IosExportDestination("owner", localUrl(provider), "export.bin", fs,
+                files::source, { live }, { releases++; throw IOException("Test release failure") })
+            assertEquals(primary, destination.write(file) { primary })
+            destination.close(); destination.close()
+        }
+        assertEquals(2, releases)
+        assertEquals(0, providerOpens)
+    } }
+
+    private suspend fun closeWhileProviderBlocked(blockOpen: Boolean) = fixture {
+        val entered = CompletableDeferred<Unit>()
+        val allowIO = CompletableDeferred<Unit>()
+        val holdProvider = {
+            entered.complete(Unit)
+            runBlocking { withTimeout(10000) { allowIO.await() } }
+        }
+        if (blockOpen) onProviderOpen = holdProvider else onProviderWrite = holdProvider
+        val file = temporary()
+        val destination = destination()
+        val writer = scope.async { destination.write(file) { OperationResult.Completed(Unit) } }
+        var closer: Deferred<Unit>? = null
+        var outcome: OperationResult<Unit>? = null
+        try {
+            withTimeout(5000) { entered.await() }
+            // Run synchronous close on a worker: even the broken implementation cannot hang Main.
+            val closing = scope.async { destination.close(); destination.close() }
+            closer = closing
+            val returned = withTimeoutOrNull(3000) { closing.await(); true } ?: false
+            assertTrue(returned, "close waited for provider IO")
+            assertFalse(allowIO.isCompleted)
+            assertEquals(0, releases, "scope must stay alive until streams close")
+        } finally {
+            allowIO.complete(Unit)
+            withContext(NonCancellable) {
+                closer?.join()
+                outcome = writer.await()
+            }
+        }
+        assertEquals(OperationResult.Cancelled, outcome)
+        assertEquals(1, providerOpens)
+        assertEquals(if (blockOpen) 0 else 1, providerWrites)
+        assertEquals(providerBytesAdmitted, fs.metadata(provider / "export.bin").size)
+        if (!blockOpen) assertTrue(providerBytesAdmitted in 1L..65536L)
+        assertEquals(1, releases)
+        assertEquals(OperationResult.Cancelled, destination.write(file) { OperationResult.Completed(Unit) })
+    }
 
     private fun problemIs(code: ProblemCode, result: OperationResult<*>) = assertEquals(code, assertIs<OperationResult.Failed>(result).problem.code)
 }

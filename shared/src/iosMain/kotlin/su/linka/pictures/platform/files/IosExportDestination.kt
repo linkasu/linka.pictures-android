@@ -10,6 +10,7 @@ import platform.Foundation.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.text.isNativeText
+import kotlin.coroutines.CoroutineContext
 
 internal class IosExportDestination(
     override val ownerId: String,
@@ -39,44 +40,53 @@ internal class IosExportDestination(
                 boundary {
                     if (!IosPlatformFilesPort.validLeaf(name)) fail(ProblemCode.INVALID_DATA)
                     coordinatedDirectoryWrite(directory) { folder ->
-                        if (!files.metadata(folder).isDirectory) fail(ProblemCode.INVALID_DATA)
+                        checkCurrent(context)
+                        val metadata = files.metadata(folder)
+                        checkCurrent(context)
+                        if (!metadata.isDirectory) fail(ProblemCode.INVALID_DATA)
                         val target = folder / name
                         source(file).get().use { input ->
-                            val output = locked {
-                                context.ensureActive()
-                                allowed(guard)
-                                context.ensureActive()
-                                if (files.metadataOrNull(target) != null) fail(ProblemCode.CONFLICT)
-                                // This lock linearizes close against the irreversible exclusive open.
-                                files.sink(target, mustCreate = true)
-                            }
+                            checkCurrent(context)
+                            val existing = files.metadataOrNull(target)
+                            checkCurrent(context)
+                            if (existing != null) fail(ProblemCode.CONFLICT)
+                            admit(context, guard)
+                            val output = files.sink(target, mustCreate = true)
                             output.use { sink ->
+                                checkCurrent(context)
                                 val buffer = Buffer()
                                 var total = 0L
                                 while (true) {
-                                    context.ensureActive()
-                                    allowed(guard)
+                                    admit(context, guard)
                                     val count = input.read(buffer, 64 * 1024L)
+                                    checkCurrent(context)
                                     if (count == -1L) break
                                     total += count
                                     if (total > 2L * 1024 * 1024 * 1024) fail(ProblemCode.LIMIT_EXCEEDED)
-                                    // Check again after the read: it can itself suspend in a provider.
-                                    context.ensureActive()
-                                    locked { allowed(guard); context.ensureActive(); sink.write(buffer, count) }
+                                    admit(context, guard)
+                                    sink.write(buffer, count)
+                                    checkCurrent(context)
                                 }
-                                context.ensureActive()
-                                allowed(guard)
+                                admit(context, guard)
                                 sink.flush()
+                                checkCurrent(context)
                             }
+                            checkCurrent(context)
                         }
-                        context.ensureActive()
-                        allowed(guard)
+                        checkCurrent(context)
+                        admit(context, guard)
                     }
                 }
             }
-            currentCoroutineContext().ensureActive()
-            if (!current() || locked { state != State.WRITING }) return OperationResult.Cancelled
-            return result
+            val caller = currentCoroutineContext()
+            return locked {
+                caller.ensureActive()
+                if (!current() || state != State.WRITING) OperationResult.Cancelled else {
+                    caller.ensureActive()
+                    state = State.TERMINAL
+                    result
+                }
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: FileFailure) {
@@ -84,15 +94,27 @@ internal class IosExportDestination(
         } catch (_: Exception) {
             return problem(ProblemCode.IO_FAILURE)
         } finally {
-            locked { state = if (state == State.WRITING) State.TERMINAL else State.CLOSED }
+            locked {
+                when (state) {
+                    State.WRITING -> state = State.TERMINAL
+                    State.CLOSING -> state = State.CLOSED
+                    else -> Unit
+                }
+            }
             releaseOnce()
         }
     }
 
-    private fun allowed(guard: CommitGuard) {
+    private fun checkCurrent(context: CoroutineContext) {
+        context.ensureActive()
         if (locked { state != State.WRITING } || !current()) failCancelled()
+    }
+
+    private fun admit(context: CoroutineContext, guard: CommitGuard) = locked {
+        checkCurrent(context)
         guard().get()
-        if (locked { state != State.WRITING } || !current()) failCancelled()
+        checkCurrent(context)
+        // Only this unit is admitted. A subsequent close cannot wait for or revoke its syscall.
     }
 
     override fun close() {
