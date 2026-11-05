@@ -13,6 +13,7 @@ import platform.Foundation.*
 import platform.ImageIO.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
+import su.linka.pictures.text.isNativeText
 import kotlin.math.ceil
 
 class IosImagePreparationPort internal constructor(
@@ -29,7 +30,7 @@ class IosImagePreparationPort internal constructor(
 
     override suspend fun imageFromText(request: TextImageRequest): OperationResult<TemporaryFile> {
         currentCoroutineContext().ensureActive()
-        if (!validText(request.text) || request.foregroundArgb !in 0..0xffffffffL ||
+        if (!(request.text.isNotEmpty() && isNativeText(request.text)) || request.foregroundArgb !in 0..0xffffffffL ||
             request.backgroundArgb !in 0..0xffffffffL
         ) return failed(ProblemCode.INVALID_DATA)
         if (request.text.length > 4096) return failed(ProblemCode.LIMIT_EXCEEDED)
@@ -98,7 +99,10 @@ class IosImagePreparationPort internal constructor(
         } catch (_: Exception) {
             return failed(ProblemCode.IO_FAILURE)
         } finally {
-            if (!published) output.owned?.let(files::discard)
+            if (!published) output.owned?.let {
+                // Every unpublished exit already has a failure/cancellation; cleanup must not replace it.
+                try { files.discard(it) } catch (_: Throwable) { }
+            }
         }
     }
 
@@ -131,17 +135,6 @@ class IosImagePreparationPort internal constructor(
         }
     }
 
-    private fun validText(text: String): Boolean {
-        if (text.isEmpty()) return false
-        var i = 0
-        while (i < text.length) {
-            val c = text[i++]
-            if (c == '\u0000' || c.isLowSurrogate()) return false
-            if (c.isHighSurrogate() && (i == text.length || !text[i++].isLowSurrogate())) return false
-        }
-        return true
-    }
-
     private fun failed(code: ProblemCode) = OperationResult.Failed(Problem(code))
 
     private fun OperationResult<*>.failure(): OperationResult<Nothing> = when (this) {
@@ -154,7 +147,9 @@ class IosImagePreparationPort internal constructor(
     private fun render(request: TextImageRequest): ByteArray? = autoreleasepool {
         // CoreText's system-font API is thread-safe; private UIFont names are not portable font names.
         val font = CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, 64.0, null)!!
-        val colorSpace = CGColorSpaceCreateDeviceRGB()!!
+        var colorSpace: CGColorSpaceRef? = null
+        var foreground: CGColorRef? = null
+        var background: CGColorRef? = null
         fun color(argb: Long): CGColorRef = memScoped {
             val values = allocArray<CGFloatVar>(4)
             values[0] = ((argb shr 16) and 255) / 255.0
@@ -163,20 +158,22 @@ class IosImagePreparationPort internal constructor(
             values[3] = ((argb shr 24) and 255) / 255.0
             CGColorCreate(colorSpace, values)!!
         }
-        val foreground = color(request.foregroundArgb)
-        val background = color(request.backgroundArgb)
         try {
+            colorSpace = CGColorSpaceCreateDeviceRGB()!!
+            foreground = color(request.foregroundArgb)
+            background = color(request.backgroundArgb)
             val utf8 = request.text.encodeToByteArray()
             val text = utf8.usePinned {
                 CFStringCreateWithBytes(null, it.addressOf(0).reinterpret(), utf8.size.toLong(), kCFStringEncodingUTF8, false)!!
             }
-            val attributes = CFDictionaryCreateMutable(null, 0, null, null)!!
-            CFDictionarySetValue(attributes, kCTFontAttributeName, font)
-            CFDictionarySetValue(attributes, kCTForegroundColorAttributeName, foreground)
-            val attributed = try { CFAttributedStringCreate(null, text, attributes)!! } finally {
-                CFRelease(text)
-                CFRelease(attributes)
-            }
+            val attributed = try {
+                val attributes = CFDictionaryCreateMutable(null, 0, null, null)!!
+                try {
+                    CFDictionarySetValue(attributes, kCTFontAttributeName, font)
+                    CFDictionarySetValue(attributes, kCTForegroundColorAttributeName, foreground)
+                    CFAttributedStringCreate(null, text, attributes)!!
+                } finally { CFRelease(attributes) }
+            } finally { CFRelease(text) }
             val setter = try { CTFramesetterCreateWithAttributedString(attributed)!! } finally { CFRelease(attributed) }
             try {
                 val size = CTFramesetterSuggestFrameSizeWithConstraints(
@@ -218,9 +215,9 @@ class IosImagePreparationPort internal constructor(
                 } finally { CGContextRelease(context) }
             } finally { CFRelease(setter) }
         } finally {
-            CGColorRelease(foreground)
-            CGColorRelease(background)
-            CGColorSpaceRelease(colorSpace)
+            foreground?.let { CGColorRelease(it) }
+            background?.let { CGColorRelease(it) }
+            colorSpace?.let { CGColorSpaceRelease(it) }
             CFRelease(font)
         }
     }

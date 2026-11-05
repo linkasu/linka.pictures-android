@@ -19,11 +19,13 @@ class IosImagePreparationPortTest {
     private val files = MemoryFiles()
     private var inspectionCalls = 0
     private var rejectInspection = false
+    private var cancelInspection = false
     private var onInspection: (() -> Unit)? = null
     private val inspection = object : MediaInspectionPort {
         override suspend fun image(file: LocalFile): OperationResult<ImageInfo> {
             inspectionCalls++
             onInspection?.invoke()
+            if (cancelInspection) return OperationResult.Cancelled
             if (rejectInspection) return failure(ProblemCode.UNSUPPORTED_MEDIA)
             return OperationResult.Completed(if (file.path == "source") ImageInfo(1, 1, "image/jpeg")
                 else decode(files.bytes.getValue(file.path)))
@@ -174,6 +176,43 @@ class IosImagePreparationPortTest {
         assertEquals(1, files.sinkCloses)
     }
 
+    @Test fun discardFailureDoesNotReplaceKnownProblem() = runTest {
+        files.failDiscard = true
+        rejectInspection = true
+        assertProblem(ProblemCode.UNSUPPORTED_MEDIA, port.imageFromText(TextImageRequest("failure")))
+        assertEquals(listOf("temp1"), files.discarded)
+    }
+
+    @Test fun discardFailureDoesNotReplaceCancelledResult() = runTest {
+        files.failDiscard = true
+        cancelInspection = true
+        assertEquals(OperationResult.Cancelled, port.imageFromText(TextImageRequest("cancelled")))
+        assertEquals(listOf("temp1"), files.discarded)
+    }
+
+    @Test fun discardFailureDoesNotReplaceCancellationException() = runTest {
+        files.failDiscard = true
+        files.bytes["source"] = byteArrayOf(1)
+        val primary = CancellationException("primary cancellation")
+        files.onRead = { throw primary }
+        val thrown = assertFailsWith<CancellationException> { port.prepareImage(LocalFile("source")) }
+        assertSame(primary, thrown)
+        assertEquals(listOf("temp1"), files.discarded)
+        assertEquals(2, files.sourceCloses)
+        assertEquals(1, files.sinkCloses)
+    }
+
+    @Test fun discardFailureDoesNotPublishCancelledLateResult() = runTest {
+        files.failDiscard = true
+        val job = Job()
+        onInspection = { job.cancel() }
+        assertFailsWith<CancellationException> {
+            withContext(job) { port.imageFromText(TextImageRequest("late")) }
+        }
+        assertEquals(listOf("temp1"), files.discarded)
+        assertEquals(1, files.sinkCloses)
+    }
+
     private fun completed(result: OperationResult<TemporaryFile>) = assertIs<OperationResult.Completed<TemporaryFile>>(result).value
     private fun assertProblem(code: ProblemCode, result: OperationResult<*>) {
         assertEquals(code, assertIs<OperationResult.Failed>(result).problem.code)
@@ -209,6 +248,7 @@ class IosImagePreparationPortTest {
         var allocatedPath: String? = null
         var generatedSize: Long? = null
         var onRead: (() -> Unit)? = null
+        var failDiscard = false
         private var serial = 0
         override fun createTemporaryFile(suggestedName: String, mediaType: String): OperationResult<TemporaryFile> {
             val path = allocatedPath ?: "temp${++serial}"
@@ -242,7 +282,11 @@ class IosImagePreparationPortTest {
                 override fun close() { sinkCloses++; bytes[file.path] = output.readByteArray() }
             })
         }
-        override fun discard(file: TemporaryFile) { discarded += file.path; bytes.remove(file.path) }
+        override fun discard(file: TemporaryFile) {
+            discarded += file.path
+            if (failDiscard) throw IOException("Test discard failure")
+            bytes.remove(file.path)
+        }
         override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> = error("No picker")
         override suspend fun save(file: LocalFile, suggestedName: String, ownerId: String): OperationResult<Unit> = error("No save")
     }

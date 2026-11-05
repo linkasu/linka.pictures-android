@@ -17,9 +17,12 @@ permissions, build files or public port signatures are changed.
 - Only a successfully verified empty allocation is eligible for cleanup.
   Failure/cancellation discards that owned output. Publication occurs outside
   the dispatcher hop, so prompt cancellation also cleans a late successful result.
+  Cleanup is best-effort: a throwing `discard` never replaces the primary failure,
+  cancelled result or cancellation exception; a file can remain if deletion fails.
 - `imageFromText` is explicitly requested user media, not a UI caption bitmap.
   Input is unchanged: no trim, normalization, shrinking or ellipsis. Empty input,
   NUL, malformed UTF-16 and colors outside unsigned 32-bit ARGB are invalid.
+  NUL/UTF-16 checks reuse the shared `isNativeText` validator.
   More than 4096 UTF-16 code units or a computed canvas over 4096 px high is a
   limit failure, not truncation.
 - CoreText's native system font is 64 points on a scale-1 1024-pixel-wide canvas,
@@ -77,7 +80,11 @@ P07-I runtime: Version 17.0 (Build 21A328); UDID=DD0F9A3F-DC32-4373-BA08-400FECE
 The first native run exposed an Apple font-name fallback: requesting the private
 `.SFUI-Regular` name yields Times. The implementation now uses
 `CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, 64, null)` directly instead.
-Final focused run: **18 tests passed, 0 failed** (258 ms), without the font-name
+Final focused correction run: **22 tests passed, 0 failed** (229 ms), without the font-name
 fallback warning. `compileKotlinIosArm64` and the simulator compile/test link
 completed successfully with Xcode 27.2 (27B52), JDK 17 and the existing SDK.
 The lane handoff records the commit SHA and local build/test log locations.
+The four correction regressions cover throwing cleanup for a known problem,
+cancelled result, original cancellation exception and cancelled late success.
+Font, color-space and color ownership is scoped before subsequent allocation;
+native allocation failure paths were reviewed, not forced by exhausting memory.
