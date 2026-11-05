@@ -330,14 +330,6 @@ internal class IosAudioBackend(
     override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> = operate(request.id) { call ->
         validateText(request.text)
         if (request.text.isBlank()) throw IosAudioFailure(ProblemCode.SPEECH_UNAVAILABLE)
-        // AVAudioFile.close is iOS 18+. Do not claim a finalized WAV on older OS by relying on GC.
-        val supported = memScoped {
-            val version = alloc<NSOperatingSystemVersion>()
-            version.majorVersion = 18; version.minorVersion = 0; version.patchVersion = 0
-            NSProcessInfo.processInfo.isOperatingSystemAtLeastVersion(version.readValue())
-        }
-        if (!supported)
-            throw IosAudioFailure(ProblemCode.UNSUPPORTED_MEDIA)
         val file = temporary(call)
         withContext(Dispatchers.Main.immediate) {
             val utterance = utterance(call, request.text, request.languageTag, request.preferredVoiceId)
@@ -363,26 +355,19 @@ internal class IosAudioBackend(
     }
 
     private suspend fun writeSpeech(call: IosAudioCall, file: TemporaryFile) {
-        var writer: AVAudioFile? = null
-        var format: AVAudioFormat? = null
+        var writer: IosSynthWriter? = null
         var frames = 0L
         try {
             withTimeout(610_000) {
                 for (buffer in call.pcm) {
                     current(call)
-                    val first = format
-                    if (first == null) {
-                        format = buffer.format
-                        writer = AVAudioFile(NSURL.fileURLWithPath(file.path), waveSettings(buffer.format.sampleRate, buffer.format.channelCount),
-                            buffer.format.commonFormat, buffer.format.interleaved, null)
-                    } else if (!first.isEqual(buffer.format)) throw IosAudioFailure(ProblemCode.INVALID_DATA)
+                    if (writer == null) writer = IosSynthWriter(files, file, buffer.format)
                     frames += buffer.frameLength.toLong()
-                    if (frames * buffer.format.channelCount.toLong() * 2 + 4096 > AUDIO_BYTE_LIMIT || frames / buffer.format.sampleRate > AUDIO_SECONDS_LIMIT)
-                        throw IosAudioFailure(ProblemCode.LIMIT_EXCEEDED)
-                    if (writer?.writeFromBuffer(buffer, null) != true) throw IosAudioFailure(ProblemCode.IO_FAILURE)
+                    writer!!.write(buffer)
                 }
             }
             if (frames == 0L) throw IosAudioFailure(ProblemCode.SPEECH_UNAVAILABLE)
+            writer?.close()
         } catch (_: TimeoutCancellationException) { throw IosAudioFailure(ProblemCode.LIMIT_EXCEEDED) }
         finally { cleanup(call) { writer?.close() } }
     }

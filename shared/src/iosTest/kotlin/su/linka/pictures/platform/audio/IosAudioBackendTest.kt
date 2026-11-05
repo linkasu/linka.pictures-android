@@ -84,15 +84,14 @@ class IosAudioBackendTest {
         call.pcm.cancel()
     }
 
-    @Test fun ios17RefusesUnfinalizableSynthesisRatherThanPretendingReady() = runTest {
-        if (NSProcessInfo.processInfo.operatingSystemVersion.useContents { majorVersion >= 18 }) return@runTest
+    @Test fun malformedSynthesisTextIsRejectedBeforeReservation() = runTest {
         val owner = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         try {
             val backend = backend(owner)
             val synthesis = SynthesisRequest(RequestId("synth"), AudioOwner("test", AudioPurpose.SYNTHESIS), "hello", "en-US")
-            assertProblem(ProblemCode.UNSUPPORTED_MEDIA, backend.synthesize(synthesis))
             assertProblem(ProblemCode.INVALID_DATA, backend.synthesize(synthesis.copy(text = "\ud800")))
             assertProblem(ProblemCode.LIMIT_EXCEEDED, backend.synthesize(synthesis.copy(text = "x".repeat(4001))))
+            assertProblem(ProblemCode.SPEECH_UNAVAILABLE, backend.synthesize(synthesis.copy(text = " ")))
             assertEquals(0, files.created)
         } finally { owner.cancel() }
     }
