@@ -11,14 +11,33 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.storage.StorageRuntime
 import kotlin.test.*
+import kotlin.coroutines.CoroutineContext
+import okio.Source
 
 class AuthoringSessionTest {
-    private class ControlledLibrary(private val real: LibraryStore) : LibraryStore by real {
+    private class ControlledLibrary(private val real: LibraryStore, private val leases: AuthoringLeaseProbe) : LibraryStore by real {
         data class Save(val draft: EditorDraft, val expected: Long?, val permit: WritePermit,
             val reply: CompletableDeferred<OperationResult<Unit>> = CompletableDeferred())
         val saves = Channel<Save>(Channel.UNLIMITED)
         var delayed = false
         var publishResult: OperationResult<PublishedBoard>? = null
+        var listingOverride: StateFlow<LibraryListing>? = null
+        override val listing get() = listingOverride ?: real.listing
+        var readGate: CompletableDeferred<Unit>? = null
+        val readEntered = CompletableDeferred<Unit>()
+        override suspend fun board(id: BoardId): OperationResult<LeasedBoard> {
+            val result = when (val value = real.board(id)) {
+                is OperationResult.Completed -> OperationResult.Completed(value.value.copy(lease = leases.own(value.value.lease)))
+                else -> value
+            }
+            readEntered.complete(Unit)
+            readGate?.let { withContext(NonCancellable) { it.await() } }
+            return result
+        }
+        override suspend fun draft(id: DraftId): OperationResult<LeasedDraft> = when (val value = real.draft(id)) {
+            is OperationResult.Completed -> OperationResult.Completed(value.value.copy(lease = leases.own(value.value.lease)))
+            else -> value
+        }
         override suspend fun saveDraft(value: EditorDraft, expectedVersion: Long?, permit: WritePermit): OperationResult<StoredDraft> {
             if (delayed) {
                 val save = Save(value, expectedVersion, permit)
@@ -36,15 +55,42 @@ class AuthoringSessionTest {
             publishResult ?: real.publishDraft(id, expectedDraftVersion, expectedBoardRevision, permit)
     }
 
-    private class Fixture(val runtime: StorageRuntime) {
+    private class ControlledMedia(private val real: MediaStore, private val leases: AuthoringLeaseProbe) : MediaStore by real {
+        var prepareGate: CompletableDeferred<Unit>? = null
+        val prepared = CompletableDeferred<Unit>()
+        override suspend fun prepare(source: Source, kind: MediaKind, mediaType: String): OperationResult<PreparedMedia> {
+            val result = when (val value = real.prepare(source, kind, mediaType)) {
+                is OperationResult.Completed -> OperationResult.Completed(value.value.copy(lease = leases.own(value.value.lease)))
+                else -> value
+            }
+            prepared.complete(Unit)
+            prepareGate?.let { withContext(NonCancellable) { it.await() } }
+            return result
+        }
+    }
+
+    private class QueuedDispatcher : CoroutineDispatcher() {
+        private val tasks = Channel<Runnable>(Channel.UNLIMITED)
+        override fun dispatch(context: CoroutineContext, block: Runnable) { check(tasks.trySend(block).isSuccess) }
+        fun runAll() { while (true) (tasks.tryReceive().getOrNull() ?: return).run() }
+        suspend fun until(predicate: () -> Boolean) = withContext(Dispatchers.Default) {
+            withTimeout(10_000) { while (!predicate()) { runAll(); yield() } }
+        }
+    }
+
+    private class Fixture(val runtime: StorageRuntime, private val dispatcher: CoroutineDispatcher) {
         val native = AuthoringNativeFakes()
-        val library = ControlledLibrary(runtime.library)
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val leases = AuthoringLeaseProbe()
+        val library = ControlledLibrary(runtime.library, leases)
+        val media = ControlledMedia(runtime.media, leases)
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
         private val serial = MutableStateFlow(0)
         private fun id() = "authoring-${serial.updateAndGet { it + 1 }}"
-        val session = AuthoringSession(library, runtime.media, native, native, native, native, native, IdSource { id() }, scope)
-        fun send(action: AuthoringAction) { assertTrue(session.send(AuthoringCommand(CommandId(id()), "owner", null, action))) }
+        val session = AuthoringSession(library, media, native, native, native, native, native, IdSource { id() }, scope)
+        var capability: AssistantCapability? = null
+        fun send(action: AuthoringAction) { assertTrue(session.send(AuthoringCommand(CommandId(id()), "owner", capability, action))) }
         suspend fun await(predicate: (AuthoringState) -> Boolean): AuthoringState = withContext(Dispatchers.Default) {
+            if (dispatcher is QueuedDispatcher) dispatcher.until { predicate(session.state.value) }
             withTimeout(10_000) { session.state.first(predicate) }
         }
         suspend fun saved(): AuthoringState = await { it.savePhase == DraftSavePhase.SAVED }
@@ -55,15 +101,19 @@ class AuthoringSessionTest {
             val page = session.state.value.draft!!.document.pages.first().id
             send(AuthoringAction.OpenCard(page, position)); await { it.draft?.form is EditorForm.Card }
         }
-        suspend fun finish() { scope.cancel(); scope.coroutineContext[Job]!!.join() }
+        suspend fun finish() {
+            scope.cancel()
+            if (dispatcher is QueuedDispatcher) dispatcher.until { scope.coroutineContext[Job]!!.isCompleted }
+            scope.coroutineContext[Job]!!.join()
+        }
     }
 
-    private suspend fun fresh(block: suspend (Fixture) -> Unit) {
+    private suspend fun fresh(dispatcher: CoroutineDispatcher = Dispatchers.Default, block: suspend (Fixture) -> Unit) {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "p11-authoring-${kotlin.random.Random.nextLong()}"
         fs.createDirectory(root, mustCreate = true)
         val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
-        val fixture = Fixture(runtime)
+        val fixture = Fixture(runtime, dispatcher)
         try { block(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
     }
 
@@ -411,4 +461,297 @@ class AuthoringSessionTest {
         fresh.reply.complete(OperationResult.Completed(Unit))
         assertEquals(AuthoringPhase.EDITING, f.saved().phase)
     } }
+
+    @Test fun ownerCancellationDrainsBufferedLoadedLeaseBeforeActorCanAdoptIt() = runTest {
+        val dispatcher = QueuedDispatcher()
+        fresh(dispatcher) { f ->
+            dispatcher.runAll()
+            val sessionJob = f.scope.coroutineContext[Job]!!.children.single()
+            val baseline = sessionJob.children.toSet()
+            val doc = BoardDocument(BoardId("queued"), "Очередь", listOf(BoardPage(PageId("page"), 1, 1, emptyList())))
+            assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, WritePermit(0) { OperationResult.Completed(Unit) }))
+            val gate = CompletableDeferred<Unit>()
+            f.library.readGate = gate
+            f.send(AuthoringAction.EditBoard(doc.id))
+            dispatcher.until { f.library.readEntered.isCompleted }
+            val worker = (sessionJob.children.toSet() - baseline).single()
+            // Resume the waiting actor with a command but do not execute that dispatcher task.
+            // The completed load below is therefore buffered, not adopted by the actor.
+            f.send(AuthoringAction.RetrySave)
+            gate.complete(Unit)
+            withContext(Dispatchers.Default) { withTimeout(10_000) { worker.join() } }
+            assertEquals(1, f.leases.active.value)
+            f.finish()
+            assertEquals(0, f.leases.active.value)
+            assertEquals(1, f.leases.closes.value)
+        }
+    }
+
+    @Test fun ownerCancellationDrainsBufferedPreparedMediaAndReleasesGcPin() = runTest {
+        val dispatcher = QueuedDispatcher()
+        fresh(dispatcher) { f ->
+            dispatcher.runAll()
+            f.send(AuthoringAction.NewBoard())
+            dispatcher.until { f.session.state.value.savePhase == DraftSavePhase.SAVED }
+            val page = f.session.state.value.draft!!.document.pages[0].id
+            f.send(AuthoringAction.OpenCard(page, 0))
+            dispatcher.until { f.session.state.value.draft?.form is EditorForm.Card && f.session.state.value.savePhase == DraftSavePhase.SAVED }
+            val sessionJob = f.scope.coroutineContext[Job]!!.children.single()
+            val baseline = sessionJob.children.toSet()
+            val gate = CompletableDeferred<Unit>()
+            f.media.prepareGate = gate
+            f.send(AuthoringAction.PickImage)
+            dispatcher.until { f.media.prepared.isCompleted }
+            val worker = (sessionJob.children.toSet() - baseline).single()
+            f.send(AuthoringAction.RetrySave)
+            gate.complete(Unit)
+            withContext(Dispatchers.Default) { withTimeout(10_000) { worker.join() } }
+            assertEquals(1, f.leases.active.value)
+            f.finish()
+            assertEquals(0, f.leases.active.value)
+            assertEquals(1, f.leases.closes.value)
+            assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+        }
+    }
+
+    @Test fun deliveredLoadedLeaseIsAdoptedUntilOwnerExitAndNeverClosedTwice() = runTest { fresh { f ->
+        val doc = BoardDocument(BoardId("adopted"), "Доставлено", listOf(BoardPage(PageId("page"), 1, 1, emptyList())))
+        assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, WritePermit(0) { OperationResult.Completed(Unit) }))
+        f.send(AuthoringAction.EditBoard(doc.id)); f.saved()
+        assertEquals(1, f.leases.active.value)
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+        assertNull(f.session.state.value.cleanupProblem)
+    } }
+
+    @Test fun throwingSaveLeaseCleanupStillWakesNextSaveAndAllowsClose() = runTest { fresh { f ->
+        f.start(); f.open(); f.send(AuthoringAction.PickImage)
+        f.await { (it.draft?.form as? EditorForm.Card)?.image != null && it.savePhase == DraftSavePhase.SAVED }
+        f.leases.failClose.value = true
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeCard("Первый", "", SpeechChoice.NONE, true))
+        val first = f.nextSave()
+        f.send(AuthoringAction.ChangeCard("Последний", "", SpeechChoice.NONE, true))
+        f.await { (it.draft?.form as? EditorForm.Card)?.label == "Последний" }
+        first.reply.complete(OperationResult.Completed(Unit))
+        val latest = f.nextSave()
+        latest.reply.complete(OperationResult.Completed(Unit))
+        val saved = f.await { it.savePhase == DraftSavePhase.SAVED && (it.draft?.form as? EditorForm.Card)?.label == "Последний" }
+        assertEquals(ProblemCode.IO_FAILURE, saved.cleanupProblem?.code)
+        assertNull(saved.problem)
+        f.native.throwOnStop = true
+        f.send(AuthoringAction.Close)
+        f.await { it.phase == AuthoringPhase.CLOSED }
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+        assertTrue(f.native.stopCalls.value > 0)
+    } }
+
+    @Test fun ownerCleanupAttemptsLivePendingAndActivePinsEvenWhenAllClosesAndStopThrow() = runTest { fresh { f ->
+        f.start(); f.open(); f.send(AuthoringAction.PickImage)
+        f.await { (it.draft?.form as? EditorForm.Card)?.image != null && it.savePhase == DraftSavePhase.SAVED }
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeCard("Активный", "", SpeechChoice.NONE, true))
+        f.nextSave()
+        f.send(AuthoringAction.ChangeCard("Pending", "", SpeechChoice.NONE, true))
+        f.await { (it.draft?.form as? EditorForm.Card)?.label == "Pending" }
+        assertTrue(f.leases.active.value >= 3)
+        f.leases.failClose.value = true
+        f.native.throwOnStop = true
+        val stops = f.native.stopCalls.value
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+        assertTrue(f.native.stopCalls.value > stops)
+        assertEquals(ProblemCode.IO_FAILURE, f.session.state.value.cleanupProblem?.code)
+    } }
+
+    @Test fun discardCleanupFailurePreservesPrimaryErrorAndBothImageHandlesAreAttempted() = runTest { fresh { f ->
+        f.start(); f.open()
+        f.native.throwOnDiscard = true
+        f.native.imageSize = ImageInfo(8193, 1, "image/png")
+        f.send(AuthoringAction.PickImage)
+        val failed = f.await { !it.mediaBusy && it.problem?.code == ProblemCode.LIMIT_EXCEEDED }
+        assertEquals(ProblemCode.IO_FAILURE, failed.cleanupProblem?.code)
+        assertNull((failed.draft!!.form as EditorForm.Card).image)
+        val discarded = f.native.discarded.value.size
+        f.native.imageSize = ImageInfo(100, 100, "image/png")
+        f.send(AuthoringAction.PickImage)
+        f.await { (it.draft?.form as? EditorForm.Card)?.image != null && it.savePhase == DraftSavePhase.SAVED }
+        assertEquals(discarded + 2, f.native.discarded.value.size)
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+    } }
+
+    @Test fun stopFailureCannotPreventMediaCancellationOrStrandPausedActor() = runTest { fresh { f ->
+        f.start(); f.open(); f.native.recording = CompletableDeferred()
+        f.send(AuthoringAction.Record); f.await { it.audio.phase == AudioPhase.RECORDING }
+        f.native.throwOnStop = true
+        f.send(AuthoringAction.Background)
+        f.await { it.phase == AuthoringPhase.PAUSED && !it.mediaBusy }
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.native.recordingCancelled.await() } }
+        assertEquals(ProblemCode.IO_FAILURE, f.session.state.value.cleanupProblem?.code)
+        f.native.throwOnStop = false
+        f.send(AuthoringAction.Resume); f.await { it.phase == AuthoringPhase.EDITING }
+        f.send(AuthoringAction.CancelCard)
+        f.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }
+    } }
+
+    @Test fun unknownCommitIsNotReplacedByCleanupFailure() = runTest { fresh { f ->
+        f.start(); f.open(); f.send(AuthoringAction.PickImage)
+        f.await { (it.draft?.form as? EditorForm.Card)?.image != null && it.savePhase == DraftSavePhase.SAVED }
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeCard("Неизвестно", "", SpeechChoice.NONE, true))
+        val save = f.nextSave()
+        f.leases.failClose.value = true
+        save.reply.complete(OperationResult.UnconfirmedCommit)
+        val frozen = f.await { it.phase == AuthoringPhase.UNCONFIRMED }
+        assertEquals(ProblemCode.COMMIT_OUTCOME_UNKNOWN, frozen.problem?.code)
+        assertEquals(ProblemCode.IO_FAILURE, frozen.cleanupProblem?.code)
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+    } }
+
+    @Test fun dedupRetainsRecentCommandsButEvictsIdsBeyond1024UserIntents() = runTest { fresh { f ->
+        f.start()
+        val original = AuthoringCommand(CommandId("old-command"), "owner", null,
+            AuthoringAction.Details("Исходное", null, BoardBehavior()))
+        assertTrue(f.session.send(original))
+        f.await { it.draft?.document?.name == "Исходное" }
+        f.details("Текущее"); f.await { it.draft?.document?.name == "Текущее" }
+        assertTrue(f.session.send(original))
+        // Sentinel command proves the preceding duplicate has been processed without replacing content.
+        f.send(AuthoringAction.OpenGrid(f.session.state.value.draft!!.document.pages[0].id))
+        assertEquals("Текущее", f.await { it.draft?.form is EditorForm.Grid }.draft!!.document.name)
+        f.send(AuthoringAction.CancelGrid)
+        repeat(1025) { f.details("Команда $it") }
+        f.await { it.draft?.document?.name == "Команда 1024" }
+        assertTrue(f.session.send(original))
+        f.await { it.draft?.document?.name == "Исходное" }
+        f.details("После повтора"); f.await { it.draft?.document?.name == "После повтора" }
+        assertTrue(f.session.send(original))
+        f.send(AuthoringAction.OpenGrid(f.session.state.value.draft!!.document.pages[0].id))
+        assertEquals("После повтора", f.await { it.draft?.form is EditorForm.Grid }.draft!!.document.name)
+    } }
+
+    private suspend fun prepareUnauthorizedPickerResult(f: Fixture): AssistantCapability {
+        val old = AssistantCapability("old", "owner")
+        val fresh = AssistantCapability("fresh", "owner")
+        f.capability = old
+        f.native.requireCapability = true
+        f.native.acceptedCapability = old
+        f.start(); f.open(); f.saved()
+        val result = CompletableDeferred<OperationResult<TemporaryFile>>()
+        f.native.pickResult = result
+        f.send(AuthoringAction.PickImage)
+        f.await { it.mediaBusy }
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.native.pickEntered.await() } }
+        f.native.acceptedCapability = fresh // Core gate invalidation, NOT real Background/Revoke.
+        result.complete(OperationResult.Completed(f.native.temporary()))
+        f.await { it.phase == AuthoringPhase.PAUSED && it.problem?.code == ProblemCode.UNAUTHORIZED }
+        return fresh
+    }
+
+    @Test fun pickerGateInvalidationWaitsForNewCapabilityAndExplicitResumeBeforePublishingAssetRefs() = runTest { fresh { f ->
+        val fresh = prepareUnauthorizedPickerResult(f)
+        val before = f.session.state.value
+        assertNull((before.draft!!.form as EditorForm.Card).image)
+        val stored = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(before.draft.id)).value
+        assertTrue(stored.draft.draft.assetIds().isEmpty()); stored.lease.close()
+        assertEquals(1, f.leases.active.value)
+        assertEquals(0, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+        // Reopening access alone does not replay the result; the old capability still cannot resume.
+        f.send(AuthoringAction.Resume)
+        f.await { it.phase == AuthoringPhase.PAUSED && it.problem?.code == ProblemCode.UNAUTHORIZED }
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).image)
+        f.capability = fresh
+        f.send(AuthoringAction.Resume)
+        val adopted = f.await { it.phase == AuthoringPhase.EDITING && (it.draft?.form as? EditorForm.Card)?.image != null &&
+            it.savePhase == DraftSavePhase.SAVED }
+        val durable = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(before.draft.id)).value
+        assertEquals(adopted.draft!!.assetIds(), durable.draft.draft.assetIds()); durable.lease.close()
+        f.send(AuthoringAction.Resume)
+        f.send(AuthoringAction.Background); f.await { it.phase == AuthoringPhase.PAUSED }
+        assertEquals(adopted.durableVersion, f.session.state.value.durableVersion)
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+    } }
+
+    @Test fun realBackgroundDuringReauthenticationDiscardsPreparedPinAndResumeCannotAdoptIt() = runTest { fresh { f ->
+        val fresh = prepareUnauthorizedPickerResult(f)
+        assertEquals(1, f.leases.active.value)
+        val stops = f.native.stopCalls.value
+        f.send(AuthoringAction.Background)
+        // An unauthorized command is an actor barrier after Background, without granting access.
+        f.send(AuthoringAction.CancelMedia)
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.leases.active.first { it == 0 } } }
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.native.stopCalls.first { it >= stops + 2 } } }
+        assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+        f.capability = fresh
+        f.send(AuthoringAction.Resume); f.await { it.phase == AuthoringPhase.EDITING }
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).image)
+    } }
+
+    @Test fun closeDuringReauthenticationReleasesOnlyPendingOwnedAsset() = runTest { fresh { f ->
+        f.capability = prepareUnauthorizedPickerResult(f)
+        assertEquals(1, f.leases.active.value)
+        f.send(AuthoringAction.Close); f.await { it.phase == AuthoringPhase.CLOSED }
+        assertEquals(0, f.leases.active.value)
+        assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+    } }
+
+    @Test fun completedRecordingAfterPermissionGateInvalidationAdoptsWithoutRestartingRecording() = runTest { fresh { f ->
+        val old = AssistantCapability("old-mic", "owner")
+        val fresh = AssistantCapability("fresh-mic", "owner")
+        f.native.requireCapability = true; f.native.acceptedCapability = old; f.capability = old
+        f.start(); f.open(); f.saved()
+        f.native.recording = CompletableDeferred()
+        f.send(AuthoringAction.Record); f.await { it.audio.phase == AudioPhase.RECORDING }
+        f.native.acceptedCapability = fresh
+        f.native.recording!!.complete(OperationResult.Completed(f.native.temporary()))
+        f.await { it.phase == AuthoringPhase.PAUSED }
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).recording)
+        assertEquals(1, f.leases.active.value)
+        f.capability = fresh; f.send(AuthoringAction.Resume)
+        f.await { it.phase == AuthoringPhase.EDITING && (it.draft?.form as? EditorForm.Card)?.recording != null &&
+            it.savePhase == DraftSavePhase.SAVED }
+        assertEquals(1, f.native.recordCalls.value)
+        f.finish(); assertEquals(0, f.leases.active.value)
+    } }
+
+    @Test fun ownerCancellationDuringReauthenticationReleasesPendingAssetEvenIfCloseThrows() = runTest { fresh { f ->
+        prepareUnauthorizedPickerResult(f)
+        assertEquals(1, f.leases.active.value)
+        f.leases.failClose.value = true
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+        assertEquals(ProblemCode.IO_FAILURE, f.session.state.value.cleanupProblem?.code)
+        assertEquals(ProblemCode.UNAUTHORIZED, f.session.state.value.problem?.code)
+        assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+    } }
+
+    @Test fun changedLibraryEpochRejectsPendingAdoptionAndReleasesItsPin() = runTest { fresh { f ->
+        f.capability = prepareUnauthorizedPickerResult(f)
+        val prior = f.library.listing.value
+        f.library.listingOverride = MutableStateFlow(prior.copy(epoch = prior.epoch + 1))
+        f.send(AuthoringAction.Resume)
+        f.await { it.phase == AuthoringPhase.CONFLICT && it.problem?.code == ProblemCode.STALE_REQUEST }
+        assertEquals(0, f.leases.active.value)
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).image)
+    } }
+
+    @Test fun realBackgroundSentAfterQueuedResumeWinsBeforePendingResultCanBeAdopted() = runTest {
+        val dispatcher = QueuedDispatcher()
+        fresh(dispatcher) { f ->
+            f.capability = prepareUnauthorizedPickerResult(f)
+            val version = f.session.state.value.durableVersion
+            val stops = f.native.stopCalls.value
+            f.send(AuthoringAction.Resume) // Deliberately leave the actor's continuation queued.
+            f.send(AuthoringAction.Background)
+            dispatcher.until { f.leases.active.value == 0 && f.native.stopCalls.value >= stops + 2 &&
+                f.session.state.value.phase == AuthoringPhase.PAUSED }
+            assertNull((f.session.state.value.draft!!.form as EditorForm.Card).image)
+            assertEquals(version, f.session.state.value.durableVersion)
+            assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+        }
+    }
 }

@@ -24,7 +24,8 @@ AuthoringSession(
 `state: StateFlow<AuthoringState>` — immutable presentation snapshot.
 `send(AuthoringCommand(id, ownerId, capability, action)): Boolean` подтверждает
 только постановку команды в очередь, не запись на диск. `CommandId` дедуплицируется
-в пределах сессии; новое осознанное действие получает новый ID.
+в окне последних 1024 команд, без вечного журнала на каждый keystroke;
+новое осознанное действие получает новый ID.
 
 Первый авторизованный command закрепляет owner. Другой owner не может менять
 состояние или инвалидировать медиа. После CLOSED/APPLIED нужна новая сессия для
@@ -91,7 +92,7 @@ Screen callbacks передают только команды сессии. В U
 того же snapshot. CONFLICT, смена epoch и UNCONFIRMED по-прежнему блокируют запись.
 
 Actor не ожидает SQL, provider picker, native decoding, запись или синтез.
-Blocking source/sink/file operations выполняются на `Dispatchers.Default`, не UI Main.
+Blocking source/sink/file operations выполняются на `Dispatchers.IO`, не UI Main.
 Снимки списков копируются перед передачей worker. Каждый in-flight/pending save
 имеет независимую lease; замена pending закрывает только его собственную lease.
 Composite lease переиспользует существующий internal `MessageLease`, без второй
@@ -191,7 +192,7 @@ labels и actionable conflict/limit/unknown diagnostics.
 Команда итогового focused gate (JDK17 только для конкретного процесса, SDK env
 унаследован без подмены старым alias):
 
-Итог 2026-11-05: **27/27 PASS** (24 AuthoringSessionTest + 3 presentation),
+Первичный gate до correction, 2026-11-05: **27/27 PASS** (24 AuthoringSessionTest + 3 presentation),
 0 failures/errors/skipped, реальный SQLite/media runtime; обе Native compilation
 **PASS**, Android shared debug Kotlin compilation **PASS**. Последний combined
 gate: BUILD SUCCESSFUL, 14 s. Только существующие expect/actual beta warnings,
@@ -229,3 +230,80 @@ provider permissions, Keychain/AMFI, frameworks/app packaging и устройс�
 отказ авторизации к уже возобновлённой сессии. Отдельный regression фиксирует
 background между media authorization и регистрацией worker: AudioPort.record
 вообще не вызывается.
+
+## Correction после COORD review (`e22738a`, без amend)
+
+### Подтверждённые ownership/cleanup gaps
+
+- Mailbox теперь хранит typed owned event, а не голый callback. Каждый load/media
+  result передаёт свою lease event-у; успешный load явно `adopt`-ит её, media callback
+  либо retain-ит ссылки в форму, либо передаёт lease ephemeral pending-adoption слоту.
+  `onUndeliveredElement`, actor `finally`/completion и `Channel.cancel()` освобождают
+  queued result при owner cancellation. Неудачный late enqueue закрывает собственный
+  event сразу; worker finally остаётся безопасен благодаря одноразовому close.
+- `AuthoringLease` изолирует каждую retained delegate lease: один бросающий `close`
+  не обрывает cleanup остальных детей существующего composite MessageLease. Все
+  current/pending/active-save/result leases имеют явного владельца. Cleanup закрывает
+  каждый собственный handle один раз; не угадывает физический исход OS close и не
+  повторяет произвольный delegate close после исключения.
+- Close/stop/discard cleanup best-effort, как у AudioWork: все независимые попытки
+  выполняются; первичный Completed/Failed/Cancelled/UnconfirmedCommit не заменяется.
+  `save` completion публикует `saved` через finally даже при cleanup failure.
+  Дополнительный `AuthoringState.cleanupProblem = IO_FAILURE` виден в UI без exception
+  text/paths и без уничтожения основного `problem`/durability phase.
+- Сами IO effects перенесены на Dispatchers.IO. Actor и публичные command/constructor
+  seams не менялись, unlimited mailbox capacity не переопределялась.
+
+Регрессии используют публичную AuthoringSession, управляемый CoroutineDispatcher,
+настоящие file-backed SQLite/MediaStore и контролируемые lease probes. Actor continuation
+блокируется, некооперативный port завершается, его worker реально заканчивает работу,
+оставляя owned result в mailbox; затем отменяется owner scope. Проверяются нулевые
+живые leases, один delegate close и освобождение media для настоящего GC. Private
+session helper не вызывается. Отдельно проверены успешное adoption без double-close,
+throwing save cleanup с продолжением latest save, финальный cleanup current/pending/
+active pins, бросающие stop/discard, сохранение primary unknown commit и >1024 intents.
+
+### Security-семантика, явно принятая COORD
+
+Вход в собственный system picker/microphone permission flow отзывает старые core
+capabilities/commit guards, **но не является AuthoringAction.Background**. Root
+по-прежнему владеет этой классификацией. Authoring не сохраняет capability живой
+ради provider/permission return и не ослабляет старый guard.
+
+Если Completed prepared media возвращается для той же формы/generation без real
+Background/Close, но старый guard даёт UNAUTHORIZED, session:
+
+1. Переходит в PAUSED + UNAUTHORIZED; удерживает единственную owned prepared lease
+   в приватном ephemeral pending-adoption слоте. Ни form result, ни SQL asset refs
+   в этот момент не публикуются. Слот не находится в StateFlow/DTO/SQL/saved state.
+2. Только явный Resume с новой, действительно принятой gate capability вправе
+   проверить epoch, исходную форму и generation, adopt-ить готовый asset и запустить
+   save с **новым** guard. Открытие gate само по себе ничего не replay-ит. Старый
+   unauthorized Resume не уничтожает результат, ожидающий действительного входа.
+3. Resume не повторяет picker/record/synthesis и не возобновляет запись. Для audio
+   удерживается только уже готовый prepared asset, не microphone/request handle.
+4. Real Background/Revoke, Close/discard, отмена/смена формы, смена epoch, conflict,
+   unknown outcome или owner-scope cancellation освобождают именно own pending lease.
+   Source/canonical media не удаляется. Поколение real Background инвалидируется
+   уже в send; queued Resume не может принять более ранний pending result.
+
+Перевод в media-reauth PAUSED использует compare-and-set исходного lifecycle token:
+одновременный real Background не превращается в новое разрешённое поколение для
+pending result. Failed/Cancelled не создают pending adoption и не ждут asset reauth.
+
+Чистые регрессии доказывают no form/no SQL refs до Resume, GC pin до входа и release
+после Background/Close/scope cancellation, однократное adoption новой capability,
+отказ при другом epoch, победу Background над уже queued Resume и отсутствие второго
+record вызова после permission-style gate invalidation.
+
+Это **COORD security decision + core behavior proof**, а не доказательство настоящих
+native foreground/provider/permission transitions. Root/lifecycle implementation и
+runtime OS proof остаются у primary.
+
+Correction gate 2026-11-05: **43/43 PASS** — 40 AuthoringSessionTest и прежние
+3 presentation, все прежние 27 сохранены, добавлены 16 regressions; 0 failures,
+errors и skipped. Реальный SQLite/MediaStore, lease probes и fake native boundaries.
+Обе Native compilation (`iosArm64`, `iosSimulatorArm64`) и Android shared debug
+Kotlin compilation **PASS** после common-коррекции; combined command выше завершился
+BUILD SUCCESSFUL за 29 s. Decoder producer — VERIFIED_FASTPATH, без повторного OS
+proof/симулятора. `git diff --check`/`git diff --cached --check` — PASS.

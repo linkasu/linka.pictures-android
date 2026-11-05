@@ -18,4 +18,5 @@ data class AuthoringState(
     val audio: AudioState = AudioState(),
     val published: PublishedBoard? = null,
     val problem: Problem? = null,
+    val cleanupProblem: Problem? = null,
 )

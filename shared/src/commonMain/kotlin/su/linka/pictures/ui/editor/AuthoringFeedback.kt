@@ -21,6 +21,8 @@ internal fun AuthoringFeedback(state: AuthoringState, onAction: (AuthoringAction
             Text(authoringProblemLabel(it.code), color = palette.danger,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
+        if (state.cleanupProblem != null) Text("Не удалось полностью освободить ресурсы (IO_FAILURE). Основной результат операции указан выше.",
+            color = palette.danger, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         if (state.savePhase == DraftSavePhase.FAILED && state.editable()) {
             LabeledActionButton("Повторить сохранение черновика", true, false, { onAction(AuthoringAction.RetrySave) })
         }

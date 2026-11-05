@@ -16,9 +16,15 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
     val pickEntered = CompletableDeferred<Unit>()
     var ignorePickCancellation = false
     var authorized = true
+    var requireCapability = false
+    var acceptedCapability: AssistantCapability? = null
     var beforeGuard: (() -> Unit)? = null
     val recordCalls = MutableStateFlow(0)
     var throwOnSource = false
+    var throwOnStop = false
+    var throwOnDiscard = false
+    val stopCalls = MutableStateFlow(0)
+    val recordingCancelled = CompletableDeferred<Unit>()
     var audioDuration = 1000L
     var imageSize = ImageInfo(100, 100, "image/png")
     val played = mutableListOf<PlaybackRequest>()
@@ -37,7 +43,10 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
         return OperationResult.Completed(Buffer().writeUtf8("fake bytes ${file.path}"))
     }
     override fun sink(file: TemporaryFile): OperationResult<Sink> = OperationResult.Completed(Buffer())
-    override fun discard(file: TemporaryFile) { discarded.value = discarded.value + file.path }
+    override fun discard(file: TemporaryFile) {
+        discarded.value = discarded.value + file.path
+        if (throwOnDiscard) error("Controlled discard failure")
+    }
     override suspend fun prepareImage(file: LocalFile): OperationResult<TemporaryFile> = OperationResult.Completed(temporary())
     override suspend fun imageFromText(request: TextImageRequest): OperationResult<TemporaryFile> = OperationResult.Completed(temporary())
     override suspend fun image(file: LocalFile): OperationResult<ImageInfo> = OperationResult.Completed(imageSize)
@@ -47,19 +56,23 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
         state.value = AudioState(request.id, request.owner, AudioPhase.PLAYING)
     }
     override fun stop(ownerId: String, requestId: RequestId?) {
+        stopCalls.value++
         played.filter { it.owner.id == ownerId && (requestId == null || it.id == requestId) }.forEach { it.lease.close() }
         state.value = AudioState()
+        if (throwOnStop) error("Controlled stop failure")
     }
     override fun interrupt() { state.value.owner?.let { stop(it.id) } }
     override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> = OperationResult.Completed(temporary())
     override suspend fun record(request: RecordingRequest): OperationResult<TemporaryFile> {
         recordCalls.value++
         state.value = AudioState(request.id, request.owner, AudioPhase.RECORDING)
-        return recording?.await() ?: OperationResult.Cancelled
+        try { return recording?.await() ?: OperationResult.Cancelled }
+        finally { recordingCancelled.complete(Unit) }
     }
     override fun finishRecording(ownerId: String, requestId: RequestId) { recording?.complete(OperationResult.Completed(temporary())) }
     override fun check(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): OperationResult<Unit> =
-        if (authorized) OperationResult.Completed(Unit) else OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED))
+        if (authorized && (!requireCapability || capability === acceptedCapability)) OperationResult.Completed(Unit)
+        else OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED))
     override fun guard(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): CommitGuard {
         val callback = beforeGuard
         beforeGuard = null
