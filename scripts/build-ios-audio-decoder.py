@@ -91,6 +91,11 @@ def target(task, sdk, triple, cached=None):
             "-llinka_audio_decoder", "-lavformat", "-lavcodec", "-lswresample", "-lavutil", "-lm", "-pthread",
             "-framework", "CoreFoundation", "-framework", "CoreVideo", "-framework", "CoreMedia", "-o", executable], timeout=120)
         task.result["bridge_test_binary"] = task.macho(executable, platform)
+        unit = build / 'bridge-unit'
+        task.run([*compile_flags, task.project / 'scripts/test-ios-audio-decoder-unit.c', '-L', prefix / 'lib',
+            '-lavformat', '-lavcodec', '-lswresample', '-lavutil', '-lm', '-pthread',
+            '-framework', 'CoreFoundation', '-framework', 'CoreVideo', '-framework', 'CoreMedia', '-o', unit], timeout=120)
+        task.result['bridge_unit_binary'] = task.macho(unit, platform)
     return prefix, executable
 
 
@@ -150,6 +155,9 @@ def moov_header(data, extended=False, size0=False):
 
 def proof(task, executable, fixtures):
     task.runtime()
+    _, unit = task.run(['xcrun', 'simctl', 'spawn', UDID, executable.parent / 'bridge-unit', fixtures['vorbis']])
+    require('same-TU saturation/nonfinite/calloc-failure/reuse PASS' in unit, 'native same-TU unit')
+    task.result['native_same_tu_unit'] = unit.strip()
     base = ["xcrun", "simctl", "spawn", UDID, executable]
     _, info = task.run([*base, "info"])
     require("version=8.1.2\n" in info and "license=LGPL version 2.1 or later" in info, "native bridge license/version")

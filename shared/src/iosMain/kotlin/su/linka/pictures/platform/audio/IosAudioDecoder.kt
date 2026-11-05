@@ -97,7 +97,8 @@ internal class IosAudioDecoder(private val files: PlatformFilesPort) {
                     LINKA_AUDIO_AMR -> "audio/amr"
                     LINKA_AUDIO_3GP -> "audio/3gpp"
                     LINKA_AUDIO_MP4 -> "audio/mp4"
-                    else -> "audio/wav"
+                    LINKA_AUDIO_WAV -> "audio/wav"
+                    else -> return@memScoped Decoded(LINKA_AUDIO_INVALID, 0, "")
                 }
                 currentCoroutineContext().ensureActive()
                 Decoded(status, result.duration_millis, type)

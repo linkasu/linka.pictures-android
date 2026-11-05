@@ -193,3 +193,23 @@ AVAudioBackend/Access and no product navigation or root composition.
 OPEN: main binding/runtime Kotlin lifecycle tests, physical device execution, RSS/large corpus,
 full allocation/fuzz review, background/route/audio-session integration, and all source/notices/
 relink/EULA/patent/AppStore/shipping gates. No Keychain or restricted-entitlement AMFI workaround.
+
+## Primary bug-review correction (separate commit after5f874af)
+
+PCM16 conversion now clamps **after rounding** as well as bounding finite float input:
+the near-full-scale positive interval cannot wrap32768 into−32768. `done` guards NULL
+probe before per-entry av_dict_free when probe av_calloc fails. Kotlin explicitly maps
+WAV and treats an unknown successful native format as INVALID_DATA, not coerced WAV.
+
+`scripts/test-ios-audio-decoder-unit.c` includes the actual bridge.c in a test-only TU,
+overrides only that TU's av_calloc, calls real static emit, injects probe allocation failure,
+then verifies a subsequent real decode succeeds. Native assertions cover near-fullscale,
+nextafter(1,0), ±1, overshoot, silence and NaN/±Inf; no production knob/upstream patch.
+Actual owned iOS17 run `build/ios-ffmpeg-preflight/07666875-ebfb-4c5b-96e1-095d192671b4`
+is DEVELOPMENT_PROOF_PASS: same-TU unit PASS, same5-format matrix/25 negative corpus,
+BMFF variants/cancel/foreign checks, current scoped Kotlin compile PASS; original5 SHA unchanged.
+
+Current C SHA `68007a6207c9c7a0765cbf91d5a780173ef87bb9ee4088e302f7c38c9c8de236`.
+Corrected bridge archive simulator SHA `d6884a4f2f816552409a1d4f4d6e61faeec9315d98545234521e82ba4c47417e`,
+device SHA `66f53b802c97dc9512be26dfd9892836eb863e24d8fa872438d70b7a96e6bf6d`.
+Earlier hashes/results above remain baseline evidence, not silently replaced.

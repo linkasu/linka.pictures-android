@@ -229,7 +229,8 @@ static int emit(Decode *state, int count) {
     for (int n = 0; n < count * CHANNELS; ++n) {
         float value = state->floating[n];
         if (!isfinite(value)) return AVERROR_INVALIDDATA;
-        int sample = value >= 1 ? 32767 : value <= -1 ? -32768 : (int)lrintf(value * 32768);
+        long rounded = lrintf(fmaxf(-1, fminf(1, value)) * 32768);
+        int sample = rounded > 32767 ? 32767 : rounded < -32768 ? -32768 : (int)rounded;
         le16(state->pcm16 + n * 2, (unsigned)(uint16_t)sample);
     }
     if (state->output && fwrite(state->pcm16, CHANNELS * 2, (size_t)count, state->output) != (size_t)count) return AVERROR(EIO);
@@ -437,7 +438,7 @@ int linka_audio_decode(const char *source, int output_fd, LinkaAudioCancelled ca
     info->duration_millis = (info->frames * 1000 + RATE - 1) / RATE;
     status = 0;
 done:
-    for (unsigned n = 0; n < probe_count; ++n) av_dict_free(&probe[n]);
+    if (probe) for (unsigned n = 0; n < probe_count; ++n) av_dict_free(&probe[n]);
     av_free(probe); av_dict_free(&options);
     av_packet_free(&packet); av_frame_free(&frame); avcodec_free_context(&decoder);
     swr_free(&state.swr); av_channel_layout_uninit(&state.layout);
