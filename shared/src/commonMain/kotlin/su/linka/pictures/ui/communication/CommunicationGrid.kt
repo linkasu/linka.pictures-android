@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -43,7 +43,6 @@ import su.linka.pictures.domain.CellKind
 import su.linka.pictures.ui.components.CommunicationCard
 import su.linka.pictures.ui.images.DemandVisibleImages
 import su.linka.pictures.ui.images.visibleRowImages
-import su.linka.pictures.ui.theme.LinkaTargets
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
@@ -65,8 +64,10 @@ internal fun CommunicationGrid(
     val slots = remember(page) { communicationSlots(page) }
     val focus = LocalFocusManager.current
     BoxWithConstraints(modifier) {
-        val cellWidth = maxOf(LinkaTargets.communicationCard, minOf(192.dp, maxWidth))
-        val gap = 8.dp
+        val size = communicationCellSize(maxWidth.value, maxHeight.value, page.columns, page.rows, LocalDensity.current.fontScale)
+        val cellWidth = size.width.dp
+        val cellHeight = size.height.dp
+        val gap = 4.dp
         val cursor = firstCell.coerceIn(0, page.capacity - 1)
         val horizontal = rememberScrollState(with(LocalDensity.current) { ((cellWidth + gap) * (cursor % page.columns)).roundToPx() })
         val vertical = rememberLazyListState(initialFirstVisibleItemIndex = cursor / page.columns)
@@ -74,7 +75,9 @@ internal fun CommunicationGrid(
             Modifier.fillMaxSize().horizontalScroll(horizontal).focusGroup()
                 .semantics {
                     collectionInfo = CollectionInfo(page.rows, page.columns)
-                    stateDescription = "Сетка ${page.rows} на ${page.columns}. Доступна прокрутка по вертикали и горизонтали."
+                    stateDescription = "Сетка ${page.rows} на ${page.columns}." +
+                        if (cellWidth * page.columns + gap * (page.columns - 1) > maxWidth ||
+                            cellHeight * page.rows + gap * (page.rows - 1) > maxHeight) " Доступна прокрутка." else ""
                 }
                 .onPreviewKeyEvent { event ->
                     if (!enabled || event.type != KeyEventType.KeyDown || event.isAltPressed || event.isCtrlPressed || event.isMetaPressed) false
@@ -92,7 +95,7 @@ internal fun CommunicationGrid(
         ) {
             LazyColumn(
                 state = vertical,
-                modifier = Modifier.width(cellWidth * page.columns + gap * (page.columns - 1)),
+                modifier = Modifier.width(cellWidth * page.columns + gap * (page.columns - 1)).fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(gap),
             ) {
                 items(page.rows, key = { it }) { row ->
@@ -101,9 +104,9 @@ internal fun CommunicationGrid(
                         for (column in 0 until page.columns) {
                             val position = row * page.columns + column
                             val cell = slots[position]
-                            val itemModifier = Modifier.width(cellWidth)
+                            val itemModifier = Modifier.width(cellWidth).height(cellHeight)
                             if (cell == null || cell.kind == CellKind.EMPTY) {
-                                Box(itemModifier.heightIn(min = LinkaTargets.communicationCard).border(1.dp, palette.border))
+                                Box(itemModifier.border(1.dp, palette.border))
                             } else {
                                 val label = if (cell.kind == CellKind.SPACE) "Пробел" else cell.card!!.label
                                 CommunicationCard(

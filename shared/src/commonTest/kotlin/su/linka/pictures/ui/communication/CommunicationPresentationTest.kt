@@ -127,6 +127,27 @@ class CommunicationPresentationTest {
     }
 
     @Test
+    fun noticesHideRoutineSuccessButKeepDurabilityAndActionFailures() {
+        fun notices(value: CommunicationState, voice: VoiceCapability = readyVoice) =
+            communicationNotices(value, communicationPresentation(value, voice), voice)
+        assertTrue(notices(state).isEmpty())
+        assertTrue(notices(state, VoiceCapability(VoiceStatus.MISSING_VOICE)).isEmpty())
+        assertTrue(notices(state.copy(audio = AudioState(phase = AudioPhase.COMPLETED))).isEmpty())
+        assertTrue(notices(state.copy(audio = AudioState(phase = AudioPhase.CANCELLED))).isEmpty())
+        assertTrue(notices(state.copy(savePhase = MessageSavePhase.UNCONFIRMED)).any { "не подтверждён" in it })
+        assertTrue(notices(state.copy(problem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))).any { "не подтверждён" in it })
+        assertTrue(notices(state.copy(savePhase = MessageSavePhase.FAILED)).any { "не сохранено" in it })
+        assertTrue(notices(state.copy(audio = AudioState(phase = AudioPhase.FAILED))).isNotEmpty())
+        assertTrue(notices(state.copy(problem = Problem(ProblemCode.INTEGRITY_FAILURE))).isNotEmpty())
+        val voiceFailure = notices(state.copy(audio = AudioState(problem = Problem(ProblemCode.VOICE_UNAVAILABLE))), VoiceCapability(VoiceStatus.MISSING_VOICE))
+        assertTrue(voiceFailure.any { "не установлен" in it })
+        assertFalse(notices(state.copy(problem = Problem(ProblemCode.VOICE_UNAVAILABLE))).any { "голос ОС доступен" in it })
+        val stale = notices(state.copy(problem = Problem(ProblemCode.STALE_REQUEST)))
+        assertTrue(stale.any { "устарел" in it })
+        assertFalse(stale.any { "Сообщение сохранено" in it })
+    }
+
+    @Test
     fun problemsUseOnlySafeCodesAndKeepVoiceAndSpeechFailuresDistinct() {
         val subject = "/private/person/media/secret.wav"
         val p = communicationPresentation(state.copy(

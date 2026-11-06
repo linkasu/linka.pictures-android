@@ -92,6 +92,15 @@ internal fun communicationPresentation(state: CommunicationState, voices: VoiceC
 
 private const val unconfirmedMessage = "Результат сохранения не подтверждён. Нельзя считать операцию сохранённой или отменённой. Сообщение остаётся на экране, действия заблокированы. Полностью закройте приложение и откройте его заново для проверки данных. Не повторяйте операцию до проверки."
 
+internal fun communicationNotices(state: CommunicationState, presentation: CommunicationPresentation, voices: VoiceCapability): List<String> = buildList {
+    if (state.savePhase != MessageSavePhase.SAVED || presentation.saveStatus == unconfirmedMessage) add(presentation.saveStatus)
+    addAll(presentation.problems)
+    if (state.audio.phase in setOf(AudioPhase.FAILED, AudioPhase.INTERRUPTED)) add(presentation.audioStatus)
+    if (voices.status != VoiceStatus.LOCAL_VOICE_READY &&
+        (state.problem?.code == ProblemCode.VOICE_UNAVAILABLE || state.audio.problem?.code == ProblemCode.VOICE_UNAVAILABLE))
+        add(presentation.voiceStatus)
+}.distinct()
+
 internal fun pageTarget(index: Int, count: Int, direction: Int, enabled: Boolean): Int? =
     (index + direction).takeIf { enabled && index in 0 until count && it in 0 until count && direction in listOf(-1, 1) }
 
