@@ -1,5 +1,11 @@
 # P11 — authoring session и общие экраны
 
+**Актуальная UI-цель (6 ноября):** [паритет 1.4](ui-1.4-parity.md).
+Application/ownership evidence ниже сохраняется, но прежняя вёрстка не принята.
+Редактор — большая сетка с «+», компактные параметры и toolbar; карточка —
+модальный диалог как в 1.4. Autosave/SaveCard/Apply guards не меняются ради паритета.
+Код на паузе; перед продолжением нужна визуальная приёмка на заполненных данных.
+
 Область: `application/authoring/**`, `ui/editor/**`, `ui/card/**`, соответствующие
 common tests. Root, Gradle, manifests, domain, storage, access, ports, communication
 и house components не изменены. Base: `baafb415c93ab503938627cfaf7e9d7d48ec3fb2`,

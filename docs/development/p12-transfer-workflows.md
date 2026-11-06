@@ -1,5 +1,9 @@
 # P12: protected transfer workflows
 
+UI-входы и представление — по [контракту 1.4](ui-1.4-parity.md): отдельные меню/
+экраны переноса, не панель на доске или над плитками. Preview, fresh authorization,
+подтверждения и запрет выдачи contents до confirm сохраняются. Код сейчас на паузе.
+
 `application/portability/TransferCoordinator` использует существующие `LinkaCodec`,
 `BackupCodec`, `CheckedZip`, порты и SQLite atomic publication. Новый parser,
 UI, storage schema, credentials и native bindings не добавляются.

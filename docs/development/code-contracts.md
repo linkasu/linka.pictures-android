@@ -4,6 +4,7 @@
 
 ## Источник истины и границы
 
+- **UI/навигация/темы:** [UI-паритет 1.4](ui-1.4-parity.md) обязателен для P10/P11/P13/P14. Прежние house tokens и скомпилированные screens не visual approval. Сохраняются session/application/guard seams; меняется представление, не storage/authorization policy. Реализация на паузе по просьбе пользователя; следующий gate — одинаковые заполненные доски рядом с 1.4 и визуальное подтверждение, не новая backend-волна.
 - Поведение: K1–K9 в согласованном `linka-pokazhi-contracts.md`; исправленные `docs/c4/`.
 - Точные типы: `shared/src/commonMain/kotlin/su/linka/pictures/domain/`, `application/ports/`, `application/communication/`, `application/portability/`.
 - `OperationResult.Completed`, `Cancelled`, `Failed(Problem)`, `UnconfirmedCommit` различаются. Последний разрешён только при недоказанном durable исходе storage mutation; не означает успех/ошибку/откат. Coroutine cancellation не превращается в IO_FAILURE; cleanup выполняется и исключение отмены распространяется до точки COMMIT. Команда отмены пользователем до commit возвращает Cancelled. Не передавать тексты сообщения, пароль, путь или исключение в Problem/logs.
@@ -13,7 +14,7 @@
 
 ## Handoff P08 и native external files
 
-### Возобновление полного Build, 5 ноября
+### История: возобновление полного Build, 5 ноября (до UI STOP)
 
 Пользователь поручил выполнить release coding plan до готовых Android/iOS. COORD держит native access/lifecycle, migration и root bindings. Независимые P11/P12 application workflows можно реализовывать по существующим AssistantGate/LibraryStore/native ports на synthetic данных параллельно этим bindings: это разрешённый conditional coding P02–P14, не принятие P08/G4 и не обход проверки real adapters.
 
@@ -199,11 +200,16 @@ COORD review принимает bounded ZIP decoding, **не** доказате�
 
 ### P10 early tokens/primitives (не продуктовые экраны)
 
+Этот ранний handoff описывает существующий кандидат компонентов, **не visual baseline**.
+По решению 6 ноября layout/default tokens сверяются с [1.4](ui-1.4-parity.md).
+Интерфейсы/семантика остаются; изменения фактических размеров и связанных tests —
+будущая реализация после отдельной команды, не выполненная часть docs-only шага.
+
 Допустимая до полной G3 независимая область C: `ui/theme/**`, `ui/components/**`, их pure common tests. Единственный writer C; никаких navigation/controllers/storage/audio/files/access effects. `LinkaTheme(darkTheme: Boolean = isSystemInDarkTheme(), highContrast: Boolean = false, textScale: Float = 1f, content)` использует существующий Material2 и системный fontScale × portable textScale0.5..3, не фиксирует/не обрезает системный масштаб. Все4 комбинации dark/highContrast — только presentation; смена темы не сбрасывает message/draft/queued operations и не возобновляет речь. Новый сохраняемый theme mode не добавляется.
 
-Regular light — точные C4 цвета. Approved dark: primary66D9D9/onPrimary003737, background0E1919/surface172424, textE3F1F1/secondaryB2C8C8, border8DAAAA, dangerFFB4AB/onDanger690005, focusFFD666. High-contrast light: white background/surface, primary004747/onPrimaryFFFFFF, text000000/secondary1A1A1A, border000000, danger8F120A/onDangerFFFFFF, focus002F6C. High-contrast dark: black background/surface, primary8FFFFF/onPrimary000000, textFFFFFF/secondaryE6E6E6, borderFFFFFF, dangerFFCAC4/onDanger000000, focusFFE082. Light focus002F6C. Disabled surface/text: regular lightE5EEEE/435B5B, regular dark243737/B2C8C8; high-contrast сохраняет основной surface/secondary text без бледной alpha. Checked opaque pairs: dark text/actions>=7.7 (secondary9.1), high-contrast text/actions>=9.3; это расчёт пар, не physical accessibility acceptance.
+Ранее реализованные regular light — C4 candidate colors; dark candidate: primary66D9D9/onPrimary003737, background0E1919/surface172424, textE3F1F1/secondaryB2C8C8, border8DAAAA, dangerFFB4AB/onDanger690005, focusFFD666. High-contrast light: white background/surface, primary004747/onPrimaryFFFFFF, text000000/secondary1A1A1A, border000000, danger8F120A/onDangerFFFFFF, focus002F6C. High-contrast dark: black background/surface, primary8FFFFF/onPrimary000000, textFFFFFF/secondaryE6E6E6, borderFFFFFF, dangerFFCAC4/onDanger000000, focusFFE082. Light focus002F6C. Disabled surface/text: regular lightE5EEEE/435B5B, regular dark243737/B2C8C8; high-contrast сохраняет основной surface/secondary text без бледной alpha. Checked opaque pairs: dark text/actions>=7.7 (secondary9.1), high-contrast text/actions>=9.3; это расчёт пар, не visual1.4/physical accessibility acceptance.
 
-Минимальные house primitives: `CommunicationCard(label, accessibleName, activationLabel, image: ImageBitmap?, selected, enabled, onActivate, modifier)` и `LabeledActionButton(label, enabled, destructive, onClick, modifier)`. Изображение ContentScale.Fit/no crop/no bitmap-caption; text wrap без ellipsis/уменьшения font. Card target минимум96dp, action56dp (оба выше48dp/44pt), размеры могут расти под текст. Явный selected checkmark+border, отдельный focus ring с неизменной геометрией (3dp, отделён от selected), доступные label/role/action/disabled state без двойного объявления child image/text. Native/foundation click/key/touch semantics прежде ручных gestures; focus/hover сами не активируют, disabled не оставляет accessibility action. AccessibleName/activationLabel задаёт caller по реальному mode; не угадывать смысл фотографии.
+Минимальные house primitives: `CommunicationCard(label, accessibleName, activationLabel, image: ImageBitmap?, selected, enabled, onActivate, modifier)` и `LabeledActionButton(label, enabled, destructive, onClick, modifier)`. Изображение ContentScale.Fit/no crop/no bitmap-caption; text wrap без ellipsis/уменьшения font. Существующие card96dp/action56dp — прежние implementation defaults, не обязательная новая плотность: целевое представление повторяет1.4 с платформенными touch/a11y минимумами и крупным текстом. Явный selected checkmark+border, отдельный focus ring с неизменной геометрией (3dp, отделён от selected), доступные label/role/action/disabled state без двойного объявления child image/text. Native/foundation click/key/touch semantics прежде ручных gestures; focus/hover сами не активируют, disabled не оставляет accessibility action. AccessibleName/activationLabel задаёт caller по реальному mode; не угадывать смысл фотографии.
 
 Pure tests проверяют4 palette pairs (text4.5, high-contrast7, borders/focus3), disabled/pressed composited colors и targets/font multiplier без platform state. Actual semantic tree, keyboard autorepeat/traversal, pointer cancellation, screenshots/VoiceOver/TalkBack/large-font на native остаются P10/P15 gates; compile/palette math не объявляются этим proof. Родительский layout должен соблюдать min targets, theme tokens не чинят произвольный clipping ancestor.
 

@@ -2,6 +2,35 @@
 
 Дата начала: 4 ноября 2026 года. Основание: `/Users/aacidov/.opencode/plan/linka-pokazhi-implementation.md` и три соседних приложения contracts/work-packages/verification. Этот журнал отражает выполненное, не заменяет нормативный план.
 
+## Актуально: возобновление с visual slice — 6 ноября 2026
+
+После документирования STOP пользователь явно поручил «делай всё … весь план …
+в сабагентах, максимально асинхронно до30». Реализация возобновлена с U1.4:
+независимые visual lanes, один writer на файл, isolated development sandbox.
+Число30 — предел, не требование запускать зависимые/дублирующиеся задачи.
+Пользовательское визуальное одобрение, safety/release gates сохраняются; production
+roots/signing/stores не переключаются ради более быстрого отчёта. Ниже — срез STOP,
+который сохраняет состояние/evidence до этого возобновления.
+
+Пользователь остановил реализацию после визуального review и подтвердил
+**«UI 1.4 + согласованные функции»**. Код/builds/исполнители/device scenarios на
+паузе; этот шаг меняет только планы и Markdown. Main HEAD `f6e2979`, ветка
+`implementation/linka-pokazhi`; незакоммиченный Android runtime/debug/startup fix,
+Native `import okio.use`, `.kotlin/` и screenshots сохранены. Все lanes завершены;
+iOS lane подтвердила STOP, последний known SHA `68a2299`, активных задач нет.
+
+**UI не принят.** Просмотр живой библиотеки/общения выявил техническую access-панель,
+колонку одинаковых команд, лишние статусы/пустоту вместо приоритета сетки. Это не
+соответствует 1.4, даже при зелёных core tests. Нормативный [атлас/контракт 1.4](ui-1.4-parity.md)
+задаёт библиотеку-плитки, навигацию/иконки, компактную фразу, плотность доски,
+editor grid и card dialog. Общая фраза, drafts, перенос/backup/recovery и защита
+сохраняются, а не откатываются до старого функционального объёма.
+
+Первый шаг после отдельной команды продолжить — одинаковая заполненная доска
+1.4/новая, paired PNG и одобрение пользователя; затем весь атлас обеих платформ
+и U1.4. Оставшаяся интеграция ждёт визуального gate. Compilation/empty startup не
+закрывают U1.4, native security, G4 или physical/release gates.
+
 ## Разрешения и ограничения
 
 - **Условный coding разрешён:** пользователь явно выбрал «Продолжать ядро (Recommended)» после iOS17/Android21 ARM64 smoke. 5 ноября зафиксировано исключение к ранним G0/G1→P02: можно реализовывать P02–P14, не объявляя неполные gates PASS. Native codecs должны пройти приёмку до их интеграции G3/G5, ARMv7/оставшийся baseline — до соответствующей safety/финальной приёмки, G4 — до настоящей библиотеки, physical/AAC и все store/release gates неизменны. Это не MVP и не исключение ABI/форматов.
@@ -16,12 +45,32 @@
 
 ## Пакеты и gates
 
+### Последняя Build-волна перед UI STOP — 5 ноября
+
+Пользователь переключился из Plan в Build и поручил выполнить все шаги до готовых Android/iOS. Затем отдельно разрешил дальнейшие действия на **выделенных LINKa симуляторах**, включая development runtime, синтетические данные и screenshots. Это не разрешение production signing/store upload, новых Apple аккаунтов/сертификатов или обхода системных прав macOS. Старые AVD/user data не сбрасываются ради успешного теста.
+
+Приняты в main после primary connected-code review:
+
+- R0 `aa94682/e60b9d8`: cloud/signing только manual opt-in,384 offline scenarios, no push/cloud/sign run. Official policy требует API36 для update и16KB проверки; min21 сохраняется. Identity lookup разрешён для своего test-host, **0 valid identities**, Keychain2 runtime всё ещё BLOCKED.
+- P08 `9548d04/92ce9de/82e852e`: ephemeral proof FSM, owner-specific Android/iOS native mechanics, controlled prompt отзывает старые guards/caps без оживления stale request. Root failure может BLOCK access без удаления credential record; поздний known publish не открывает blocked gate. **17/17 JVM+Native focused**, затем **18/18 JVM** (15 Access+3 thumbnails), обе Native main compilations. Positive auth/modal/process-death/root binding не объявляются принятыми.
+- P11 `11baf9e/840a0a5/68c11f2/036b102`: AuthoringSession и board/card editor, real SQLite/media tests **43/43**, cleanup/queued lease/dedup/re-auth adoption fixes. Prepared picker result не публикуется до явного Resume с новой capability; real background его отзывает.
+- P12 `883d775/3ba73f7/406500d`: guarded import/export/backup/restore/recovery, bounded operation state, captured export report и owner-bound safe cancel после capability revoke; **18/18 lane JVM**. Fresh guards confirm неизменны, external partial не удаляется.
+- P13 `54e703a/a4ec58a/1b305fd/0ca55ad`: library/settings/access/transfer и shared app navigation. **26/26 lane JVM**, обе Native/Android main compilation. Revoke до fallible cleanup; browse/смена досок сохраняет compose playback, protected entry останавливает. Перед external confirm проверяется настоящая fresh capability, не non-null token.
+- P09 `4c7d33f/f6e2979` + COORD importer/codec `92ce9de`: synthetic admission, pure atomic SQL guards, credential-before-activation, strict resume/readback, close-failure blocks следующего writer; **21 migration tests** в lane. Exact legacy credential importer5 и internal-only flat1.3 mapping проверены; ordinary external reader whitelist прежний. Actual native binding/upgrade/signing/G4 ещё OPEN.
+- Один integrated focused main gate до последующих root-only изменений: **116/116 JVM и116/116 Native iOS17,17650ms**, включая real SQLite authoring/transfer, credential importer и flat1.3 boundary. Не повторялись неизменённые63/54 device suites; не складывать focused totals в выдуманный full count.
+
+R2 Android: отдельный debug ID `su.linka.pictures.development`, plain Application/Firebase provider removed и legacy activities disabled **только в development manifest**. Root/launcher — WIP, production startup не переключён. Thumbnails/owner callback **4/4 API21 и4/4 API35 flagged** ([evidence](evidence/r2-thumbnails-2026-11-05/)). Первый startup дал `INVALID_DATA`: caller создал media до fresh-root admission. `DevelopmentStartupTest` доказал RED на старом APK; после исправления порядка **1/1 GREEN API35 и1/1 API21**. Storage guard не ослаблен; удалён только доказанно пустой media-dir нового dev sandbox. Логи `r2-development-startup-{red,green,api21}.txt` в approved temp. Реальные empty communication PNG21/35 просмотрены в `docs/progress-screenshots/2026-11-05-product-r2/`; они доказывают запуск, **не визуальную приёмку**. Production APK и настоящая библиотека1.4 не обновлялись.
+
+R2 iOS root: готовые lane commits `9be7e7f/5a72b3f/1212d8b` и review corrections `9f3fa7b/16f7137/68a2299` (modal-safe window, post-READY error/cleanup/foreign handle), **ещё не интегрированы и не приняты целиком primary**. Lane сообщила18/18 focused Native и unsigned builds, не main product acceptance. ICU17.2 warning: member `libicu.icudtl_dat.o` содержит только6.3MB const data,0 code/imports; metadata не доказала использование17.2 API, но full17.0 product runtime остаётся обязательным. Заголовки/minimum не переписываются. Keychain identity lookup дал0 valid identities, app-host BLOCKED.
+
+P10/P11 visible-demand+pager seam `c9f6629` готов отдельно, **не интегрирован**; caller bind в LinkaApp не сделан. U1.4, product roots/migration binding/legacy writers/privacy removal/physical/AAC/legal/signing/release gates открыты. **Весь продукт готовым не называется; код остановлен.**
+
 | Пакет | Фактический статус |
 |---|---|
 | P00 / G0 | Частично: source/APK/fixtures сохранены, карты legacy writers и Electron подготовлены. UI-follow-up дал 30 новых PNG и tablet save; phone отключился, оставшиеся сценарии UNKNOWN/BLOCKED. Play provenance и физические устройства не доказаны |
 | P01 / G1 | Не принят целиком. Android21 ARM64 и API35 прошли SQL/callback/focus/IME на final APK886 после root-focus fix и согласования D8. iOS17.0 через Chrome/MCP установлен, native SQLite и public UI XCTest прошли. ARMv7 guest не загрузился в текущем Emulator даже с classic; codec candidates проверяются отдельно |
 | P02 / G2 | **Зафиксирован:** normal bootstrap `bb4f920`→`a371877`, `iosApp/`, модели/команды/ports, streaming snapshots, schema/epoch/ownership handoff, C4. JVM14/14 и Native iOS17 14/14, Unicode16 1093 вектора, Android/оба frameworks/unsigned iOS builds успешны. Это не реализация P03–P14 и не G1 PASS |
-| P03–P14 / G3–G5 | Latest full main gate: **257/257 JVM,361/361 core Native iOS17**, оба frameworks/core+app-host links/Android normal+test APK builds PASS. Android affected images **24/24 API21/35**, files19/19 (API35 flagged). Native adapters integrated, product roots ещё не подключены. API21/22 exception принят: OS verification unavailable, legacy сохранён; native P08/lifecycle и Keychain2 app-host runtime OPEN/BLOCKED. Migration/editor/workflows/library не закончены; G3–G5 OPEN |
+| P03–P14 / G3–G5 | Core/application и UI-кандидаты интегрированы частично, см. последнюю волну выше. Исторический full257/361 и focused116/116 не текущая полная приёмка. UI1.4 не принят; Android root WIP, iOS root отдельно, native P08/Keychain/G4/production binding OPEN/BLOCKED. Код на паузе |
 | P15 / G6 | Не начат: физические minimum/current устройства и AAC-участники недоступны в текущей проверке |
 | P16 / G7 | Не начат; внешние review/signing/store permissions отдельно, публикация не разрешена |
 
@@ -45,7 +94,7 @@
 | iOS FFmpeg candidate | `pokazhi-p07-ffmpeg-preflight` / `implementation/p07-ffmpeg-preflight` | Пользователь явно разрешил isolated minimal LGPL2.1+ candidate preflight, без GPL/nonfree/network. Не shipping integration; source/notices/relink/AppStore compliance остаются release gates |
 | C / P10 early | `/Volumes/data/linka/linka-pokazhi-p10-shared-ui` / `implementation/p10-shared-ui` | `8dc9824`→`6052a06`: четыре palettes, font scaling, accessible house primitives и pure tests; следующий экран общения не подменяется tokens |
 
-### Последний принятый срез — native integration после переноса
+### История: принятый native integration срез после переноса
 
 Review/integration завершены для Android transient files/guarded destinations, iOS files/ImageIO/image preparation/audio backend и development FFmpeg CInterop. Guard/admission исправления не держат IO под FSM-lock; nonempty/foreign audio allocations не присваиваются cleanup. Общий ImageEnvelope/Crc32 заменил Android image walker; native pixel decode остаётся обязательным, полной compressed-bitstream canonicality не обещаем.
 
@@ -58,7 +107,7 @@ Review/integration завершены для Android transient files/guarded des
 - P08 research `31994db`→`4c14a6d` reviewed: AOSP5.0/5.1 SIM-only может вернуть системный RESULT_OK без device authentication. Пользователь затем явно выбрал **«Ограничить OS-проверку»**: на21/22 availability UNAVAILABLE, без нового lock/замены пароля/OS reset; legacy verifier/unlock и min21 сохранены. Compatibility decision принят, native implementation/lifecycle ещё OPEN, unsafe fallback не разрешён. [Policy/матрица](access-policy.md), [источники](device-owner-verification-evidence.md).
 - Новая common compatibility regression прошла вместе со всей affected class: **12/12 JVM и12/12 Native iOS17,9762ms**, native test link PASS. Проверены unchanged legacy bytes/no writes/no OS prompt при UNAVAILABLE и прежний password unlock. Это не native Android verifier, он ещё впереди; предыдущий full257/361 не пересчитывается как исполненный258/362. Logs `p08-api21-compatibility-{policy,native-ios17}.log` в том же approved temp.
 
-Все lanes вернули результаты; активных coding/verification поручений нет. `.kotlin/` и `docs/progress-screenshots/` сохранены. Normal APK только собран, на real data не установлен; normal iOS/Android composition roots ещё не продукт. P08 lifecycle/Keychain, P09 migration, P11 editor, P12 protected workflows, P13 library/settings и P14 integration/CI остаются следующей работой полного плана. ARMv7 runtime, positive TTS/mic/foreground/route, реальные providers, physical/AAC и legal/signing/store gates OPEN; свежие продуктовые screenshots ещё не готовы.
+На этом историческом срезе lanes завершились, product roots/workflows оставались следующей работой. Эти pending формулировки не являются текущей очередью: actual состояние и UI STOP указаны в начале документа. Не повторять неизменённые доказательства ради продолжения.
 
 ### История: возобновление после паузы — 5 ноября
 

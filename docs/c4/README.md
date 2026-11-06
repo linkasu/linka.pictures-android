@@ -6,7 +6,20 @@
 
 Это принятая целевая архитектура, не описание готового продукта. C1/C2 описывают цель; C3 отдельно отмечает проверенное ядро и ещё не подключённые части. **Плана реализации здесь нет.** Фактическое состояние и evidence — в [статусе реализации](../development/implementation-status.md).
 
-Проверенное ядро: CommunicationSession, StorageRuntime, LinkaCodec/BackupCodec, CheckedZip и AudioCoordinator, включая [совместный storage/backup/recovery сценарий](../development/core-backup-integration.md). Реализованы theme/primitives, session-driven communication presentation, [core защиты](../development/access-policy.md) и native files/image/audio adapters. Latest full aggregate: **257/257 JVM и361/361 core Native iOS17**; **Keychain2 app-host BLOCKED отдельно**, Android affected images24/24 на21/35, API35 flagged. Это не готовые приложения: normal Android использует legacy path, iOS — development shell; product roots, migration/editor/workflows/library не закончены. Пользователь согласовал OS verification unavailable на21/22 при сохранении старого пароля и минимума21. [Статус](../development/implementation-status.md) и [контракты](../development/code-contracts.md) отделяют evidence от native/physical/release gates.
+**Визуальная цель: UI 1.4 + согласованные функции**, не новый редизайн.
+При изменении экранов/навигации/тем сначала читать [контракт и атлас 1.4](../development/ui-1.4-parity.md).
+Новый development UI не принят; реализация остановлена пользователем, текущая
+работа — только документация. Первый gate продолжения — парные заполненные экраны
+и подтверждение пользователя, затем оставшаяся интеграция.
+
+Проверенное ядро: CommunicationSession, StorageRuntime, LinkaCodec/BackupCodec,
+CheckedZip и AudioCoordinator. Authoring/transfer/library workflows и UI-кандидаты
+реализованы частично в составе нового пути, но не приняты как готовые приложения.
+Normal Android остаётся legacy; Android development root — WIP, iOS root — отдельные
+неинтегрированные commits. Исторические full257/361 и последующие focused116/116
+не заменяют текущую полную приёмку. Keychain app-host и native/physical/release gates
+OPEN/BLOCKED; Android21/22 exception сохраняется. Actual evidence — в
+[статусе](../development/implementation-status.md), точные seams — в [контрактах](../development/code-contracts.md).
 
 ## Содержание
 
