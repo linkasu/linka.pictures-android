@@ -16,6 +16,11 @@ Native Back→library→open сохраняет фразу. [Baseline/new PNG](.
 просмотрены primary. U1.4/user approval ещё OPEN: не все различия/экраны приняты,
 автоматические UI-прогоны RED, их counts не заменены ручной проверкой.
 
+Последующий отдельный native reopen/Back прогон: **1/1 PASS,22.919s API35**, включая
+explicit AX3×3/9 карточек и сохранение ХОЧУ→КУШАТЬ после Back/reopen. Исправлен тестовый
+поиск clickable ancestor вместо требования clickable на named child. Import/SAF
+не пересчитаны в PASS, pixel/user approval остаются отдельным незакрытым gate.
+
 API21 восстановлен одним обычным boot без wipe; frozen incoming test дал preview,
 но затем **1/1 failure** на кнопке unlock. Данные/snapshots не сброшены. iOS startup
 crash исправлен required plist flag без отключения sanity-check; actual unsigned

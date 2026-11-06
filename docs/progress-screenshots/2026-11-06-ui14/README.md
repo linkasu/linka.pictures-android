@@ -22,4 +22,16 @@ Baseline API35: raw2560×1600, density320/fontScale1.0. У исходной до
 Просмотрены реальные baseline кадры `android-api35-baseline-empty.png` (строка
 вывода скрыта), `android-api35-baseline-compose-empty.png` и
 `android-api35-baseline-compose-filled.png` (фраза ХОЧУ→КУШАТЬ). Первый не является
-парой для нового COMPOSE. Новые filled-кадры ещё ожидают реального импорта.
+парой для нового COMPOSE.
+
+Новые `android-api35-development-library.png`, `...-compose-current.png` (empty)
+и `...-compose-filled.png` получены из normal development app после реального
+импорта и просмотрены. Фраза ХОЧУ→КУШАТЬ и все9 карточек видимы; ручной и затем
+отдельный автоматический native Back/reopen сохранили сообщение (1/1 PASS).
+Golden comparison ещё не одобрен пользователем. Точный контур/миниатюры/отступы
+не объявляются побитовой копией1.4 по одной картинке.
+
+`ios17-startup-crash-springboard.png` — **не UI приложения**, кадр после startup
+crash. `ios17-plist-fixed-startup.png` — исправленный crash, но actual fail-closed
+Keychain error−34018, **не принятая библиотека iOS**. Легитимная development identity
+повторно проверена:0. Защита/entitlements не обходились.

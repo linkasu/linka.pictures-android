@@ -18,6 +18,10 @@
   предпосылка пустого sandbox после уже выполненной публикации. Cleanup test ранее
   маскировал primary ошибку, теперь failures сохраняются со suppressed cleanup.
   Эти прогоны не объявляются PASS по факту появления доски.
+- После исправления logical AX action-chain отдельный **reopen/native Back test
+  PASS:1/1,22.919s** на API35. Он проверил9 видимых карточек с explicit3×3 AX metadata,
+  фразу, KEYCODE_BACK→library→open и сохранённую фразу без displayed autoplay. Это
+  не повторный PASS import/SAF, не pixel verdict и не пользовательское одобрение.
 - Manual API35: normal development app переоткрыла реально импортированную «ХОЧУ»;
   девять карточек и выбор ХОЧУ→КУШАТЬ проверены по pixels. Native KEYCODE_BACK →
   библиотека → повторное открытие сохранили фразу, без автоматической речи.

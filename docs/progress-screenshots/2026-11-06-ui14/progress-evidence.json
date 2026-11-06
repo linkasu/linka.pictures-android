@@ -21,7 +21,7 @@
     "native_back_return": "message preserved",
     "automatic_speech": "not observed"
   },
-  "automation_status": "RED; do not infer PASS from manual states",
+  "automation_status": "Native reopen/Back 1/1 PASS (22.919s); import/SAF remain RED/not accepted; visual/user approval separate",
   "ios_status": "plist startup crash fixed; actual UI blocked on Keychain -34018; no bypass",
   "files": {
     "android-api35-baseline-compose-empty.png": {
