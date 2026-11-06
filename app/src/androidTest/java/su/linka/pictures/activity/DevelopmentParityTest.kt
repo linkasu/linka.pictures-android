@@ -1,8 +1,6 @@
 package su.linka.pictures.activity
 
-import android.content.Intent
 import android.graphics.Rect
-import android.net.Uri
 import android.os.Bundle
 import android.os.Process
 import android.os.SystemClock
@@ -32,23 +30,30 @@ class DevelopmentParityTest {
         "ПИСАТЬ КАКАТЬ", "ГУЛЯТЬ", "ИГРАТЬ", "ОБНИМАТЬСЯ")
     private val fixtureName = "LINKa-U14-HOCHU-cfb199d.linka"
     private val pickerPackages = setOf("com.android.documentsui", "com.google.android.documentsui")
+    private val libraryTitles = listOf("Ваши наборы", "Библиотека")
+    private val libraryMenu = listOf("Меню библиотеки", "Меню", "Ещё")
 
     @Test fun filledBoardThroughRealSafImport() {
         assertSandbox()
         val args = InstrumentationRegistry.getArguments()
         assertEquals("Primary must stage and verify this exact owned Downloads fixture", fixtureName, args.getString("u14FixtureName"))
         assertEquals("Primary must attest the staged file's measured SHA", expectedSha, args.getString("u14FixtureSha256"))
-        assertFalse("fixturealreadyimported / nonfresh sandbox: use reopen-only verification; never reset or duplicate",
-            File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
         assertEquals(expectedSha, instrumentation.context.assets.open(fixture).use { sha(it.readBytes()) })
 
         ActivityScenario.launch(DevelopmentActivity::class.java).use {
-            awaitNamed("Библиотека")
-            await("fresh empty library") { root -> find(root) { node ->
+            awaitLibrary()
+            await("fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate") { root -> find(root) { node ->
                 node.text?.toString()?.startsWith("В библиотеке пока нет досок.") == true
             } }
+            clickNamed(libraryMenu)
+            clickNamed(listOf("К сообщению"))
+            await("message not empty: use reopen-only verification; never clear existing parts") { root ->
+                named(root, listOf("Общее сообщение: пусто"))
+            }
+            clickNamed(listOf("Открыть библиотеку"))
+            awaitLibrary()
             val importLabels = listOf("Импорт", "Импорт, резервная копия и восстановление")
-            if (!visibleNamed(importLabels)) clickNamed(listOf("Меню", "Ещё"))
+            if (!visibleNamed(importLabels)) clickNamed(libraryMenu)
             clickNamed(importLabels)
             awaitNamed("Файлы и восстановление")
             setField("Название импортируемой доски", "Импортированная доска", "ХОЧУ")
@@ -64,19 +69,16 @@ class DevelopmentParityTest {
             clickNamed(listOf("Подтверждаю импорт «ХОЧУ» как новой доски"), scroll = true)
             awaitNamed("Операция завершена.", scroll = true)
             clickNamed(listOf("Назад"))
-            awaitNamed("Библиотека")
+            awaitLibrary()
             clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
             awaitNineCards()
-            var initialTitleNodes = 0
             await("empty composed message") { root ->
-                val empty = named(root, listOf("Сообщение пусто.", "Сообщение пусто"))
-                if (empty) initialTitleNodes = countNamed(root, "ХОЧУ")
-                empty
+                named(root, listOf("Общее сообщение: пусто"))
             }
             clickNamed(listOf("ХОЧУ"), cardOnly = true)
             await("first composed part without playback") { root ->
                 named(root, listOf("Произнести")) && !named(root, listOf("Остановить")) &&
-                    countNamed(root, "ХОЧУ") > initialTitleNodes
+                    named(root, listOf("Общее сообщение: ХОЧУ"))
             }
             clickNamed(listOf("КУШАТЬ"), cardOnly = true)
             awaitFilledMessage()
@@ -91,7 +93,7 @@ class DevelopmentParityTest {
         assertEquals(expectedSha, InstrumentationRegistry.getArguments().getString("u14FixtureSha256"))
         assertTrue("No existing owned library to reopen", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
         ActivityScenario.launch(DevelopmentActivity::class.java).use {
-            awaitNamed("Библиотека")
+            awaitLibrary()
             clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
             awaitNineCards()
             awaitFilledMessage()
@@ -133,8 +135,10 @@ class DevelopmentParityTest {
     }
 
     private fun awaitFilledMessage() = await("ХОЧУ КУШАТЬ composed; no displayed autoplay") { root ->
-        named(root, listOf("ХОЧУ КУШАТЬ")) && named(root, listOf("Произнести")) && !named(root, listOf("Остановить"))
+        named(root, listOf("Общее сообщение: ХОЧУ КУШАТЬ")) && named(root, listOf("Произнести")) && !named(root, listOf("Остановить"))
     }
+
+    private fun awaitLibrary() = await("Ваши наборы / library") { named(it, libraryTitles) }
 
     private fun evidenceReady() = instrumentation.sendStatus(0, Bundle().apply {
         putString("u14State", "board-filled")
@@ -163,28 +167,6 @@ class DevelopmentParityTest {
                     zip.getInputStream(entry).use { assertTrue(it.read() >= 0) }
                 }
             }
-        }
-    }
-
-    @Test fun incomingFixtureRequiresExplicitUiImport() = withOwnedCopy { copy ->
-        assertFalse("Use a fresh OWNED development sandbox; do not reset a user's library",
-            File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
-        // Historical negative ingress preflight only: pick(LINKA) used */*, not zip/octet-stream.
-        // file:// is admitted by ingress, NOT by the reader. The positive test uses real SAF instead.
-        val intent = Intent(target, DevelopmentActivity::class.java)
-            .setAction(Intent.ACTION_VIEW).setDataAndType(Uri.fromFile(copy), "application/zip")
-        ActivityScenario.launch(DevelopmentActivity::class.java).use { scenario ->
-            await("library startup (accepted 1.4 navigation binding)") { root -> find(root) { node ->
-                node.text?.toString() == "Библиотека" || node.contentDescription?.toString() == "Библиотека"
-            } }
-            // Same-UID synthetic native delivery, not a file URI shared across a process boundary.
-            scenario.onActivity { instrumentation.callActivityOnNewIntent(it, intent) }
-            await("incoming notice") { root -> find(root) { node ->
-                node.text?.toString()?.startsWith("Получен файл.") == true
-            } }
-            await("library; incoming document must not auto-import") { root -> find(root) { node ->
-                node.text?.toString()?.startsWith("В библиотеке пока нет досок.") == true
-            } }
         }
     }
 
@@ -246,15 +228,6 @@ class DevelopmentParityTest {
         node.text?.toString() in labels || node.contentDescription?.toString() in labels
 
     private fun named(root: AccessibilityNodeInfo, labels: List<String>) = find(root) { matches(it, labels) }
-
-    private fun countNamed(root: AccessibilityNodeInfo, label: String): Int {
-        var count = if (root.isVisibleToUser && !root.isPassword && matches(root, listOf(label))) 1 else 0
-        for (index in 0 until root.childCount) {
-            val child = root.getChild(index) ?: continue
-            try { count += countNamed(child, label) } finally { child.recycle() }
-        }
-        return count
-    }
 
     private fun visibleNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName)): Boolean {
         val root = instrumentation.uiAutomation.rootInActiveWindow ?: return false
