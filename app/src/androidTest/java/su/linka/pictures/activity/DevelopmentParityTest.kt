@@ -1,6 +1,7 @@
 package su.linka.pictures.activity
 
 import android.content.Intent
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Rect
@@ -120,6 +121,60 @@ class DevelopmentParityTest {
         }
     }
 
+    @Test fun inspectOwnedFixtureGridSemantics() {
+        assertFixtureIdentity()
+        assertTrue("No existing owned library to inspect", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
+        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+            awaitLibrary()
+            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            await("owned public fixture labels for read-only AX inspection") { root ->
+                titles.all { title -> named(root, listOf(title)) }
+            }
+            val root = instrumentation.uiAutomation.rootInActiveWindow ?: error("Missing owned fixture window")
+            try {
+                assertEquals(target.packageName, root.packageName?.toString())
+                var collections = 0
+                find(root) { node ->
+                    node.collectionInfo?.takeIf { collections < 4 }?.let { info ->
+                        collections++
+                        instrumentation.sendStatus(0, Bundle().apply {
+                            putString("u14Collection", "rows=${info.rowCount};columns=${info.columnCount}")
+                        })
+                    }
+                    false
+                }
+                if (collections == 0) instrumentation.sendStatus(0, Bundle().apply { putString("u14Collection", "ABSENT") })
+                for (title in titles) {
+                    var matchCount = 0
+                    find(root) { node ->
+                        if (matchCount < 3 && matches(node, listOf(title))) {
+                            matchCount++
+                            val chain = mutableListOf<String>()
+                            var current: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
+                            try {
+                                while (current != null && chain.size < 16) {
+                                    val item = current.collectionItemInfo
+                                    val bounds = Rect().also(current::getBoundsInScreen)
+                                    val action = current.actionList.firstOrNull { it.id == AccessibilityNodeInfo.ACTION_CLICK }?.label
+                                    chain.add("class=${current.className};clickable=${current.isClickable};enabled=${current.isEnabled};visible=${current.isVisibleToUser};row=${item?.rowIndex};col=${item?.columnIndex};action=${action?.take(80)};bounds=${bounds.toShortString()}")
+                                    if (current.isClickable) break
+                                    val parent = current.parent
+                                    current.recycle()
+                                    current = parent
+                                }
+                            } finally { current?.recycle() }
+                            instrumentation.sendStatus(0, Bundle().apply {
+                                putString("u14FixtureLabel", title)
+                                putString("u14NamedActionChain", chain.joinToString(" | "))
+                            })
+                        }
+                        false
+                    }
+                }
+            } finally { root.recycle() }
+        }
+    }
+
     private fun assertFixtureIdentity() {
         assertSandbox()
         val args = InstrumentationRegistry.getArguments()
@@ -177,14 +232,16 @@ class DevelopmentParityTest {
     }
 
     private fun selectOwnedSafFixture() {
+        val automation = instrumentation.uiAutomation
+        automation.serviceInfo = automation.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
         await("real DocumentsUI", packages = pickerPackages + target.packageName) { root ->
             root.packageName?.toString() in pickerPackages
         }
-        if (!visibleNamed(listOf(fixtureName), pickerPackages)) {
+        if (!visibleNamed(listOf(fixtureName), pickerPackages, requiredViewId = "android:id/title")) {
             clickNamed(listOf("Show roots", "Показать корневые папки", "Открыть панель навигации"), packages = pickerPackages)
             clickNamed(listOf("Downloads", "Загрузки"), packages = pickerPackages)
         }
-        if (!visibleNamed(listOf(fixtureName), pickerPackages)) {
+        if (!visibleNamed(listOf(fixtureName), pickerPackages, requiredViewId = "android:id/title")) {
             clickNamed(listOf("Search", "Найти", "Поиск"), packages = pickerPackages)
             await("DocumentsUI search field", packages = pickerPackages) { root -> find(root) { node ->
                 if (!node.isEditable) false else {
@@ -195,17 +252,14 @@ class DevelopmentParityTest {
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_ENTER)
         }
         // Availability is checked in the real provider UI before selecting; there is no filesystem/URI guess.
-        clickNamed(listOf(fixtureName), packages = pickerPackages)
+        clickNamed(listOf(fixtureName), packages = pickerPackages, requiredViewId = "android:id/title")
         await("SAF returned to target", packages = pickerPackages + target.packageName) { root ->
             root.packageName?.toString() == target.packageName && named(root, listOf("Файлы и восстановление"))
         }
     }
 
-    private fun awaitNineCards() = await("nine visible named cards in a 3x3 grid") { root ->
-        titles.withIndex().all { (index, title) -> find(root) { node ->
-            matches(node, listOf(title)) && node.isClickable && node.isEnabled &&
-                node.collectionItemInfo?.let { it.rowIndex == index / 3 && it.columnIndex == index % 3 } == true
-        } } &&
+    private fun awaitNineCards() = await("nine visible named cards with explicit 3x3 AX metadata; if absent run inspectOwnedFixtureGridSemantics") { root ->
+        titles.all { title -> namedHitBounds(root, listOf(title), cardOnly = true) != null } &&
             find(root) { node -> node.collectionInfo?.let { it.rowCount == 3 && it.columnCount == 3 } == true }
     }
 
@@ -346,9 +400,9 @@ class DevelopmentParityTest {
 
     private fun named(root: AccessibilityNodeInfo, labels: List<String>) = find(root) { matches(it, labels) }
 
-    private fun visibleNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName)): Boolean {
+    private fun visibleNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName), requiredViewId: String? = null): Boolean {
         val root = instrumentation.uiAutomation.rootInActiveWindow ?: return false
-        return try { root.packageName?.toString() in packages && namedHitBounds(root, labels) != null }
+        return try { root.packageName?.toString() in packages && namedHitBounds(root, labels, requiredViewId = requiredViewId) != null }
         finally { root.recycle() }
     }
 
@@ -376,23 +430,46 @@ class DevelopmentParityTest {
         assertTrue(isNamedClickCandidate(named = true, enabled = true, editable = false))
         assertFalse(isNamedClickCandidate(named = true, enabled = false, editable = false))
         assertFalse(isNamedClickCandidate(named = false, enabled = true, editable = false))
+        assertFalse(isNamedClickCandidate(true, true, false, "com.google.android.documentsui:id/search_src_text", "android:id/title"))
+        assertFalse(isNamedClickCandidate(true, true, false, null, "android:id/title"))
+        assertTrue(isNamedClickCandidate(true, true, false, "android:id/title", "android:id/title"))
     }
 
-    private fun isNamedClickCandidate(named: Boolean, enabled: Boolean, editable: Boolean) =
-        named && enabled && !editable
+    private fun isNamedClickCandidate(named: Boolean, enabled: Boolean, editable: Boolean,
+        viewId: String? = null, requiredViewId: String? = null) =
+        named && enabled && !editable && (requiredViewId == null || viewId == requiredViewId)
 
-    private fun namedHitBounds(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean = false): Rect? {
+    @Test fun fixtureCellRequiresExplicitMatchingRowAndColumn() {
+        assertTrue(matchesFixtureCell(4, 1, 1))
+        assertFalse(matchesFixtureCell(4, null, null))
+        assertFalse(matchesFixtureCell(4, 0, 4))
+        assertFalse(matchesFixtureCell(-1, 0, 0))
+    }
+
+    private fun matchesFixtureCell(position: Int, row: Int?, column: Int?) =
+        position >= 0 && row == position / 3 && column == position % 3
+
+    private fun namedHitBounds(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean = false,
+        requiredViewId: String? = null): Rect? {
         var bounds: Rect? = null
         find(root) { node ->
-            if (!isNamedClickCandidate(matches(node, labels), node.isEnabled, node.isEditable)) false else {
+            if (!isNamedClickCandidate(matches(node, labels), node.isEnabled, node.isEditable, node.viewIdResourceName, requiredViewId)) false else {
                 var candidate: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
+                var row: Int? = null
+                var column: Int? = null
                 try {
-                    while (candidate != null && !candidate.isClickable) {
+                    while (candidate != null) {
+                        candidate.collectionItemInfo?.takeIf { row == null }?.let {
+                            row = it.rowIndex
+                            column = it.columnIndex
+                        }
+                        if (candidate.isClickable) break
                         val parent = candidate.parent
                         candidate.recycle()
                         candidate = parent
                     }
-                    candidate?.takeIf { it.isEnabled && it.isVisibleToUser && (!cardOnly || it.collectionItemInfo != null) }?.let {
+                    val position = titles.indexOfFirst { matches(node, listOf(it)) }
+                    candidate?.takeIf { it.isEnabled && it.isVisibleToUser && (!cardOnly || matchesFixtureCell(position, row, column)) }?.let {
                         // A wide SAF row's center can hit metadata; stay on the actual named label/icon.
                         bounds = visibleNamedBounds(Rect().also(node::getBoundsInScreen),
                             Rect().also(it::getBoundsInScreen), Rect().also(root::getBoundsInScreen))
@@ -405,11 +482,11 @@ class DevelopmentParityTest {
     }
 
     private fun clickNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName),
-        scroll: Boolean = false, backwards: Boolean = false, cardOnly: Boolean = false) {
+        scroll: Boolean = false, backwards: Boolean = false, cardOnly: Boolean = false, requiredViewId: String? = null) {
         var bounds: Rect? = null
         val direction = if (backwards) AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
         await("click ${labels.joinToString(" / ")}", packages, if (scroll) direction else null) { root ->
-            bounds = namedHitBounds(root, labels, cardOnly)
+            bounds = namedHitBounds(root, labels, cardOnly, requiredViewId)
             bounds != null
         }
         val rect = bounds ?: error("Missing visible named hit rectangle inside clickable ancestor")

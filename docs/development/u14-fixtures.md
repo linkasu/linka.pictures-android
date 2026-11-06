@@ -136,6 +136,27 @@ regression, не pure navigation calculation. Native `Window.setBackHandler` /
 Не импортирует, не редактирует фразу, не произносит и не очищает. UI открытия доски
 может штатно сохранить cursor. При отсутствии нужного состояния тест останавливается.
 
+**Текущее состояние API35 по actual primary MCP:** ХОЧУ уже реально опубликована,
+фраза ХОЧУ → КУШАТЬ и Native Back → library → reopen проверены вручную, получен PNG.
+На этом sandbox **не повторять import и не делать reset** — только reopen/read-only.
+Это не автоматический harness PASS и не одобрение U1.4 пользователем.
+На API21 primary наблюдал preview, затем RED на unlock; phone evidence не PASS.
+
+`awaitNineCards` и card-only tap используют один `namedHitBounds`: named leaf не
+обязан быть clickable сам; ищется ближайший visible/enabled clickable ancestor.
+Explicit CollectionItemInfo берётся с named node или промежуточной цепочки до
+этого action; row/column должны совпасть с фиксированным порядком fixture 3×3.
+Root CollectionInfo 3×3 также обязателен. Нет metadata — отдельный product a11y gap,
+не повод вычислять AX-таблицу по bounds или убирать assert.
+
+Если нужен actual AX сигнал, selector
+`su.linka.pictures.activity.DevelopmentParityTest#inspectOwnedFixtureGridSemantics`
+открывает существующую ХОЧУ без импорта/изменения фразы и отправляет только
+actual collection info и до 3 named chains на каждый из 9 публичных labels,
+до 16 узлов в цепочке: class/clickable/enabled/visible/row/col/CLICK label/bounds.
+Нет общего UI/password dump и нет выводимого из pixels row/col. Успех инспекции
+означает только сбор фактов, не успешный a11y/visual gate.
+
 Успешный full/reopen test отправляет только passive instrumentation status
 `u14State=board-filled`, fixture SHA, message parts, `UI_STATE_READY_ONLY` и
 `u14InputPath`: `real-saf`, `owned-incoming-content; SAF-picker/OS-grant NOT evaluated`
@@ -177,6 +198,13 @@ bounds, clipping и пустое пересечение. Эта lane прове�
 editable как для availability (`visibleNamed`), так и для tap; flags regression
 различает query/result с одинаковым именем. Search/Field изменяются только через
 отдельный `replaceText`/`setField`; IME, SAF-return и point clipping не обходятся.
+После следующего actual RED SAF result дополнительно требует **точный**
+`viewIdResourceName="android:id/title"` и basename. В private UiAutomation service
+включается стандартный `FLAG_REPORT_VIEW_IDS` (OR с имеющимися flags); глобальные
+settings/permissions не меняются. Этот же ID filter используется в availability
+и tap; search_src_text отвергается даже при неверном editable flag.
+SAF-return predicate сохранён, но API35 повторный импорт на уже заполненном
+sandbox запрещён; настоящий SAF gate остаётся OPEN до отдельного решения primary.
 
 Следующий parent RED выявил маскировку исходной ошибки исключением
 `Activity never becomes requested state [DESTROYED]` из cleanup `scenario.close()`.
