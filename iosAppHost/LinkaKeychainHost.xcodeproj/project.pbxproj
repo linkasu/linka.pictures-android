@@ -78,9 +78,8 @@
             isa = XCBuildConfiguration;
             buildSettings = {
                 CODE_SIGN_ENTITLEMENTS = LinkaKeychainHost/LinkaKeychainHost.entitlements;
+                INFOPLIST_FILE = LinkaKeychainHost/Info.plist;
                 INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-                INFOPLIST_KEY_UIFileSharingEnabled = YES;
-                INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
                 PRODUCT_BUNDLE_IDENTIFIER = "$(LINKA_HOST_BUNDLE_ID)";
                 PRODUCT_NAME = "$(TARGET_NAME)";
             };

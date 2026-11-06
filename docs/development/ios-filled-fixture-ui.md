@@ -9,16 +9,41 @@
 
 ## Изоляция и подготовка — только primary session
 
-`iosAppHost/LinkaKeychainHost.xcodeproj` получает ровно два generated Info ключа
-**только application target**: `UIFileSharingEnabled=YES` и
-`LSSupportsOpeningDocumentsInPlace=YES`. Его `Documents` — исключительно sandbox
+`iosAppHost/LinkaKeychainHost/Info.plist` содержит ровно два Bool-ключа `true`:
+`UIFileSharingEnabled` и `LSSupportsOpeningDocumentsInPlace`. Только application
+target в `iosAppHost/LinkaKeychainHost.xcodeproj` задаёт
+`INFOPLIST_FILE=LinkaKeychainHost/Info.plist`; проектный default
+`GENERATE_INFOPLIST_FILE=YES` сохранён для merge стандартных bundle ID/name/executable
+полей. XCTest bundle не наследует host Info.plist. `Documents` host — исключительно sandbox
 fixture vending для локального Files. Host не запускает product root, библиотеку
 или аудио; Keychain не хранится в Documents. Публикуется только публичный fixture,
 не Keychain/приватные данные. Production file sharing **не включается**; реальный
 `iosApp`, entitlements, группы, signing policy и существующие тесты не меняются.
 Нового File Provider, UTI, URL/delegate hook или source authority нет.
 
-Primary после ревью собирает/устанавливает host на уже разрешённый Simulator с
+Primary после ревью собирает host и **до установки** читает фактический
+`LinkaKeychainHost.app/Info.plist`: оба ключа должны быть именно Bool `true`,
+`CFBundleName` — ровно `LinkaKeychainHost`, `MinimumOSVersion` — `17.0`.
+Воспроизводимый guard на пути к собранному артефакту (только primary):
+
+```sh
+python3 - "$HOST_APP/Info.plist" <<'PY'
+import plistlib, sys
+with open(sys.argv[1], 'rb') as source:
+    info = plistlib.load(source)
+assert info['UIFileSharingEnabled'] is True
+assert info['LSSupportsOpeningDocumentsInPlace'] is True
+assert info['CFBundleName'] == 'LinkaKeychainHost'
+assert info['MinimumOSVersion'] == '17.0'
+PY
+```
+
+Отдельно сохранить исходные isolation checks: Simulator-only, уникальный own
+bundle ID, точная own Keychain group/entitlements и strict signatures host/test,
+отсутствие product root/runtime в host. Проверить, что XCTest bundle и UI runner
+не получили host Info.plist. Ни source plist, ни showBuildSettings не доказывают
+содержимое собранного Info.plist. Только после этих проверок primary устанавливает
+host на уже разрешённый Simulator с
 согласованной Xcode Simulator подписью и уникальным **own** `LINKA_HOST_BUNDLE_ID`.
 Без production, profiles, physical devices, account/identity/certificate изменений.
 Через app data container **этого host** primary кладёт неизменённый
@@ -100,15 +125,25 @@ authority/настройка, обход защит или правка shared s
 
 ## Проверки implementation lane
 
-Только `plutil -lint` обоих PBX, `swiftc -frontend -parse` нового Swift, XML parse
+Только `plutil -lint` host Info.plist и обоих PBX, `swiftc -frontend -parse` нового Swift, XML parse
 существующей схемы и read-only `xcodebuild -showBuildSettings CODE_SIGNING_ALLOWED=NO`.
 Никаких build/run, devices, staging, signing или Simulator операций в этой lane.
 Primary отдельно проверяет actual generated product/host Info и подписанные артефакты,
 затем staging hash, реальный import-run и снимки. Ранее полученные Keychain 2/2 и
 startup/relaunch 1/1 этим сценарием не заменяются; полный UI1.4 gate остаётся OPEN.
 
-Статические проверки implementation lane выполнены 6 ноября 2026: оба PBX lint,
-Swift parse, XML схемы, оба showBuildSettings и проверка host-only flags / Swift
-build references — **PASS**. ShowBuildSettings подтверждает оба ключа `YES`, имя
-`LinkaKeychainHost` и `SUPPORTED_PLATFORMS=iphonesimulator`; это не проверка
-собранного Info.plist. Runtime, staging и снимки в этой lane не выполнялись.
+Первоначальные статические проверки 6 ноября 2026 прошли, но **не обнаружили
+дефект generated Info**. Primary затем получил два успешных Simulator build,
+однако guard фактического FixtureHost Info.plist упал с `KeyError` на
+`UIFileSharingEnabled` **до install/staging**: Xcode 27.2 не перенёс произвольные
+`INFOPLIST_KEY_*` из settings в артефакт. Эти два неработавших settings удалены;
+вместо них добавлен минимальный input plist только host target. UI-тест и его
+селекторы не менялись. Фактический merge нового plist ещё должен подтвердить
+primary своей сборкой и guard выше; импорт и filled-board native PASS не заявлены.
+Startup 1/1 и Native Keychain 2/2 остаются отдельными результатами.
+
+Статические проверки коррекции: input plist и оба PBX lint, Swift parse, точный
+набор двух Bool-ключей input plist, host-target-only `INFOPLIST_FILE` — **PASS**.
+Read-only showBuildSettings host и hosted XCTest подтверждает generated `YES`,
+Simulator/iOS 17.0 и отсутствие `INFOPLIST_FILE` у test bundle. Это не artifact PASS;
+build/sign/install/staging/run в implementation lane не выполнялись.
