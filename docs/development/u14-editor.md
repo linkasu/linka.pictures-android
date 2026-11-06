@@ -8,16 +8,18 @@
 Просмотрены только доказанные editor/card PNG:
 
 - `../redesign-audit/screenshots/p00-followup/tablet/04-own-editor-confirmed.png`:
-  2000×1250, toolbar с Back / названием / Save; параметры над сеткой;
-  сетка примерно x=355…1645, y=315…1228, pager по сторонам.
-- `05-standard-card-form.png` в той же папке: диалог примерно
-  x=638…1360, y=332…905; та же сетка видна под затемнением;
+  toolbar с Back / названием / Save; checkbox «Вводить без пробела» над параметрами
+  сетки, pager по сторонам.
+- `05-standard-card-form.png` в той же папке: диалог поверх той же сетки под затемнением;
   тип → название → изображение / из текста → звук / синтез / запись → действия.
 - `18-pre-save-board-with-card.png`: карточка на первой позиции той же сетки,
   обычная текстовая подпись; новая библиотека и недоказанные старые 20/21 не использованы.
 
-Эти pixel bounds — ориентир, **не утверждение dp/density или совпадения нового UI**.
-Новый editor: toolbar; компактная строка параметров; основная площадь — сетка;
+Raw PNG всех трёх tablet-референсов — **2560×1600**, подтверждено primary через sips
+(phone-референсы — 2400×1080). Ранее просмотренный preview был масштабирован до
+2000×1250: его координаты не являются raw PNG bounds. Численные bounds удалены
+до actual capture; доказательства совпадения геометрии нового UI здесь нет.
+Новый editor: toolbar; checkbox «Вводить без пробела»; компактная строка параметров; основная площадь — сетка;
 на широком окне pager/grid/pager примерно 1:4:1, на узком pager по 48 dp;
 интервалы 4 dp, обычная 3×3 укладывается без принудительного min96.
 Крупный текст / экстремальное число строк или столбцов разрешают прокрутку
@@ -56,16 +58,19 @@
 Не применена опасная подмена «CancelCard; SetCell»: она не атомарна,
 не сохраняет тип в durable form и обходит нормальный SaveCard contract.
 
-Чтобы закрыть требование типа формы, primary должен согласовать/поручить shared seam:
-persisted `Card.kind` с backward-compatible default, отдельную команду изменения kind,
-инициализацию из исходной ячейки и атомарный SaveCard для CONTENT/SPACE/EMPTY,
-сохранение cell extensions, отмену media и сброс form в той же операции.
-Нужны application tests на cancel/resume/autosave/metadata и совместимость старых draft.
-Затем UI radio можно привязать к этому полю/команде. Здесь application/domain не менялись.
+Primary уже заморозил seam в `code-contracts.md`, подраздел U1.4:
+trailing `Card.kind: CellKind = CONTENT` с `EncodeDefault.NEVER` и
+`AuthoringAction.ChangeCardKind(kind)`. Non-CONTENT скрывает поля, но сохраняет их
+в form до Cancel/Save; SaveCard атомарно создаёт card=null и сохраняет cell extensions.
+Implementation lane 7 реализует shared contract; UI radio подключается только после
+готового dependency commit от primary. Здесь application/domain не менялись.
 
-В `BoardBehavior` также нет отдельного legacy `withoutSpace`: неподтверждённый
-checkbox не подменён ни DIRECT, ни LITERAL. Это конкретное отличие для primary,
-если checkbox требуется в принятом fixture.
+Legacy `withoutSpace` уже отображается codec-ом в `BoardBehavior.inputStyle`:
+`LinkaWire.document` читает LITERAL/CARDS, `encodeWire` записывает `withoutSpace`
+из того же поля. Checkbox напрямую derived из `inputStyle == LITERAL` и посылает
+существующий Details с копией behavior; отдельного persisted поля или UI buffer нет,
+DIRECT/COMPOSE, название и описание сохраняются. Label и положение взяты из
+`values-ru/strings.xml` / `activity_set_edit.xml` 1.4 и референса 04.
 
 Новых navigation callbacks не понадобилось: root уже закрывает маршрут при
 `CLOSED` / `APPLIED`. P13 parent должен подключить новый composed demand к root loader
@@ -83,8 +88,9 @@ git diff --check
 
 Новые pure tests: размеры обычной / dense / large-font сетки; CONTENT с пустой
 подписью и EMPTY с metadata; восстановленная card/grid форма на правильной странице;
-векторные toolbar paths. Существующие UI / AuthoringPresentation / image registry tests
-не изменены. Результат focused run: **49 tests, 0 failures, 0 errors** (5 новых),
+векторные toolbar paths; checkbox LITERAL/CARDS с сохранением DIRECT/COMPOSE и details.
+Существующие UI / AuthoringPresentation / image registry tests не изменены.
+Результат focused run: **50 tests, 0 failures, 0 errors** (6 новых с начала editor lane),
 `git diff --check` PASS. Это не Compose instrumentation и не доказательство визуального паритета.
 
 Не запускались full gate, native build, FFmpeg, download, device/install/permissions.

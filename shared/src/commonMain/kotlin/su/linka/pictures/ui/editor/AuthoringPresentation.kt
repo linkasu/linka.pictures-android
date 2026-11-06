@@ -2,6 +2,12 @@ package su.linka.pictures.ui.editor
 
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.authoring.*
+import su.linka.pictures.domain.BoardDocument
+import su.linka.pictures.domain.InputStyle
+
+internal fun withoutSpaceDetails(document: BoardDocument, checked: Boolean): AuthoringAction.Details =
+    AuthoringAction.Details(document.name, document.description,
+        document.behavior.copy(inputStyle = if (checked) InputStyle.LITERAL else InputStyle.CARDS))
 
 internal fun AuthoringState.editable(): Boolean = phase == AuthoringPhase.EDITING || phase == AuthoringPhase.CONFLICT
 

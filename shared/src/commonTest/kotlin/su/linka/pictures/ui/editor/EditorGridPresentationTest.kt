@@ -5,6 +5,20 @@ import su.linka.pictures.domain.*
 import androidx.compose.ui.graphics.vector.PathParser
 
 class EditorGridPresentationTest {
+    @Test fun withoutSpaceCheckboxUsesExistingInputStyleWithoutChangingDirectMode() {
+        InteractionMode.entries.forEach { mode ->
+            val document = BoardDocument(BoardId("board"), "Название", listOf(BoardPage(PageId("page"), 3, 3, emptyList())),
+                behavior = BoardBehavior(mode, InputStyle.CARDS), description = "Описание")
+            val checked = withoutSpaceDetails(document, true)
+            assertEquals(InputStyle.LITERAL, checked.behavior.inputStyle)
+            assertEquals(mode, checked.behavior.defaultMode)
+            assertEquals(document.name, checked.name)
+            assertEquals(document.description, checked.description)
+            val unchecked = withoutSpaceDetails(document.copy(behavior = checked.behavior), false)
+            assertEquals(document.behavior, unchecked.behavior)
+        }
+    }
+
     @Test fun bundledToolbarPathsParseWithoutAnIconPackDependency() {
         EditorSymbol.entries.forEach { assertTrue(PathParser().parsePathString(it.path).toNodes().isNotEmpty()) }
     }

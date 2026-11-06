@@ -1,6 +1,7 @@
 package su.linka.pictures.ui.editor
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -84,6 +85,14 @@ fun EditorScreen(
                     Text(if (state.phase == AuthoringPhase.LOADING) "Загрузка черновика…" else "Создайте доску или откройте черновик из библиотеки.", Modifier.padding(8.dp))
                     LabeledActionButton("Новая доска", state.phase == AuthoringPhase.IDLE, false, { dispatch(AuthoringAction.NewBoard()) })
                 } else if (page != null) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp).toggleable(
+                        value = document.behavior.inputStyle == InputStyle.LITERAL,
+                        enabled = structural, role = Role.Checkbox,
+                        onValueChange = { dispatch(withoutSpaceDetails(document, it)) }),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(document.behavior.inputStyle == InputStyle.LITERAL, onCheckedChange = null, enabled = structural)
+                        Text("Вводить без пробела")
+                    }
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Строки: ${page.rows}   Столбцы: ${page.columns}", Modifier.weight(1f))
                         TextButton({ moveSource = null; dispatch(AuthoringAction.OpenGrid(page.id)) }, enabled = structural) { Text("Размер сетки") }
