@@ -114,7 +114,7 @@ object AudioAppHostChecks {
                     cleanup { suspendCoroutine<Unit> { continuation ->
                         NSOperationQueue.mainQueue.addOperationWithBlock { continuation.resume(Unit) }
                     } }
-                    cleanup { source?.let { files?.discard(it) } }
+                    cleanup { withContext(Dispatchers.IO) { source?.let { files?.discard(it) } } }
                     cleanup { filesJob.children.toList().joinAll() }
                     cleanup { filesJob.cancelAndJoin() }
                     cleanup { if (ownedRoot) withContext(Dispatchers.IO) { fs.deleteRecursively(root) } }
