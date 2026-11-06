@@ -82,21 +82,19 @@ android:screenOrientation="landscape"
             android:name=".activity.BroadcastReceiverActivity" >
             <intent-filter>
             <!-- needed for properly formatted email messages -->
+            <!-- Content provider IDs are opaque; pathPattern without a host was ignored. -->
             <data
                 android:scheme="content"
-                android:mimeType="application/vnd.linka"
-                android:pathPattern=".*\\.linka" />
+                android:mimeType="application/vnd.linka" />
             <!-- needed for mangled email messages -->
             <data
                 android:scheme="content"
 
-                android:mimeType="application/linkaapp"
-                android:pathPattern=".*\\.linka" />
+                android:mimeType="application/linkaapp" />
             <!-- needed for mangled email messages -->
             <data
                 android:scheme="content"
-                android:mimeType="application/octet-stream"
-                android:pathPattern=".*\\.linka" />
+                android:mimeType="application/octet-stream" />
 
             <action android:name="android.intent.action.VIEW" />
 
