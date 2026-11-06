@@ -1,0 +1,31 @@
+{
+  "scope": "development Simulator only; no production/physical signing",
+  "device": "linka_platform_probe_ios17 / iOS17.0 arm64",
+  "bundle_id": "su.linka.pictures.development",
+  "ui_tests": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "expectedFailures": 0,
+    "two_real_startups": true
+  },
+  "full_xcresult_local_path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/ui-startup-tests.xcresult",
+  "font_scale": "not independently measured",
+  "images": {
+    "startup-library.png": {
+      "sha256": "e45bea27850531637a8528e0e2d7ea072943b54358e3e1a091ec408f0af1ec26",
+      "read": true,
+      "userApproved": false
+    },
+    "xcui-attachments/34ED753D-98B0-45AC-87C4-238FE87FFC54.png": {
+      "sha256": "0e9c32c386895ca050e0a1ee8c9ec994eb62d5fdcdf7470db3d0b778ca30745b",
+      "read": true,
+      "userApproved": false
+    },
+    "xcui-attachments/592E7F90-1211-4251-80FF-431B6C64F003.png": {
+      "sha256": "0e9c32c386895ca050e0a1ee8c9ec994eb62d5fdcdf7470db3d0b778ca30745b",
+      "read": true,
+      "userApproved": false
+    }
+  }
+}

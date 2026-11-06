@@ -9,7 +9,7 @@ This is a startup/relaunch regression for the development app's Keychain credent
 ## Prerequisites and boundaries
 
 - Use an explicitly owned arm64 iOS 17+ Simulator, with the real development app already installed and independently verified. Do not run against production, a physical device, or unrelated simulators.
-- The app must use its own development Keychain group. The runner has no Keychain entitlements, team, identity, profiles, credential access, or application dependency.
+- The app must use its own development Keychain group. This project declares no Keychain entitlements, personal team, identity, profiles, credential access, or application dependency. Xcode may inject its standard runner-only Simulator group into the generated test binary; verify that any such group is exactly the isolated runner's identifier, never the product or Keychain-test host group. Do not strip platform-generated entitlements.
 - `CODE_SIGNING_ALLOWED=NO` is the default. Any standard Xcode Simulator runner signing is a separate, explicitly authorized operation; this project does not provision accounts or fetch profiles. A macOS permission prompt requires human handling.
 - `LINKA_UI_RUNNER_BUNDLE_ID` defaults to `su.linka.pictures.uistartup`; the test bundle identifier is that base plus `.tests`. Supply a unique base for an authorized run. No app launch arguments, environment overrides, test hooks, skips, retries, or fixed sleeps are used.
 
@@ -28,3 +28,16 @@ xcodebuild test -showBuildSettings -project iosUiTests/LinkaStartupUITests.xcode
 ```
 
 `test -showBuildSettings` selects the test action for inspection; it does not build or execute the UI test. The scheme intentionally has no runnable application, so plain `-showBuildSettings` without the test action cannot resolve its destination. After reviewing the project, the primary session must separately authorize and perform runner build/signing and execution on that explicit Simulator. Select only `LinkaStartupUITests/DevelopmentLibraryTests/testDevelopmentLibrarySurvivesRelaunch`, disable test repetition/retry, and retain its `.xcresult`. A native UI-test PASS requires both real startup admissions and their screenshots; parsing or build settings are not runtime evidence.
+
+## Actual run, 6 November 2026
+
+**1/1 native XCUI test PASS,13.512s**, owned iOS17.0 arm64, 0 failures/skips.
+Both real app launches reached the title and hittable menu/create AX controls;
+actual screenshots are attached to the local result bundle. Before execution,
+strict runner/test signatures and isolated runner-only generated entitlements
+were checked. The installed development executable SHA matched the independently
+verified app; this runner did not rebuild, replace or initialise a fake product.
+
+This verifies startup/relaunch, not filled-board parity, import/provider flows,
+microphone/voice, physical devices or full G4. Evidence and local `.xcresult` path
+are recorded with `docs/progress-screenshots/2026-11-06-ios-development/`.

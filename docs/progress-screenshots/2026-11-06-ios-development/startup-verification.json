@@ -1,0 +1,10 @@
+{
+  "bundle_id": "su.linka.pictures.development",
+  "minimum_os": "17.0",
+  "strict_signature_verified": true,
+  "own_simulator_entitlement_payload_verified": true,
+  "group_scope": "TEAM.su.linka.pictures.development only",
+  "executable_sha256": "f4acf190d3f7deaa536aebbb09bf7652ca886f5451c9cee3b2c639f3d062a7ad",
+  "production_signing": false,
+  "data_reset": false
+}

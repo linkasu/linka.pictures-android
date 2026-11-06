@@ -25,7 +25,7 @@
         };
         B00000000000000000000003 = {
             isa = PBXGroup;
-            children = (B00000000000000000000007, B0000000000000000000000D, B00000000000000000000004);
+            children = (B00000000000000000000007, B0000000000000000000000D, B0000000000000000000000E, B00000000000000000000004);
             sourceTree = "<group>";
         };
         B00000000000000000000004 = {
@@ -86,6 +86,7 @@
         B0000000000000000000000B = {
             isa = XCBuildConfiguration;
             buildSettings = {
+                "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = DevelopmentSimulator.entitlements;
                 FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/$(KOTLIN_FRAMEWORK_TARGET)/debugFramework");
                 INFOPLIST_FILE = Info.plist;
                 "KOTLIN_FRAMEWORK_TARGET[sdk=iphoneos*]" = iosArm64;
@@ -106,6 +107,12 @@
             isa = PBXFileReference;
             lastKnownFileType = text.plist.xml;
             path = Info.plist;
+            sourceTree = "<group>";
+        };
+        B0000000000000000000000E = {
+            isa = PBXFileReference;
+            lastKnownFileType = text.plist.entitlements;
+            path = DevelopmentSimulator.entitlements;
             sourceTree = "<group>";
         };
     };
