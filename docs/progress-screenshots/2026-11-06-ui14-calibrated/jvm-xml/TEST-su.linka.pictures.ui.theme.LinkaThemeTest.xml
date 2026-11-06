@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.theme.LinkaThemeTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.031">
+  <properties/>
+  <testcase name="defaultPaletteUses14ResourcesAndBlackCardCaptions[jvm]" classname="su.linka.pictures.ui.theme.LinkaThemeTest" time="0.0"/>
+  <testcase name="portableScaleIsBoundedWithoutClampingSystemScale[jvm]" classname="su.linka.pictures.ui.theme.LinkaThemeTest" time="0.004"/>
+  <testcase name="targetsMeetBothPlatformMinimumsWithoutOverridingTheGrid[jvm]" classname="su.linka.pictures.ui.theme.LinkaThemeTest" time="0.0"/>
+  <testcase name="materialSelectionUsesAccessibleFunctionalColorsInEveryTheme[jvm]" classname="su.linka.pictures.ui.theme.LinkaThemeTest" time="0.023"/>
+  <testcase name="brandAccentRemainsSuitableForBlackFabContentNotSelectionOnWhite[jvm]" classname="su.linka.pictures.ui.theme.LinkaThemeTest" time="0.0"/>
+  <testcase name="allPalettesKeepContrastInNormalDisabledAndPressedStates[jvm]" classname="su.linka.pictures.ui.theme.LinkaThemeTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

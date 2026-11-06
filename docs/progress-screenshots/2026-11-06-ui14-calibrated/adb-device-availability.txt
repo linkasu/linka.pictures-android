@@ -1,0 +1,7 @@
+First tool call: adb MCP list_devices
+List of devices attached
+
+Repeated after successful build: adb MCP list_devices
+List of devices attached
+
+No entries returned in either response. No device-changing calls issued.

@@ -1,0 +1,8 @@
+{
+  "appPackage": true,
+  "testPackage": true,
+  "testTarget": true,
+  "firebaseInitProviderAbsent": true,
+  "nonExportedProvider": true,
+  "cacheOnlyProvider": true
+}

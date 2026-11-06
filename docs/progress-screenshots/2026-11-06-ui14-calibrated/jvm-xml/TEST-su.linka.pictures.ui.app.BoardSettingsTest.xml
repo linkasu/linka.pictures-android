@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.app.BoardSettingsTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:38" hostname="mini" time="0.034">
+  <properties/>
+  <testcase name="settingsCommitPreservesOtherPreferencesAndAppliesOnlyExplicitModeAfterCompleted[jvm]" classname="su.linka.pictures.ui.app.BoardSettingsTest" time="0.034"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

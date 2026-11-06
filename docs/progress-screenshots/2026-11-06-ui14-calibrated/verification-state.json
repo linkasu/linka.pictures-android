@@ -1,0 +1,25 @@
+{
+  "sourceHead": "93b42626fd47aff4b42c8b0422455e81d2458090",
+  "sourceChanged": false,
+  "hostResult": "PASS",
+  "jvm": {
+    "suites": 23,
+    "tests": 158,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "deviceResult": "BLOCKED_NO_MCP_DEVICES",
+  "serialLease": "emulator-5556",
+  "deviceCalls": [
+    "list_devices",
+    "list_devices"
+  ],
+  "instrumentationStarted": false,
+  "apkInstalled": false,
+  "normalBaselineTouchedByLane": false,
+  "normalBaselineStateObserved": false,
+  "rawPNGs": [],
+  "newPngRead": false,
+  "userApproved": false
+}

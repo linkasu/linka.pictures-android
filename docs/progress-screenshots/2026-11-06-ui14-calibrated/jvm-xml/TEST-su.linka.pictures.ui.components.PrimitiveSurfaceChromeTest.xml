@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.021">
+  <properties/>
+  <testcase name="darkHighContrastAndActionBordersKeepTheirExistingChoices[jvm]" classname="su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest" time="0.001"/>
+  <testcase name="actualDefaultOutlinePassesAllGradientEndsIncludingPressedAndDisabled[jvm]" classname="su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest" time="0.02"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

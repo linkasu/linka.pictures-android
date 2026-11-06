@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.settings.SettingsRefreshTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.042">
+  <properties/>
+  <testcase name="postCommitReadFailureKeepsKnownSaveAndOnlyExplicitReadRecoversWithoutAnotherWrite[jvm]" classname="su.linka.pictures.ui.settings.SettingsRefreshTest" time="0.015"/>
+  <testcase name="twoKnownSavesEachReloadOnceAndCaptureFreshRevisionForTheNextSave[jvm]" classname="su.linka.pictures.ui.settings.SettingsRefreshTest" time="0.015"/>
+  <testcase name="failedWritesDoNotReadOrReplaceTheCapturedInputAndSnapshot[jvm]" classname="su.linka.pictures.ui.settings.SettingsRefreshTest" time="0.006"/>
+  <testcase name="revisionChangedDuringReadDoesNotReenableAnObsoleteSnapshot[jvm]" classname="su.linka.pictures.ui.settings.SettingsRefreshTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

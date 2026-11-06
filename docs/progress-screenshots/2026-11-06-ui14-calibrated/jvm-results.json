@@ -1,0 +1,218 @@
+{
+  "suites": 23,
+  "counts": {
+    "tests": 158,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "results": [
+    {
+      "file": "TEST-su.linka.pictures.application.authoring.AuthoringSessionTest.xml",
+      "name": "su.linka.pictures.application.authoring.AuthoringSessionTest",
+      "tests": "59",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "2.201"
+    },
+    {
+      "file": "TEST-su.linka.pictures.domain.EditorFormKindSerializationTest.xml",
+      "name": "su.linka.pictures.domain.EditorFormKindSerializationTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.004"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.access.AccessPresentationTest.xml",
+      "name": "su.linka.pictures.ui.access.AccessPresentationTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.009"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.app.BoardSettingsTest.xml",
+      "name": "su.linka.pictures.ui.app.BoardSettingsTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.034"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.app.EditorEntryTest.xml",
+      "name": "su.linka.pictures.ui.app.EditorEntryTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.005"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.app.ProductBackTest.xml",
+      "name": "su.linka.pictures.ui.app.ProductBackTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.009"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.app.ProductNavigationTest.xml",
+      "name": "su.linka.pictures.ui.app.ProductNavigationTest",
+      "tests": "14",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.43"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.app.ProductPresentationTest.xml",
+      "name": "su.linka.pictures.ui.app.ProductPresentationTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.028"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.card.CardEditorPresentationTest.xml",
+      "name": "su.linka.pictures.ui.card.CardEditorPresentationTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.003"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.communication.CommunicationLayoutTest.xml",
+      "name": "su.linka.pictures.ui.communication.CommunicationLayoutTest",
+      "tests": "10",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.032"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.communication.CommunicationPagingTest.xml",
+      "name": "su.linka.pictures.ui.communication.CommunicationPagingTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.001"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.communication.CommunicationPresentationTest.xml",
+      "name": "su.linka.pictures.ui.communication.CommunicationPresentationTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.006"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.xml",
+      "name": "su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.005"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest.xml",
+      "name": "su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.021"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.editor.AuthoringPresentationTest.xml",
+      "name": "su.linka.pictures.ui.editor.AuthoringPresentationTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.004"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.editor.EditorGridPresentationTest.xml",
+      "name": "su.linka.pictures.ui.editor.EditorGridPresentationTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.007"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.images.ThumbnailLoaderTest.xml",
+      "name": "su.linka.pictures.ui.images.ThumbnailLoaderTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.019"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.images.VisibleImageDemandTest.xml",
+      "name": "su.linka.pictures.ui.images.VisibleImageDemandTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.007"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.library.LibraryPresentationTest.xml",
+      "name": "su.linka.pictures.ui.library.LibraryPresentationTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.002"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.portability.TransferReadinessTest.xml",
+      "name": "su.linka.pictures.ui.portability.TransferReadinessTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.001"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.settings.SettingsPresentationTest.xml",
+      "name": "su.linka.pictures.ui.settings.SettingsPresentationTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.001"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.settings.SettingsRefreshTest.xml",
+      "name": "su.linka.pictures.ui.settings.SettingsRefreshTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.042"
+    },
+    {
+      "file": "TEST-su.linka.pictures.ui.theme.LinkaThemeTest.xml",
+      "name": "su.linka.pictures.ui.theme.LinkaThemeTest",
+      "tests": "6",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.031"
+    }
+  ]
+}

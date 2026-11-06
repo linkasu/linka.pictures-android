@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.editor.EditorGridPresentationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.007">
+  <properties/>
+  <testcase name="ordinaryNineCellsFitWithoutForcedNinetySixDpMinimum[jvm]" classname="su.linka.pictures.ui.editor.EditorGridPresentationTest" time="0.003"/>
+  <testcase name="largeTextAndDenseGridsScrollInsteadOfShrinkingTargets[jvm]" classname="su.linka.pictures.ui.editor.EditorGridPresentationTest" time="0.0"/>
+  <testcase name="inlineGridKeepsFieldsTogetherAndWrapsApplyOnNarrowOrLargeTextLayouts[jvm]" classname="su.linka.pictures.ui.editor.EditorGridPresentationTest" time="0.0"/>
+  <testcase name="resumedFormKeepsItsOwnGridVisibleEvenAfterPageReordering[jvm]" classname="su.linka.pictures.ui.editor.EditorGridPresentationTest" time="0.0"/>
+  <testcase name="withoutSpaceCheckboxUsesExistingInputStyleWithoutChangingDirectMode[jvm]" classname="su.linka.pictures.ui.editor.EditorGridPresentationTest" time="0.0"/>
+  <testcase name="bundledToolbarPathsParseWithoutAnIconPackDependency[jvm]" classname="su.linka.pictures.ui.editor.EditorGridPresentationTest" time="0.001"/>
+  <testcase name="contentWithEmptyLabelIsNotAnEmptyCell[jvm]" classname="su.linka.pictures.ui.editor.EditorGridPresentationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
