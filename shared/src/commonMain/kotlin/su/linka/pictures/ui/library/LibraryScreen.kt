@@ -1,25 +1,28 @@
 package su.linka.pictures.ui.library
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Text
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.*
 import kotlinx.coroutines.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.library.LibraryController
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.app.*
-
-internal fun libraryEntryDescription(entry: LibraryEntrySummary): String =
-    if (entry.kind == LibraryEntryKind.RETAINED_ARCHIVE) "Сохранённый нечитаемый архив. ${entry.problem?.code ?: "Открытие недоступно"}"
-    else entry.cardCount?.let { "Карточек: $it" } ?: "Количество карточек неизвестно"
+import su.linka.pictures.ui.images.*
+import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 private data class BoardDecision(val entry: LibraryEntrySummary, val epoch: Long, val delete: Boolean)
 private data class DraftDecision(val draft: DraftSummary, val epoch: Long)
@@ -30,12 +33,14 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     onAssets: (Set<AssetId>) -> Unit, access: @Composable () -> Unit, onBack: () -> Unit,
     onOpen: (BoardId) -> Unit, onCreate: () -> Unit, onEdit: (BoardId) -> Unit,
     onResume: (DraftId) -> Unit, onSettings: () -> Unit, onAccess: () -> Unit,
-    onTransfer: (BoardId?) -> Unit) {
+    onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null) {
     val listing by library.listing.collectAsState()
     val shownListing = listing
     var drafts by remember { mutableStateOf<OperationResult<List<DraftSummary>>?>(null) }
     var draftsEpoch by remember { mutableStateOf<Long?>(null) }
-    val covers = remember { mutableStateMapOf<BoardId, AssetId>() }
+    var menu by remember { mutableStateOf(false) }
+    var showDrafts by remember { mutableStateOf(false) }
+    var authorize by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var result by remember { mutableStateOf<OperationResult<*>?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -52,68 +57,83 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
             draftsEpoch = snapshot.epoch; drafts = read
         } else drafts = OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
     }
-    val requested = covers.values.toSet()
-    LaunchedEffect(requested) { onAssets(requested) }
-    ProductScaffold("Библиотека", onBack, scrollContent = false) {
-      LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-       item { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        restartProblem?.let { Feedback(OperationResult.Failed(it)) }
-        access()
-        Action("Новая доска", enabled && !busy, onClick = onCreate)
-        Action("Настройки", enabled && !busy, onClick = onSettings)
-        Action("Защита помощника", enabled && !busy, onClick = onAccess)
-        Action("Импорт, резервная копия и восстановление", enabled && !busy) { onTransfer(null) }
-        Action("Обновить список", !busy) { refresh++ }
-        listing.refreshProblem?.let { Feedback(OperationResult.Failed(it)) }
-        if (listing.items.isEmpty()) Text(if (listing.refreshProblem == null) "В библиотеке пока нет досок. Создайте доску или импортируйте файл .linka." else "Не удалось прочитать библиотеку. Данные не заменены пустым списком.")
+    fun requestAuthorization(action: ProtectedAction) {
+        authorize = needsLibraryAuthorization(gate?.check(action, capability, owner))
+    }
+    VisibleImageDemand(shownListing.epoch, onAssets) {
+    Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
+      topBar = { TopAppBar(title = { Text("Ваши наборы") }, actions = {
+          Box {
+              IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню библиотеки") }
+              DropdownMenu(menu, { menu = false }) {
+                  DropdownMenuItem(onClick = { menu = false; onSettings() }, enabled = enabled && !busy) { Text("Настройки") }
+                  DropdownMenuItem(onClick = { menu = false; onTransfer(null) }, enabled = enabled && !busy) { Text("Импорт, резервная копия и восстановление") }
+                  DropdownMenuItem(onClick = { menu = false; showDrafts = true }) { Text("Сохранённые черновики") }
+                  DropdownMenuItem(onClick = { menu = false; onAccess() }, enabled = enabled && !busy) { Text("Защита помощника") }
+                  DropdownMenuItem(onClick = { menu = false; refresh++ }, enabled = !busy) { Text("Обновить список") }
+                  DropdownMenuItem(onClick = { menu = false; onBack() }) { Text("К сообщению") }
+              }
+          }
+      }) },
+      floatingActionButton = {
+          FloatingActionButton(onClick = { if (enabled && !busy) onCreate() },
+              modifier = Modifier.padding(8.dp).semantics { if (!enabled || busy) disabled() }) {
+              Icon(LibraryIcons.Add, "Создать набор")
+          }
+      }) { padding ->
+      LazyVerticalGrid(GridCells.Fixed(LibraryColumns), Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(8.dp)) {
+       item(span = { GridItemSpan(maxLineSpan) }) { Column {
+          restartProblem?.let { Feedback(OperationResult.Failed(it)) }
+          listing.refreshProblem?.let { Feedback(OperationResult.Failed(it)) }
+         if (listing.items.isEmpty()) Text(if (listing.refreshProblem == null) "В библиотеке пока нет досок. Создайте доску или импортируйте файл .linka." else "Не удалось прочитать библиотеку. Данные не заменены пустым списком.")
+         if (result !is OperationResult.Completed) Feedback(result)
        } }
         items(shownListing.items, key = { "board:${it.id.value}" }) { entry ->
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(entry.name)
-                LibraryCover(library, entry, shownListing.epoch, images) { asset ->
-                    if (asset == null) covers.remove(entry.id) else covers[entry.id] = asset
-                }
-                Text(libraryEntryDescription(entry))
-                Action("Открыть «${entry.name}»", !busy && entry.kind == LibraryEntryKind.BOARD) { onOpen(entry.id) }
-                Action("Редактировать «${entry.name}»", enabled && !busy && entry.kind == LibraryEntryKind.BOARD) { onEdit(entry.id) }
-                Action("Переименовать «${entry.name}»", enabled && !busy && entry.kind == LibraryEntryKind.BOARD) {
-                    decision = BoardDecision(entry, shownListing.epoch, false); name = entry.name
-                }
-                Action("Экспортировать «${entry.name}»", enabled && !busy && entry.kind == LibraryEntryKind.BOARD) { onTransfer(entry.id) }
-                Action("Удалить «${entry.name}»…", enabled && !busy, true) { decision = BoardDecision(entry, shownListing.epoch, true) }
-            }
-        }
-        item { Text("Сохранённые черновики") }
+             LibraryTile(library, entry, shownListing.epoch, images, enabled && !busy, !busy,
+                 { onOpen(entry.id) }, { onEdit(entry.id) }, { onTransfer(entry.id) },
+                 { decision = BoardDecision(entry, shownListing.epoch, false); name = entry.name
+                     result = null; requestAuthorization(ProtectedAction.RENAME_BOARD) },
+                 { decision = BoardDecision(entry, shownListing.epoch, true)
+                     result = null; requestAuthorization(ProtectedAction.DELETE_BOARD) })
+         }
+      }
+    }
+    }
+    if (showDrafts && draftDecision == null) ProductDialog("Сохранённые черновики", { if (!busy) showDrafts = false }) {
         when (val loaded = drafts) {
-            null -> item { Text("Загружаем черновики…") }
+             null -> Text("Загружаем черновики…")
             is OperationResult.Completed -> {
                 val loadedEpoch = draftsEpoch
-                if (loaded.value.isEmpty()) item { Text("Черновиков нет.") }
-                items(loaded.value, key = { "draft:${it.id.value}" }) { draft ->
+                 if (loaded.value.isEmpty()) Text("Черновиков нет.")
+                 loaded.value.forEach { draft ->
                   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("${draft.name} · версия ${draft.version}${if (draft.hasOpenForm) " · незавершённая форма" else ""}")
                     Action("Продолжить «${draft.name}»", enabled && !busy) { onResume(draft.id) }
-                    Action("Удалить черновик «${draft.name}»…", enabled && !busy && loadedEpoch != null, true) { draftDecision = DraftDecision(draft, loadedEpoch!!) }
+                     TextButton(onClick = { draftDecision = DraftDecision(draft, loadedEpoch!!)
+                         result = null; requestAuthorization(ProtectedAction.DELETE_DRAFT) }, enabled = enabled && !busy && loadedEpoch != null) { Text("Удалить черновик…") }
                   }
                 }
             }
-            else -> item { Feedback(loaded) }
+             else -> Feedback(loaded)
         }
-        item { Feedback(result) }
-      }
+         if (result !is OperationResult.Completed) Feedback(result)
+         TextButton(onClick = { showDrafts = false }, enabled = !busy) { Text("Закрыть") }
     }
     decision?.let { shown ->
       ProductDialog(if (shown.delete) "Удаление доски" else "Название доски", { if (!busy) decision = null }) {
             Text(if (shown.delete) "Удалить доску «${shown.entry.name}» из библиотеки? Уже составленное сообщение не очищается."
                 else "Новое название для «${shown.entry.name}»")
-            if (!shown.delete) Field(name, "Название", !busy) { name = it }
+             if (!shown.delete) Field(name, "Название", !busy) { name = it }
+             if (authorize) access()
+             Feedback(result)
             Action(if (shown.delete) "Подтверждаю удаление «${shown.entry.name}»" else "Сохранить название «${shown.entry.name}»", enabled && !busy && (shown.delete || name.isNotBlank()), shown.delete) {
                 val entered = name; busy = true
                 scope.launch {
                     try {
                         result = if (shown.delete) controller.delete(owner, capability, shown.entry, shown.epoch)
                             else controller.rename(owner, capability, shown.entry, entered, shown.epoch)
-                        decision = null; refresh++
+                         authorize = needsLibraryAuthorization(result)
+                         if (libraryDecisionFinished(result!!)) { decision = null; refresh++ }
                     } finally { busy = false }
                 }
             }
@@ -122,11 +142,17 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     }
     draftDecision?.let { shown ->
       ProductDialog("Удаление черновика", { if (!busy) draftDecision = null }) {
-            Text("Удалить сохранённый черновик «${shown.draft.name}» версии ${shown.draft.version}? Опубликованная доска останется.")
+             Text("Удалить сохранённый черновик «${shown.draft.name}» версии ${shown.draft.version}? Опубликованная доска останется.")
+             if (authorize) access()
+             Feedback(result)
             Action("Подтверждаю удаление черновика «${shown.draft.name}»", enabled && !busy, true) {
                 busy = true
                 scope.launch {
-                    try { result = controller.deleteDraft(owner, capability, shown.draft, shown.epoch); draftDecision = null; refresh++ }
+                     try {
+                         result = controller.deleteDraft(owner, capability, shown.draft, shown.epoch)
+                         authorize = needsLibraryAuthorization(result)
+                         if (libraryDecisionFinished(result!!)) { draftDecision = null; refresh++ }
+                     }
                     finally { busy = false }
                 }
             }
@@ -137,26 +163,53 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
 
 @Composable
 private fun LibraryCover(library: LibraryStore, entry: LibraryEntrySummary, epoch: Long,
-    images: Map<AssetId, ImageBitmap>, onAsset: (AssetId?) -> Unit) {
+    images: Map<AssetId, ImageBitmap>) {
     var cover by remember(entry.id, entry.revision, epoch) { mutableStateOf<AssetId?>(null) }
-    val report by rememberUpdatedState(onAsset)
     LaunchedEffect(entry.id, entry.revision, epoch) {
         if (entry.kind == LibraryEntryKind.BOARD) {
             val loaded = library.board(entry.id)
             if (loaded is OperationResult.Completed) {
                 try {
                     if (loaded.value.epoch == epoch && loaded.value.board.revision == entry.revision) {
-                        cover = loaded.value.board.document.pages.asSequence().flatMap { it.cells.asSequence() }
-                            .mapNotNull { it.card?.image }.firstOrNull()
+                         cover = libraryCoverImage(loaded.value.board.document)
                         currentCoroutineContext().ensureActive()
-                        report(cover)
                     }
                 } finally { loaded.value.lease.close() }
             }
         }
     }
-    DisposableEffect(entry.id, entry.revision, epoch) { onDispose { report(null) } }
+    DemandVisibleImages(Triple(entry.id, entry.revision, epoch), setOfNotNull(cover))
     cover?.let { id -> images[id]?.let {
-        Image(it, "Обложка доски «${entry.name}»", Modifier.fillMaxWidth().height(96.dp), contentScale = ContentScale.Fit)
+         Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
     } }
+}
+
+@Composable
+private fun LibraryTile(library: LibraryStore, entry: LibraryEntrySummary, epoch: Long,
+    images: Map<AssetId, ImageBitmap>, enabled: Boolean, canOpen: Boolean,
+    onOpen: () -> Unit, onEdit: () -> Unit, onExport: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
+    var menu by remember(entry.id) { mutableStateOf(false) }
+    val board = entry.kind == LibraryEntryKind.BOARD
+    val contrast = LocalLinkaPalette.current.highContrast
+    Box(Modifier.fillMaxWidth().heightIn(min = 128.dp).padding(1.dp)
+        .clickable(enabled = canOpen && board, onClickLabel = "Открыть ${entry.name}", onClick = onOpen)
+        .semantics { stateDescription = libraryEntryDescription(entry) }) {
+        Box(Modifier.matchParentSize()) { LibraryCover(library, entry, epoch, images) }
+        Column(Modifier.fillMaxWidth().heightIn(min = 126.dp).background(Color.Black.copy(alpha = if (contrast) 0.8f else 0.6f))
+            .padding(horizontal = 12.dp, vertical = 36.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center) {
+            Text(entry.name, color = Color.White, fontSize = 14.sp)
+            if (!board) Text(libraryEntryDescription(entry), color = Color.White, fontSize = 12.sp)
+        }
+        Box(Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Действия с набором «${entry.name}»", tint = Color.White) }
+            DropdownMenu(menu, { menu = false }) {
+                DropdownMenuItem(onClick = { menu = false; onOpen() }, enabled = canOpen && board) { Text("Открыть") }
+                DropdownMenuItem(onClick = { menu = false; onEdit() }, enabled = enabled && board) { Text("Редактировать") }
+                DropdownMenuItem(onClick = { menu = false; onRename() }, enabled = enabled && board) { Text("Переименовать") }
+                DropdownMenuItem(onClick = { menu = false; onExport() }, enabled = enabled && board) { Text("Экспортировать") }
+                DropdownMenuItem(onClick = { menu = false; onDelete() }, enabled = enabled) { Text("Удалить…") }
+            }
+        }
+    }
 }
