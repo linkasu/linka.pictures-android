@@ -7,8 +7,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Text
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -22,9 +20,6 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import su.linka.pictures.application.communication.CommunicationState
 import su.linka.pictures.domain.AssetId
 import su.linka.pictures.domain.MessagePart
@@ -34,6 +29,7 @@ import su.linka.pictures.ui.theme.Linka14
 import su.linka.pictures.ui.theme.LinkaPalette
 import su.linka.pictures.ui.theme.linkaPalette
 import su.linka.pictures.ui.components.CommunicationCardMeasurePolicy
+import su.linka.pictures.ui.components.CommunicationCaption
 import su.linka.pictures.ui.components.PrimitiveSurfaceChrome
 
 internal fun communicationMessageGradient(palette: LinkaPalette): List<Color>? =
@@ -61,20 +57,16 @@ internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId
                         Modifier.then(if (gradient != null) Modifier.background(Brush.verticalGradient(gradient)) else Modifier)
                             .padding(Linka14.cardPadding),
                     ) {
-                        val captionSize = ((maxHeight.value / 6f).coerceAtLeast(14f)).sp
                         Layout(content = {
                             Box(contentAlignment = Alignment.Center) {
                                 card?.image?.let(images::get)?.let { image ->
                                     Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                                 }
                             }
-                            Text(when (part) {
+                            CommunicationCaption(when (part) {
                                 is MessagePart.Card -> part.snapshot.label
                                 is MessagePart.Text -> part.text
-                            }, modifier = Modifier.verticalScroll(rememberScrollState()), style = MaterialTheme.typography.body1.copy(
-                                fontSize = captionSize, lineHeight = captionSize * 1.2f,
-                                fontWeight = FontWeight.Normal, letterSpacing = 0.sp,
-                            ), textAlign = TextAlign.Center)
+                            }, maxWidth, maxHeight, Modifier.verticalScroll(rememberScrollState()))
                         }, measurePolicy = CommunicationCardMeasurePolicy)
                     }
                 }
