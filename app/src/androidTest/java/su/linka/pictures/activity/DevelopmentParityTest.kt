@@ -306,17 +306,33 @@ class DevelopmentParityTest {
 
     private fun visibleNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName)): Boolean {
         val root = instrumentation.uiAutomation.rootInActiveWindow ?: return false
-        return try { root.packageName?.toString() in packages && clickableBounds(root, labels) != null }
+        return try { root.packageName?.toString() in packages && namedHitBounds(root, labels) != null }
         finally { root.recycle() }
     }
 
     private fun awaitNamed(label: String, scroll: Boolean = false) = await(label,
         scrollAction = if (scroll) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else null) { named(it, listOf(label)) }
 
-    private fun clickableBounds(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean = false): Rect? {
+    @Test fun namedHitRectangleUsesVisibleLabelNotWideRowCenter() {
+        val label = Rect(160, 554, 1017, 597)
+        val row = Rect(0, 512, 2560, 640)
+        val window = Rect(0, 0, 2560, 1600)
+        val hit = requireNotNull(visibleNamedBounds(label, row, window))
+        assertEquals(label, hit)
+        assertTrue(label.contains(hit.centerX(), hit.centerY()))
+        assertFalse(label.contains(row.centerX(), row.centerY()))
+        assertEquals(Rect(160, 554, 900, 597), visibleNamedBounds(label, row, Rect(0, 0, 900, 1600)))
+        assertNull(visibleNamedBounds(label, Rect(0, 0, 100, 100), window))
+        assertNull(visibleNamedBounds(Rect(), row, window))
+    }
+
+    private fun visibleNamedBounds(named: Rect, clickable: Rect, window: Rect): Rect? =
+        Rect(named).takeIf { it.intersect(clickable) && it.intersect(window) }
+
+    private fun namedHitBounds(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean = false): Rect? {
         var bounds: Rect? = null
         find(root) { node ->
-            if (!matches(node, labels)) false else {
+            if (!node.isEnabled || !matches(node, labels)) false else {
                 var candidate: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
                 try {
                     while (candidate != null && !candidate.isClickable) {
@@ -325,7 +341,9 @@ class DevelopmentParityTest {
                         candidate = parent
                     }
                     candidate?.takeIf { it.isEnabled && it.isVisibleToUser && (!cardOnly || it.collectionItemInfo != null) }?.let {
-                        bounds = Rect().also(it::getBoundsInScreen).takeUnless(Rect::isEmpty)
+                        // A wide SAF row's center can hit metadata; stay on the actual named label/icon.
+                        bounds = visibleNamedBounds(Rect().also(node::getBoundsInScreen),
+                            Rect().also(it::getBoundsInScreen), Rect().also(root::getBoundsInScreen))
                     }
                     bounds != null
                 } finally { candidate?.recycle() }
@@ -339,10 +357,10 @@ class DevelopmentParityTest {
         var bounds: Rect? = null
         val direction = if (backwards) AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
         await("click ${labels.joinToString(" / ")}", packages, if (scroll) direction else null) { root ->
-            bounds = clickableBounds(root, labels, cardOnly)
+            bounds = namedHitBounds(root, labels, cardOnly)
             bounds != null
         }
-        val rect = bounds ?: error("Missing clickable ancestor")
+        val rect = bounds ?: error("Missing visible named hit rectangle inside clickable ancestor")
         val down = SystemClock.uptimeMillis()
         for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,

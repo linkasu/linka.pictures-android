@@ -150,8 +150,12 @@ Library/message selectors сверены с UI source `ad8ed7c`: `Ваши на�
 `Общее сообщение: …`. Старые служебные Text `Сообщение пусто.` и единая строка
 `ХОЧУ КУШАТЬ` не требуются; merge-dependent countNamed удалён.
 
-UI определяется actual text/content-description, нажатия — центр bounds ближайшего
-enabled visible clickable ancestor. Finite aliases: app Ваши наборы/Библиотека,
+UI определяется actual text/content-description. `namedHitBounds` проверяет
+visible/enabled/non-password именованный узел и ближайший enabled visible clickable
+ancestor, затем нажимается центр **именованного** bounds после пересечения с
+ancestor и активным окном. Пустое пересечение запрещает tap; fallback на центр
+широкой строки, doubletap или ослабление SAF-return predicate отсутствуют.
+Finite aliases: app Ваши наборы/Библиотека,
 Меню библиотеки/Меню/Ещё, Импорт/старый
 onTransfer entry; picker Show roots/Показать корневые папки/Открыть панель навигации,
 Downloads/Загрузки, Search/Найти/Поиск. Новые неизвестные labels не угадываются.
@@ -160,7 +164,13 @@ transfer controls использует максимум 12 реальных sema
 без fixed sleep. Разрешены только target package и на SAF-шаге
 com.android.documentsui/com.google.android.documentsui. Неожиданное системное
 окно немедленно прерывает тест; нет XML/password dumps или random coordinates.
-**Ни full harness, ни provider UI ещё не запускались на устройстве; PASS нет.**
+**Parent API35 RED:** настоящий DocumentsUI показал fixture, но старый helper
+нажал центр row [0,512–2560,640] = (1280,576), вне filename label
+[160,554–1017,597], и получил `Timed out at SAF returned to target`.
+Это подтверждённый дефект automation, не product failure/visual verdict.
+Исправление использует label hotspot; небольшой Rect regression покрывает эти
+bounds, clipping и пустое пересечение. Эта lane проверяет compile, не device:
+повторный настоящий SAF run и визуальная приёмка остаются за primary, **PASS нет**.
 Новые начальные route/toolbar selectors должны быть интегрированы из UI lane:
 исходный runtime dependency этого worktree ещё начинает с сообщения и поэтому
 UI tests в одиночку до интеграции navigation lane ожидаемо не пройдут.
