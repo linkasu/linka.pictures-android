@@ -1,6 +1,8 @@
 package su.linka.pictures.platform.audio
 
 import android.Manifest
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.*
@@ -13,15 +15,19 @@ import su.linka.pictures.platform.capabilities.AndroidMediaInspectionPort
 import su.linka.pictures.platform.capabilities.TinyMediaFixtures
 import java.util.UUID
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 class AndroidAudioBackendTest {
     private val owner = AudioOwner("instrumented-test", AudioPurpose.RECORDING)
     private fun request(id: String) = RecordingRequest(RequestId(id), owner)
-    private class Fixture(permission: suspend (RequestId) -> OperationResult<Unit>) {
+    private class Fixture(
+        context: Context = InstrumentationRegistry.getInstrumentation().targetContext,
+        permission: suspend (RequestId) -> OperationResult<Unit>,
+    ) {
         val files = OwnedAudioTestFiles()
         val failures = mutableListOf<Throwable>()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, error -> failures += error })
-        val backend = AndroidAudioBackend(InstrumentationRegistry.getInstrumentation().targetContext, files, AndroidMediaInspectionPort(), permission, scope)
+        val backend = AndroidAudioBackend(context, files, AndroidMediaInspectionPort(), permission, scope)
         suspend fun close() {
             scope.cancel()
             withContext(Dispatchers.Main) { }
@@ -51,6 +57,29 @@ class AndroidAudioBackendTest {
             val result = f.backend.record(request("os-denied")) { }
             assertEquals(ProblemCode.PERMISSION_DENIED, (result as OperationResult.Failed).problem.code)
             assertTrue(f.files.created.isEmpty())
+        } finally { f.close() }
+    }
+    @Test fun permissionRevokedBeforeRecorderConstructionNeverStartsMicAndDiscardsItsTemporary() = runBlocking {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
+        assertEquals("This test must never run a granted microphone", PackageManager.PERMISSION_DENIED,
+            app.packageManager.checkPermission(Manifest.permission.RECORD_AUDIO, app.packageName))
+        val checks = AtomicInteger()
+        val context = object : ContextWrapper(app) {
+            override fun getApplicationContext(): Context = this
+            override fun checkPermission(permission: String, pid: Int, uid: Int): Int =
+                if (permission == Manifest.permission.RECORD_AUDIO) {
+                    if (checks.incrementAndGet() == 1) PackageManager.PERMISSION_GRANTED else PackageManager.PERMISSION_DENIED
+                } else super.checkPermission(permission, pid, uid)
+        }
+        val f = Fixture(context) { OperationResult.Completed(Unit) }
+        try {
+            val phases = mutableListOf<AudioPhase>()
+            val result = f.backend.record(request("revoked-before-recorder")) { phases += it }
+            assertEquals(ProblemCode.PERMISSION_DENIED, (result as OperationResult.Failed).problem.code)
+            assertEquals(2, checks.get())
+            assertEquals(listOf(AudioPhase.REQUESTING_PERMISSION), phases)
+            assertEquals(1, f.files.created.size)
+            assertEquals(f.files.created.toSet(), f.files.discarded.toSet())
         } finally { f.close() }
     }
     @Test fun exactStopCancelsPermissionWaitAndOldIdDoesNotCancelNextRequest() = runBlocking {

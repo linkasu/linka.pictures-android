@@ -8,6 +8,7 @@ import android.os.*
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -307,12 +308,14 @@ internal class AndroidAudioBackend(
             OperationResult.UnconfirmedCommit -> throw NativeAudioFailure(OperationResult.UnconfirmedCommit)
         }
         current(call)
-        if (app.packageManager.checkPermission(Manifest.permission.RECORD_AUDIO, app.packageName) != PackageManager.PERMISSION_GRANTED) throw NativeAudioFailure(ProblemCode.PERMISSION_DENIED)
+        if (ContextCompat.checkSelfPermission(app, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) throw NativeAudioFailure(ProblemCode.PERMISSION_DENIED)
         val minimum = AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (minimum <= 0 || minimum > 64 * 1024 * 1024) throw NativeAudioFailure(ProblemCode.UNSUPPORTED_MEDIA)
         val file = temporary(call, "record")
         val recorder = withContext(Dispatchers.Main.immediate) {
             current(call)
+            // Permission can be revoked while preparing the file or switching to Main.
+            if (ContextCompat.checkSelfPermission(app, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) throw NativeAudioFailure(ProblemCode.PERMISSION_DENIED)
             AudioRecord(MediaRecorder.AudioSource.MIC, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minimum, 8192)).also {
                 call.recorder = it
                 if (it.state != AudioRecord.STATE_INITIALIZED) throw NativeAudioFailure(ProblemCode.UNSUPPORTED_MEDIA)
