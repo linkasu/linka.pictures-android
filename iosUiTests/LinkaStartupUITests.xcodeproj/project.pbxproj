@@ -1,0 +1,87 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {};
+    objectVersion = 56;
+    objects = {
+        D00000000000000000000001 = {
+            isa = PBXProject;
+            attributes = { LastUpgradeCheck = 2720; };
+            buildConfigurationList = D00000000000000000000002;
+            compatibilityVersion = "Xcode 14.0";
+            developmentRegion = en;
+            knownRegions = (en, Base);
+            mainGroup = D00000000000000000000003;
+            productRefGroup = D00000000000000000000004;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (D00000000000000000000005);
+        };
+        D00000000000000000000002 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (D00000000000000000000006);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        D00000000000000000000003 = {
+            isa = PBXGroup;
+            children = (D00000000000000000000007, D00000000000000000000004);
+            sourceTree = "<group>";
+        };
+        D00000000000000000000004 = {
+            isa = PBXGroup;
+            children = (D00000000000000000000008);
+            name = Products;
+            sourceTree = "<group>";
+        };
+        D00000000000000000000005 = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = D00000000000000000000009;
+            buildPhases = (D0000000000000000000000A);
+            buildRules = ();
+            dependencies = ();
+            name = LinkaStartupUITests;
+            productName = LinkaStartupUITests;
+            productReference = D00000000000000000000008;
+            productType = "com.apple.product-type.bundle.ui-testing";
+        };
+        D00000000000000000000006 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CLANG_ENABLE_MODULES = YES;
+                CODE_SIGNING_ALLOWED = NO;
+                CODE_SIGN_STYLE = Manual;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+                LINKA_UI_RUNNER_BUNDLE_ID = su.linka.pictures.uistartup;
+                SDKROOT = iphonesimulator;
+                SUPPORTED_PLATFORMS = iphonesimulator;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+        D00000000000000000000007 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaStartupUITests/DevelopmentLibraryTests.swift; sourceTree = "<group>"; };
+        D00000000000000000000008 = { isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LinkaStartupUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+        D00000000000000000000009 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (D0000000000000000000000B);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        D0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (D0000000000000000000000C); runOnlyForDeploymentPostprocessing = 0; };
+        D0000000000000000000000B = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+                PRODUCT_BUNDLE_IDENTIFIER = "$(LINKA_UI_RUNNER_BUNDLE_ID).tests";
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                TEST_TARGET_NAME = "";
+            };
+            name = Debug;
+        };
+        D0000000000000000000000C = { isa = PBXBuildFile; fileRef = D00000000000000000000007; };
+    };
+    rootObject = D00000000000000000000001;
+}
