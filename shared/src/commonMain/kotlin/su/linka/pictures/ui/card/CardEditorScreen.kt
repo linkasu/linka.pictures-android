@@ -21,6 +21,9 @@ fun CardEditorScreen(
     onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
 ) {
     VisibleImageDemand(Triple(state.epoch, ownerId, state.draft?.id), onImagesNeeded) {
-        CardEditorDialog(state, { onCommand(AuthoringCommand(CommandId(ids.next()), ownerId, capability, it)) }, images, modifier)
+        CardEditorDialog(state, ownerId,
+            { onCommand(AuthoringCommand(CommandId(ids.next()), ownerId, capability, it)) },
+            { action, onHandled -> onCommand(AuthoringCommand(CommandId(ids.next()), ownerId, capability, action, onHandled)) },
+            images, modifier)
     }
 }

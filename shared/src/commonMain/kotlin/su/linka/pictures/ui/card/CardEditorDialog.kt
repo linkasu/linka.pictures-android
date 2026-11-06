@@ -21,11 +21,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import su.linka.pictures.application.authoring.*
 import su.linka.pictures.application.ports.AudioPhase
 import su.linka.pictures.application.ports.AudioPurpose
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.editor.AuthoringFeedback
+import su.linka.pictures.ui.editor.BufferedAuthoringInput
 import su.linka.pictures.ui.editor.authoringFieldColors
 import su.linka.pictures.ui.editor.authoringProblemLabel
 import su.linka.pictures.ui.editor.editable
@@ -36,7 +39,9 @@ import su.linka.pictures.ui.theme.LocalLinkaPalette
 @Composable
 internal fun CardEditorDialog(
     state: AuthoringState,
+    ownerId: String,
     dispatch: (AuthoringAction) -> Unit,
+    dispatchEdited: (AuthoringAction, (AuthoringState) -> Unit) -> Unit,
     images: Map<AssetId, ImageBitmap>,
     modifier: Modifier = Modifier,
 ) {
@@ -47,11 +52,33 @@ internal fun CardEditorDialog(
     val focus = LocalFocusManager.current
     var speechMenu by remember { mutableStateOf(false) }
     var moreAudio by remember { mutableStateOf(false) }
-    val change: (String, String, SpeechChoice, Boolean) -> Unit = { label, text, choice, useLabel ->
-        dispatch(AuthoringAction.ChangeCard(label, text, choice, useLabel))
+    val draftId = state.draft.id
+    val epoch = state.epoch
+    val pageId = form.pageId
+    val cardId = form.cardId
+    val input = remember(ownerId, epoch, draftId, state.phase, pageId, cardId) {
+        BufferedAuthoringInput(AuthoringAction.ChangeCard(form.label, form.speechText, form.speechChoice, form.useLabelForSpeech), state.editVersion)
     }
+    val scope = rememberCoroutineScope()
+    SideEffect { input.acceptExternal(AuthoringAction.ChangeCard(form.label, form.speechText, form.speechChoice, form.useLabelForSpeech), state.editVersion) }
+    val change: (AuthoringAction.ChangeCard) -> Unit = { next ->
+        val token = input.edit(next)
+        dispatchEdited(next) { accepted ->
+            val actual = accepted.draft?.form as? EditorForm.Card
+            if (accepted.ownerId == ownerId && accepted.epoch == epoch && accepted.draft?.id == draftId &&
+                actual?.pageId == pageId && actual.cardId == cardId) {
+                val payload = AuthoringAction.ChangeCard(actual.label, actual.speechText, actual.speechChoice, actual.useLabelForSpeech)
+                val editVersion = accepted.editVersion
+                scope.launch(Dispatchers.Main.immediate) {
+                    input.handled(token, payload, editVersion)
+                }
+            }
+        }
+    }
+    val content = input.value
+    val cancel = { input.discardPending(); dispatch(AuthoringAction.CancelCard) }
     DemandVisibleImages(form.cardId, cardImageDemand(form))
-    Dialog(onDismissRequest = { if (enabled) dispatch(AuthoringAction.CancelCard) },
+    Dialog(onDismissRequest = { if (enabled) cancel() },
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp), contentAlignment = Alignment.Center) {
             Surface(modifier.widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight.coerceAtMost(640.dp)),
@@ -75,7 +102,7 @@ internal fun CardEditorDialog(
                         }
                         AuthoringFeedback(state, dispatch, showSaveStatus = state.savePhase == DraftSavePhase.FAILED || state.savePhase == DraftSavePhase.UNCONFIRMED)
                         if (showContent) {
-                            OutlinedTextField(form.label, { change(it, form.speechText, form.speechChoice, form.useLabelForSpeech) },
+                            OutlinedTextField(content.label, { change(input.value.copy(label = it)) },
                                 label = { Text("Название карточки") }, enabled = enabled, colors = authoringFieldColors(),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
                                 modifier = Modifier.fillMaxWidth())
@@ -86,14 +113,14 @@ internal fun CardEditorDialog(
                                 }
                                 Column(Modifier.weight(1f)) {
                                     Button({ dispatch(AuthoringAction.PickImage) }, enabled = enabled && !state.mediaBusy, modifier = Modifier.fillMaxWidth()) { Text("Выбрать изображение") }
-                                    Button({ dispatch(AuthoringAction.ImageFromText(form.label)) }, enabled = enabled && !state.mediaBusy && form.label.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Из текста") }
+                                    Button({ if (!input.pending) dispatch(AuthoringAction.ImageFromText(input.value.label)) }, enabled = enabled && !input.pending && !state.mediaBusy && content.label.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Из текста") }
                                     if (form.image != null) TextButton({ dispatch(AuthoringAction.RemoveImage) }, enabled = enabled) { Text("Убрать изображение") }
                                 }
                             }
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button({ dispatch(AuthoringAction.Preview) }, enabled = enabled && !state.mediaBusy && form.speechChoice != SpeechChoice.NONE) { Text("Прослушать") }
-                                Button({ dispatch(AuthoringAction.Synthesize) }, enabled = enabled && !state.mediaBusy &&
-                                    (if (form.useLabelForSpeech) form.label else form.speechText).isNotBlank()) { Text("Звук из текста") }
+                                Button({ if (!input.pending) dispatch(AuthoringAction.Preview) }, enabled = enabled && !input.pending && !state.mediaBusy && content.speechChoice != SpeechChoice.NONE) { Text("Прослушать") }
+                                Button({ if (!input.pending) dispatch(AuthoringAction.Synthesize) }, enabled = enabled && !input.pending && !state.mediaBusy &&
+                                    (if (content.useLabelForSpeech) content.label else content.speechText).isNotBlank()) { Text("Звук из текста") }
                                 Button({ dispatch(if (state.audio.phase == AudioPhase.RECORDING) AuthoringAction.FinishRecording else AuthoringAction.Record) },
                                     enabled = enabled && (!state.mediaBusy || state.audio.phase == AudioPhase.RECORDING)) {
                                     Text(if (state.audio.phase == AudioPhase.RECORDING) "Завершить запись" else "Запись звука")
@@ -101,14 +128,14 @@ internal fun CardEditorDialog(
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.weight(1f)) {
-                                    TextButton({ speechMenu = true }, enabled = enabled) { Text(when (form.speechChoice) {
+                                    TextButton({ speechMenu = true }, enabled = enabled) { Text(when (content.speechChoice) {
                                         SpeechChoice.TTS -> "Локальный TTS ▾"
                                         SpeechChoice.RECORDING -> "Аудиозапись ▾"
                                         SpeechChoice.NONE -> "Без звука ▾"
                                     }) }
                                     DropdownMenu(speechMenu, { speechMenu = false }) {
                                         SpeechChoice.entries.forEach { choice ->
-                                            DropdownMenuItem({ speechMenu = false; change(form.label, form.speechText, choice, form.useLabelForSpeech) }) {
+                                            DropdownMenuItem({ speechMenu = false; change(input.value.copy(speechChoice = choice)) }) {
                                                 Text(when (choice) { SpeechChoice.TTS -> "Локальный TTS"; SpeechChoice.RECORDING -> "Аудиозапись"; SpeechChoice.NONE -> "Без звука" })
                                             }
                                         }
@@ -119,13 +146,13 @@ internal fun CardEditorDialog(
                             if (state.audio.owner?.purpose == AudioPurpose.PREVIEW && state.audio.phase in setOf(AudioPhase.PREPARING, AudioPhase.PLAYING))
                                 TextButton({ dispatch(AuthoringAction.StopPreview) }, enabled = enabled) { Text("Остановить прослушивание") }
                             if (moreAudio) {
-                                Row(Modifier.fillMaxWidth().toggleable(form.useLabelForSpeech, enabled = enabled, role = Role.Checkbox,
-                                    onValueChange = { change(form.label, form.speechText, form.speechChoice, it) }), verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(form.useLabelForSpeech, onCheckedChange = null, enabled = enabled)
+                                Row(Modifier.fillMaxWidth().toggleable(content.useLabelForSpeech, enabled = enabled, role = Role.Checkbox,
+                                    onValueChange = { change(input.value.copy(useLabelForSpeech = it)) }), verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(content.useLabelForSpeech, onCheckedChange = null, enabled = enabled)
                                     Text("Использовать название для речи")
                                 }
-                                if (!form.useLabelForSpeech) OutlinedTextField(form.speechText,
-                                    { change(form.label, it, form.speechChoice, false) }, label = { Text("Текст речи") },
+                                if (!content.useLabelForSpeech) OutlinedTextField(content.speechText,
+                                    { change(input.value.copy(speechText = it)) }, label = { Text("Текст речи") },
                                     enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
                                 Text(if (form.recording == null) "Аудиозапись не выбрана" else "Аудиозапись подготовлена")
                                 TextButton({ dispatch(AuthoringAction.PickAudio) }, enabled = enabled && !state.mediaBusy) { Text("Выбрать аудиофайл") }
@@ -141,8 +168,8 @@ internal fun CardEditorDialog(
                     }
                     Divider()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton({ focus.clearFocus(); dispatch(AuthoringAction.CancelCard) }, enabled = enabled, modifier = Modifier.weight(1f)) { Text("Отмена") }
-                        TextButton({ focus.clearFocus(); dispatch(AuthoringAction.SaveCard) }, enabled = enabled && !state.mediaBusy, modifier = Modifier.weight(1f)) { Text("Готово") }
+                        TextButton({ focus.clearFocus(); cancel() }, enabled = enabled, modifier = Modifier.weight(1f)) { Text("Отмена") }
+                        TextButton({ if (!input.pending) { focus.clearFocus(); dispatch(AuthoringAction.SaveCard) } }, enabled = enabled && !input.pending && !state.mediaBusy, modifier = Modifier.weight(1f)) { Text("Готово") }
                     }
                 }
             }

@@ -18,6 +18,8 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import su.linka.pictures.application.authoring.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
@@ -39,6 +41,10 @@ fun EditorScreen(
     onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
 ) {
     val dispatch: (AuthoringAction) -> Unit = { onCommand(AuthoringCommand(CommandId(ids.next()), ownerId, capability, it)) }
+    val dispatchEdited: (AuthoringAction, (AuthoringState) -> Unit) -> Unit = { action, onHandled ->
+        onCommand(AuthoringCommand(CommandId(ids.next()), ownerId, capability, action, onHandled))
+    }
+    val scope = rememberCoroutineScope()
     val draft = state.draft
     val document = draft?.document
     val enabled = state.editable()
@@ -106,32 +112,60 @@ fun EditorScreen(
                         Text("Вводить без пробела")
                     }
                     BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                        val rows = gridForm?.rowsText ?: page.rows.toString()
-                        val columns = gridForm?.columnsText ?: page.columns.toString()
+                        val pageId = page.id
+                        val draftId = draft.id
+                        val epoch = state.epoch
+                        val gridValue: (AuthoringState) -> AuthoringAction.ChangeGrid? = { snapshot ->
+                            val actualPage = snapshot.draft?.document?.pages?.firstOrNull { it.id == pageId }
+                            val actualForm = (snapshot.draft?.form as? EditorForm.Grid)?.takeIf { it.pageId == pageId }
+                            actualPage?.let {
+                                AuthoringAction.ChangeGrid(actualForm?.rowsText ?: it.rows.toString(), actualForm?.columnsText ?: it.columns.toString(), it.id)
+                            }
+                        }
+                        val grid = remember(ownerId, epoch, draftId, state.phase, pageId) {
+                            BufferedAuthoringInput(checkNotNull(gridValue(state)), state.editVersion)
+                        }
+                        SideEffect { gridValue(state)?.let { grid.acceptExternal(it, state.editVersion) } }
+                        val changeGrid: (AuthoringAction.ChangeGrid) -> Unit = { next ->
+                            moveSource = null
+                            val token = grid.edit(next)
+                            dispatchEdited(next) { accepted ->
+                                if (accepted.ownerId == ownerId && accepted.epoch == epoch && accepted.draft?.id == draftId) {
+                                    val payload = gridValue(accepted)
+                                    val editVersion = accepted.editVersion
+                                    if (payload != null) scope.launch(Dispatchers.Main.immediate) {
+                                        grid.handled(token, payload, editVersion)
+                                    }
+                                }
+                            }
+                        }
                         val groupsPerRow = editorGridGroupsPerRow(maxWidth.value, LocalDensity.current.fontScale)
                         Column(Modifier.heightIn(max = maxHeight / 2).verticalScroll(rememberScrollState())) {
                             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                                 maxItemsInEachRow = groupsPerRow) {
                                 Row(Modifier.weight(2f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextField(rows, { moveSource = null; dispatch(AuthoringAction.ChangeGrid(it, columns, page.id)) },
+                                    TextField(grid.value.rowsText, { changeGrid(grid.value.copy(rowsText = it)) },
                                         Modifier.weight(1f).semantics { contentDescription = "Количество строк" },
                                         enabled = gridEnabled, singleLine = true, colors = authoringFieldColors(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                                    TextField(columns, { moveSource = null; dispatch(AuthoringAction.ChangeGrid(rows, it, page.id)) },
+                                    TextField(grid.value.columnsText, { changeGrid(grid.value.copy(columnsText = it)) },
                                         Modifier.weight(1f).semantics { contentDescription = "Количество столбцов" },
                                         enabled = gridEnabled, singleLine = true, colors = authoringFieldColors(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                                 }
                                 Button({
-                                    focus.clearFocus(); keyboard?.hide()
-                                    dispatch(AuthoringAction.SaveGrid)
-                                }, Modifier.weight(1f).heightIn(min = 48.dp), enabled = gridEnabled) {
+                                    if (!grid.pending) {
+                                        focus.clearFocus(); keyboard?.hide()
+                                        dispatch(AuthoringAction.SaveGrid)
+                                    }
+                                }, Modifier.weight(1f).heightIn(min = 48.dp), enabled = gridEnabled && !grid.pending) {
                                     Text("ИЗМЕНИТЬ РАЗМЕР СЕТКИ")
                                 }
                             }
                             if (gridForm != null) TextButton({
                                 focus.clearFocus(); keyboard?.hide()
+                                grid.discardPending()
                                 dispatch(AuthoringAction.CancelGrid)
                             }, enabled = gridEnabled, modifier = Modifier.align(Alignment.End)) { Text("Отмена") }
                         }
@@ -155,8 +189,8 @@ fun EditorScreen(
                     Text("${pageIndex + 1} / ${document.pages.size}", Modifier.align(Alignment.CenterHorizontally), style = MaterialTheme.typography.caption)
                 }
             }
-            if (showSettings && document != null) EditorSettingsDialog(document, enabled, dispatch, { showSettings = false })
-            if (draft?.form is EditorForm.Card) CardEditorDialog(state, dispatch, images)
+            if (showSettings && document != null) EditorSettingsDialog(state, ownerId, enabled, dispatchEdited, { showSettings = false })
+            if (draft?.form is EditorForm.Card) CardEditorDialog(state, ownerId, dispatch, dispatchEdited, images)
             if (showSaveStatus) AlertDialog(onDismissRequest = { showSaveStatus = false },
                 title = { Text("Состояние черновика") }, text = { Column {
                     Text(draftSaveLabel(state.savePhase))

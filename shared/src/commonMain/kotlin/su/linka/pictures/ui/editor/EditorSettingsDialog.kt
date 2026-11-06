@@ -5,45 +5,71 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import su.linka.pictures.application.authoring.AuthoringAction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import su.linka.pictures.application.authoring.*
 import su.linka.pictures.domain.*
 
 @Composable
 internal fun EditorSettingsDialog(
-    document: BoardDocument,
+    state: AuthoringState,
+    ownerId: String,
     enabled: Boolean,
-    dispatch: (AuthoringAction) -> Unit,
+    dispatchEdited: (AuthoringAction, (AuthoringState) -> Unit) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val draft = state.draft ?: return
+    val document = draft.document
+    val draftId = draft.id
+    val epoch = state.epoch
+    val input = remember(ownerId, epoch, draftId, state.phase) {
+        BufferedAuthoringInput(AuthoringAction.Details(document.name, document.description, document.behavior), state.editVersion)
+    }
+    val scope = rememberCoroutineScope()
+    SideEffect { input.acceptExternal(AuthoringAction.Details(document.name, document.description, document.behavior), state.editVersion) }
+    val change: (AuthoringAction.Details) -> Unit = { next ->
+        val token = input.edit(next)
+        dispatchEdited(next) { accepted ->
+            if (accepted.ownerId == ownerId && accepted.epoch == epoch && accepted.draft?.id == draftId) {
+                val actual = accepted.draft.document
+                val payload = AuthoringAction.Details(actual.name, actual.description, actual.behavior)
+                val editVersion = accepted.editVersion
+                scope.launch(Dispatchers.Main.immediate) {
+                    input.handled(token, payload, editVersion)
+                }
+            }
+        }
+    }
+    val details = input.value
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Параметры доски") },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(document.name,
-                    { dispatch(AuthoringAction.Details(it, document.description, document.behavior)) },
+                OutlinedTextField(details.name,
+                    { change(input.value.copy(name = it)) },
                     label = { Text("Название доски") }, enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(document.description.orEmpty(),
-                    { dispatch(AuthoringAction.Details(document.name, it, document.behavior)) },
+                OutlinedTextField(details.description.orEmpty(),
+                    { change(input.value.copy(description = it)) },
                     label = { Text("Описание") }, enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
                 Text("Режим по умолчанию")
                 InteractionMode.entries.forEach { mode ->
-                    Row(Modifier.fillMaxWidth().selectable(document.behavior.defaultMode == mode, enabled = enabled, role = Role.RadioButton,
-                        onClick = { dispatch(AuthoringAction.Details(document.name, document.description, document.behavior.copy(defaultMode = mode))) }),
+                    Row(Modifier.fillMaxWidth().selectable(details.behavior.defaultMode == mode, enabled = enabled, role = Role.RadioButton,
+                        onClick = { change(input.value.copy(behavior = input.value.behavior.copy(defaultMode = mode))) }),
                         verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(document.behavior.defaultMode == mode, onClick = null, enabled = enabled)
+                        RadioButton(details.behavior.defaultMode == mode, onClick = null, enabled = enabled)
                         Text(if (mode == InteractionMode.COMPOSE) "Составление сообщения" else "Произносить сразу")
                     }
                 }
                 Text("Способ ввода")
                 InputStyle.entries.forEach { style ->
-                    Row(Modifier.fillMaxWidth().selectable(document.behavior.inputStyle == style, enabled = enabled, role = Role.RadioButton,
-                        onClick = { dispatch(AuthoringAction.Details(document.name, document.description, document.behavior.copy(inputStyle = style))) }),
+                    Row(Modifier.fillMaxWidth().selectable(details.behavior.inputStyle == style, enabled = enabled, role = Role.RadioButton,
+                        onClick = { change(input.value.copy(behavior = input.value.behavior.copy(inputStyle = style))) }),
                         verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(document.behavior.inputStyle == style, onClick = null, enabled = enabled)
+                        RadioButton(details.behavior.inputStyle == style, onClick = null, enabled = enabled)
                         Text(if (style == InputStyle.CARDS) "Карточки" else "Буквальный текст подписей")
                     }
                 }

@@ -253,6 +253,6 @@ private fun ProductEditor(route: ProductRoute, ids: IdSource, gate: AssistantAcc
                 Action("Остаться в редакторе", foreground) { confirmLeave = false }
             }
         }
-    } else EditorScreen(state, route.owner, capability, ids, { if (commandsEnabled) editor.send(it) }, images,
+    } else EditorScreen(state, route.owner, capability, ids, { if (commandsEnabled) editor.send(it) else it.onHandled?.invoke(editor.state.value) }, images,
         onImagesNeeded = onAssets)
 }
