@@ -3,13 +3,13 @@ package su.linka.pictures.ui.communication
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -67,17 +67,15 @@ internal fun CommunicationGrid(
         val size = communicationCellSize(maxWidth.value, maxHeight.value, page.columns, page.rows, LocalDensity.current.fontScale)
         val cellWidth = size.width.dp
         val cellHeight = size.height.dp
-        val gap = 4.dp
         val cursor = firstCell.coerceIn(0, page.capacity - 1)
-        val horizontal = rememberScrollState(with(LocalDensity.current) { ((cellWidth + gap) * (cursor % page.columns)).roundToPx() })
+        val horizontal = rememberScrollState(with(LocalDensity.current) { (cellWidth * (cursor % page.columns)).roundToPx() })
         val vertical = rememberLazyListState(initialFirstVisibleItemIndex = cursor / page.columns)
         Box(
             Modifier.fillMaxSize().horizontalScroll(horizontal).focusGroup()
                 .semantics {
                     collectionInfo = CollectionInfo(page.rows, page.columns)
                     stateDescription = "Сетка ${page.rows} на ${page.columns}." +
-                        if (cellWidth * page.columns + gap * (page.columns - 1) > maxWidth ||
-                            cellHeight * page.rows + gap * (page.rows - 1) > maxHeight) " Доступна прокрутка." else ""
+                        if (cellWidth * page.columns > maxWidth || cellHeight * page.rows > maxHeight) " Доступна прокрутка." else ""
                 }
                 .onPreviewKeyEvent { event ->
                     if (!enabled || event.type != KeyEventType.KeyDown || event.isAltPressed || event.isCtrlPressed || event.isMetaPressed) false
@@ -95,16 +93,17 @@ internal fun CommunicationGrid(
         ) {
             LazyColumn(
                 state = vertical,
-                modifier = Modifier.width(cellWidth * page.columns + gap * (page.columns - 1)).fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(gap),
+                modifier = Modifier.width(cellWidth * page.columns).fillMaxSize(),
             ) {
                 items(page.rows, key = { it }) { row ->
                     DemandVisibleImages(page.id to row, visibleRowImages(page, row))
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    Row {
                         for (column in 0 until page.columns) {
                             val position = row * page.columns + column
                             val cell = slots[position]
+                            // Nested grid margin is on the caller; these are btn_default's visible insets.
                             val itemModifier = Modifier.width(cellWidth).height(cellHeight)
+                                .padding(start = 4.dp, top = 1.5.dp, end = 4.dp, bottom = 6.dp)
                             if (cell == null || cell.kind == CellKind.EMPTY) {
                                 Box(itemModifier.border(1.dp, palette.border))
                             } else {

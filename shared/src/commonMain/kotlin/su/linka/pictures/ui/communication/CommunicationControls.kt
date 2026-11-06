@@ -11,11 +11,18 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.Color
 import su.linka.pictures.application.communication.CommunicationCommand
 import su.linka.pictures.application.ports.IdSource
 import su.linka.pictures.domain.CommandId
 import su.linka.pictures.domain.InteractionMode
 import su.linka.pictures.ui.theme.LocalLinkaPalette
+import su.linka.pictures.ui.theme.LinkaPalette
+import su.linka.pictures.ui.theme.linkaPalette
+
+internal fun communicationActionSurface(palette: LinkaPalette): Color =
+    if (palette == linkaPalette(false, false)) Color(0xFFD6D7D7) else palette.disabledSurface
 
 @Composable
 internal fun CommunicationControls(
@@ -28,15 +35,18 @@ internal fun CommunicationControls(
     input: String,
     onInputChange: (String) -> Unit,
     onInputFocusChange: (Boolean) -> Unit,
+    toolbarHeight: Dp,
 ) {
     val palette = LocalLinkaPalette.current
     var menu by remember { mutableStateOf(false) }
     var enteringText by rememberSaveable { mutableStateOf(false) }
     fun id() = CommandId(ids.next())
     TopAppBar(
-        title = { Text(title) },
+        modifier = Modifier.height(toolbarHeight),
+        title = { Text(title, modifier = Modifier.padding(start = 8.dp)) },
         backgroundColor = palette.primary, contentColor = palette.onPrimary,
-        navigationIcon = { CommunicationIconButton(CommunicationIcon.Back, "Открыть библиотеку", presentation.commandsEnabled, onOpenLibrary) },
+        navigationIcon = { CommunicationIconButton(CommunicationIcon.Back, "Открыть библиотеку", presentation.commandsEnabled, onOpenLibrary,
+            Modifier.padding(start = 8.dp)) },
         actions = {
             if (onOpenBoardSettings != null) CommunicationIconButton(
                 CommunicationIcon.Settings, "Настройки доски", presentation.commandsEnabled, onOpenBoardSettings,

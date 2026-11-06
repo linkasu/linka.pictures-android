@@ -1,6 +1,8 @@
 package su.linka.pictures.ui.communication
 
-import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -60,13 +62,17 @@ fun CommunicationScreen(
     }
     Surface(modifier.fillMaxSize().then(paging), color = palette.background, contentColor = palette.text) {
         CompositionLocalProvider(LocalContentAlpha provides 1f) {
-            Column(
-                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
+            BoxWithConstraints(
+                Modifier.fillMaxSize(),
             ) {
+                val toolbarHeight = communicationToolbarHeight(maxWidth.value, maxHeight.value).dp
+                val actionSurface = communicationActionSurface(palette)
+                Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
                 CommunicationControls(
                     state.board?.document?.name ?: "Общение", presentation, ids, dispatch,
                     { if (presentation.commandsEnabled) onOpenLibrary() }, onOpenBoardSettings,
                     input, { if (presentation.commandsEnabled) input = it }, { inputFocused = it },
+                    toolbarHeight,
                 )
                 val notices = communicationNotices(state, presentation, voices)
                 if (notices.isNotEmpty()) Column(
@@ -76,11 +82,16 @@ fun CommunicationScreen(
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(8.dp)) {
                     val pages = state.board?.document?.pages.orEmpty()
                     val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1)
-                    val actionWidth = maxOf(48.dp, (maxWidth - 12.dp) / 6)
+                    val actionWidth = maxOf(48.dp, maxWidth / 6)
                     Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(Modifier.fillMaxWidth().height(budget.content.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(Modifier.fillMaxWidth().height(budget.phrase.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                val action = Modifier.width(actionWidth).fillMaxHeight().background(palette.disabledSurface)
+                            Row(Modifier.fillMaxWidth().height(budget.phrase.dp)) {
+                                val action = Modifier.width(actionWidth).fillMaxHeight().drawBehind {
+                                    val horizontal = 4.dp.toPx()
+                                    val vertical = 6.dp.toPx()
+                                    drawRect(actionSurface, Offset(horizontal, vertical),
+                                        Size((size.width - 2 * horizontal).coerceAtLeast(0f), (size.height - 2 * vertical).coerceAtLeast(0f)))
+                                }
                                 CommunicationIconButton(CommunicationIcon.Backspace, "Удалить последнее", presentation.editEnabled,
                                     { dispatch(CommunicationCommand.Backspace(CommandId(ids.next()))) }, action)
                                 CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight())
@@ -115,7 +126,7 @@ fun CommunicationScreen(
                                                 CommunicationCommand.Select(CommandId(ids.next()), page.id, position),
                                             )
                                         },
-                                        Modifier.weight(1f).fillMaxHeight(),
+                                        Modifier.weight(1f).fillMaxHeight().padding(horizontal = 8.dp),
                                     )
                                 }
                                 if (pagingVisible) CommunicationIconButton(CommunicationIcon.Next, "Следующая страница",
@@ -135,6 +146,7 @@ fun CommunicationScreen(
                             )
                         }
                     }
+                }
                 }
             }
         }

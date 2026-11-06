@@ -1,51 +1,82 @@
 package su.linka.pictures.ui.communication
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import su.linka.pictures.application.communication.CommunicationState
 import su.linka.pictures.domain.AssetId
 import su.linka.pictures.domain.MessagePart
 import su.linka.pictures.ui.images.DemandVisibleImages
 import su.linka.pictures.ui.theme.LocalLinkaPalette
+import su.linka.pictures.ui.theme.Linka14
+import su.linka.pictures.ui.theme.LinkaPalette
+import su.linka.pictures.ui.theme.linkaPalette
+import su.linka.pictures.ui.components.CommunicationCardMeasurePolicy
+import su.linka.pictures.ui.components.PrimitiveSurfaceChrome
+
+internal fun communicationMessageGradient(palette: LinkaPalette): List<Color>? =
+    if (palette == linkaPalette(false, false)) PrimitiveSurfaceChrome.cardGradient(palette, palette.text, false) else null
 
 @Composable
 internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId, ImageBitmap>, modifier: Modifier) {
     val palette = LocalLinkaPalette.current
-    BoxWithConstraints(modifier.semantics { contentDescription = "Общее сообщение: ${state.renderedText.ifEmpty { "пусто" }}" }) {
+    BoxWithConstraints(modifier.padding(6.dp).semantics { contentDescription = "Общее сообщение: ${state.renderedText.ifEmpty { "пусто" }}" }) {
         val partWidth = maxOf(48.dp, maxHeight)
-        val imageHeight = maxOf(24.dp, maxHeight - 30.dp)
-        LazyRow(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        val gradient = communicationMessageGradient(palette)
+        LazyRow(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             items(state.message.parts, key = { it.id.value }) { part ->
                 val card = (part as? MessagePart.Card)?.snapshot
                 DemandVisibleImages(part.id, setOfNotNull(card?.image))
-                Column(
-                    Modifier.width(partWidth).fillMaxHeight().border(1.dp, palette.border)
-                        .verticalScroll(rememberScrollState()).padding(3.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Surface(
+                    modifier = Modifier.width(partWidth).fillMaxHeight()
+                        .padding(start = 4.dp, top = 1.5.dp, end = 4.dp, bottom = 6.dp)
+                        .padding(Linka14.cardMargin).semantics(mergeDescendants = true) {},
+                    color = palette.surface, contentColor = palette.text,
+                    shape = RoundedCornerShape(Linka14.cardCorner),
+                    border = PrimitiveSurfaceChrome.border(palette, false),
                 ) {
-                    if (card?.image != null) Box(Modifier.fillMaxWidth().height(imageHeight)) {
-                        images[card.image]?.let { image ->
-                            Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                        }
+                    BoxWithConstraints(
+                        Modifier.then(if (gradient != null) Modifier.background(Brush.verticalGradient(gradient)) else Modifier)
+                            .padding(Linka14.cardPadding),
+                    ) {
+                        val captionSize = ((maxHeight.value / 6f).coerceAtLeast(14f)).sp
+                        Layout(content = {
+                            Box(contentAlignment = Alignment.Center) {
+                                card?.image?.let(images::get)?.let { image ->
+                                    Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                                }
+                            }
+                            Text(when (part) {
+                                is MessagePart.Card -> part.snapshot.label
+                                is MessagePart.Text -> part.text
+                            }, modifier = Modifier.verticalScroll(rememberScrollState()), style = MaterialTheme.typography.body1.copy(
+                                fontSize = captionSize, lineHeight = captionSize * 1.2f,
+                                fontWeight = FontWeight.Normal, letterSpacing = 0.sp,
+                            ), textAlign = TextAlign.Center)
+                        }, measurePolicy = CommunicationCardMeasurePolicy)
                     }
-                    Text(when (part) {
-                        is MessagePart.Card -> part.snapshot.label
-                        is MessagePart.Text -> part.text
-                    })
                 }
             }
         }
