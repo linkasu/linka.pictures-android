@@ -17,11 +17,14 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 import org.robolectric.shadows.ShadowLooper
 import su.linka.pictures.R
+import su.linka.pictures.LinkaPicturesApp
+import su.linka.pictures.Telemetry
 import su.linka.pictures.TelemetryCollectionState
 import su.linka.pictures.TelemetryPrivacyPreferences
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [30])
+// Exercise legacy startup; the development manifest intentionally uses an isolated Application.
+@Config(application = LinkaPicturesApp::class, sdk = [30])
 class MainActivityPrivacyNoticeTest {
     private lateinit var context: Context
 
@@ -46,6 +49,7 @@ class MainActivityPrivacyNoticeTest {
         assertFalse(dialog.isShowing)
         assertNotNull(activity.findViewById<android.view.View>(R.id.sets_list))
         assertEquals(TelemetryCollectionState.UNKNOWN, TelemetryPrivacyPreferences(context).state())
+        assertFalse(Telemetry.isCollectionEnabledForCurrentProcess())
         controller.pause().stop().destroy()
     }
 
@@ -63,6 +67,7 @@ class MainActivityPrivacyNoticeTest {
             recreatedDialog.findViewById<CheckBox>(R.id.telemetry_analytics_choice)
         ).isChecked)
         assertEquals(TelemetryCollectionState.UNKNOWN, TelemetryPrivacyPreferences(context).state())
+        assertFalse(Telemetry.isCollectionEnabledForCurrentProcess())
         controller.pause().stop().destroy()
     }
 }
