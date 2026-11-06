@@ -9,6 +9,44 @@ import kotlin.test.assertTrue
 
 class LinkaThemeTest {
     @Test
+    fun materialSelectionUsesAccessibleFunctionalColorsInEveryTheme() {
+        for (dark in listOf(false, true)) for (highContrast in listOf(false, true)) {
+            val palette = linkaPalette(dark, highContrast)
+            val colors = linkaMaterialColors(dark, palette)
+            assertEquals(palette.primary, colors.secondary)
+            assertEquals(palette.primary, colors.secondaryVariant)
+            assertEquals(palette.onPrimary, colors.onSecondary)
+            assertEquals(palette.primary, colors.primary)
+            assertEquals(palette.onPrimary, colors.onPrimary)
+            assertEquals(if (!dark && !highContrast) Linka14.primaryDark else palette.primary, colors.primaryVariant)
+            assertEquals(palette.surface, colors.surface)
+            assertEquals(palette.background, colors.background)
+            assertEquals(palette.text, colors.onSurface)
+            assertEquals(palette.text, colors.onBackground)
+            assertEquals(palette.danger, colors.error)
+            assertEquals(palette.onDanger, colors.onError)
+            assertEquals(!dark, colors.isLight)
+            for (background in listOf(colors.surface, colors.background, palette.disabledSurface,
+                palette.pressedSurface(colors.surface, colors.onSurface))) {
+                assertContrast(colors.secondary, background, 3f)
+            }
+            val textMinimum = if (highContrast) 7f else 4.5f
+            assertContrast(colors.onSecondary, colors.secondary, textMinimum)
+            assertContrast(colors.onSecondary, palette.pressedSurface(colors.secondary, colors.onSecondary), textMinimum)
+            assertContrast(palette.disabledText, palette.disabledSurface, textMinimum)
+        }
+    }
+
+    @Test
+    fun brandAccentRemainsSuitableForBlackFabContentNotSelectionOnWhite() {
+        assertContrast(Color.Black, Linka14.accent, 4.5f)
+        assertTrue(contrastRatio(Linka14.accent, Color.White) < 3f)
+        val colors = linkaMaterialColors(false, linkaPalette(false, false))
+        assertContrast(colors.secondary, Color.White, 3f)
+        assertContrast(colors.secondary, Color.White, 4.5f)
+    }
+
+    @Test
     fun allPalettesKeepContrastInNormalDisabledAndPressedStates() {
         for (dark in listOf(false, true)) for (highContrast in listOf(false, true)) {
             val p = linkaPalette(dark, highContrast)
@@ -82,5 +120,18 @@ class LinkaThemeTest {
             assertTrue(pressed.luminance() < surface.luminance())
             assertTrue((pressed.luminance() + 0.05f) / 0.05f >= 4.5f)
         }
+    }
+
+    private fun contrastRatio(foreground: Color, background: Color): Float {
+        val a = foreground.luminance()
+        val b = background.luminance()
+        return (maxOf(a, b) + 0.05f) / (minOf(a, b) + 0.05f)
+    }
+
+    private fun assertContrast(foreground: Color, background: Color, minimum: Float) {
+        assertEquals(1f, foreground.alpha)
+        assertEquals(1f, background.alpha)
+        val ratio = contrastRatio(foreground, background)
+        assertTrue(ratio >= minimum, "$foreground / $background = $ratio < $minimum")
     }
 }

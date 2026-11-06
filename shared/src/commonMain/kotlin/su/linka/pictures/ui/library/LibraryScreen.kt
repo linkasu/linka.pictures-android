@@ -23,6 +23,7 @@ import su.linka.pictures.domain.*
 import su.linka.pictures.ui.app.*
 import su.linka.pictures.ui.images.*
 import su.linka.pictures.ui.theme.LocalLinkaPalette
+import su.linka.pictures.ui.theme.Linka14
 
 private data class BoardDecision(val entry: LibraryEntrySummary, val epoch: Long, val delete: Boolean)
 private data class DraftDecision(val draft: DraftSummary, val epoch: Long)
@@ -36,6 +37,8 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null) {
     val listing by library.listing.collectAsState()
     val shownListing = listing
+    val palette = LocalLinkaPalette.current
+    val baseline = MaterialTheme.colors.isLight && !palette.highContrast
     var drafts by remember { mutableStateOf<OperationResult<List<DraftSummary>>?>(null) }
     var draftsEpoch by remember { mutableStateOf<Long?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -77,6 +80,8 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
       }) },
       floatingActionButton = {
           FloatingActionButton(onClick = { if (enabled && !busy) onCreate() },
+               backgroundColor = if (baseline) Linka14.accent else palette.primary,
+               contentColor = if (baseline) Color.Black else palette.onPrimary,
               modifier = Modifier.padding(8.dp).semantics { if (!enabled || busy) disabled() }) {
               Icon(LibraryIcons.Add, "Создать набор")
           }

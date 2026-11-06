@@ -2,12 +2,12 @@ package su.linka.pictures.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Colors
 import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -35,23 +35,27 @@ fun LinkaTheme(
 ) {
     val palette = linkaPalette(darkTheme, highContrast)
     val density = LocalDensity.current
-    val colors = if (darkTheme) darkColors() else lightColors()
-    val baseline = !darkTheme && !highContrast
     CompositionLocalProvider(
         LocalLinkaPalette provides palette,
         LocalDensity provides Density(density.density, linkaFontScale(density.fontScale, textScale)),
     ) {
         MaterialTheme(
-            colors = colors.copy(
-                primary = palette.primary, primaryVariant = if (baseline) Linka14.primaryDark else palette.primary,
-                secondary = if (baseline) Linka14.accent else palette.primary,
-                secondaryVariant = if (baseline) Linka14.accent else palette.primary,
-                onPrimary = palette.onPrimary, onSecondary = if (baseline) Color.Black else palette.onPrimary,
-                background = palette.background, surface = palette.surface,
-                onBackground = palette.text, onSurface = palette.text,
-                error = palette.danger, onError = palette.onDanger,
-            ),
+            colors = linkaMaterialColors(darkTheme, palette),
             content = content,
         )
     }
+}
+
+internal fun linkaMaterialColors(darkTheme: Boolean, palette: LinkaPalette): Colors {
+    val colors = if (darkTheme) darkColors() else lightColors()
+    val baseline = !darkTheme && !palette.highContrast
+    return colors.copy(
+        primary = palette.primary, primaryVariant = if (baseline) Linka14.primaryDark else palette.primary,
+        // Brand yellow cannot identify selected controls against a white surface.
+        secondary = palette.primary, secondaryVariant = palette.primary,
+        onPrimary = palette.onPrimary, onSecondary = palette.onPrimary,
+        background = palette.background, surface = palette.surface,
+        onBackground = palette.text, onSurface = palette.text,
+        error = palette.danger, onError = palette.onDanger,
+    )
 }
