@@ -93,14 +93,24 @@ class AuthoringSession(
     }
 
     fun send(command: AuthoringCommand): Boolean {
-        if (state.value.ownerId != null && state.value.ownerId != command.ownerId) return false
+        if (state.value.ownerId != null && state.value.ownerId != command.ownerId) {
+            handled(command)
+            return false
+        }
         if (command.action == AuthoringAction.Background || command.action == AuthoringAction.Revoke) {
             lifecycle.update { it + 1 }
             cleanup { mediaWork.value?.cancel() }
             cleanup { audio.stop(command.ownerId) }
         }
         val generation = lifecycle.value
-        return post { handle(command, generation) }
+        val queued = post { handle(command, generation); handled(command) }
+        if (!queued) handled(command)
+        return queued
+    }
+
+    private fun handled(command: AuthoringCommand) {
+        // An observer cannot abort an admitted edit or the actor's remaining commands.
+        cleanup { command.onHandled?.invoke(state.value) }
     }
 
     private fun post(owned: MediaLease? = null, action: (Event) -> Unit): Boolean {
@@ -361,7 +371,7 @@ class AuthoringSession(
         durableRevision = if (stored == null) -1 else 0
         mutableState.value = state.value.copy(phase = AuthoringPhase.EDITING, draft = snapshot(draft), epoch = epoch,
             durableVersion = stored?.version, savePhase = if (stored == null) DraftSavePhase.UNSAVED else DraftSavePhase.SAVED,
-            problem = null)
+            problem = null, editVersion = 0)
         if (stored == null) queueSave()
     }
 
@@ -381,7 +391,7 @@ class AuthoringSession(
         previous.close()
         revision++
         applyRequested = false
-        mutableState.value = state.value.copy(draft = snapshot(next), savePhase = DraftSavePhase.SAVING)
+        mutableState.value = state.value.copy(draft = snapshot(next), savePhase = DraftSavePhase.SAVING, editVersion = revision)
         queueSave()
     }
 

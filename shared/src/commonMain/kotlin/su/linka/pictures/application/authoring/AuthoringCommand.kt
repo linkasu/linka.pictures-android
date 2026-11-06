@@ -8,6 +8,8 @@ data class AuthoringCommand(
     val ownerId: String,
     val capability: AssistantCapability?,
     val action: AuthoringAction,
+    /** Accepted/rejected snapshot after handling, never a durability acknowledgement. */
+    val onHandled: ((AuthoringState) -> Unit)? = null,
 )
 
 sealed interface AuthoringAction {

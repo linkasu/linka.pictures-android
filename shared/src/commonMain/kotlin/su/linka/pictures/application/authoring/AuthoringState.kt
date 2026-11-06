@@ -19,4 +19,6 @@ data class AuthoringState(
     val published: PublishedBoard? = null,
     val problem: Problem? = null,
     val cleanupProblem: Problem? = null,
+    /** In-memory edit order within this draft; unrelated to the durable draft version. */
+    val editVersion: Long = 0,
 )

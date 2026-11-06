@@ -120,6 +120,65 @@ class AuthoringSessionTest {
         try { block(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
     }
 
+    @Test fun inputAcknowledgementDoesNotClaimDurabilityAndCannotBypassTheGuard() = runTest {
+        fresh { f ->
+            f.start()
+            val before = f.session.state.value
+            f.library.delayed = true
+            suspend fun input(id: String, name: String): AuthoringState {
+                val received = CompletableDeferred<AuthoringState>()
+                assertTrue(f.session.send(AuthoringCommand(CommandId(id), "owner", f.capability,
+                    AuthoringAction.Details(name, null, BoardBehavior())) { received.complete(it) }))
+                return withContext(Dispatchers.Default) { withTimeout(10_000) { received.await() } }
+            }
+            val first = input("input-first", "AB")
+            val save = f.nextSave()
+            try {
+                assertEquals("AB", first.draft!!.document.name)
+                assertEquals(before.editVersion + 1, first.editVersion)
+                assertEquals(before.durableVersion, first.durableVersion)
+                assertEquals(DraftSavePhase.SAVING, first.savePhase)
+                val back = input("input-back-to-old-value", before.draft!!.document.name)
+                assertEquals(first.editVersion + 1, back.editVersion)
+                f.native.authorized = false
+                val denied = input("input-denied", "MUST_NOT_APPEAR")
+                assertEquals(AuthoringPhase.PAUSED, denied.phase)
+                assertEquals(ProblemCode.UNAUTHORIZED, denied.problem?.code)
+                assertEquals(back.draft, denied.draft)
+                assertEquals(back.editVersion, denied.editVersion)
+                val stored = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(before.draft.id)).value
+                try { assertEquals(before.draft, stored.draft.draft) } finally { stored.lease.close() }
+            } finally { save.reply.complete(OperationResult.Cancelled) }
+        }
+    }
+
+    @Test fun foreignAndClosedSendDeclinesStillAcknowledgeWithoutChangingTheDraft() = runTest {
+        fresh { f ->
+            f.start()
+            val before = f.session.state.value
+            val foreign = CompletableDeferred<AuthoringState>()
+            assertFalse(f.session.send(AuthoringCommand(CommandId("foreign-input"), "other-owner", null,
+                AuthoringAction.Details("FOREIGN", null, BoardBehavior())) { foreign.complete(it) }))
+            assertEquals(before, foreign.await())
+            f.finish()
+            val closed = CompletableDeferred<AuthoringState>()
+            assertFalse(f.session.send(AuthoringCommand(CommandId("closed-input"), "owner", f.capability,
+                AuthoringAction.Details("CLOSED", null, BoardBehavior())) { closed.complete(it) }))
+            assertEquals(before.draft, closed.await().draft)
+        }
+    }
+
+    @Test fun throwingInputObserverDoesNotStopAcceptedEdits() = runTest {
+        fresh { f ->
+            f.start()
+            assertTrue(f.session.send(AuthoringCommand(CommandId("throwing-input"), "owner", f.capability,
+                AuthoringAction.Details("accepted", null, BoardBehavior())) { error("observer failure") }))
+            f.await { it.draft?.document?.name == "accepted" && it.cleanupProblem?.code == ProblemCode.IO_FAILURE }
+            f.details("next")
+            f.await { it.draft?.document?.name == "next" && it.savePhase == DraftSavePhase.SAVED }
+        }
+    }
+
     @Test fun kindsAutosaveHiddenMediaBackupAndResumeAfterActualRuntimeReopen() = runTest {
         for (kind in listOf(CellKind.SPACE, CellKind.EMPTY)) fresh { f ->
             f.start(); f.open()
