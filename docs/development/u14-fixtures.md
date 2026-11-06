@@ -38,7 +38,7 @@ private upgrade не используется. В ZIP 19 записей: config 
 baseline и новый test asset должны иметь указанный SHA до/после импорта.
 Статическая проверка ZIP не доказывает native decode/отрисовку/воспроизведение.
 
-## Подтверждённый blocker полноценного guarded import
+## Исторический incoming blocker; положительный путь — штатный SAF
 
 Реальный путь:
 
@@ -60,37 +60,69 @@ baseline и новый test asset должны иметь указанный SHA
    `AndroidPlatformFilesPort.present` требует **content:// с authority**.
    В текущих manifest нет FileProvider, публикующего test-owned cache.
 
-Это mismatch production-root/document-port и отсутствующий transport seam, не
-основание обходить guard или менять storage. В этой ветке они **не исправлены**.
-Primary дополнительно разрешил `app/src/androidTest/AndroidManifest.xml` и
-`ParityFixtureProvider.kt` с non-exported/read-only/nonce scope, если file URI
-непригоден. Но test APK provider и instrumentation target живут под разными UID:
-`instrumentation.context` не меняет UID вызывающего процесса. Для записи файла
-в cache **test APK** и выдачи grant от его владельца нужен owner-side test
-bootstrap component. Одних Context/grantUriPermission из target процесса
-недостаточно. Такой bootstrap не добавлен, native UID/grant поведение не проверено
-на устройстве. Нельзя молча делать provider exported, выдавать глобальные URI
-или подменять resolver. Нужен отдельно согласованный owner-side test bootstrap
-либо явно замороженный child-only instrumentation entry через настоящий runtime.
-Общая защита, foreground и повторная авторизация после system presentation
-должны сохраниться. Нельзя назвать private legacy-upgrade публичным импортом.
+Это состояние dependency `a9fc68c`, не контракт будущего root. Исправление
+wildcard incoming routing с negative checks делает primary отдельно. В этой lane
+root/reader не менялись; отрицательный ingress preflight сохранён историческим.
 
-После согласования seam ожидаемый путь: стартовая **Библиотека** → меню →
+**Принятое минимальное решение:** полноценный импорт не использует incoming URI.
+Primary через MCP заранее копирует **только этот архив** в Downloads собственного
+API35 под уникальным именем **LINKa-U14-HOCHU-cfb199d.linka**, измеряет SHA/размер,
+проверяет read state и фиксирует provenance. Тест выбирает этот файл в настоящем
+DocumentsUI, приложение получает штатный SAF content URI/read grant. Нет provider,
+owner bootstrap, StrictMode relax, permission grants, guessed URI или SQL.
+Имеющихся платформенных средств достаточно. Для API21 staging/provider read state
+проверяет primary отдельно; API35 compile не доказывает API21 PASS.
+
+Реализованный путь `filledBoardThroughRealSafImport`: стартовая **Библиотека** → меню →
 `Импорт` (текущий baseline до UI-интеграции:
 `Импорт, резервная копия и восстановление`) → ввод имени **ХОЧУ** через настоящее
 поле `Название импортируемой доски` вместо default `Импортированная доска` →
-prepare без обязательного initial unlock в Unprotected →
+prepare без обязательного initial unlock в Unprotected → настоящий SAF picker →
+Downloads/Загрузки → точное имя fixture (при необходимости штатный Search/Найти) →
 preview 1 страница/9 карточек/9 изображений/9 записей →
 явный foreground UI unlock для новой capability перед confirm →
 `Подтверждаю импорт «ХОЧУ» как новой доски` → completed → библиотека → ХОЧУ →
-проверка всех 9 изображений и пустого сообщения → ХОЧУ, КУШАТЬ → filled screenshot.
-Не нажимать replace/restore, не подтверждать native auth/providers автоматически.
+проверка 9 видимых named card semantics в collection 3×3 и пустого сообщения →
+ХОЧУ, КУШАТЬ → точная фраза ХОЧУ КУШАТЬ, действие Произнести и отсутствие Остановить.
+Тест **не** доказывает пиксели изображений или отсутствие акустического transient:
+UI no-autoplay проверяется по состоянию, реальное audio/PNG проверяет primary.
+Не нажимать replace/restore, не подтверждать native auth/permissions/settings.
 Нельзя незаметно открыть пустой startup вместо этой заполненной доски.
 
 ## Что уже делает instrumentation
 
 `DevelopmentParityTest.baselineFixtureHasUnmodifiedNineCardMedia` проверяет SHA,
 версию/сетку/порядок и наличие ненулевых байтов всех 18 медиа.
+
+`filledBoardThroughRealSafImport` до запуска Activity проверяет development
+package/UID, отсутствие library.sqlite3, SHA упакованной fixture и обязательные
+instrumentation arguments:
+
+```text
+u14FixtureName=LINKa-U14-HOCHU-cfb199d.linka
+u14FixtureSha256=a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b
+```
+
+SHA-argument — аттестация **измеренного primary** Downloads-файла, не вычисление
+тестом через чужую файловую систему: до выдачи SAF grant файл напрямую не читается.
+Его доступность подтверждается точным filename в реальном DocumentsUI **до выбора**,
+preview/counts и карточки проверяются до и после явного commit соответственно.
+Отсутствие source не приводит к импортированию другого файла. Primary проверяет
+SHA Downloads-копии до/после; тест её не удаляет и не переименовывает.
+Непустая библиотека заранее даёт `fixturealreadyimported / nonfresh sandbox`:
+никаких дубликатов, удаления или reset. Запускать **один выбранный метод**, не весь
+класс после startup/ingress: эти тесты тоже инициализируют пустую библиотеку.
+
+`reopenFilledBoardWithoutImportOrMessageEdits` требует те же два arguments,
+существующую development-библиотеку, открывает ХОЧУ и проверяет grid/filled phrase;
+не импортирует, не редактирует фразу, не произносит и не очищает. UI открытия доски
+может штатно сохранить cursor. При отсутствии нужного состояния тест останавливается.
+
+Успешный full/reopen test отправляет только passive instrumentation status
+`u14State=board-filled`, fixture SHA, message parts, `UI_STATE_READY_ONLY`.
+Никаких PNG и visual verdict. ActivityScenario штатно закрывается в конце:
+primary после instrumentation снова открывает приложение/доску через MCP и
+проверяет сохранённую фразу перед съёмкой, а не снимает закрывшуюся Activity.
 
 `DevelopmentParityTest.incomingFixtureRequiresExplicitUiImport` — **только
 ingress preflight**, не full-import test: свежий собственный development sandbox,
@@ -102,29 +134,41 @@ file:// не передаётся через внешний process boundary и 
 Удаляется только собственная cache-копия; SHA оригинала проверяется до/после.
 Библиотека/credentials не чистятся и не заполняются напрямую.
 
-UI определяется actual text/content-description. Этот preflight не нажимает
-кнопок; будущий полный harness должен нажимать центр bounds ближайшего enabled
-visible clickable ancestor actual named selector, а не произвольные координаты.
-Ожидание ограничено deadline 20 секунд,
-без fixed sleep; неожиданный package немедленно прерывает тест. Нет XML-дампов,
-паролей, произвольных координат или автонажатий в системных окнах.
-Полный harness до filled-board **заблокирован описанным seam**, не отмечен PASS.
+UI определяется actual text/content-description, нажатия — центр bounds ближайшего
+enabled visible clickable ancestor. Finite aliases: app Меню/Ещё, Импорт/старый
+onTransfer entry; picker Show roots/Показать корневые папки/Открыть панель навигации,
+Downloads/Загрузки, Search/Найти/Поиск. Новые неизвестные labels не угадываются.
+Ожидание каждого состояния ограничено deadline 20 секунд; поиск offscreen
+transfer controls использует максимум 12 реальных semantic scroll actions,
+без fixed sleep. Разрешены только target package и на SAF-шаге
+com.android.documentsui/com.google.android.documentsui. Неожиданное системное
+окно немедленно прерывает тест; нет XML/password dumps или random coordinates.
+**Ни full harness, ни provider UI ещё не запускались на устройстве; PASS нет.**
 Новые начальные route/toolbar selectors должны быть интегрированы из UI lane:
 исходный runtime dependency этого worktree ещё начинает с сообщения и поэтому
-UI preflight в одиночку до интеграции navigation lane ожидаемо не пройдёт.
+UI tests в одиночку до интеграции navigation lane ожидаемо не пройдут.
 
 После одобрения primary запускает методы на known-owned API35/21 через Android
-MCP/instrumentation runner `androidx.test.runner.AndroidJUnitRunner`, class
-`su.linka.pictures.activity.DevelopmentParityTest`. UI-ingress method требует
+MCP/instrumentation runner `androidx.test.runner.AndroidJUnitRunner`, selector
+`su.linka.pictures.activity.DevelopmentParityTest#filledBoardThroughRealSafImport`
+(либо `#reopenFilledBoardWithoutImportOrMessageEdits` для повторного открытия).
+Два аргумента выше передаются runner как instrumentation arguments.
+UI-ingress method требует
 свежего sandbox; не запускать после `DevelopmentStartupTest` в той же уже открытой
 библиотеке и не сбрасывать чужие данные ради теста. Существующий startup test не менялся.
 
-Локальная проверка без устройства (JDK17, один worker, не APK/release/full gate):
+Локальная проверка без устройства (JDK17, один worker, только test APK,
+без обычного APK/release/full gate):
 
 ```sh
-JAVA_HOME=$(/usr/libexec/java_home -v 17) ANDROID_HOME=/Volumes/data/developer-state/android-sdk ./gradlew :app:compileDebugAndroidTestKotlin --max-workers=1 --console=plain
+JAVA_HOME=$(/usr/libexec/java_home -v 17) ANDROID_HOME=/Volumes/data/developer-state/android-sdk ./gradlew :app:assembleDebugAndroidTest --max-workers=1 --console=plain
 python3 scripts/check-ui-parity-evidence.py --self-test
 ```
+
+Артефакт: `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk`.
+Сборка test APK и SHA его упакованного asset проверены локально; установка и
+instrumentation/device execution не выполнялись. Production files/Gradle/manifest
+не менялись, никаких provider компонентов не добавлено.
 
 ## Manifest настоящих evidence
 
