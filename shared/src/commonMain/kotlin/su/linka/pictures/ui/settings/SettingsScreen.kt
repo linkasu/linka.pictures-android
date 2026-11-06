@@ -20,8 +20,8 @@ import su.linka.pictures.domain.*
 import su.linka.pictures.ui.app.*
 import su.linka.pictures.ui.library.needsLibraryAuthorization
 import su.linka.pictures.ui.library.LibraryIcons
+import su.linka.pictures.text.isNativeText
 
-private data class SettingsSnapshot(val listing: LibraryListing, val value: PortableSettings)
 private enum class SettingsInput { TEXT_SCALE, LANGUAGE }
 
 @Composable
@@ -34,15 +34,15 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
     var refresh by remember { mutableStateOf(0) }
     var menu by remember { mutableStateOf(false) }
     var showAccess by remember { mutableStateOf(false) }
+    var savedAwaitingReload by remember { mutableStateOf(false) }
     val voices by audio.voices.collectAsState()
     LaunchedEffect(refresh) {
-        loaded = null; result = null
-        val listing = library.listing.value
-        when (val read = library.settings()) {
+        if (!savedAwaitingReload) loaded = null
+        result = null
+        when (val read = readSettingsSnapshot(library)) {
             is OperationResult.Completed -> {
-                if (library.listing.value.epoch == listing.epoch && library.listing.value.revision == listing.revision && listing.refreshProblem == null)
-                    loaded = SettingsSnapshot(listing, read.value)
-                else result = OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
+                loaded = read.value
+                savedAwaitingReload = false
             }
             else -> result = read
         }
@@ -67,9 +67,22 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         SettingsSwitch("Тёмная тема", dark, enabled, "Только для текущего сеанса") { onDark(it) }
         if (loaded == null && result == null) Text("Загружаем настройки…")
         loaded?.let { snapshot -> key(snapshot) {
-            SettingsForm(snapshot, controller, owner, capability, enabled, voices, gate, access, result, onSaved) { result = it }
+            SettingsForm(snapshot, controller, owner, capability, enabled, voices, gate, access, result) { outcome, value ->
+                result = if (outcome is OperationResult.Completed) null else outcome
+                if (outcome is OperationResult.Completed) savedAwaitingReload = true
+                when (val read = reloadSettingsAfterSave(library, outcome, value, onSaved)) {
+                    null -> Unit
+                    is OperationResult.Completed -> { loaded = read.value; savedAwaitingReload = false }
+                    else -> result = read
+                }
+            }
         } }
-        if (result !is OperationResult.Completed) Feedback(result)
+        if (savedAwaitingReload) {
+            Text(if (result == null) "Настройки сохранены. Обновляем параметры…"
+                else "Настройки сохранены. Не удалось обновить параметры. Загрузите настройки заново через меню.",
+                Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            if (result is OperationResult.Failed) Feedback(result)
+        } else if (result !is OperationResult.Completed) Feedback(result)
         Divider()
         SettingsHeading("Данные на этом устройстве")
         SettingsRow("Локальные данные", "Доски, изображения и аудио остаются на устройстве. Ручной экспорт и резервное копирование доступны через меню библиотеки.")
@@ -93,8 +106,8 @@ internal fun voiceStatusLabel(status: VoiceStatus): String = when (status) {
 @Composable
 private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryController, owner: String,
     capability: AssistantCapability?, enabled: Boolean, voices: VoiceCapability, gate: AssistantGate?,
-    access: @Composable () -> Unit, feedback: OperationResult<*>?, onSaved: (PortableSettings) -> Unit,
-    onResult: (OperationResult<*>) -> Unit) {
+    access: @Composable () -> Unit, feedback: OperationResult<*>?,
+    onResult: suspend (OperationResult<Long>, PortableSettings) -> Unit) {
     var scale by remember { mutableStateOf(snapshot.value.textScale.toString()) }
     var language by remember { mutableStateOf(snapshot.value.languageTag) }
     var contrast by remember { mutableStateOf(snapshot.value.highContrast) }
@@ -114,11 +127,11 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
         scope.launch {
             try {
                 val result = controller.settings(owner, capability, value, snapshot.listing.revision, snapshot.listing.epoch)
-                onResult(result)
                 authorize = needsLibraryAuthorization(result)
                 if (!authorize) pending = null
-                if (result is OperationResult.Completed) { committed = true; onSaved(value); pending = null }
+                if (result is OperationResult.Completed) { committed = true; pending = null }
                 if (result == OperationResult.UnconfirmedCommit) { committed = true; pending = null }
+                onResult(result, value)
             } finally { busy = false }
         }
     }
@@ -162,7 +175,7 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     }
     val parsed = scale.toFloatOrNull()
     val valid = settingsInputValid(parsed, language)
-    if (!valid) Text("Введите масштаб от 0.5 до 3 и непустой код языка длиной до 128 символов.")
+    if (!valid) Text("Введите масштаб от 0.5 до 3 и корректный непустой код языка длиной до 128 символов.")
     TextButton(onClick = {
         val value = PortableSettings(parsed!!, contrast, language, boards)
         authorize = needsLibraryAuthorization(gate?.check(ProtectedAction.CHANGE_SETTINGS, capability, owner))
@@ -181,7 +194,7 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
 }
 
 internal fun settingsInputValid(scale: Float?, language: String): Boolean =
-    scale != null && scale.isFinite() && scale in 0.5f..3f && language.isNotBlank() && language.length <= 128
+    scale != null && scale.isFinite() && scale in 0.5f..3f && language.isNotBlank() && language.length <= 128 && isNativeText(language)
 
 @Composable
 private fun SettingsHeading(title: String) {

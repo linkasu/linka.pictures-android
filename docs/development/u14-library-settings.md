@@ -98,3 +98,29 @@ actual PNG/diff, TalkBack/VoiceOver/keyboard, phone/tablet и iOS orientation ma
 интегрированных route callbacks требуют проверки primary; visual PASS не заявлен.
 LibraryListing не имеет loading flag: новый фиктивный loading/zero-count state
 не придуман; startup readiness остаётся ответственностью parent.
+
+## Коррекция после 97a4332: повторное сохранение настроек
+
+Подтверждённый дефект: после known Completed форма оставалась `committed=true`
+на старом snapshot до ручного обновления. Теперь только known Completed вызывает
+`onSaved(value)`, затем ровно один `readSettingsSnapshot`: новый epoch/revision
+и значение заменяют key формы, разрешая следующую правку. Проверка текущего
+snapshot и этот read переиспользуются при начальной/явной загрузке; writer не
+повторяется. При ошибке post-commit read сохранённая форма остаётся заблокирована,
+показано «Настройки сохранены. Не удалось обновить параметры…»; следующий read —
+только явный через меню. Ошибка чтения не объявляет известную запись неуспешной.
+
+Conflict/Unauthorized/Cancelled/Unconfirmed не вызывают автоматический read и не
+заменяют захваченный snapshot/ввод. Native-safe проверка languageTag использует
+существующий `text.isNativeText`: NUL и одиночные UTF-16 суррогаты отклоняются;
+неизвестные корректные языки и граница 128 символов не ограничены whitelist/trim.
+
+Добавлены `SettingsRefreshTest` с настоящими LibraryController/SQLite: два
+последовательных known saves с новой revision, один read после каждого, callback
+до read, отсутствие reload на ошибках, post-commit read failure и explicit read
+без повторной записи, stale read. В `SettingsPresentationTest` native-text
+регрессия проверена RED до исправления (4 tests / 1 failed), затем GREEN.
+Прежние 24 теста остаются в focused наборе; итоговый запуск JDK17/max-workers=1 —
+**29 tests, 0 failures/errors/skipped**, `git diff --check` PASS.
+Compose instrumentation не добавлен; UI key/reset wiring дополнительно требует
+проверки primary/actual PNG. Visual gate остаётся OPEN.

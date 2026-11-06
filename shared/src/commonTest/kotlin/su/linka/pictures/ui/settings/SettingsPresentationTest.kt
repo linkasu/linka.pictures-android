@@ -24,4 +24,11 @@ class SettingsPresentationTest {
         assertTrue(voiceStatusLabel(VoiceStatus.MISSING_VOICE).contains("установка"))
         assertTrue(voiceStatusLabel(VoiceStatus.LOCAL_VOICE_READY).contains("готов"))
     }
+
+    @Test fun languageRejectsNulAndIllFormedUtf16BeforeNativeTts() {
+        listOf("ru\u0000RU", "ru\uD800", "\uDC00ru", "\uD800x\uDC00").forEach {
+            assertFalse(settingsInputValid(1f, it))
+        }
+        assertTrue(settingsInputValid(1f, "xx-\uD83D\uDE00"))
+    }
 }
