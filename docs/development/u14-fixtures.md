@@ -177,6 +177,19 @@ bounds, clipping и пустое пересечение. Эта lane прове�
 editable как для availability (`visibleNamed`), так и для tap; flags regression
 различает query/result с одинаковым именем. Search/Field изменяются только через
 отдельный `replaceText`/`setField`; IME, SAF-return и point clipping не обходятся.
+
+Следующий parent RED выявил маскировку исходной ошибки исключением
+`Activity never becomes requested state [DESTROYED]` из cleanup `scenario.close()`.
+Теперь исходное исключение сохраняется, close/SHA/delete ошибки добавляются как
+suppressed; обе SHA-проверки и удаление **только своей копии** предпринимаются
+независимо. Regression намеренно портит только собственную cache-копию и проверяет
+сохранение primary + suppressed SHA failure + удаление копии.
+В начале каждого await однократно отправляется passive `u14Await` (до loop),
+а `u14Stage` отмечает проверенный owned content, native delivery, prepare click и
+наблюдённый preview. Это фиксированные synthetic stage IDs/ожидаемые labels:
+нет URI, фактического UI text/password dump или private runtime access.
+Tap policy не менялась; первичная ошибка/root cause ещё требует нового device run.
+Снимок baseline после закрытия test caller не является снимком нового продукта.
 Новые начальные route/toolbar selectors должны быть интегрированы из UI lane:
 исходный runtime dependency этого worktree ещё начинает с сообщения и поэтому
 UI tests в одиночку до интеграции navigation lane ожидаемо не пройдут.

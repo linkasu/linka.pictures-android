@@ -78,9 +78,11 @@ class DevelopmentParityTest {
                     val source = target.contentResolver.openInputStream(uri)
                         ?: error("Owned fixture content URI is not readable")
                     assertEquals(expectedSha, source.use { sha(it.readBytes()) })
+                    stage("owned-content-read-verified")
                     val intent = Intent(target, DevelopmentActivity::class.java)
                         .setAction(Intent.ACTION_VIEW).setDataAndType(uri, "application/octet-stream")
                     // Actual same-UID native delivery; no external URI grant or substituted reader.
+                    stage("before-native-content-intent")
                     scenario.onActivity { instrumentation.callActivityOnNewIntent(it, intent) }
                     await("owned incoming notice without auto-import") { root -> find(root) { node ->
                         node.text?.toString()?.startsWith("Получен файл.") == true
@@ -91,7 +93,10 @@ class DevelopmentParityTest {
                     evidenceReady("owned-incoming-content; SAF-picker/OS-grant NOT evaluated")
                 } catch (failure: Throwable) {
                     // Revoke/close the activity owner before deleting its own source on a failed import.
-                    scenario.close()
+                    try { scenario.close() }
+                    catch (cleanupFailure: Throwable) {
+                        if (cleanupFailure !== failure) failure.addSuppressed(cleanupFailure)
+                    }
                     throw failure
                 }
             }
@@ -136,12 +141,15 @@ class DevelopmentParityTest {
     }
 
     private fun prepareNamedImport() {
+        stage("prepare-import-enter")
         val importLabels = listOf("Импорт", "Импорт, резервная копия и восстановление")
         if (!visibleNamed(importLabels)) clickNamed(libraryMenu)
         clickNamed(importLabels)
         awaitNamed("Файлы и восстановление")
         setField("Название импортируемой доски", "Импортированная доска", "ХОЧУ")
+        stage("prepare-import-before-click")
         clickNamed(listOf("Выбрать .linka для импорта (без записи в библиотеку)"), scroll = true)
+        stage("prepare-import-click-delivered")
     }
 
     private fun confirmImportAndCompose() {
@@ -149,6 +157,7 @@ class DevelopmentParityTest {
             find(root) { node -> node.text?.toString()?.contains(
                 "Страниц: 1; карточек: 9; изображений: 9; записей: 9;") == true }
         }
+        stage("import-preview-observed")
         // New owner capability comes only from the actual foreground UI, never a direct access API.
         clickNamed(listOf("Разрешить команды в этом экране"), scroll = true, backwards = true)
         clickNamed(listOf("Подтверждаю импорт «ХОЧУ» как новой доски"), scroll = true)
@@ -218,6 +227,8 @@ class DevelopmentParityTest {
         putString("u14Verdict", "UI_STATE_READY_ONLY; pixels/visual parity/user approval NOT evaluated")
     })
 
+    private fun stage(id: String) = instrumentation.sendStatus(0, Bundle().apply { putString("u14Stage", id) })
+
     @Test fun baselineFixtureHasUnmodifiedNineCardMedia() = withOwnedCopy(target.cacheDir) { copy ->
         ZipFile(copy).use { zip ->
             val config = JSONObject(zip.getInputStream(zip.getEntry("config.json")).bufferedReader().use { it.readText() })
@@ -247,17 +258,47 @@ class DevelopmentParityTest {
         val original = source()
         assertEquals(expectedSha, sha(original))
         val copy = File.createTempFile("u14-owned-", ".linka", directory)
+        var failure: Throwable? = null
         try {
             assertEquals(directory.canonicalFile, copy.canonicalFile.parentFile)
             copy.writeBytes(original)
             check(copy)
+        } catch (primaryFailure: Throwable) {
+            failure = primaryFailure
         } finally {
-            try {
-                assertEquals("Packaged fixture changed", expectedSha, sha(source()))
-                assertEquals("Transport changed fixture bytes", expectedSha, sha(copy.readBytes()))
+            for (cleanup in listOf<() -> Unit>(
+                { assertEquals("Packaged fixture changed", expectedSha, sha(source())) },
+                { assertEquals("Transport changed fixture bytes", expectedSha, sha(copy.readBytes())) },
+                { assertTrue("Could not remove this test's own cache copy", copy.delete()) },
+            )) {
+                try { cleanup() }
+                catch (cleanupFailure: Throwable) {
+                    val primary = failure
+                    if (primary == null) failure = cleanupFailure
+                    else if (cleanupFailure !== primary) primary.addSuppressed(cleanupFailure)
+                }
             }
-            finally { assertTrue("Could not remove this test's own cache copy", copy.delete()) }
         }
+        failure?.let { throw it }
+    }
+
+    @Test fun ownedCopyKeepsPrimaryFailureWhenShaCleanupFails() {
+        val primary = AssertionError("Synthetic primary failure")
+        var ownCopy: File? = null
+        try {
+            withOwnedCopy(target.cacheDir) { copy ->
+                ownCopy = copy
+                copy.writeBytes(byteArrayOf(0))
+                throw primary
+            }
+            fail("Expected the original synthetic failure")
+        } catch (actual: Throwable) {
+            assertSame(primary, actual)
+            assertEquals(1, actual.suppressed.size)
+            assertTrue(actual.suppressed.single() is AssertionError)
+        }
+        assertNotNull(ownCopy)
+        assertFalse("Own cache copy must be deleted even when SHA cleanup fails", ownCopy!!.exists())
     }
 
     private fun assertSandbox() {
@@ -281,6 +322,7 @@ class DevelopmentParityTest {
 
     private fun await(state: String, packages: Set<String> = setOf(target.packageName),
         scrollAction: Int? = null, predicate: (AccessibilityNodeInfo) -> Boolean) {
+        instrumentation.sendStatus(0, Bundle().apply { putString("u14Await", state) })
         val deadline = SystemClock.uptimeMillis() + 20_000
         var lastPackage: String? = null
         var scrolls = 0
