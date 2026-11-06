@@ -1,6 +1,5 @@
 package su.linka.pictures.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,20 +78,13 @@ internal fun PrimitiveSurface(
                 else if (pressed) palette.pressedSurface(surface, contentColor) else surface,
             contentColor = if (enabled) contentColor else palette.disabledText,
             shape = shape,
-            border = when {
-                selected == true -> BorderStroke(3.dp, palette.primary)
-                baselineCard -> BorderStroke(0.5.dp, Brush.verticalGradient(listOf(Linka14.cardBorderTop, Linka14.cardBorderBottom)))
-                card -> BorderStroke(1.dp, palette.border)
-                else -> null
-            },
+            border = PrimitiveSurfaceChrome.border(palette, selected),
         ) {
             CompositionLocalProvider(LocalContentAlpha provides 1f) {
                 Box(
                     Modifier.clearAndSetSemantics {}
                         .then(if (baselineCard && enabled) Modifier.background(
-                            Brush.verticalGradient(listOf(Linka14.cardTop, Linka14.cardBottom).map {
-                                if (pressed) palette.pressedSurface(it, contentColor) else it
-                            }),
+                            Brush.verticalGradient(PrimitiveSurfaceChrome.cardGradient(palette, contentColor, pressed)),
                         ) else Modifier)
                         .padding(if (card) Linka14.cardPadding else PaddingValues(horizontal = 16.dp, vertical = 8.dp)),
                     contentAlignment = Alignment.Center,

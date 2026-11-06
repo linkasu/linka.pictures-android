@@ -82,21 +82,41 @@ Compose-контур 0.5 dp и скругление 2 dp воспроизвод�
 | `#FFFFFF / #197377` | 5.585:1 | Exact primary + white сохранены, обычный текст проходит 4.5 |
 | `#000000 / #FBCC30` | 13.782:1 | Для accent используется black, не white |
 | `#FFFFFF / #BED64F` | 1.625:1 | Исторический primaryDark сохранён; **не назначать ему белый текст/иконки status bar без отдельного решения** |
-| `#777777 / #D1D1D1` | 2.932:1 | Exact нижний контур; ниже 3:1 для единственной границы контрола |
-| `#D7D7D7 / #E8E8E8` | 1.175:1 | Исторический светлый верхний контур также не даёт 3:1 |
+| `#777777 / #D1D1D1` | 2.932:1 | Исторический нижний контур baseline, больше не production DEFAULT-outline |
+| `#D7D7D7 / #E8E8E8` | 1.175:1 | Исторический светлый верхний контур baseline, больше не production DEFAULT-outline |
 | `#8B8B8B / #E0E0E0` | 2.581:1 | Слабый disabled текст формы baseline **не воспроизведён**: существующий доступный `disabledText=#435B5B` сохранён (5.512:1) |
 
 Сохранение доступного disabled foreground — сохранение прежнего a11y-контракта,
 не отключение alpha/contrast tests. Высококонтрастный режим не получает серый
-градиент и использует прежний контрастный контур. Пограничный серый контур в DEFAULT
-**не исправлен самовольно** и не замаскирован ослаблением существующих tests.
-Если для DEFAULT требуется 3:1 по всему контуру во всех состояниях, минимальное
-отличие — только единый outline `#696969`: 3.026:1 на самом тёмном pressed-конце
+градиент и использует прежний контрастный контур.
+
+**Согласованное COORD-отличие от baseline:** после `4c59a60` primary явно поручил
+заменить только DEFAULT normal outline на единый `#696969` по всему контуру.
+Геометрия, заливка и шрифт не меняются. Это минимальное измеренное отличие:
+3.026:1 на самом тёмном pressed-конце
 `#D1D1D1` с black overlay 8%; следующий светлее `#6A6A6A` уже 2.982:1.
-**Эта коррекция не применена, требуется решение primary/пользователя**, не замена
-палитры. Yellow accent `#FBCC30` на white — 1.524:1;
+Коррекция **применена по решению primary, но не является визуальным одобрением
+пользователя**: её нужно явно показать в paired PNG на U1.4 gate. Selected/focus,
+dark/high-contrast, historical primaryDark и accent не изменены. Yellow accent
+`#FBCC30` на white — 1.524:1;
 его также нельзя использовать как единственную информативную границу без contrast
 review в caller.
+
+Фактические production-выборы DEFAULT (`PrimitiveSurfaceChrome`), все alpha=1:
+
+| Состояние карточки | Видимая surface | Outline |
+|---|---|---|
+| enabled, unselected, idle | Градиент `#E8E8E8 → #D1D1D1`; Surface backing `#FFFFFF` | Сплошной `#696969`, 0.5 dp |
+| enabled, unselected, pressed | Тот же градиент с black overlay 8% на обоих концах: sRGB channels `232×0.92/255 → 209×0.92/255` (RGBA8 округлённо `#D5D5D5 → #C0C0C0`) | Сплошной `#696969`, 0.5 dp |
+| enabled, selected, idle/pressed | Соответствующая idle/pressed surface выше | Прежний `#197377`, 3 dp |
+| disabled, unselected | Сплошной `#E0E0E0`, foreground `#435B5B`, без pressed overlay | Сплошной `#696969`, 0.5 dp |
+| disabled, selected | Сплошной `#E0E0E0`, foreground `#435B5B`, без pressed overlay | Прежний `#197377`, 3 dp |
+
+Фокус enabled-карточки остаётся отдельным `#002F6C` / 3 dp поверх той же геометрии;
+у disabled фокус-кольцо прозрачно. Yellow не используется как outline. У действий
+(`selected=null`) border по-прежнему отсутствует. Dark/HC normal border остаётся
+`palette.border` / 1 dp, selected — `palette.primary` / 3 dp. Native status bars
+этой веткой не управляются и требуют отдельной платформенной интеграции parent.
 
 ## Проверка
 
@@ -110,11 +130,14 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
 ```
 
 Существующий тест normal/disabled/pressed contrast всех четырёх palettes не ослаблен.
-Результат focused JVM: **9 tests, 0 failures/errors**.
+Результат focused JVM: **11 tests, 0 failures/errors**, включая все прежние 9.
 Добавлены exact baseline colors и opaque pressed gradient; прежняя статическая
 assert96 заменена platform-minimum и тестом **production measure policy** с реальным
 остатком после content padding, разными пропорциями ячеек, wrapped caption heights,
 неограниченной высотой/parent minimum и загрузкой изображения.
+Regression вызывает **те же production border choice и gradient endpoints**, что
+`PrimitiveSurface`, проверяя ≥3:1 для каждого конца normal/pressed градиента,
+selected/unselected и disabled surface, а также неизменность dark/HC/action borders.
 Это проверка layout-budget, **не screenshot render или физическая a11y-приёмка**.
 
 Не запускались full gate, native/FFmpeg, загрузки, сборки устройств или установка.
