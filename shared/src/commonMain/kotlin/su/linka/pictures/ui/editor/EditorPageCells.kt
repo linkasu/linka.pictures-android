@@ -1,56 +1,94 @@
 package su.linka.pictures.ui.editor
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import su.linka.pictures.application.authoring.AuthoringAction
 import su.linka.pictures.domain.*
-import su.linka.pictures.ui.components.CommunicationCard
-import su.linka.pictures.ui.components.LabeledActionButton
+import su.linka.pictures.ui.images.DemandVisibleImages
+import su.linka.pictures.ui.theme.LocalLinkaPalette
 
-/** A lazy parent supplies one row at a time; wide grids scroll rather than shrink touch targets. */
+/** Both axes fit the ordinary grid; exceptional grids / large text scroll without shrinking targets. */
 @Composable
 internal fun EditorPageCells(
     page: BoardPage,
-    row: Int,
     enabled: Boolean,
     moveSource: Pair<PageId, Int>?,
     onMoveSource: (Pair<PageId, Int>?) -> Unit,
     onAction: (AuthoringAction) -> Unit,
     images: Map<AssetId, ImageBitmap>,
+    modifier: Modifier = Modifier,
 ) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        repeat(page.columns) { column ->
-            val position = row * page.columns + column
-            val cell = page.cells.firstOrNull { it.position == position }
-            val label = when (cell?.kind) {
-                CellKind.CONTENT -> cell.card!!.label.ifEmpty { "Карточка без подписи" }
-                CellKind.SPACE -> "Пробел"
-                CellKind.EMPTY, null -> "Пустая ячейка"
-            }
-            Column(Modifier.width(176.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Строка ${row + 1}, столбец ${column + 1}")
-                CommunicationCard(label, "$label. Строка ${row + 1}, столбец ${column + 1}",
-                    if (moveSource == null) "Редактировать карточку" else "Обменять ячейки",
-                    cell?.card?.image?.let { images[it] }, moveSource == (page.id to position), enabled,
-                    {
-                        if (moveSource == null) onAction(AuthoringAction.OpenCard(page.id, position))
-                        else {
-                            onAction(AuthoringAction.MoveCell(moveSource.first, moveSource.second, page.id, position))
-                            onMoveSource(null)
+    val palette = LocalLinkaPalette.current
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(modifier) {
+        val cellWidth = editorCellExtent(maxWidth.value, page.columns, 64f * fontScale.coerceAtLeast(1f)).dp
+        val cellHeight = editorCellExtent(maxHeight.value, page.rows, 80f * fontScale.coerceAtLeast(1f)).dp
+        val cells = remember(page) { page.cells.associateBy { it.position } }
+        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            items(page.rows, key = { "${page.id.value}:$it" }) { row ->
+                LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(page.columns, key = { it }) { column ->
+                        val position = row * page.columns + column
+                        val cell = cells[position]
+                        val label = editorCellLabel(cell)
+                        var menu by remember(page.id, position) { mutableStateOf(false) }
+                        var focused by remember(page.id, position) { mutableStateOf(false) }
+                        DemandVisibleImages(page.id to position, setOfNotNull(cell?.card?.image))
+                        Card(Modifier.size(cellWidth, cellHeight), elevation = 2.dp,
+                            backgroundColor = if (moveSource == (page.id to position)) palette.disabledSurface else palette.surface) {
+                            Box(Modifier.fillMaxSize()) {
+                                TextButton(onClick = {
+                                    if (moveSource == null) onAction(AuthoringAction.OpenCard(page.id, position))
+                                    else {
+                                        onAction(AuthoringAction.MoveCell(moveSource.first, moveSource.second, page.id, position))
+                                        onMoveSource(null)
+                                    }
+                                }, enabled = enabled, colors = ButtonDefaults.textButtonColors(contentColor = palette.text), modifier = Modifier.fillMaxSize()
+                                    .onFocusChanged { focused = it.isFocused }
+                                    .border(2.dp, if (focused) palette.focus else Color.Transparent).semantics {
+                                    contentDescription = "$label. Строка ${row + 1}, столбец ${column + 1}"
+                                    selected = moveSource == (page.id to position)
+                                }) {
+                                    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            val image = cell?.card?.image?.let { images[it] }
+                                            if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                                            else if (cell?.kind == CellKind.CONTENT) Text(cell.card!!.label, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                                            else if (cell?.kind == CellKind.SPACE) Text("␣", style = MaterialTheme.typography.h3)
+                                            else EditorIcon(EditorSymbol.ADD, Modifier.size(144.dp))
+                                        }
+                                        Text(label, color = palette.text, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                                    }
+                                }
+                                Box(Modifier.align(Alignment.TopEnd)) {
+                                    IconButton(onClick = { menu = true }, enabled = enabled,
+                                        modifier = Modifier.semantics { contentDescription = "Действия ячейки: $label" }) { EditorIcon(EditorSymbol.MORE) }
+                                    DropdownMenu(menu, { menu = false }) {
+                                        DropdownMenuItem(onClick = { menu = false; onMoveSource(page.id to position) }) { Text("Переместить…") }
+                                        DropdownMenuItem(onClick = { menu = false; onAction(AuthoringAction.SetCell(page.id, position, CellKind.SPACE)) }) { Text("Сделать пробелом") }
+                                        DropdownMenuItem(onClick = { menu = false; onAction(AuthoringAction.SetCell(page.id, position, CellKind.EMPTY)) }) { Text("Очистить ячейку") }
+                                    }
+                                }
+                            }
                         }
-                    }, Modifier.fillMaxWidth())
-                LabeledActionButton("Выбрать для перемещения", enabled, false,
-                    { onMoveSource(page.id to position) }, Modifier.fillMaxWidth())
-                LabeledActionButton("Сделать пробелом", enabled, cell?.card != null,
-                    { onAction(AuthoringAction.SetCell(page.id, position, CellKind.SPACE)) }, Modifier.fillMaxWidth())
-                LabeledActionButton("Очистить ячейку", enabled, true,
-                    { onAction(AuthoringAction.SetCell(page.id, position, CellKind.EMPTY)) }, Modifier.fillMaxWidth())
+                    }
+                }
             }
         }
     }
