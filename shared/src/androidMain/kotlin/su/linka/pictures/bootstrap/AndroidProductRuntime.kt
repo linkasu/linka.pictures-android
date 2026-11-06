@@ -67,6 +67,8 @@ class AndroidProductRuntime private constructor(private val application: Context
         private val stopped = MutableStateFlow(!visible.value)
         private val shown = MutableStateFlow(visible.value)
         private val incoming = MutableStateFlow<Uri?>(null)
+        private val incomingProblem = MutableStateFlow<Problem?>(null)
+        private var backHandler: (() -> Unit)? = null // Owned by this window's Main-thread composition.
         private var requestedImages: Set<AssetId> = emptySet()
 
         internal fun owns(owner: String): Boolean = !closed.value && owners.value[owner] == id
@@ -111,16 +113,34 @@ class AndroidProductRuntime private constructor(private val application: Context
 
         fun isOwnerOpen(owner: String): Boolean = owns(owner) && (visible.value || controlled.value)
 
+        fun setBackHandler(handler: (() -> Unit)?) {
+            if (!closed.value) backHandler = handler
+        }
+
+        fun handleBack(): Boolean {
+            if (closed.value) return false
+            if (!foreground()) return true
+            val handler = backHandler ?: return false
+            runCatching { handler() }.onFailure { failRoot(Problem(ProblemCode.IO_FAILURE)) }
+            return true
+        }
+
         fun incomingDocument(uri: Uri): OperationResult<Unit> {
             if (closed.value) return OperationResult.Cancelled
-            if (uri.scheme !in setOf("content", "file")) return OperationResult.Failed(Problem(ProblemCode.UNSAFE_ARCHIVE))
+            if (!acceptsIncomingDocument(uri)) {
+                val problem = Problem(ProblemCode.UNSAFE_ARCHIVE)
+                incomingProblem.value = problem
+                return OperationResult.Failed(problem)
+            }
             access.suspendForSystemPrompt()
+            incomingProblem.value = null
             incoming.value = uri
             return OperationResult.Completed(Unit)
         }
 
         fun close() {
             if (!closed.compareAndSet(false, true)) return
+            backHandler = null
             val owned = owners.value.filterValues { it == id }.keys
             owned.forEach(access::revokeOwner)
             owners.update { current -> current - owned }
@@ -128,6 +148,7 @@ class AndroidProductRuntime private constructor(private val application: Context
             owned.forEach { owner -> runCatching { audio.stop(owner) }.onFailure { failRoot(Problem(ProblemCode.IO_FAILURE)) } }
             thumbnails.remove(id)
             incoming.value = null
+            incomingProblem.value = null
             windows.update { it - id }
             if (windows.value.values.none { it.active() }) {
                 audio.interrupt()
@@ -143,22 +164,24 @@ class AndroidProductRuntime private constructor(private val application: Context
             val problem by rootProblem.collectAsState()
             val imageProblem by thumbnails.problem.collectAsState()
             val incomingDocument by incoming.collectAsState()
+            val incomingFailure by incomingProblem.collectAsState()
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 if (problem != null) Text("Приложение остановило изменения: ${problem!!.code}. Перезапустите его для проверки сохранённых данных.")
                 if (imageProblem != null) Text("Не удалось подготовить часть изображений: ${imageProblem!!.code}")
                 if (incomingDocument != null) Text("Получен файл. Откройте библиотеку → Перенос → Импорт или восстановление, чтобы проверить его. Автоматического добавления нет.")
+                if (incomingFailure != null) Text("Файл не открыт: ${incomingFailure!!.code}. Выберите файл через меню импорта; библиотека не изменена.")
                 communication?.let { current -> Box(Modifier.weight(1f)) { LinkaApp(storage.library, storage.media, storage.messages, access, audio, files, images, inspection,
                     ids, scope, current, foreground, bitmaps,
                     { requestedImages = it; if (visible.value) thumbnails.request(id, it) },
                     { owner -> if (!closed.value) owners.update { it + (owner to id) } },
                     { owner -> access.revokeOwner(owner); owners.update { it - owner } },
-                    ::libraryReplaced) } }
+                    ::libraryReplaced, onBackHandlerChanged = ::setBackHandler) } }
             }
         }
 
         internal fun register() { windows.update { it + (id to this) }; lifecycleChanged() }
         internal suspend fun document(intent: Intent, id: RequestId, owner: String) = request(id) {
-            val archive = intent.action == Intent.ACTION_OPEN_DOCUMENT && intent.type in setOf("application/octet-stream", "application/zip")
+            val archive = acceptsIncomingArchive(intent)
             val input = if (archive && owns(owner) && callbacks.foreground()) incoming.getAndUpdate { null } else null
             if (input != null) OperationResult.Completed(input) else callbacks.document(intent, id, owner)
         }

@@ -8,15 +8,16 @@
 
 Полностью прочитан `ui-1.4-parity.md`; просмотрены PNG из его атласа:
 
-- `phone/10-board-phrase-empty.png`: 2000×900, landscape. Toolbar сверху;
+- `phone/10-board-phrase-empty.png`: raw2400×1080, landscape. Toolbar сверху;
   удалить последнее слева, фраза по центру, речь и очистить справа;
-  ниже разделитель и все девять карточек 3×3. Сетка примерно y=362…870.
-- `tablet/11-board-phrase-filled.png`: 2000×1250, landscape. Та же иерархия;
-  заполненная фраза примерно y=159…352, сетка y=390…1228.
+  ниже разделитель и все девять карточек 3×3.
+- `tablet/11-board-phrase-filled.png`: raw2560×1600, landscape. Та же иерархия;
+  компактная заполненная фраза над сеткой.
 - `tablet/12-board-settings.png`: компактный диалог параметров поверх доски,
   вход через шестерёнку в правом краю toolbar.
 
-Это наблюдения в pixels, **не выдуманный dp/fontScale устройств**.
+Raw dimensions проверены `sips`; preview просмотрщика уменьшал картинки до2000px.
+Координаты этого preview не выдаются за raw pixel measurements или dp/fontScale.
 Исходники прочитаны через `git show 2073d912:`: `GridActivity.kt`,
 `OutputLine.kt`, `CardGrid.kt`, `activity_grid.xml`, `output_line.xml`,
 `grid_activity_menu.xml`, drawables backspace и record_voice_over.

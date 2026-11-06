@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 /** Run first on a fresh isolated .development sandbox, never as a production-data upgrade/reset. */
 @RunWith(AndroidJUnit4::class)
 class DevelopmentStartupTest {
-    @Test fun freshDevelopmentStartupOpensTheRealCommunicationScreen() {
+    @Test fun freshDevelopmentStartupOpensTheRealLibraryScreen() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         assertEquals("su.linka.pictures.development", context.packageName)
@@ -28,10 +28,10 @@ class DevelopmentStartupTest {
                     try { collect(root, texts) } finally { root.recycle() }
                     assertFalse("Startup refused its own fresh storage: $texts",
                         texts.any { text -> text.contains("Не удалось безопасно открыть приложение") })
-                    if (texts.any { text -> text.contains("Общее сообщение") }) return
+                    if (texts.any { text -> text == "Ваши наборы" }) return
                 }
             }
-            fail("Fresh startup did not reach the communication screen")
+            fail("Fresh startup did not reach the library screen")
         }
     }
 

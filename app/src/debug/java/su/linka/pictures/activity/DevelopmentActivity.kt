@@ -2,7 +2,11 @@ package su.linka.pictures.activity
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
+import android.view.View
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -13,6 +17,7 @@ import su.linka.pictures.application.*
 import su.linka.pictures.bootstrap.AndroidProductRuntime
 import su.linka.pictures.platform.AndroidSystemRequests
 import su.linka.pictures.ui.components.RootStatusScreen
+import su.linka.pictures.R
 
 /** This launcher exists only in the separate .development APK, never in the production package. */
 class DevelopmentActivity : ComponentActivity() {
@@ -22,6 +27,19 @@ class DevelopmentActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // API21 has no dark status-bar icons; keep their background readable instead of white on lime.
+        window.statusBarColor = ContextCompat.getColor(this,
+            if (Build.VERSION.SDK_INT >= 23) R.color.colorPrimaryDark else R.color.colorPrimary)
+        if (Build.VERSION.SDK_INT >= 23)
+            window.decorView.systemUiVisibility = window.decorView.systemUiVisibility or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val host = windowHost
+                if (host == null && problem == null || host?.handleBack() == true) return
+                isEnabled = false
+                try { onBackPressedDispatcher.onBackPressed() } finally { isEnabled = true }
+            }
+        })
         requests = AndroidSystemRequests(this, { owner -> windowHost?.isOwnerOpen(owner) == true },
             { windowHost?.systemPresentationStarted() }, lifecycleScope)
         setContentView(ComposeView(this).apply {

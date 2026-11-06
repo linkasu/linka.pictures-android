@@ -20,6 +20,58 @@
 
 P11 frozen seam: `application/authoring/AuthoringSession` с зависимостями `(library: LibraryStore, media: MediaStore, audio: AudioPort, files: PlatformFilesPort, images: ImagePreparationPort, inspection: MediaInspectionPort, gate: AssistantGate, ids: IdSource, scope: CoroutineScope)`. Один session/owner, immutable StateFlow, сериализованные commands; команды содержат explicit owner/capability, новая загрузка отменяет прежние pending media. Create/open/resume, board metadata, pages/reorder/resize preserving overflow, card form и content/space/empty, image pick/text generation/record/synthesis/preview, saveCard/cancelForm, apply/delete/close — полный scope. Конкретные command/state declarations принадлежат P11 внутри его пакета; существующие ports/domain/SQL не меняются без COORD. Autosave один in-flight+latest pending, Saved только durable result; Apply проверяет epoch/draft version/base board revision, открытая form запрещает apply. Конфликт сохраняет draft. Revoke/background отменяет media/audio/новые mutations; уже admitted commit может завершиться. Неуспешно сохранённое state остаётся видимым до reauth/явного решения; process restart восстанавливает лишь durable draft, не активные request/capability. UNKNOWN COMMIT quarantines, без auto-apply/retry. Close с несохранённым draft — явный результат, не silent discard; force-discard только отдельная команда с названием. House UI использует этот session, не собственный reducer.
 
+### U1.4: тип незавершённой карточки — принято COORD до реализации
+
+Для radio CONTENT/SPACE/EMPTY как в1.4 добавить trailing `EditorForm.Card.kind:
+CellKind = CONTENT` и `AuthoringAction.ChangeCardKind(kind)`. CONTENT default
+не сериализуется даже при encodeDefaults=true (`EncodeDefault.NEVER`): новый binary
+читает старые forms, обычная CONTENT form остаётся в прежнем формате. Старый strict
+reader отвергает новую non-CONTENT form без перезаписи; downgrade экспериментальных
+бинарников с такими forms не поддерживается. DB user_version/backup format/внешний
+LINKA whitelist не меняются; неизвестное значение enum отклоняется целиком.
+
+Writers: только actor AuthoringSession → существующий saveDraft writer; snapshot/
+backup/restore переносят тот же serializable draft. `assetIds/assetRoles` и backup
+validation удерживают image/recording открытой формы независимо от kind — hidden
+поля нужны для отмены/возврата к CONTENT. Новый writer/SQL/lock не вводится.
+
+| Команда / состояние | Переход и сохранность |
+|---|---|
+| OpenCard | source kind, если ячейка существует; отсутствующая позиция → CONTENT. SetCell(CONTENT) явно открывает CONTENT form, не две публичные команды |
+| ChangeCardKind в EDITING/CONFLICT | Отменяет свои media/preview/pending adoption, сохраняет kind в autosaved form. Документ и опубликованная доска не меняются; label/media/opaque extensions формы остаются |
+| SPACE/EMPTY form | Новые media/synthesis/record/preview не запускаются; возврат к CONTENT сохраняет введённое. Background/revoke/late results действуют по прежней generation/lease policy |
+| SaveCard | Одна actor-команда меняет ячейку и закрывает form в одном draft snapshot. CONTENT требует прежней speech/media validation; SPACE/EMPTY создают card=null без требования скрытой записи. Cell extensions сохраняются |
+| CancelCard / crash / ResumeDraft | Cancel не меняет исходную ячейку; crash восстанавливает последний durable kind/form. Никакого CancelCard→SetCell как обхода атомарности |
+| Apply / конфликт / unknown commit | Прежние epoch/version/guard и quarantine; kind не даёт обхода, cancel/failed/completed не объединяются |
+
+Нужны serialization old/new/unknown-kind tests, actual SQLite autosave/reopen/resume,
+Cancel/Save всех трёх видов, late-media cleanup и сохранённые metadata/опубликованная
+доска/message snapshot. Native compatibility выполняется после coherent интеграции.
+`withoutSpace` уже выражен `BoardBehavior.inputStyle` и codec mapping LITERAL/CARDS;
+второе persisted поле ради визуального checkbox не добавляется.
+
+### U1.4: native Back — принято COORD до binding
+
+LinkaApp может зарегистрировать принадлежащий текущей композиции эфемерный handler
+через trailing optional `onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null`.
+Это presentation seam, не auth authority; Android development root обязательно
+связывает его с OnBackPressedDispatcher, iOS без hardware Back не подставляет fake.
+Dispose/закрытие окна отнимает handler до отмены scope. Новый handler не сохраняется
+в SQL/saved state; один владелец — текущее окно, вызов на Main.
+
+| Контекст | Back |
+|---|---|
+| Старт/переход/cleanup | Поглотить повтор, не закрывать Activity посреди передачи owner |
+| Библиотека | Handler null: штатный выход из Activity, root останавливает звук |
+| Общение | Вернуться к библиотеке, сохраняя фразу/playback по navigation contract |
+| Редактор | Та же Close/подтверждение выхода, что toolbar; PAUSED/несохранённая работа не обходятся force-discard |
+| Настройки/access/transfer | Вернуться по существующему пути с отзывом owner/cleanup; не обещать rollback внешнего partial |
+| Модальная форма/диалог | Штатный dismiss/CancelCard/CancelGrid/закрытие конкретного диалога, не уничтожение всего draft |
+
+Повторная регистрация/старый callback после dispose не действует на новое окно.
+Для Android нужен actual key-event сценарий board→library без очистки сообщения;
+pure mapping tests не заменяют проверку OnBackPressedDispatcher/модального приоритета.
+
 P12 frozen seam: `application/portability/TransferCoordinator(library: LibraryStore, messages: MessageStore, linka: LinkaCodec, backup: BackupCodec, files: PlatformFilesPort, gate: AssistantGate, ids: IdSource, scope: CoroutineScope)`. Owner-bound operation state; prepareImport/prepareRestore/prepareExport/prepareBackup возвращают preview состояния с opaque operationId, не resources/capability; confirm/cancel/close работают только для живой той же операции/owner. Для import confirm явно NEW либо REPLACE(boardId, expectedRevision); для restore captured library revision+message stamp+epoch, existing recovery=>CONFLICT, recovery swap/delete отдельные protected+confirmed операции. Один pending/running transfer на owner: новая конкурирующая операция CONFLICT, не queue. Prepare/staging/codec IO вне Main/DB writer. Picker/destination возвращение не authority: после foreground требуется новая явная confirm с актуальной capability и свежим guard; до неё external contents не выдаются. Source/snapshot/lease/temp/destination принадлежат operation до terminal cleanup; resources не сохраняются в StateFlow/saved state, late results закрываются. Pending preparation отменяется без resume после process death/background; manual retry создаёт новую операцию и авторизацию. Terminal COMPLETED/CANCELLED/FAILED/UNCONFIRMED не объединяются; counters не суммируют cancel как failed/success. Public ports/formats/SQL не изменять, checked ZIP engine остаётся один.
 
 В обоих workflows guard синхронный без IO и создаётся в application, не только UI; acquire/release всех leases на terminal/replacement/late result, никакого удаления foreign/nonempty temp. Root wire/real OS/provider UI и physical acceptance — отдельные последующие gates. UI/тесты не называют controlled fake actual OS proof.

@@ -4,6 +4,27 @@
 
 ## Актуально: возобновление с visual slice — 6 ноября 2026
 
+### Последний delta: реальная заполненная доска, не U1.4 approval
+
+Восемь изолированных исполнителей подготовили и проверили UI, связки, atomic card
+kind, fixtures и API21 evidence; primary выполнил connected-code review/интеграцию.
+На main **140 focused JVM и158 focused Native iOS17 PASS**, оба frameworks и
+development APK; новый ingress **2/2 API35**. [Полные границы/логи](evidence/u14-2026-11-06/).
+
+Реально импортированная «ХОЧУ» доступна на API35: 9 карточек, фраза ХОЧУ→КУШАТЬ,
+Native Back→library→open сохраняет фразу. [Baseline/new PNG](../progress-screenshots/2026-11-06-ui14/)
+просмотрены primary. U1.4/user approval ещё OPEN: не все различия/экраны приняты,
+автоматические UI-прогоны RED, их counts не заменены ручной проверкой.
+
+API21 восстановлен одним обычным boot без wipe; frozen incoming test дал preview,
+но затем **1/1 failure** на кнопке unlock. Данные/snapshots не сброшены. iOS startup
+crash исправлен required plist flag без отключения sanity-check; actual unsigned
+app теперь остаётся запущенной и показывает **Keychain−34018, fail closed**.
+Дальнейшая iOS visual/security приёмка BLOCKED legitimate signing/host; identity0.
+Ни store/signing/real data, ни full release/physical/AAC gates этим не закрыты.
+
+### Возобновление и исходный handoff волны
+
 После документирования STOP пользователь явно поручил «делай всё … весь план …
 в сабагентах, максимально асинхронно до30». Реализация возобновлена с U1.4:
 независимые visual lanes, один writer на файл, isolated development sandbox.
@@ -11,6 +32,19 @@
 Пользовательское визуальное одобрение, safety/release gates сохраняются; production
 roots/signing/stores не переключаются ради более быстрого отчёта. Ниже — срез STOP,
 который сохраняет состояние/evidence до этого возобновления.
+
+Текущая visual-волна: `a008cd8` сохраняет UI-контракт; `21bbbeb` интегрирует ранее
+готовый composed-image/pager seam; `a9fc68c` сохраняет отдельный development runtime
+и startup regression (не production acceptance). После connected-code review iOS
+root/corrections интегрированы как `d738472/a03d971/bbd0204/f7bd55a/690f762/b08a2c5`
+для изолированной visual-вертикали; normal Keychain/prompt/physical gates остаются
+открыты. Новый focused Native compile/link запущен, результат пока не принят.
+
+Асинхронные writers: `u14-communication` — только экран общения; `u14-library` —
+библиотека/настройки; `u14-editor` — editor/card UI; `u14-theme` — tokens/primitives;
+`u14-fixtures` — test-only данные/harness; `u14-navigation` — shared UI binding.
+У каждого отдельный worktree и непересекающиеся пути. Devices/интеграция и финальный
+safety review принадлежат COORD. Новые картинки/старые PASS заранее не принимаются.
 
 Пользователь остановил реализацию после визуального review и подтвердил
 **«UI 1.4 + согласованные функции»**. Код/builds/исполнители/device scenarios на

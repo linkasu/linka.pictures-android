@@ -1,0 +1,414 @@
+[==========] Running 158 tests from 64 test cases.
+[----------] Global test environment set-up.
+[----------] 49 tests from su.linka.pictures.application.authoring.AuthoringSessionTest
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindsAutosaveHiddenMediaBackupAndResumeAfterActualRuntimeReopen
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindsAutosaveHiddenMediaBackupAndResumeAfterActualRuntimeReopen (192 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.everySourceKindOpensExactlyAndExplicitSetContentHasOneCorrectSnapshot
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.everySourceKindOpensExactlyAndExplicitSetContentHasOneCorrectSnapshot (52 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.saveEveryKindIsAtomicPreservesMetadataAndDoesNotPublishOrChangeMessageBeforeApply
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.saveEveryKindIsAtomicPreservesMetadataAndDoesNotPublishOrChangeMessageBeforeApply (71 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.nonContentCommandsRejectBeforeAnyMediaOrAudioIoAndFinishCannotRestartRecording
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.nonContentCommandsRejectBeforeAnyMediaOrAudioIoAndFinishCannotRestartRecording (21 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindSwitchCancelsPendingPickerAndDiscardsLateOwnedTemporaryWithoutAdoption
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindSwitchCancelsPendingPickerAndDiscardsLateOwnedTemporaryWithoutAdoption (11 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindSwitchCancelsRecordingAndDoesNotResumeItOnReturnToContent
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindSwitchCancelsRecordingAndDoesNotResumeItOnReturnToContent (8 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.cancellingEveryChangedFormKindLeavesOriginalDocumentExact
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.cancellingEveryChangedFormKindLeavesOriginalDocumentExact (42 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindCommandDropsPendingReauthenticationAdoptionButDoesNotBypassPausedGate
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.kindCommandDropsPendingReauthenticationAdoptionButDoesNotBypassPausedGate (19 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.conflictAllowsKindEditsButCannotApplyAndUnknownCommitIgnoresKindCommands
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.conflictAllowsKindEditsButCannotApplyAndUnknownCommitIgnoresKindCommands (12 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.createFormSaveAndApplyUseRealSqliteAndDistinctLabelSpeech
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.createFormSaveAndApplyUseRealSqliteAndDistinctLabelSpeech (12 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.coalescingKeepsImmediateStateAndApplyWaitsForLatestDurableSnapshot
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.coalescingKeepsImmediateStateAndApplyWaitsForLatestDurableSnapshot (14 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.ioFailureCloseAndRetryNeverClaimUnsavedChangesAreDurable
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.ioFailureCloseAndRetryNeverClaimUnsavedChangesAreDurable (7 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.backgroundInvalidatesAlreadyQueuedWritesAndRequiresExplicitResume
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.backgroundInvalidatesAlreadyQueuedWritesAndRequiresExplicitResume (7 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.unknownCommitQuarantinesWithoutRetryOrApply
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.unknownCommitQuarantinesWithoutRetryOrApply (6 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.changedAndDeletedBoardsConflictWithoutLosingDurableDraft
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.changedAndDeletedBoardsConflictWithoutLosingDurableDraft (14 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.resumeDraftRetainsOpenFormAndDoesNotUseSourceCardAsTypedSnapshot
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.resumeDraftRetainsOpenFormAndDoesNotUseSourceCardAsTypedSnapshot (8 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.uniformOneByOneOverflowPreservesEveryCellAndOpaqueMetadata
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.uniformOneByOneOverflowPreservesEveryCellAndOpaqueMetadata (12 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.pageLimitRejectsOverflowWithoutTruncation
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.pageLimitRejectsOverflowWithoutTruncation (38 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownedMediaSurvivesGarbageCollectionAndCancelRemovesOnlyFormReference
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownedMediaSurvivesGarbageCollectionAndCancelRemovesOnlyFormReference (17 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.lateCancelledPickerCannotOverwriteChangedFormAndOwnTemporaryIsDiscarded
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.lateCancelledPickerCannotOverwriteChangedFormAndOwnTemporaryIsDiscarded (11 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.recordFinishSynthesisPreviewAndSourceIoFailureUseExistingPorts
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.recordFinishSynthesisPreviewAndSourceIoFailureUseExistingPorts (16 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.sourceCardFormStartsFromActualSourceAndKeepsLanguageAndPassiveFields
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.sourceCardFormStartsFromActualSourceAndKeepsLanguageAndPassiveFields (13 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.gridFormIsDurableAndValidationDoesNotDropUnappliedText
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.gridFormIsDurableAndValidationDoesNotDropUnappliedText (11 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.discardIsExplicitWhileDeletingRemovesOnlyNamedDraft
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.discardIsExplicitWhileDeletingRemovesOnlyNamedDraft (11 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.forceDiscardDropsFailedLocalEditsButKeepsLastDurableDraft
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.forceDiscardDropsFailedLocalEditsButKeepsLastDurableDraft (8 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.unconfirmedPublishCannotBeRepeatedAndKeepsDraftForRecovery
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.unconfirmedPublishCannotBeRepeatedAndKeepsDraftForRecovery (6 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.revokeCancelsRecordingAndForeignOwnerCannotInvalidateSession
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.revokeCancelsRecordingAndForeignOwnerCannotInvalidateSession (5 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.boundsRejectMediaAndKeepExistingFormUnchanged
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.boundsRejectMediaAndKeepExistingFormUnchanged (6 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.backgroundBetweenMediaAuthorizationAndWorkerRegistrationCannotStartRecording
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.backgroundBetweenMediaAuthorizationAndWorkerRegistrationCannotStartRecording (8 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.deletedSourceBoardCannotBeResurrectedByApply
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.deletedSourceBoardCannotBeResurrectedByApply (10 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.pageReorderingAndCrossPageCellSwapPreserveIdentitiesAndEmptyMetadata
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.pageReorderingAndCrossPageCellSwapPreserveIdentitiesAndEmptyMetadata (13 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.authorizationFailurePermanentlyInvalidatesOldPermitEvenIfGateLaterOpens
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.authorizationFailurePermanentlyInvalidatesOldPermitEvenIfGateLaterOpens (10 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.resumedLatestSnapshotSurvivesLateUnauthorizedCompletionFromOldGeneration
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.resumedLatestSnapshotSurvivesLateUnauthorizedCompletionFromOldGeneration (8 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCancellationDrainsBufferedLoadedLeaseBeforeActorCanAdoptIt
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCancellationDrainsBufferedLoadedLeaseBeforeActorCanAdoptIt (7 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCancellationDrainsBufferedPreparedMediaAndReleasesGcPin
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCancellationDrainsBufferedPreparedMediaAndReleasesGcPin (13 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.deliveredLoadedLeaseIsAdoptedUntilOwnerExitAndNeverClosedTwice
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.deliveredLoadedLeaseIsAdoptedUntilOwnerExitAndNeverClosedTwice (7 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.throwingSaveLeaseCleanupStillWakesNextSaveAndAllowsClose
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.throwingSaveLeaseCleanupStillWakesNextSaveAndAllowsClose (17 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCleanupAttemptsLivePendingAndActivePinsEvenWhenAllClosesAndStopThrow
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCleanupAttemptsLivePendingAndActivePinsEvenWhenAllClosesAndStopThrow (13 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.discardCleanupFailurePreservesPrimaryErrorAndBothImageHandlesAreAttempted
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.discardCleanupFailurePreservesPrimaryErrorAndBothImageHandlesAreAttempted (15 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.stopFailureCannotPreventMediaCancellationOrStrandPausedActor
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.stopFailureCannotPreventMediaCancellationOrStrandPausedActor (7 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.unknownCommitIsNotReplacedByCleanupFailure
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.unknownCommitIsNotReplacedByCleanupFailure (12 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.dedupRetainsRecentCommandsButEvictsIdsBeyond1024UserIntents
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.dedupRetainsRecentCommandsButEvictsIdsBeyond1024UserIntents (30 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.pickerGateInvalidationWaitsForNewCapabilityAndExplicitResumeBeforePublishingAssetRefs
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.pickerGateInvalidationWaitsForNewCapabilityAndExplicitResumeBeforePublishingAssetRefs (14 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.realBackgroundDuringReauthenticationDiscardsPreparedPinAndResumeCannotAdoptIt
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.realBackgroundDuringReauthenticationDiscardsPreparedPinAndResumeCannotAdoptIt (11 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.closeDuringReauthenticationReleasesOnlyPendingOwnedAsset
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.closeDuringReauthenticationReleasesOnlyPendingOwnedAsset (13 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.completedRecordingAfterPermissionGateInvalidationAdoptsWithoutRestartingRecording
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.completedRecordingAfterPermissionGateInvalidationAdoptsWithoutRestartingRecording (12 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCancellationDuringReauthenticationReleasesPendingAssetEvenIfCloseThrows
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.ownerCancellationDuringReauthenticationReleasesPendingAssetEvenIfCloseThrows (11 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.changedLibraryEpochRejectsPendingAdoptionAndReleasesItsPin
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.changedLibraryEpochRejectsPendingAdoptionAndReleasesItsPin (12 ms)
+[ RUN      ] su.linka.pictures.application.authoring.AuthoringSessionTest.realBackgroundSentAfterQueuedResumeWinsBeforePendingResultCanBeAdopted
+[       OK ] su.linka.pictures.application.authoring.AuthoringSessionTest.realBackgroundSentAfterQueuedResumeWinsBeforePendingResultCanBeAdopted (13 ms)
+[----------] 49 tests from su.linka.pictures.application.authoring.AuthoringSessionTest (935 ms total)
+
+[----------] 3 tests from su.linka.pictures.domain.EditorFormKindSerializationTest
+[ RUN      ] su.linka.pictures.domain.EditorFormKindSerializationTest.contentEncodingIsByteIdenticalAndOldDataDefaultsToContent
+[       OK ] su.linka.pictures.domain.EditorFormKindSerializationTest.contentEncodingIsByteIdenticalAndOldDataDefaultsToContent (0 ms)
+[ RUN      ] su.linka.pictures.domain.EditorFormKindSerializationTest.nonContentRoundTripsButStrictLegacyReaderRejectsWithoutReplacingItsValue
+[       OK ] su.linka.pictures.domain.EditorFormKindSerializationTest.nonContentRoundTripsButStrictLegacyReaderRejectsWithoutReplacingItsValue (0 ms)
+[ RUN      ] su.linka.pictures.domain.EditorFormKindSerializationTest.unknownKindFailsWholeDecodeWithoutReplacingExistingForm
+[       OK ] su.linka.pictures.domain.EditorFormKindSerializationTest.unknownKindFailsWholeDecodeWithoutReplacingExistingForm (0 ms)
+[----------] 3 tests from su.linka.pictures.domain.EditorFormKindSerializationTest (0 ms total)
+
+[----------] 1 tests from su.linka.pictures.ui.access.AccessPresentationTest
+[ RUN      ] su.linka.pictures.ui.access.AccessPresentationTest.freshNoneUsesCanonicalContextCheckNeverNonNullOrStaleCapability
+[       OK ] su.linka.pictures.ui.access.AccessPresentationTest.freshNoneUsesCanonicalContextCheckNeverNonNullOrStaleCapability (0 ms)
+[----------] 1 tests from su.linka.pictures.ui.access.AccessPresentationTest (0 ms total)
+
+[----------] 1 tests from su.linka.pictures.ui.app.BoardSettingsTest
+[ RUN      ] su.linka.pictures.ui.app.BoardSettingsTest.settingsCommitPreservesOtherPreferencesAndAppliesOnlyExplicitModeAfterCompleted
+[       OK ] su.linka.pictures.ui.app.BoardSettingsTest.settingsCommitPreservesOtherPreferencesAndAppliesOnlyExplicitModeAfterCompleted (8 ms)
+[----------] 1 tests from su.linka.pictures.ui.app.BoardSettingsTest (8 ms total)
+
+[----------] 2 tests from su.linka.pictures.ui.app.EditorEntryTest
+[ RUN      ] su.linka.pictures.ui.app.EditorEntryTest.explicitInitialIntentsUseTheirCanonicalAction
+[       OK ] su.linka.pictures.ui.app.EditorEntryTest.explicitInitialIntentsUseTheirCanonicalAction (0 ms)
+[ RUN      ] su.linka.pictures.ui.app.EditorEntryTest.noAutoEntryAfterDeniedAdmissionStaleRoutePauseOrFirstAttempt
+[       OK ] su.linka.pictures.ui.app.EditorEntryTest.noAutoEntryAfterDeniedAdmissionStaleRoutePauseOrFirstAttempt (0 ms)
+[----------] 2 tests from su.linka.pictures.ui.app.EditorEntryTest (0 ms total)
+
+[----------] 3 tests from su.linka.pictures.ui.app.ProductBackTest
+[ RUN      ] su.linka.pictures.ui.app.ProductBackTest.startupAndEveryTransitionConsumeBackIncludingLibrary
+[       OK ] su.linka.pictures.ui.app.ProductBackTest.startupAndEveryTransitionConsumeBackIncludingLibrary (0 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductBackTest.routesFollowExistingExitPathsWithoutASecondBackStack
+[       OK ] su.linka.pictures.ui.app.ProductBackTest.routesFollowExistingExitPathsWithoutASecondBackStack (0 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductBackTest.oldCallbackCannotInvokeReplacementRouteOrDisposedComposition
+[       OK ] su.linka.pictures.ui.app.ProductBackTest.oldCallbackCannotInvokeReplacementRouteOrDisposedComposition (0 ms)
+[----------] 3 tests from su.linka.pictures.ui.app.ProductBackTest (0 ms total)
+
+[----------] 14 tests from su.linka.pictures.ui.app.ProductNavigationTest
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.concurrentStartOpensLibraryOnceAndNeverReopensAfterCommunication
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.concurrentStartOpensLibraryOnceAndNeverReopensAfterCommunication (6 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.disposedNavigationCannotStartAndDisposalDuringOwnerOpenLeavesNoOrphan
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.disposedNavigationCannotStartAndDisposalDuringOwnerOpenLeavesNoOrphan (10 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.editorOwnersAreUniqueBackgroundPausesAndResumeIsExplicit
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.editorOwnersAreUniqueBackgroundPausesAndResumeIsExplicit (6 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.leavingTransferRevokesPendingAndAwaitsPickerCancellationBeforeScopeCancellation
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.leavingTransferRevokesPendingAndAwaitsPickerCancellationBeforeScopeCancellation (4 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.disposalDuringSlowTransferCleanupCannotOpenAnOrphanOwner
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.disposalDuringSlowTransferCleanupCannotOpenAnOrphanOwner (6 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.unconfirmedOutcomeAllowsCommunicationButNoNewProtectedSession
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.unconfirmedOutcomeAllowsCommunicationButNoNewProtectedSession (4 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.composePlaybackSurvivesBrowsingAndBoardNavigationButProtectedEntryStopsIt
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.composePlaybackSurvivesBrowsingAndBoardNavigationButProtectedEntryStopsIt (25 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.disposalRevokesOldGuardBeforeThrowingAudioStopAndStillCleansOwner
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.disposalRevokesOldGuardBeforeThrowingAudioStopAndStillCleansOwner (5 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.throwingNativeCloseStillAwaitsTransferCleanupAndNeverOpensANewOwner
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.throwingNativeCloseStillAwaitsTransferCleanupAndNeverOpensANewOwner (5 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.authoringRevokeAudioFailureCannotSkipNativeCloseOrChildCancellation
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.authoringRevokeAudioFailureCannotSkipNativeCloseOrChildCancellation (5 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.failingCoreRevokeIsNotTreatedAsSuccessfulLifecycleOrAuthorization
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.failingCoreRevokeIsNotTreatedAsSuccessfulLifecycleOrAuthorization (5 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.failedRootReloadNeverClaimsDeliveredEpochOrAutomaticallyRetries
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.failedRootReloadNeverClaimsDeliveredEpochOrAutomaticallyRetries (21 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.confirmedRestoreEpochSurvivesSecondaryStopFailureDuringClose
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.confirmedRestoreEpochSurvivesSecondaryStopFailureDuringClose (21 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductNavigationTest.actualRestoreEpochIsDeliveredOnceAndNeverReplayedFromTransferHistory
+[       OK ] su.linka.pictures.ui.app.ProductNavigationTest.actualRestoreEpochIsDeliveredOnceAndNeverReplayedFromTransferHistory (28 ms)
+[----------] 14 tests from su.linka.pictures.ui.app.ProductNavigationTest (157 ms total)
+
+[----------] 4 tests from su.linka.pictures.ui.app.ProductPresentationTest
+[ RUN      ] su.linka.pictures.ui.app.ProductPresentationTest.unavailableOrUnknownCredentialsCloseProtectedUiWithoutAssumingOsSupport
+[       OK ] su.linka.pictures.ui.app.ProductPresentationTest.unavailableOrUnknownCredentialsCloseProtectedUiWithoutAssumingOsSupport (0 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductPresentationTest.unknownCountsAreNotPresentedAsZeroAndRetainedArchivesAreExplicit
+[       OK ] su.linka.pictures.ui.app.ProductPresentationTest.unknownCountsAreNotPresentedAsZeroAndRetainedArchivesAreExplicit (0 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductPresentationTest.cancelledFailedAndUnconfirmedHaveDistinctActionableFeedback
+[       OK ] su.linka.pictures.ui.app.ProductPresentationTest.cancelledFailedAndUnconfirmedHaveDistinctActionableFeedback (0 ms)
+[ RUN      ] su.linka.pictures.ui.app.ProductPresentationTest.requestedThumbnailsContainImagesButNeverRecordings
+[       OK ] su.linka.pictures.ui.app.ProductPresentationTest.requestedThumbnailsContainImagesButNeverRecordings (0 ms)
+[----------] 4 tests from su.linka.pictures.ui.app.ProductPresentationTest (0 ms total)
+
+[----------] 2 tests from su.linka.pictures.ui.card.CardEditorPresentationTest
+[ RUN      ] su.linka.pictures.ui.card.CardEditorPresentationTest.onlyContentShowsLabelAndMediaFieldsRegardlessOfHiddenSpeechValidation
+[       OK ] su.linka.pictures.ui.card.CardEditorPresentationTest.onlyContentShowsLabelAndMediaFieldsRegardlessOfHiddenSpeechValidation (0 ms)
+[ RUN      ] su.linka.pictures.ui.card.CardEditorPresentationTest.hiddenImageIsNotDemandedAndReturnsWhenContentIsSelectedAgain
+[       OK ] su.linka.pictures.ui.card.CardEditorPresentationTest.hiddenImageIsNotDemandedAndReturnsWhenContentIsSelectedAgain (0 ms)
+[----------] 2 tests from su.linka.pictures.ui.card.CardEditorPresentationTest (0 ms total)
+
+[----------] 5 tests from su.linka.pictures.ui.communication.CommunicationLayoutTest
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationLayoutTest.everyActionGlyphParsesWithoutPlatformResources
+[       OK ] su.linka.pictures.ui.communication.CommunicationLayoutTest.everyActionGlyphParsesWithoutPlatformResources (6 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationLayoutTest.phraseKeepsOneFifthAndShortLargeTextWindowsCanScrollToGrid
+[       OK ] su.linka.pictures.ui.communication.CommunicationLayoutTest.phraseKeepsOneFifthAndShortLargeTextWindowsCanScrollToGrid (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationLayoutTest.baselinePhoneLandscapeFitsNineWithoutChangingBoardDimensions
+[       OK ] su.linka.pictures.ui.communication.CommunicationLayoutTest.baselinePhoneLandscapeFitsNineWithoutChangingBoardDimensions (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationLayoutTest.tabletAndPortraitUseAllAvailableSpace
+[       OK ] su.linka.pictures.ui.communication.CommunicationLayoutTest.tabletAndPortraitUseAllAvailableSpace (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationLayoutTest.largeTextDensePagesAndNarrowWindowsScrollRatherThanShrinkTargets
+[       OK ] su.linka.pictures.ui.communication.CommunicationLayoutTest.largeTextDensePagesAndNarrowWindowsScrollRatherThanShrinkTargets (0 ms)
+[----------] 5 tests from su.linka.pictures.ui.communication.CommunicationLayoutTest (6 ms total)
+
+[----------] 3 tests from su.linka.pictures.ui.communication.CommunicationPagingTest
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPagingTest.pageTargetsRemainAvailableWithoutButtonsButRespectBoundariesAndDisabledState
+[       OK ] su.linka.pictures.ui.communication.CommunicationPagingTest.pageTargetsRemainAvailableWithoutButtonsButRespectBoundariesAndDisabledState (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPagingTest.physicalReleaseActivatesExactlyOnceDespiteNativeKeyRepeat
+[       OK ] su.linka.pictures.ui.communication.CommunicationPagingTest.physicalReleaseActivatesExactlyOnceDespiteNativeKeyRepeat (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPagingTest.typingModifiedKeysAndLostFocusNeverNavigateOrLeaveAnArmedKey
+[       OK ] su.linka.pictures.ui.communication.CommunicationPagingTest.typingModifiedKeysAndLostFocusNeverNavigateOrLeaveAnArmedKey (0 ms)
+[----------] 3 tests from su.linka.pictures.ui.communication.CommunicationPagingTest (0 ms total)
+
+[----------] 7 tests from su.linka.pictures.ui.communication.CommunicationPresentationTest
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPresentationTest.pageComesOnlyFromExactSessionCursorAndEverySparseSlotSurvives
+[       OK ] su.linka.pictures.ui.communication.CommunicationPresentationTest.pageComesOnlyFromExactSessionCursorAndEverySparseSlotSurvives (1 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPresentationTest.selectionMarksOnlySnapshotsOfTheCurrentRevisionPageAndComposeMode
+[       OK ] su.linka.pictures.ui.communication.CommunicationPresentationTest.selectionMarksOnlySnapshotsOfTheCurrentRevisionPageAndComposeMode (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPresentationTest.missingVoiceNeverGuessesThatAllPlansNeedTts
+[       OK ] su.linka.pictures.ui.communication.CommunicationPresentationTest.missingVoiceNeverGuessesThatAllPlansNeedTts (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPresentationTest.stopReplacesSpeakForEveryActivePhaseIncludingDirectMode
+[       OK ] su.linka.pictures.ui.communication.CommunicationPresentationTest.stopReplacesSpeakForEveryActivePhaseIncludingDirectMode (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPresentationTest.uncertainDurabilityAndStaleSessionFreezeEveryCommandWithoutClaimingSaved
+[       OK ] su.linka.pictures.ui.communication.CommunicationPresentationTest.uncertainDurabilityAndStaleSessionFreezeEveryCommandWithoutClaimingSaved (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPresentationTest.noticesHideRoutineSuccessButKeepDurabilityAndActionFailures
+[       OK ] su.linka.pictures.ui.communication.CommunicationPresentationTest.noticesHideRoutineSuccessButKeepDurabilityAndActionFailures (0 ms)
+[ RUN      ] su.linka.pictures.ui.communication.CommunicationPresentationTest.problemsUseOnlySafeCodesAndKeepVoiceAndSpeechFailuresDistinct
+[       OK ] su.linka.pictures.ui.communication.CommunicationPresentationTest.problemsUseOnlySafeCodesAndKeepVoiceAndSpeechFailuresDistinct (0 ms)
+[----------] 7 tests from su.linka.pictures.ui.communication.CommunicationPresentationTest (1 ms total)
+
+[----------] 5 tests from su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest
+[ RUN      ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.platformMinimumStillLeavesPixelsAndCaptionInsideTheRealMeasurePolicy
+[       OK ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.platformMinimumStillLeavesPixelsAndCaptionInsideTheRealMeasurePolicy (0 ms)
+[ RUN      ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.boundedGridOwnsBothDimensionsAndWrappedCaptionBorrowsImageSpace
+[       OK ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.boundedGridOwnsBothDimensionsAndWrappedCaptionBorrowsImageSpace (0 ms)
+[ RUN      ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.unboundedLegacyCallerGetsAnImageSquareWithoutTheOld160Cap
+[       OK ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.unboundedLegacyCallerGetsAnImageSquareWithoutTheOld160Cap (0 ms)
+[ RUN      ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.unboundedHeightStillRespectsTheParentMinimum
+[       OK ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.unboundedHeightStillRespectsTheParentMinimum (0 ms)
+[ RUN      ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.loadingPixelsCannotChangeParentGeometry
+[       OK ] su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest.loadingPixelsCannotChangeParentGeometry (0 ms)
+[----------] 5 tests from su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest (0 ms total)
+
+[----------] 2 tests from su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest
+[ RUN      ] su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest.actualDefaultOutlinePassesAllGradientEndsIncludingPressedAndDisabled
+[       OK ] su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest.actualDefaultOutlinePassesAllGradientEndsIncludingPressedAndDisabled (0 ms)
+[ RUN      ] su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest.darkHighContrastAndActionBordersKeepTheirExistingChoices
+[       OK ] su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest.darkHighContrastAndActionBordersKeepTheirExistingChoices (0 ms)
+[----------] 2 tests from su.linka.pictures.ui.components.PrimitiveSurfaceChromeTest (0 ms total)
+
+[----------] 3 tests from su.linka.pictures.ui.editor.AuthoringPresentationTest
+[ RUN      ] su.linka.pictures.ui.editor.AuthoringPresentationTest.onlyEditingAndRecoverableConflictPermitLocalEditing
+[       OK ] su.linka.pictures.ui.editor.AuthoringPresentationTest.onlyEditingAndRecoverableConflictPermitLocalEditing (0 ms)
+[ RUN      ] su.linka.pictures.ui.editor.AuthoringPresentationTest.saveLabelsDistinguishDurabilityFailureAndUnknownOutcome
+[       OK ] su.linka.pictures.ui.editor.AuthoringPresentationTest.saveLabelsDistinguishDurabilityFailureAndUnknownOutcome (0 ms)
+[ RUN      ] su.linka.pictures.ui.editor.AuthoringPresentationTest.conflictsLimitsAndReauthenticationHaveActionableMessages
+[       OK ] su.linka.pictures.ui.editor.AuthoringPresentationTest.conflictsLimitsAndReauthenticationHaveActionableMessages (0 ms)
+[----------] 3 tests from su.linka.pictures.ui.editor.AuthoringPresentationTest (0 ms total)
+
+[----------] 6 tests from su.linka.pictures.ui.editor.EditorGridPresentationTest
+[ RUN      ] su.linka.pictures.ui.editor.EditorGridPresentationTest.withoutSpaceCheckboxUsesExistingInputStyleWithoutChangingDirectMode
+[       OK ] su.linka.pictures.ui.editor.EditorGridPresentationTest.withoutSpaceCheckboxUsesExistingInputStyleWithoutChangingDirectMode (0 ms)
+[ RUN      ] su.linka.pictures.ui.editor.EditorGridPresentationTest.bundledToolbarPathsParseWithoutAnIconPackDependency
+[       OK ] su.linka.pictures.ui.editor.EditorGridPresentationTest.bundledToolbarPathsParseWithoutAnIconPackDependency (0 ms)
+[ RUN      ] su.linka.pictures.ui.editor.EditorGridPresentationTest.ordinaryNineCellsFitWithoutForcedNinetySixDpMinimum
+[       OK ] su.linka.pictures.ui.editor.EditorGridPresentationTest.ordinaryNineCellsFitWithoutForcedNinetySixDpMinimum (0 ms)
+[ RUN      ] su.linka.pictures.ui.editor.EditorGridPresentationTest.largeTextAndDenseGridsScrollInsteadOfShrinkingTargets
+[       OK ] su.linka.pictures.ui.editor.EditorGridPresentationTest.largeTextAndDenseGridsScrollInsteadOfShrinkingTargets (0 ms)
+[ RUN      ] su.linka.pictures.ui.editor.EditorGridPresentationTest.contentWithEmptyLabelIsNotAnEmptyCell
+[       OK ] su.linka.pictures.ui.editor.EditorGridPresentationTest.contentWithEmptyLabelIsNotAnEmptyCell (0 ms)
+[ RUN      ] su.linka.pictures.ui.editor.EditorGridPresentationTest.resumedFormKeepsItsOwnGridVisibleEvenAfterPageReordering
+[       OK ] su.linka.pictures.ui.editor.EditorGridPresentationTest.resumedFormKeepsItsOwnGridVisibleEvenAfterPageReordering (0 ms)
+[----------] 6 tests from su.linka.pictures.ui.editor.EditorGridPresentationTest (0 ms total)
+
+[----------] 3 tests from su.linka.pictures.ui.images.ThumbnailLoaderTest
+[ RUN      ] su.linka.pictures.ui.images.ThumbnailLoaderTest.pageAndMessagePreviewPixelsHaveAThirtyTwoMiBBudget
+[       OK ] su.linka.pictures.ui.images.ThumbnailLoaderTest.pageAndMessagePreviewPixelsHaveAThirtyTwoMiBBudget (2 ms)
+[ RUN      ] su.linka.pictures.ui.images.ThumbnailLoaderTest.failedNativeDecodeReportsTheErrorAndReleasesTheBorrowedFileLease
+[       OK ] su.linka.pictures.ui.images.ThumbnailLoaderTest.failedNativeDecodeReportsTheErrorAndReleasesTheBorrowedFileLease (0 ms)
+[ RUN      ] su.linka.pictures.ui.images.ThumbnailLoaderTest.disappearingWindowCancelsDecoderAndClosesItsLeaseWithoutPublishingLatePixels
+[       OK ] su.linka.pictures.ui.images.ThumbnailLoaderTest.disappearingWindowCancelsDecoderAndClosesItsLeaseWithoutPublishingLatePixels (0 ms)
+[----------] 3 tests from su.linka.pictures.ui.images.ThumbnailLoaderTest (3 ms total)
+
+[----------] 6 tests from su.linka.pictures.ui.images.VisibleImageDemandTest
+[ RUN      ] su.linka.pictures.ui.images.VisibleImageDemandTest.composedSourcesUnionDeduplicatesAndRetainsOtherOwners
+[       OK ] su.linka.pictures.ui.images.VisibleImageDemandTest.composedSourcesUnionDeduplicatesAndRetainsOtherOwners (0 ms)
+[ RUN      ] su.linka.pictures.ui.images.VisibleImageDemandTest.disposingAnOldPageOrEffectCannotRemoveItsReplacement
+[       OK ] su.linka.pictures.ui.images.VisibleImageDemandTest.disposingAnOldPageOrEffectCannotRemoveItsReplacement (0 ms)
+[ RUN      ] su.linka.pictures.ui.images.VisibleImageDemandTest.callbackReplacementPublishesCurrentUnionAndDisposalUsesCurrentCallback
+[       OK ] su.linka.pictures.ui.images.VisibleImageDemandTest.callbackReplacementPublishesCurrentUnionAndDisposalUsesCurrentCallback (0 ms)
+[ RUN      ] su.linka.pictures.ui.images.VisibleImageDemandTest.closedScreenRejectsOrphanEffectsAndCanBeReplacedByANewGeneration
+[       OK ] su.linka.pictures.ui.images.VisibleImageDemandTest.closedScreenRejectsOrphanEffectsAndCanBeReplacedByANewGeneration (0 ms)
+[ RUN      ] su.linka.pictures.ui.images.VisibleImageDemandTest.nullCallbackKeepsManualBorrowedMapCompatibility
+[       OK ] su.linka.pictures.ui.images.VisibleImageDemandTest.nullCallbackKeepsManualBorrowedMapCompatibility (0 ms)
+[ RUN      ] su.linka.pictures.ui.images.VisibleImageDemandTest.onlyTheComposedContentRowOfTheSelectedPageIsDemanded
+[       OK ] su.linka.pictures.ui.images.VisibleImageDemandTest.onlyTheComposedContentRowOfTheSelectedPageIsDemanded (0 ms)
+[----------] 6 tests from su.linka.pictures.ui.images.VisibleImageDemandTest (0 ms total)
+
+[----------] 5 tests from su.linka.pictures.ui.library.LibraryPresentationTest
+[ RUN      ] su.linka.pictures.ui.library.LibraryPresentationTest.baselineUsesThreeColumnsWithoutOrientationOrTabletRedesign
+[       OK ] su.linka.pictures.ui.library.LibraryPresentationTest.baselineUsesThreeColumnsWithoutOrientationOrTabletRedesign (0 ms)
+[ RUN      ] su.linka.pictures.ui.library.LibraryPresentationTest.firstImageIsCoverAndRecordingIsNeverAnImageDemand
+[       OK ] su.linka.pictures.ui.library.LibraryPresentationTest.firstImageIsCoverAndRecordingIsNeverAnImageDemand (0 ms)
+[ RUN      ] su.linka.pictures.ui.library.LibraryPresentationTest.unreadableAndUnknownCountsNeverBecomeAnEmptyBoard
+[       OK ] su.linka.pictures.ui.library.LibraryPresentationTest.unreadableAndUnknownCountsNeverBecomeAnEmptyBoard (0 ms)
+[ RUN      ] su.linka.pictures.ui.library.LibraryPresentationTest.authorizationReadinessDoesNotTreatNullCapabilityOrUnprotectedAsLocked
+[       OK ] su.linka.pictures.ui.library.LibraryPresentationTest.authorizationReadinessDoesNotTreatNullCapabilityOrUnprotectedAsLocked (0 ms)
+[ RUN      ] su.linka.pictures.ui.library.LibraryPresentationTest.failedDecisionsStayCapturedWithoutRefreshOrAutomaticReplay
+[       OK ] su.linka.pictures.ui.library.LibraryPresentationTest.failedDecisionsStayCapturedWithoutRefreshOrAutomaticReplay (0 ms)
+[----------] 5 tests from su.linka.pictures.ui.library.LibraryPresentationTest (0 ms total)
+
+[----------] 4 tests from su.linka.pictures.ui.portability.TransferReadinessTest
+[ RUN      ] su.linka.pictures.ui.portability.TransferReadinessTest.staleNonnullPickerCapabilityCannotConfirmAndFreshUnlockEnablesEveryKind
+[       OK ] su.linka.pictures.ui.portability.TransferReadinessTest.staleNonnullPickerCapabilityCannotConfirmAndFreshUnlockEnablesEveryKind (0 ms)
+[ RUN      ] su.linka.pictures.ui.portability.TransferReadinessTest.confirmationStillRequiresAwaitingPhaseEnabledAndNotBusy
+[       OK ] su.linka.pictures.ui.portability.TransferReadinessTest.confirmationStillRequiresAwaitingPhaseEnabledAndNotBusy (0 ms)
+[ RUN      ] su.linka.pictures.ui.portability.TransferReadinessTest.ownPendingCancellationNeedsForegroundButNotFreshCapabilityOrBusinessReadiness
+[       OK ] su.linka.pictures.ui.portability.TransferReadinessTest.ownPendingCancellationNeedsForegroundButNotFreshCapabilityOrBusinessReadiness (0 ms)
+[ RUN      ] su.linka.pictures.ui.portability.TransferReadinessTest.terminalAndUnknownOutcomesDoNotOfferCancellationOrReconfirmation
+[       OK ] su.linka.pictures.ui.portability.TransferReadinessTest.terminalAndUnknownOutcomesDoNotOfferCancellationOrReconfirmation (0 ms)
+[----------] 4 tests from su.linka.pictures.ui.portability.TransferReadinessTest (0 ms total)
+
+[----------] 4 tests from su.linka.pictures.ui.settings.SettingsPresentationTest
+[ RUN      ] su.linka.pictures.ui.settings.SettingsPresentationTest.portableScaleKeepsExistingRangeAndRejectsNonFiniteInput
+[       OK ] su.linka.pictures.ui.settings.SettingsPresentationTest.portableScaleKeepsExistingRangeAndRejectsNonFiniteInput (0 ms)
+[ RUN      ] su.linka.pictures.ui.settings.SettingsPresentationTest.languageRemainsPortableAndDoesNotRequireAnInstalledVoiceIdentifier
+[       OK ] su.linka.pictures.ui.settings.SettingsPresentationTest.languageRemainsPortableAndDoesNotRequireAnInstalledVoiceIdentifier (0 ms)
+[ RUN      ] su.linka.pictures.ui.settings.SettingsPresentationTest.actualVoiceReadinessRemainsDistinguishable
+[       OK ] su.linka.pictures.ui.settings.SettingsPresentationTest.actualVoiceReadinessRemainsDistinguishable (0 ms)
+[ RUN      ] su.linka.pictures.ui.settings.SettingsPresentationTest.languageRejectsNulAndIllFormedUtf16BeforeNativeTts
+[       OK ] su.linka.pictures.ui.settings.SettingsPresentationTest.languageRejectsNulAndIllFormedUtf16BeforeNativeTts (0 ms)
+[----------] 4 tests from su.linka.pictures.ui.settings.SettingsPresentationTest (0 ms total)
+
+[----------] 4 tests from su.linka.pictures.ui.settings.SettingsRefreshTest
+[ RUN      ] su.linka.pictures.ui.settings.SettingsRefreshTest.twoKnownSavesEachReloadOnceAndCaptureFreshRevisionForTheNextSave
+[       OK ] su.linka.pictures.ui.settings.SettingsRefreshTest.twoKnownSavesEachReloadOnceAndCaptureFreshRevisionForTheNextSave (7 ms)
+[ RUN      ] su.linka.pictures.ui.settings.SettingsRefreshTest.failedWritesDoNotReadOrReplaceTheCapturedInputAndSnapshot
+[       OK ] su.linka.pictures.ui.settings.SettingsRefreshTest.failedWritesDoNotReadOrReplaceTheCapturedInputAndSnapshot (6 ms)
+[ RUN      ] su.linka.pictures.ui.settings.SettingsRefreshTest.postCommitReadFailureKeepsKnownSaveAndOnlyExplicitReadRecoversWithoutAnotherWrite
+[       OK ] su.linka.pictures.ui.settings.SettingsRefreshTest.postCommitReadFailureKeepsKnownSaveAndOnlyExplicitReadRecoversWithoutAnotherWrite (5 ms)
+[ RUN      ] su.linka.pictures.ui.settings.SettingsRefreshTest.revisionChangedDuringReadDoesNotReenableAnObsoleteSnapshot
+[       OK ] su.linka.pictures.ui.settings.SettingsRefreshTest.revisionChangedDuringReadDoesNotReenableAnObsoleteSnapshot (5 ms)
+[----------] 4 tests from su.linka.pictures.ui.settings.SettingsRefreshTest (25 ms total)
+
+[----------] 4 tests from su.linka.pictures.ui.theme.LinkaThemeTest
+[ RUN      ] su.linka.pictures.ui.theme.LinkaThemeTest.allPalettesKeepContrastInNormalDisabledAndPressedStates
+[       OK ] su.linka.pictures.ui.theme.LinkaThemeTest.allPalettesKeepContrastInNormalDisabledAndPressedStates (1 ms)
+[ RUN      ] su.linka.pictures.ui.theme.LinkaThemeTest.portableScaleIsBoundedWithoutClampingSystemScale
+[       OK ] su.linka.pictures.ui.theme.LinkaThemeTest.portableScaleIsBoundedWithoutClampingSystemScale (0 ms)
+[ RUN      ] su.linka.pictures.ui.theme.LinkaThemeTest.targetsMeetBothPlatformMinimumsWithoutOverridingTheGrid
+[       OK ] su.linka.pictures.ui.theme.LinkaThemeTest.targetsMeetBothPlatformMinimumsWithoutOverridingTheGrid (0 ms)
+[ RUN      ] su.linka.pictures.ui.theme.LinkaThemeTest.defaultPaletteUses14ResourcesAndBlackCardCaptions
+[       OK ] su.linka.pictures.ui.theme.LinkaThemeTest.defaultPaletteUses14ResourcesAndBlackCardCaptions (0 ms)
+[----------] 4 tests from su.linka.pictures.ui.theme.LinkaThemeTest (1 ms total)
+
+[----------] 3 tests from su.linka.pictures.bootstrap.IosThumbnailDecoderTest
+[ RUN      ] su.linka.pictures.bootstrap.IosThumbnailDecoderTest.realOwnedPngHasBoundedArgbPixelsAndCanonicalHashDoesNotChange
+[       OK ] su.linka.pictures.bootstrap.IosThumbnailDecoderTest.realOwnedPngHasBoundedArgbPixelsAndCanonicalHashDoesNotChange (111 ms)
+[ RUN      ] su.linka.pictures.bootstrap.IosThumbnailDecoderTest.excessiveThumbnailLimitsFailBeforeAnyFileRead
+[       OK ] su.linka.pictures.bootstrap.IosThumbnailDecoderTest.excessiveThumbnailLimitsFailBeforeAnyFileRead (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.IosThumbnailDecoderTest.asymmetricPngRetainsTopLeftRowOrderWithoutFlipOrTranspose
+[       OK ] su.linka.pictures.bootstrap.IosThumbnailDecoderTest.asymmetricPngRetainsTopLeftRowOrderWithoutFlipOrTranspose (1 ms)
+[----------] 3 tests from su.linka.pictures.bootstrap.IosThumbnailDecoderTest (113 ms total)
+
+[----------] 3 tests from su.linka.pictures.bootstrap.OwnedFilesTest
+[ RUN      ] su.linka.pictures.bootstrap.OwnedFilesTest.foreignNativeDestinationIsNeverClaimedOrClosedByAnyRootOwner
+[       OK ] su.linka.pictures.bootstrap.OwnedFilesTest.foreignNativeDestinationIsNeverClaimedOrClosedByAnyRootOwner (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.OwnedFilesTest.oneThrowingDestinationDoesNotPreventReleasingAnotherAndFailureIsReturnedToRoot
+[       OK ] su.linka.pictures.bootstrap.OwnedFilesTest.oneThrowingDestinationDoesNotPreventReleasingAnotherAndFailureIsReturnedToRoot (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.OwnedFilesTest.cancelledNativeDeliveryIsDiscardedInsteadOfLeakingALateUri
+[       OK ] su.linka.pictures.bootstrap.OwnedFilesTest.cancelledNativeDeliveryIsDiscardedInsteadOfLeakingALateUri (0 ms)
+[----------] 3 tests from su.linka.pictures.bootstrap.OwnedFilesTest (0 ms total)
+
+[----------] 1 tests from su.linka.pictures.bootstrap.OwnerWindowsTest
+[ RUN      ] su.linka.pictures.bootstrap.OwnerWindowsTest.closingAnOwnerOrItsWindowClosesNativeAdmissionWithoutBorrowingAnotherWindow
+[       OK ] su.linka.pictures.bootstrap.OwnerWindowsTest.closingAnOwnerOrItsWindowClosesNativeAdmissionWithoutBorrowingAnotherWindow (0 ms)
+[----------] 1 tests from su.linka.pictures.bootstrap.OwnerWindowsTest (0 ms total)
+
+[----------] 1 tests from su.linka.pictures.bootstrap.RecordingOwnersTest
+[ RUN      ] su.linka.pictures.bootstrap.RecordingOwnersTest.explicitStopInvalidatesPermissionCallbackBeforeCallerCoroutineResumes
+[       OK ] su.linka.pictures.bootstrap.RecordingOwnersTest.explicitStopInvalidatesPermissionCallbackBeforeCallerCoroutineResumes (0 ms)
+[----------] 1 tests from su.linka.pictures.bootstrap.RecordingOwnersTest (0 ms total)
+
+[----------] 1 tests from su.linka.pictures.bootstrap.RootAssistantAccessTest
+[ RUN      ] su.linka.pictures.bootstrap.RootAssistantAccessTest.guardCreatedDuringReplacementNeverBecomesValidLaterAndNewCommandsDoNotReachNativeAccess
+[       OK ] su.linka.pictures.bootstrap.RootAssistantAccessTest.guardCreatedDuringReplacementNeverBecomesValidLaterAndNewCommandsDoNotReachNativeAccess (0 ms)
+[----------] 1 tests from su.linka.pictures.bootstrap.RootAssistantAccessTest (0 ms total)
+
+[----------] 3 tests from su.linka.pictures.bootstrap.RootCredentialAdmissionTest
+[ RUN      ] su.linka.pictures.bootstrap.RootCredentialAdmissionTest.nativeReadErrorIsNotFreshUnprotectedStorage
+[       OK ] su.linka.pictures.bootstrap.RootCredentialAdmissionTest.nativeReadErrorIsNotFreshUnprotectedStorage (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.RootCredentialAdmissionTest.missingCredentialForAnExistingLibraryIsAnIntegrityFailure
+[       OK ] su.linka.pictures.bootstrap.RootCredentialAdmissionTest.missingCredentialForAnExistingLibraryIsAnIntegrityFailure (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.RootCredentialAdmissionTest.onlyFreshLibraryCanInitializeADurableDisabledRecordAndRevokedAdmissionDoesNotWrite
+[       OK ] su.linka.pictures.bootstrap.RootCredentialAdmissionTest.onlyFreshLibraryCanInitializeADurableDisabledRecordAndRevokedAdmissionDoesNotWrite (0 ms)
+[----------] 3 tests from su.linka.pictures.bootstrap.RootCredentialAdmissionTest (0 ms total)
+
+[----------] 4 tests from su.linka.pictures.bootstrap.RootRecoveryTest
+[ RUN      ] su.linka.pictures.bootstrap.RootRecoveryTest.postReadyErrorKeepsVisibleSessionAndDoesNotRequestGraphOrEditorDisposal
+[       OK ] su.linka.pictures.bootstrap.RootRecoveryTest.postReadyErrorKeepsVisibleSessionAndDoesNotRequestGraphOrEditorDisposal (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.RootRecoveryTest.startupAndConfirmedReplacementErrorsHaveDifferentReleaseSemantics
+[       OK ] su.linka.pictures.bootstrap.RootRecoveryTest.startupAndConfirmedReplacementErrorsHaveDifferentReleaseSemantics (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.RootRecoveryTest.successfulReplacementReopensAdmissionOnlyAfterNewSessionReady
+[       OK ] su.linka.pictures.bootstrap.RootRecoveryTest.successfulReplacementReopensAdmissionOnlyAfterNewSessionReady (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.RootRecoveryTest.independentCleanupContinuesAfterThrowsAndPreservesPrimaryProblem
+[       OK ] su.linka.pictures.bootstrap.RootRecoveryTest.independentCleanupContinuesAfterThrowsAndPreservesPrimaryProblem (0 ms)
+[----------] 4 tests from su.linka.pictures.bootstrap.RootRecoveryTest (0 ms total)
+
+[----------] 2 tests from su.linka.pictures.bootstrap.RootWindowSnapshotTest
+[ RUN      ] su.linka.pictures.bootstrap.RootWindowSnapshotTest.ownFullscreenModalCanDetachPresentingViewWithoutBackgroundOrForeignWindowFallback
+[       OK ] su.linka.pictures.bootstrap.RootWindowSnapshotTest.ownFullscreenModalCanDetachPresentingViewWithoutBackgroundOrForeignWindowFallback (0 ms)
+[ RUN      ] su.linka.pictures.bootstrap.RootWindowSnapshotTest.closedDisconnectedHiddenAndActualApplicationBackgroundNeverUseTheCachedWindowAsForeground
+[       OK ] su.linka.pictures.bootstrap.RootWindowSnapshotTest.closedDisconnectedHiddenAndActualApplicationBackgroundNeverUseTheCachedWindowAsForeground (0 ms)
+[----------] 2 tests from su.linka.pictures.bootstrap.RootWindowSnapshotTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 158 tests from 31 test cases ran. (1259 ms total)
+[  PASSED  ] 158 tests.

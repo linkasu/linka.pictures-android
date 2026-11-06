@@ -1,0 +1,47 @@
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+su.linka.pictures.activity.DevelopmentParityTest:
+INSTRUMENTATION_STATUS: test=filledBoardThroughRealSafImport
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Timed out at SAF returned to target; activePackage=com.google.android.documentsui (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:299)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:282)
+	at su.linka.pictures.activity.DevelopmentParityTest.selectOwnedSafFixture(DevelopmentParityTest.kt:190)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughRealSafImport(DevelopmentParityTest.kt:45)
+
+INSTRUMENTATION_STATUS: stream=
+Error in filledBoardThroughRealSafImport(su.linka.pictures.activity.DevelopmentParityTest):
+java.lang.AssertionError: Timed out at SAF returned to target; activePackage=com.google.android.documentsui (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:299)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:282)
+	at su.linka.pictures.activity.DevelopmentParityTest.selectOwnedSafFixture(DevelopmentParityTest.kt:190)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughRealSafImport(DevelopmentParityTest.kt:45)
+
+INSTRUMENTATION_STATUS: test=filledBoardThroughRealSafImport
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 68.874
+There was 1 failure:
+1) filledBoardThroughRealSafImport(su.linka.pictures.activity.DevelopmentParityTest)
+java.lang.AssertionError: Timed out at SAF returned to target; activePackage=com.google.android.documentsui (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:299)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:282)
+	at su.linka.pictures.activity.DevelopmentParityTest.selectOwnedSafFixture(DevelopmentParityTest.kt:190)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughRealSafImport(DevelopmentParityTest.kt:45)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

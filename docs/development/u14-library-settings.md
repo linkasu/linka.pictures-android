@@ -6,8 +6,9 @@
 ## Проверенный baseline
 
 Прочитан полный [контракт](ui-1.4-parity.md), просмотрены
-`docs/redesign-audit/screenshots/tablet/02b-library-landscape.png` (2000×1250)
-и `04-settings.png` (1250×2000). Через `git show v1.4:…` проверены
+`docs/redesign-audit/screenshots/tablet/02b-library-landscape.png` (raw2560×1600)
+и `04-settings.png` (raw1600×2560). Размеры preview просмотрщика не raw dimensions.
+Через `git show v1.4:…` проверены
 `MainActivity.kt`, `SetsAdapter.kt`, `activity_main.xml`, `set_grid_button.xml`,
 `main_activity_menu.xml`, `settings_activity.xml`, `root_preferences.xml`,
 `values/colors.xml`; тег соответствует `2073d912`.

@@ -1,0 +1,20 @@
+Uncaught Kotlin exception: kotlin.IllegalStateException: Error: `Info.plist` doesn't have a valid `CADisableMinimumFrameDurationOnPhone` entry, or has it set to `false`. 
+This will result in an inadequate performance on iPhones with high refresh rate. 
+Add `<key>CADisableMinimumFrameDurationOnPhone</key><true/>` entry to the `Info.plist` file to fix this error. 
+If you don't have a separate .plist file, add the entry to the target from within Xcode: Project -> Targets -> Info -> Custom iOS Target Properties.                            
+To disable this check, set `ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) { .. }`.                            
+    at 0   LinkaPokazhi                        0x10666766b        kfun:kotlin.Throwable#<init>(kotlin.String?){} + 99 
+    at 1   LinkaPokazhi                        0x1066623df        kfun:kotlin.Exception#<init>(kotlin.String?){} + 95 
+    at 2   LinkaPokazhi                        0x106662557        kfun:kotlin.OutOfMemoryError#<init>(kotlin.String?){} + 95 
+    at 3   LinkaPokazhi                        0x10598d387        kfun:kotlin.NoSuchElementException#<init>(kotlin.String?){} + 95 
+    at 4   LinkaPokazhi                        0x105590a2f        kfun:androidx.compose.ui.uikit.PlistSanityCheck.PlistSanityCheck$performIfNeeded$1.invoke#internal + 1091 
+    at 5   LinkaPokazhi                        0x105590bdf        kfun:androidx.compose.ui.uikit.PlistSanityCheck.PlistSanityCheck$performIfNeeded$1.$<bridge-DN>invoke(){}#internal + 71 
+    at 6   LinkaPokazhi                        0x106780ae7        kfun:kotlin.reflect.KFunction0#invoke(){}1:0-trampoline + 99 
+    at 7   LinkaPokazhi                        0x105590597        _6f72672e6a6574627261696e732e636f6d706f73652e75693a75692f6f70742f6275696c644167656e742f776f726b2f346664313831636635653831343836352f636f6d706f73652f75692f75692f7372632f75696b69744d61696e2f6b6f746c696e2f616e64726f6964782f636f6d706f73652f75692f75696b69742f506c69737453616e697479436865636b2e75696b69742e6b74_knbridge10 + 191 
+    at 8   libdispatch.dylib                   0x10baca4f3        _dispatch_call_block_and_release + 23 
+    at 9   libdispatch.dylib                   0x10bacbd3b        _dispatch_client_callout + 15 
+    at 10  libdispatch.dylib                   0x10bade5d3        _dispatch_root_queue_drain + 1075 
+    at 11  libdispatch.dylib                   0x10baded57        _dispatch_worker_thread2 + 231 
+    at 12  libsystem_pthread.dylib             0x10ce52c3f        _pthread_wqthread + 227 
+    at 13  libsystem_pthread.dylib             0x10ce51a7b        start_wqthread + 7 
+su.linka.pictures.development: 92009
