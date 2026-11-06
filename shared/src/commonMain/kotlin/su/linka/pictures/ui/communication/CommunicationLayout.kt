@@ -5,7 +5,8 @@ internal data class CommunicationCellSize(val width: Float, val height: Float)
 internal data class CommunicationVerticalBudget(val phrase: Float, val content: Float)
 
 internal fun communicationMessagePartWidth(availableWidth: Float, height: Float, partCount: Int): Float {
-    val preferred = if (height.isFinite() && height > 0f) maxOf(48f, height) else 48f
+    // Short landscape windows need caption room, not a square narrower than its own padding and label.
+    val preferred = if (height.isFinite() && height > 0f) maxOf(96f, height) else 48f
     val visible = partCount.coerceIn(1, 2)
     return if (availableWidth.isFinite() && availableWidth > 0f) {
         maxOf(48f, minOf(preferred, availableWidth / visible))
@@ -25,7 +26,8 @@ internal fun communicationVerticalBudget(height: Float, fontScale: Float, multip
     require(height.isFinite() && height >= 0 && fontScale.isFinite() && fontScale > 0)
     val scale = maxOf(1f, fontScale)
     val fixed = 17f + if (multiplePages) 32f * scale else 0f
-    val phrase = maxOf(48f * scale, (height - fixed) / 5)
+    // Leave room for an image above a readable caption even in short landscape windows.
+    val phrase = maxOf(64f * scale, (height - fixed) / 5)
     val minimum = phrase + 64f * scale + fixed
     return CommunicationVerticalBudget(phrase, maxOf(height, minimum))
 }

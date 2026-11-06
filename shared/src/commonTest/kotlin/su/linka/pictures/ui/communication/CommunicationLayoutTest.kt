@@ -22,14 +22,14 @@ class CommunicationLayoutTest {
             assertEquals(two, width)
             assertTrue(width * count > 180f)
         }
-        assertEquals(60f, communicationMessagePartWidth(400f, 60f, 2))
+        assertEquals(96f, communicationMessagePartWidth(400f, 60f, 2))
     }
 
     @Test
     fun tinyPhraseViewportsScrollInsteadOfShrinkingBelowFortyEightDp() {
         assertEquals(48f, communicationMessagePartWidth(80f, 120f, 2))
         assertEquals(48f, communicationMessagePartWidth(20f, 20f, 1))
-        assertEquals(48f, communicationMessagePartWidth(180f, 20f, 2))
+        assertEquals(90f, communicationMessagePartWidth(180f, 20f, 2))
         assertEquals(120f, communicationMessagePartWidth(180f, 120f, 0))
         assertEquals(120f, communicationMessagePartWidth(180f, 120f, -1))
     }
@@ -44,6 +44,17 @@ class CommunicationLayoutTest {
     }
 
     @Test
+    fun shortLandscapePreviewsKeepCaptionRoomWithoutClippingTheSecondPreview() {
+        for (width in listOf(192f, 320f, 667f)) {
+            val part = communicationMessagePartWidth(width, 48f, 2)
+            assertEquals(96f, part)
+            assertTrue(part * 2 <= width)
+        }
+        assertEquals(48f, communicationMessagePartWidth(80f, 48f, 2))
+        assertEquals(120f, communicationMessagePartWidth(320f, 120f, 2))
+    }
+
+    @Test
     fun everyActionGlyphParsesWithoutPlatformResources() {
         for (icon in CommunicationIcon.entries) {
             assertEquals(24f, icon.vector.viewportWidth)
@@ -55,10 +66,10 @@ class CommunicationLayoutTest {
     @Test
     fun phraseKeepsOneFifthAndShortLargeTextWindowsCanScrollToGrid() {
         assertEquals(CommunicationVerticalBudget(96.6f, 500f), communicationVerticalBudget(500f, 1f, false))
-        assertEquals(CommunicationVerticalBudget(48f, 240f), communicationVerticalBudget(240f, 1f, false))
+        assertEquals(CommunicationVerticalBudget(64f, 240f), communicationVerticalBudget(240f, 1f, false))
         val short = communicationVerticalBudget(80f, 3f, true)
-        assertEquals(144f, short.phrase)
-        assertEquals(449f, short.content)
+        assertEquals(192f, short.phrase)
+        assertEquals(497f, short.content)
         assertTrue(short.content > 80)
     }
 
