@@ -1,0 +1,9 @@
+app.apk
+path=/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-android-lint-verified-ky93ktc4/app.apk
+sha256=9e3eb90139a592d9aece5c5f1855b74d7e6b34531d6d7f870a95cdcaec0c0a79
+package=su.linka.pictures.development
+
+appTest.apk
+path=/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-android-lint-verified-ky93ktc4/appTest.apk
+sha256=f8bd2277df88d44e221a78c46689ce0eba6ad04c0ca7d187b9d0e1414034d2c4
+package=su.linka.pictures.development.test
