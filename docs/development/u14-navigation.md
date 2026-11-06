@@ -28,6 +28,12 @@ Public dependencies `04c0d56` и `97a4332` подключены отдельны
 
 Board-modal показывает borrowed access-панель только если canonical CHANGE_SETTINGS check не Completed. Non-manage fresh-none не рисует технических кнопок; `requireFreshUnlock` для подтверждения transfer после picker сохраняет явный unlock. Управление защитой остаётся отдельным экраном.
 
+## Native Back (frozen COORD seam)
+
+LinkaApp принимает trailing optional `onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null`. Один composition-owned publisher: startup/transition поглощает Back, библиотека публикует null для native exit, общение возвращает библиотеку без изменения message/playback. Settings/access/transfer используют существующие выходы; board-settings возвращается в общение. Editor-owned callback передаётся единственному publisher: IDLE/unknown использует прежний scaffold exit, PAUSED — прежний confirmLeave, остальные фазы — AuthoringAction.Close; открытая Card/Grid отменяется соответствующей командой. ForceDiscard не добавляется. Compose Dialog сохраняет свой native dismiss приоритет.
+
+Регистрации эфемерны: latest callback хранится через rememberUpdatedState, каждый опубликованный wrapper имеет incarnation/liveness guard, route identity проверяется перед вызовом. Старый callback после нового маршрута или dispose не запускает новое действие. Dispose отзывает wrapper и публикует null до navigation scope cancellation. Persisted schema/writers/locks/authoring policy не меняются. Actual Android key-event/OnBackPressedDispatcher и порядок native Window.close проверяет parent; pure tests этого не доказывают.
+
 Встроенный icon pack в текущих dependencies отсутствует: back использует доступный 48dp IconButton с текстовым шевроном и contentDescription, без новой зависимости. Старый ImageDemand.kt сохранён, поскольку у него остаются собственные тесты; root больше его не вызывает.
 
 Проверка: JDK 17, `./gradlew :shared:jvmTest --tests 'su.linka.pictures.ui.app.*' --tests 'su.linka.pictures.ui.access.*' --tests 'su.linka.pictures.ui.portability.*' --max-workers=1 --offline`. Native/ADB/FFmpeg и полный gate не запускались.

@@ -33,7 +33,8 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     communication: CommunicationSession, isForeground: Boolean,
     images: Map<AssetId, ImageBitmap>, onAssetsNeeded: (Set<AssetId>) -> Unit,
     onOwnerOpened: (String) -> Unit, onOwnerClosed: (String) -> Unit,
-    onLibraryReplaced: (Long) -> Unit) {
+    onLibraryReplaced: (Long) -> Unit,
+    onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null) {
     val opened by rememberUpdatedState(onOwnerOpened)
     val closed by rememberUpdatedState(onOwnerClosed)
     val replaced by rememberUpdatedState(onLibraryReplaced)
@@ -63,9 +64,29 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     var communicationAssets by remember(navigation, communication, route, message.stamp.epoch) {
         mutableStateOf<Set<AssetId>>(emptySet())
     }
+    var editorBack by remember(navigation, route) { mutableStateOf<(() -> Unit)?>(null) }
     val uiScope = rememberCoroutineScope()
     fun navigate(page: ProductPage, action: AuthoringAction? = null, board: BoardId? = null) {
         uiScope.launch { navigation.open(page, action, board) }
+    }
+    val backAction: (() -> Unit)? = when (productBackAction(started, transitioning, route?.page, route?.boardId != null)) {
+        ProductBackAction.CONSUME -> ({})
+        ProductBackAction.NATIVE_EXIT -> null
+        ProductBackAction.LIBRARY -> ({ navigate(ProductPage.LIBRARY) })
+        ProductBackAction.COMMUNICATION -> ({ navigate(ProductPage.COMMUNICATION) })
+        ProductBackAction.EDITOR -> ({ editorBack?.invoke() })
+    }
+    val latestBack by rememberUpdatedState(backAction)
+    val ownedBack = remember(navigation, onBackHandlerChanged) { OwnedProductBack(onBackHandlerChanged ?: {}) }
+    val latestOwnedBack by key(navigation) { rememberUpdatedState(ownedBack) }
+    SideEffect {
+        val snapshot = route
+        ownedBack.update(backAction?.let { {
+            if (navigation.route.value === snapshot && !navigation.transitioning.value) latestBack?.invoke()
+        } })
+    }
+    DisposableEffect(ownedBack) {
+        onDispose { ownedBack.close() }
     }
     LaunchedEffect(library, listing.epoch, listing.revision) {
         val snapshot = library.listing.value
@@ -78,7 +99,11 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     LaunchedEffect(assistantState.commandsAvailable(), navigation) {
         if (!assistantState.commandsAvailable()) navigation.revokeProtectedAccess()
     }
-    DisposableEffect(navigation) { onDispose { navigation.dispose(); assetsNeeded(emptySet()) } }
+    DisposableEffect(navigation) { onDispose {
+        latestOwnedBack.close()
+        navigation.dispose()
+        assetsNeeded(emptySet())
+    } }
     val requested = when (route?.page) {
         null, ProductPage.COMMUNICATION -> if (started) communicationAssets else emptySet()
         ProductPage.LIBRARY -> libraryAssets
@@ -147,7 +172,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
                     commandsEnabled, isForeground, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })
                 ProductPage.EDITOR -> ProductEditor(current, ids, access, capability, isForeground, commandsEnabled, images, accessPanel,
-                    { editorAssets = it }, { navigate(ProductPage.LIBRARY) })
+                    { editorAssets = it }, { navigate(ProductPage.LIBRARY) }, { editorBack = it })
                 ProductPage.COMMUNICATION -> Unit
             }
         }
@@ -171,12 +196,28 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
 @Composable
 private fun ProductEditor(route: ProductRoute, ids: IdSource, gate: AssistantAccess, capability: AssistantCapability?, foreground: Boolean, commandsEnabled: Boolean,
     images: Map<AssetId, ImageBitmap>, access: @Composable () -> Unit, onAssets: (Set<AssetId>) -> Unit,
-    onClosed: () -> Unit) {
+    onClosed: () -> Unit, onBackChanged: ((() -> Unit)?) -> Unit) {
     val editor = route.editor!!
     val state by editor.state.collectAsState()
     var confirmLeave by remember(route.owner) { mutableStateOf(false) }
     val dispatch: (AuthoringAction) -> Unit = { action ->
         if (commandsEnabled) editor.send(AuthoringCommand(CommandId(ids.next()), route.owner, capability, action))
+    }
+    val close: () -> Unit = {
+        when {
+            state.phase == AuthoringPhase.UNCONFIRMED || state.savePhase == DraftSavePhase.UNCONFIRMED ||
+                state.phase == AuthoringPhase.IDLE -> onClosed()
+            state.phase == AuthoringPhase.PAUSED -> confirmLeave = true
+            state.draft?.form is EditorForm.Card -> dispatch(AuthoringAction.CancelCard)
+            state.draft?.form is EditorForm.Grid -> dispatch(AuthoringAction.CancelGrid)
+            else -> dispatch(AuthoringAction.Close)
+        }
+    }
+    val latestClose by rememberUpdatedState(close)
+    val publishBack by rememberUpdatedState(onBackChanged)
+    DisposableEffect(route) {
+        publishBack { latestClose() }
+        onDispose { publishBack(null) }
     }
     var entryAttempted by remember(route) { mutableStateOf(false) }
     LaunchedEffect(route) {
@@ -193,15 +234,12 @@ private fun ProductEditor(route: ProductRoute, ids: IdSource, gate: AssistantAcc
         if (state.phase == AuthoringPhase.CLOSED || state.phase == AuthoringPhase.APPLIED) onClosed()
     }
     if (state.phase == AuthoringPhase.UNCONFIRMED || state.savePhase == DraftSavePhase.UNCONFIRMED) {
-        ProductScaffold("Исход записи черновика неизвестен", onClosed) {
+        ProductScaffold("Исход записи черновика неизвестен", close) {
             Feedback(OperationResult.UnconfirmedCommit)
             AuthoringFeedback(state, dispatch)
         }
     } else if (state.phase == AuthoringPhase.IDLE || state.phase == AuthoringPhase.PAUSED) {
-        ProductScaffold(if (state.phase == AuthoringPhase.PAUSED) "Редактор приостановлен" else "Открыть редактор", {
-            if (state.phase == AuthoringPhase.IDLE) onClosed()
-            else confirmLeave = true
-        }) {
+        ProductScaffold(if (state.phase == AuthoringPhase.PAUSED) "Редактор приостановлен" else "Открыть редактор", close) {
             access()
             if (state.phase == AuthoringPhase.PAUSED) androidx.compose.material.Text("Чтобы продолжить работу, повторно откройте доступ и явно продолжите редактирование. Можно отдельно выйти, оставив только уже сохранённый черновик.")
             if (state.phase == AuthoringPhase.IDLE) Action("Начать редактирование", commandsEnabled) {
