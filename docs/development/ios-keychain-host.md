@@ -1,5 +1,35 @@
 # P08: Keychain binding и обязательный app-host gate
 
+## Актуальное продолжение — 6 ноября
+
+После ручной настройки пользователем создана Apple Development identity. Read-only
+проверка сначала обнаружила MissingIntermediate; с официальным Apple WWDR G3
+(`dcf21878c77f4198e4b4614f03d696d89c66c66008d4244e1b99161aac91601f`)
+проверка цепочки прошла без импорта/изменения trust агентом. Пользователь добавил
+intermediate вручную со стандартным trust; теперь найдено **1 valid identity**.
+Ни private key, ни пароли/токены не экспортировались. Прежние BLOCKED записи ниже
+остаются историческим evidence, не разрешением ad-hoc retry.
+
+Принятая граница нового host: отдельный UIKit Xcode application + **app-hosted
+XCTest bundle**, не CLI kexe в самодельной app. Kotlin appHostTest compilation
+экспортируется в static `SharedAppHostTests.framework`, загружаемый только XCTest
+bundle (host не линкует второй Kotlin runtime). Два Swift теста вызывают именно
+существующие Native Keychain tests через bounded result facade, без fake/skip.
+
+Владельцы/writers: подписанный development host имеет только собственную
+`TEAMID.bundleID` Keychain group; два теста создают service с новым UUID и удаляют
+только его. Normal product root/library/credential record не инициализируются.
+Секреты не входят в argv/JSON/Git; Team/identity выбираются только локально при
+разрешённой подписи. Gradle/host config не содержит персональный Team ID.
+Schema/миграция/release signing не меняются. Нет profile fetch, снятия entitlements,
+AMFI/SIP/ACL обхода или автоматического подтверждения системных запросов.
+
+Матрица результата: нет valid identity/нужен prompt → BLOCKED; local signature
+проверяется как non-ad-hoc + exact own entitlements до install; выполняются ровно
+2 настоящих XCTest cases на explicit owned iOS17; native Keychain error не считается
+пустым store/успехом. Только фактические2 PASS закрывают этот compartment, не весь
+P08/G4, LAContext, migration или release/physical gates.
+
 5 ноября 2026. **Runtime BLOCKED; не G4 PASS.** `KeychainCredentialStore` скомпилирован для обеих ARM Native-целей, но реальное чтение/запись ещё не подтверждены. Normal app/root не подключены.
 
 Позднее пользователь явно разрешил проверить/use **существующую Apple Development identity только для собственного isolated legitimate test-host/Keychain group**. Read-only `security find-identity -v -p codesigning` дал **0 valid identities**. Это разрешение не распространяется на создание сертификатов/аккаунтов, profiles fetch, production signing или store upload; они не выполнялись. Отсутствующий identity остаётся prerequisite, а не повод повторять ad-hoc AMFI путь. [Текущие native mechanics](native-owner-verification.md).

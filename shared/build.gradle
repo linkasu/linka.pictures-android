@@ -54,6 +54,11 @@ kotlin {
                 compilation = appHostTests
                 baseName = 'AppHostTests'
             }
+            target.binaries.framework('appHost', [org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG]) {
+                compilation = appHostTests
+                baseName = 'SharedAppHostTests'
+                isStatic = true
+            }
         }
     }
     androidTarget {
