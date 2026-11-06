@@ -151,7 +151,7 @@ Library/message selectors сверены с UI source `ad8ed7c`: `Ваши на�
 `ХОЧУ КУШАТЬ` не требуются; merge-dependent countNamed удалён.
 
 UI определяется actual text/content-description. `namedHitBounds` проверяет
-visible/enabled/non-password именованный узел и ближайший enabled visible clickable
+visible/enabled/non-password/**non-editable** именованный узел и ближайший enabled visible clickable
 ancestor, затем нажимается центр **именованного** bounds после пересечения с
 ancestor и активным окном. Пустое пересечение запрещает tap; fallback на центр
 широкой строки, doubletap или ослабление SAF-return predicate отсутствуют.
@@ -171,6 +171,12 @@ com.android.documentsui/com.google.android.documentsui. Неожиданное �
 Исправление использует label hotspot; небольшой Rect regression покрывает эти
 bounds, clipping и пустое пересечение. Эта lane проверяет compile, не device:
 повторный настоящий SAF run и визуальная приёмка остаются за primary, **PASS нет**.
+Второй parent RED после point correction: matcher выбрал editable
+`search_src_text` (AutoCompleteTextView) с тем же basename вместо non-editable
+`android:id/title` результата. Общий `isNamedClickCandidate` теперь исключает
+editable как для availability (`visibleNamed`), так и для tap; flags regression
+различает query/result с одинаковым именем. Search/Field изменяются только через
+отдельный `replaceText`/`setField`; IME, SAF-return и point clipping не обходятся.
 Новые начальные route/toolbar selectors должны быть интегрированы из UI lane:
 исходный runtime dependency этого worktree ещё начинает с сообщения и поэтому
 UI tests в одиночку до интеграции navigation lane ожидаемо не пройдут.

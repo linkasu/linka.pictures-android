@@ -329,10 +329,20 @@ class DevelopmentParityTest {
     private fun visibleNamedBounds(named: Rect, clickable: Rect, window: Rect): Rect? =
         Rect(named).takeIf { it.intersect(clickable) && it.intersect(window) }
 
+    @Test fun namedClickCandidateRejectsSearchQueryButAcceptsResultWithSameName() {
+        assertFalse(isNamedClickCandidate(named = true, enabled = true, editable = true))
+        assertTrue(isNamedClickCandidate(named = true, enabled = true, editable = false))
+        assertFalse(isNamedClickCandidate(named = true, enabled = false, editable = false))
+        assertFalse(isNamedClickCandidate(named = false, enabled = true, editable = false))
+    }
+
+    private fun isNamedClickCandidate(named: Boolean, enabled: Boolean, editable: Boolean) =
+        named && enabled && !editable
+
     private fun namedHitBounds(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean = false): Rect? {
         var bounds: Rect? = null
         find(root) { node ->
-            if (!node.isEnabled || !matches(node, labels)) false else {
+            if (!isNamedClickCandidate(matches(node, labels), node.isEnabled, node.isEditable)) false else {
                 var candidate: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
                 try {
                     while (candidate != null && !candidate.isClickable) {
