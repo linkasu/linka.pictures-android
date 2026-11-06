@@ -137,7 +137,8 @@ class TransferCoordinator(
 
     private suspend fun destination(op: Pending, name: String) {
         currentCoroutineContext().ensureActive()
-        val destination = take(files.chooseDestination(name, "application/zip", op.owner))
+        // Generic binary preserves custom .linka/.linkabackup names instead of DocumentsUI appending .zip.
+        val destination = take(files.chooseDestination(name, "application/octet-stream", op.owner))
         // A foreign handle never becomes ours, including for cleanup.
         if (destination.ownerId != op.owner) stop(ProblemCode.UNAUTHORIZED)
         op.resources.add(destination::close)

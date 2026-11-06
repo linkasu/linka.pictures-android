@@ -54,7 +54,7 @@ internal class TransferTestRig private constructor(val root: Path, val runtime: 
         }
         override suspend fun chooseDestination(suggestedName: String, mediaType: String, ownerId: String): OperationResult<ExportDestination> {
             assertTrue(suggestedName == "board.linka" || suggestedName == "library.linkabackup")
-            assertEquals("application/zip", mediaType)
+            assertEquals("application/octet-stream", mediaType)
             choose()
             return OperationResult.Completed(object : ExportDestination {
                 override val ownerId = ownerId
