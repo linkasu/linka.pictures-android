@@ -20,6 +20,7 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
     var acceptedCapability: AssistantCapability? = null
     var beforeGuard: (() -> Unit)? = null
     val recordCalls = MutableStateFlow(0)
+    val mediaIoCalls = MutableStateFlow(0)
     var throwOnSource = false
     var throwOnStop = false
     var throwOnDiscard = false
@@ -32,6 +33,7 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
     private var serial = 0
     fun temporary() = TemporaryFile("/fake-authoring-owned/${serial++}")
     override suspend fun pick(kind: PickedFileKind, ownerId: String): OperationResult<TemporaryFile> {
+        mediaIoCalls.value++
         pickEntered.complete(Unit)
         val result = pickResult ?: return OperationResult.Completed(temporary())
         return if (ignorePickCancellation) withContext(NonCancellable) { result.await() } else result.await()
@@ -48,7 +50,10 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
         if (throwOnDiscard) error("Controlled discard failure")
     }
     override suspend fun prepareImage(file: LocalFile): OperationResult<TemporaryFile> = OperationResult.Completed(temporary())
-    override suspend fun imageFromText(request: TextImageRequest): OperationResult<TemporaryFile> = OperationResult.Completed(temporary())
+    override suspend fun imageFromText(request: TextImageRequest): OperationResult<TemporaryFile> {
+        mediaIoCalls.value++
+        return OperationResult.Completed(temporary())
+    }
     override suspend fun image(file: LocalFile): OperationResult<ImageInfo> = OperationResult.Completed(imageSize)
     override suspend fun audio(file: LocalFile): OperationResult<AudioInfo> = OperationResult.Completed(AudioInfo(audioDuration, "audio/wav"))
     override fun play(request: PlaybackRequest) {
@@ -62,7 +67,10 @@ internal class AuthoringNativeFakes : PlatformFilesPort, ImagePreparationPort, M
         if (throwOnStop) error("Controlled stop failure")
     }
     override fun interrupt() { state.value.owner?.let { stop(it.id) } }
-    override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> = OperationResult.Completed(temporary())
+    override suspend fun synthesize(request: SynthesisRequest): OperationResult<TemporaryFile> {
+        mediaIoCalls.value++
+        return OperationResult.Completed(temporary())
+    }
     override suspend fun record(request: RecordingRequest): OperationResult<TemporaryFile> {
         recordCalls.value++
         state.value = AudioState(request.id, request.owner, AudioPhase.RECORDING)

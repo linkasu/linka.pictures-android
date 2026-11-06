@@ -132,7 +132,7 @@ class AuthoringSession(
             AuthoringAction.Close, AuthoringAction.ForceDiscard, AuthoringAction.CancelMedia,
             AuthoringAction.CancelCard, AuthoringAction.CancelGrid, is AuthoringAction.OpenCard,
             is AuthoringAction.OpenGrid, is AuthoringAction.NewBoard, is AuthoringAction.EditBoard,
-            is AuthoringAction.ResumeDraft -> dropPendingAdoption()
+            is AuthoringAction.ResumeDraft, is AuthoringAction.ChangeCardKind -> dropPendingAdoption()
             else -> Unit
         }
         if (action == AuthoringAction.Background || action == AuthoringAction.Revoke) {
@@ -252,6 +252,11 @@ class AuthoringSession(
                     is AuthoringAction.SetCell -> setCell(action)
                     is AuthoringAction.MoveCell -> moveCell(action)
                     is AuthoringAction.OpenCard -> openCard(action)
+                    is AuthoringAction.ChangeCardKind -> {
+                        val form = draft.form as? EditorForm.Card ?: return
+                        cancelMedia()
+                        change(draft.copy(form = form.copy(kind = action.kind)))
+                    }
                     is AuthoringAction.ChangeCard -> {
                         val form = draft.form as? EditorForm.Card ?: return
                         if (validText(action.label) && validText(action.speechText)) {
@@ -596,7 +601,9 @@ class AuthoringSession(
     }
 
     private fun setCell(action: AuthoringAction.SetCell) {
-        if (action.kind == CellKind.CONTENT) { openCard(AuthoringAction.OpenCard(action.pageId, action.position)); return }
+        if (action.kind == CellKind.CONTENT) {
+            openCard(AuthoringAction.OpenCard(action.pageId, action.position), CellKind.CONTENT); return
+        }
         val document = state.value.draft!!.document
         val page = document.pages.firstOrNull { it.id == action.pageId } ?: return
         if (action.position !in 0 until page.capacity) { report(ProblemCode.INVALID_DATA); return }
@@ -627,13 +634,14 @@ class AuthoringSession(
         changeDocument(document.copy(pages = pages))
     }
 
-    private fun openCard(action: AuthoringAction.OpenCard) {
+    private fun openCard(action: AuthoringAction.OpenCard, preferredKind: CellKind? = null) {
         val draft = state.value.draft!!
         if (draft.form != null) { report(ProblemCode.UNFINISHED_FORM); return }
         val page = draft.document.pages.firstOrNull { it.id == action.pageId } ?: return
         if (action.position !in 0 until page.capacity) { report(ProblemCode.INVALID_DATA); return }
         cancelMedia()
-        val card = page.cells.firstOrNull { it.position == action.position }?.card
+        val cell = page.cells.firstOrNull { it.position == action.position }
+        val card = cell?.card
         val speech = card?.speech
         val form = EditorForm.Card(page.id, action.position, card?.id ?: CardId(ids.next()),
             label = card?.label.orEmpty(), speechText = (speech as? SpeechSource.Tts)?.text.orEmpty(),
@@ -645,7 +653,7 @@ class AuthoringSession(
             image = card?.image, recording = (speech as? SpeechSource.Recording)?.assetId,
             audioText = (speech as? SpeechSource.Recording)?.audioText,
             audioVoice = (speech as? SpeechSource.Recording)?.audioVoice,
-            extensionsJson = card?.extensionsJson ?: "{}")
+            extensionsJson = card?.extensionsJson ?: "{}", kind = preferredKind ?: cell?.kind ?: CellKind.CONTENT)
         change(draft.copy(form = form))
     }
 
@@ -657,20 +665,22 @@ class AuthoringSession(
         val draft = state.value.draft!!
         val form = draft.form as? EditorForm.Card ?: return
         if (state.value.mediaBusy) { report(ProblemCode.UNFINISHED_FORM); return }
-        val speech = when (form.speechChoice) {
-            SpeechChoice.TTS -> SpeechSource.Tts(if (form.useLabelForSpeech) form.label else form.speechText, sourceLanguage(form))
-            SpeechChoice.RECORDING -> SpeechSource.Recording(form.recording ?: run {
-                report(ProblemCode.MISSING_ASSET); return
-            }, form.audioText, form.audioVoice)
-            SpeechChoice.NONE -> SpeechSource.None
-        }
         val page = draft.document.pages.firstOrNull { it.id == form.pageId } ?: run { report(ProblemCode.CONFLICT); return }
         val original = page.cells.firstOrNull { it.position == form.slotIndex }
-        if (original?.card == null && draft.document.pages.sumOf { p -> p.cells.count { it.kind == CellKind.CONTENT } } >= 100000) {
-            report(ProblemCode.LIMIT_EXCEEDED); return
-        }
-        val cell = BoardCell(form.slotIndex, CellKind.CONTENT,
-            CardDocument(form.cardId, form.label, form.image, speech, form.extensionsJson), original?.extensionsJson ?: "{}")
+        val card = if (form.kind == CellKind.CONTENT) {
+            if (original?.card == null && draft.document.pages.sumOf { p -> p.cells.count { it.kind == CellKind.CONTENT } } >= 100000) {
+                report(ProblemCode.LIMIT_EXCEEDED); return
+            }
+            val speech = when (form.speechChoice) {
+                SpeechChoice.TTS -> SpeechSource.Tts(if (form.useLabelForSpeech) form.label else form.speechText, sourceLanguage(form))
+                SpeechChoice.RECORDING -> SpeechSource.Recording(form.recording ?: run {
+                    report(ProblemCode.MISSING_ASSET); return
+                }, form.audioText, form.audioVoice)
+                SpeechChoice.NONE -> SpeechSource.None
+            }
+            CardDocument(form.cardId, form.label, form.image, speech, form.extensionsJson)
+        } else null
+        val cell = BoardCell(form.slotIndex, form.kind, card, original?.extensionsJson ?: "{}")
         cancelMedia()
         change(draft.copy(form = null, document = draft.document.copy(pages = draft.document.pages.map {
             if (it.id == page.id) it.copy(cells = it.cells.filter { it.position != cell.position } + cell) else it
@@ -700,6 +710,7 @@ class AuthoringSession(
 
     private fun startMedia(id: RequestId? = null, synthesized: Boolean = false, block: suspend () -> OperationResult<PreparedMedia>) {
         val form = state.value.draft?.form as? EditorForm.Card ?: return
+        if (form.kind != CellKind.CONTENT) { report(ProblemCode.INVALID_DATA); return }
         cancelMedia()
         val generation = mediaGeneration
         val token = resumedAt
@@ -809,6 +820,7 @@ class AuthoringSession(
 
     private fun preview() {
         val form = state.value.draft?.form as? EditorForm.Card ?: return
+        if (form.kind != CellKind.CONTENT) { report(ProblemCode.INVALID_DATA); return }
         if (state.value.mediaBusy) { report(ProblemCode.UNFINISHED_FORM); return }
         stopAudio()
         val segment = when (form.speechChoice) {

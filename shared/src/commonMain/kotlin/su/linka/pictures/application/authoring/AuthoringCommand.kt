@@ -27,6 +27,7 @@ sealed interface AuthoringAction {
     data class SetCell(val pageId: PageId, val position: Int, val kind: CellKind) : AuthoringAction
     data class MoveCell(val fromPage: PageId, val from: Int, val toPage: PageId, val to: Int) : AuthoringAction
     data class OpenCard(val pageId: PageId, val position: Int) : AuthoringAction
+    data class ChangeCardKind(val kind: CellKind) : AuthoringAction
     data class ChangeCard(
         val label: String,
         val speechText: String,

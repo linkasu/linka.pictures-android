@@ -13,6 +13,9 @@ import su.linka.pictures.storage.StorageRuntime
 import kotlin.test.*
 import kotlin.coroutines.CoroutineContext
 import okio.Source
+import okio.Path
+import su.linka.pictures.integration.CoreBackupFiles
+import su.linka.pictures.portability.backup.BackupCodec
 
 class AuthoringSessionTest {
     private class ControlledLibrary(private val real: LibraryStore, private val leases: AuthoringLeaseProbe) : LibraryStore by real {
@@ -78,7 +81,7 @@ class AuthoringSessionTest {
         }
     }
 
-    private class Fixture(val runtime: StorageRuntime, private val dispatcher: CoroutineDispatcher) {
+    private class Fixture(val runtime: StorageRuntime, private val dispatcher: CoroutineDispatcher, val root: Path) {
         val native = AuthoringNativeFakes()
         val leases = AuthoringLeaseProbe()
         val library = ControlledLibrary(runtime.library, leases)
@@ -113,9 +116,221 @@ class AuthoringSessionTest {
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "p11-authoring-${kotlin.random.Random.nextLong()}"
         fs.createDirectory(root, mustCreate = true)
         val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
-        val fixture = Fixture(runtime, dispatcher)
+        val fixture = Fixture(runtime, dispatcher, root)
         try { block(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
     }
+
+    @Test fun kindsAutosaveHiddenMediaBackupAndResumeAfterActualRuntimeReopen() = runTest {
+        for (kind in listOf(CellKind.SPACE, CellKind.EMPTY)) fresh { f ->
+            f.start(); f.open()
+            f.send(AuthoringAction.ChangeCard("Скрытая подпись", "Скрытая речь", SpeechChoice.TTS, false))
+            f.await { (it.draft?.form as? EditorForm.Card)?.label == "Скрытая подпись" }
+            f.send(AuthoringAction.PickImage)
+            f.await { (it.draft?.form as? EditorForm.Card)?.image != null && !it.mediaBusy }
+            f.send(AuthoringAction.PickAudio)
+            f.await { (it.draft?.form as? EditorForm.Card)?.recording != null && !it.mediaBusy }
+            val content = f.session.state.value.draft!!.form as EditorForm.Card
+            val document = f.session.state.value.draft!!.document
+            f.send(AuthoringAction.ChangeCardKind(kind))
+            val saved = f.await { (it.draft?.form as? EditorForm.Card)?.kind == kind && it.savePhase == DraftSavePhase.SAVED }.draft!!
+            assertEquals(content.copy(kind = kind), saved.form)
+            assertEquals(document, saved.document)
+            val roots = setOf(content.image!!, content.recording!!)
+            assertEquals(roots, saved.assetIds())
+            assertEquals(0, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+            val filesRoot = f.root / "backup-files"
+            FileSystem.SYSTEM.createDirectory(filesRoot)
+            CoreBackupFiles(FileSystem.SYSTEM, filesRoot).use { files ->
+                val snapshot = assertIs<OperationResult.Completed<SnapshotReader>>(f.runtime.library.snapshot()).value
+                try {
+                    assertEquals(roots, snapshot.lease.assets)
+                    val codec = BackupCodec(f.runtime.media, files, f.native, f.runtime.library)
+                    val output = assertIs<OperationResult.Completed<TemporaryFile>>(codec.write(snapshot)).value
+                    val imported = assertIs<OperationResult.Completed<SnapshotReader>>(codec.read(output)).value
+                    try {
+                        assertEquals(listOf(saved), imported.drafts().toList().map { it.draft })
+                        assertEquals(roots, imported.lease.assets)
+                    } finally { imported.close() }
+                } finally { snapshot.close() }
+            }
+            f.finish(); f.runtime.close()
+            val reopened = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(f.root, FileSystem.SYSTEM, BundledSQLiteDriver())).value
+            val resumed = Fixture(reopened, Dispatchers.Default, f.root)
+            try {
+                resumed.send(AuthoringAction.ResumeDraft(saved.id))
+                assertEquals(saved, resumed.await { it.phase == AuthoringPhase.EDITING }.draft)
+                assertEquals(0, resumed.native.recordCalls.value)
+                resumed.send(AuthoringAction.ChangeCardKind(CellKind.CONTENT))
+                assertEquals(content, resumed.await { (it.draft?.form as? EditorForm.Card)?.kind == CellKind.CONTENT && it.savePhase == DraftSavePhase.SAVED }.draft!!.form)
+                resumed.send(AuthoringAction.CancelCard)
+                assertEquals(document, resumed.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }.draft!!.document)
+            } finally { resumed.finish(); reopened.close() }
+        }
+    }
+
+    @Test fun everySourceKindOpensExactlyAndExplicitSetContentHasOneCorrectSnapshot() = runTest {
+        for (kind in CellKind.entries) fresh { f ->
+            val card = if (kind == CellKind.CONTENT) CardDocument(CardId("source"), "Подпись", extensionsJson = "{\"card\":1}") else null
+            val doc = BoardDocument(BoardId("source"), "Источник", listOf(BoardPage(PageId("page"), 1, 2,
+                listOf(BoardCell(0, kind, card, "{\"cell\":1}")))))
+            assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, WritePermit(0) { OperationResult.Completed(Unit) }))
+            f.send(AuthoringAction.EditBoard(doc.id)); f.saved(); f.open(); f.saved()
+            assertEquals(kind, (f.session.state.value.draft!!.form as EditorForm.Card).kind)
+            f.send(AuthoringAction.CancelCard)
+            assertEquals(doc, f.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }.draft!!.document)
+            f.library.delayed = true
+            f.send(AuthoringAction.SetCell(PageId("page"), 0, CellKind.CONTENT))
+            val opened = f.nextSave()
+            assertEquals(CellKind.CONTENT, (opened.draft.form as EditorForm.Card).kind)
+            assertEquals(doc, opened.draft.document)
+            opened.reply.complete(OperationResult.Completed(Unit)); f.saved()
+            assertTrue(f.library.saves.tryReceive().isFailure)
+        }
+    }
+
+    @Test fun saveEveryKindIsAtomicPreservesMetadataAndDoesNotPublishOrChangeMessageBeforeApply() = runTest {
+        for (kind in CellKind.entries) fresh { f ->
+            val original = CardDocument(CardId("source"), "Исходная", extensionsJson = "{\"card\":1}")
+            val doc = BoardDocument(BoardId("source"), "Источник", listOf(BoardPage(PageId("page"), 1, 1,
+                listOf(BoardCell(0, CellKind.CONTENT, original, "{\"cell\":1}")))))
+            val permit = WritePermit(0) { OperationResult.Completed(Unit) }
+            assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, permit))
+            val message = StoredMessage(0, 1, MessageDraft(listOf(MessagePart.Card(MessagePartId("message"),
+                CardSelectionSnapshot(SelectionOrigin(doc.id, 1, PageId("page"), original.id), original.label, null, original.speech)))))
+            assertIs<OperationResult.Completed<Unit>>(f.runtime.messages.saveMessage(message))
+            f.send(AuthoringAction.EditBoard(doc.id)); f.saved(); f.open()
+            f.send(AuthoringAction.ChangeCard("", "", if (kind == CellKind.CONTENT) SpeechChoice.NONE else SpeechChoice.RECORDING, true))
+            val beforeKind = f.await { (it.draft?.form as? EditorForm.Card)?.label == "" && it.savePhase == DraftSavePhase.SAVED }.durableVersion!!
+            f.send(AuthoringAction.ChangeCardKind(kind))
+            f.await { (it.draft?.form as? EditorForm.Card)?.kind == kind && it.savePhase == DraftSavePhase.SAVED && it.durableVersion!! > beforeKind }
+            f.library.delayed = true
+            f.send(AuthoringAction.SaveCard)
+            val save = f.nextSave()
+            assertNull(save.draft.form)
+            val cell = save.draft.document.pages.single().cells.single()
+            assertEquals(kind, cell.kind); assertEquals("{\"cell\":1}", cell.extensionsJson)
+            if (kind == CellKind.CONTENT) {
+                assertEquals(original.id, cell.card!!.id)
+                assertEquals(original.extensionsJson, cell.card.extensionsJson)
+                assertEquals("", cell.card.label)
+            } else assertNull(cell.card)
+            val before = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(save.draft.id)).value
+            assertNotNull(before.draft.draft.form); assertEquals(doc, before.draft.draft.document); before.lease.close()
+            save.reply.complete(OperationResult.Completed(Unit)); f.saved()
+            assertTrue(f.library.saves.tryReceive().isFailure)
+            val published = assertIs<OperationResult.Completed<LeasedBoard>>(f.runtime.library.board(doc.id)).value
+            assertEquals(doc, published.board.document); published.lease.close()
+            assertEquals(message, assertIs<OperationResult.Completed<StoredMessage>>(f.runtime.messages.message()).value)
+            f.send(AuthoringAction.Apply)
+            assertEquals(kind, f.await { it.phase == AuthoringPhase.APPLIED }.published!!.document.pages[0].cells[0].kind)
+            assertEquals(message, assertIs<OperationResult.Completed<StoredMessage>>(f.runtime.messages.message()).value)
+        }
+    }
+
+    @Test fun nonContentCommandsRejectBeforeAnyMediaOrAudioIoAndFinishCannotRestartRecording() = runTest {
+        for (kind in listOf(CellKind.SPACE, CellKind.EMPTY)) fresh { f ->
+            f.start(); f.open()
+            f.send(AuthoringAction.ChangeCard("Текст", "Речь", SpeechChoice.TTS, false))
+            f.send(AuthoringAction.ChangeCardKind(kind))
+            f.await { (it.draft?.form as? EditorForm.Card)?.kind == kind && it.savePhase == DraftSavePhase.SAVED }
+            val before = f.session.state.value.draft
+            for (action in listOf(AuthoringAction.PickImage, AuthoringAction.PickAudio, AuthoringAction.Record,
+                AuthoringAction.ImageFromText("Текст"), AuthoringAction.Synthesize, AuthoringAction.Preview)) f.send(action)
+            f.send(AuthoringAction.FinishRecording); f.send(AuthoringAction.CancelMedia)
+            // A serial actor sentinel proves all preceding commands have been handled.
+            f.details("Барьер")
+            f.await { it.draft?.document?.name == "Барьер" && it.savePhase == DraftSavePhase.SAVED }
+            assertEquals(ProblemCode.INVALID_DATA, f.session.state.value.problem?.code)
+            assertEquals(before!!.form, f.session.state.value.draft!!.form)
+            assertEquals(0, f.native.mediaIoCalls.value)
+            assertEquals(0, f.native.recordCalls.value); assertTrue(f.native.played.isEmpty())
+            assertFalse(f.session.state.value.mediaBusy)
+        }
+    }
+
+    @Test fun kindSwitchCancelsPendingPickerAndDiscardsLateOwnedTemporaryWithoutAdoption() = runTest { fresh { f ->
+        f.start(); f.open()
+        val pending = CompletableDeferred<OperationResult<TemporaryFile>>()
+        f.native.pickResult = pending; f.native.ignorePickCancellation = true
+        f.send(AuthoringAction.PickImage); f.await { it.mediaBusy }
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.native.pickEntered.await() } }
+        f.send(AuthoringAction.ChangeCardKind(CellKind.SPACE))
+        f.await { (it.draft?.form as? EditorForm.Card)?.kind == CellKind.SPACE && !it.mediaBusy }
+        val file = f.native.temporary(); pending.complete(OperationResult.Completed(file))
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.native.discarded.first { file.path in it } } }
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).image)
+        f.send(AuthoringAction.ChangeCardKind(CellKind.CONTENT))
+        f.await { (it.draft?.form as? EditorForm.Card)?.kind == CellKind.CONTENT && it.savePhase == DraftSavePhase.SAVED }
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).image)
+        f.finish(); assertEquals(0, f.leases.active.value)
+    } }
+
+    @Test fun kindSwitchCancelsRecordingAndDoesNotResumeItOnReturnToContent() = runTest { fresh { f ->
+        f.start(); f.open(); f.native.recording = CompletableDeferred()
+        f.send(AuthoringAction.Record); f.await { it.audio.phase == AudioPhase.RECORDING }
+        f.send(AuthoringAction.ChangeCardKind(CellKind.EMPTY))
+        f.await { (it.draft?.form as? EditorForm.Card)?.kind == CellKind.EMPTY && !it.mediaBusy }
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.native.recordingCancelled.await() } }
+        f.send(AuthoringAction.FinishRecording)
+        f.send(AuthoringAction.ChangeCardKind(CellKind.CONTENT))
+        f.await { (it.draft?.form as? EditorForm.Card)?.kind == CellKind.CONTENT && it.savePhase == DraftSavePhase.SAVED }
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).recording)
+        assertEquals(1, f.native.recordCalls.value)
+        assertEquals(AudioPhase.IDLE, f.session.state.value.audio.phase)
+    } }
+
+    @Test fun cancellingEveryChangedFormKindLeavesOriginalDocumentExact() = runTest {
+        for (kind in CellKind.entries) fresh { f ->
+            val card = CardDocument(CardId("cancel"), "Не менять", extensionsJson = "{\"card\":7}")
+            val document = BoardDocument(BoardId("cancel"), "Источник", listOf(BoardPage(PageId("page"), 1, 1,
+                listOf(BoardCell(0, CellKind.CONTENT, card, "{\"cell\":8}")))))
+            assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(document, WritePermit(0) { OperationResult.Completed(Unit) }))
+            f.send(AuthoringAction.EditBoard(document.id)); f.saved(); f.open()
+            f.send(AuthoringAction.ChangeCard("Не сохранять", "", SpeechChoice.RECORDING, false))
+            f.send(AuthoringAction.ChangeCardKind(kind)); f.send(AuthoringAction.CancelCard)
+            val cancelled = f.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }
+            assertEquals(document, cancelled.draft!!.document)
+            val stored = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(cancelled.draft.id)).value
+            assertEquals(document, stored.draft.draft.document); assertNull(stored.draft.draft.form); stored.lease.close()
+        }
+    }
+
+    @Test fun kindCommandDropsPendingReauthenticationAdoptionButDoesNotBypassPausedGate() = runTest { fresh { f ->
+        f.capability = prepareUnauthorizedPickerResult(f)
+        assertEquals(1, f.leases.active.value)
+        f.send(AuthoringAction.ChangeCardKind(CellKind.SPACE))
+        withContext(Dispatchers.Default) { withTimeout(10_000) { f.leases.active.first { it == 0 } } }
+        assertEquals(AuthoringPhase.PAUSED, f.session.state.value.phase)
+        assertEquals(CellKind.CONTENT, (f.session.state.value.draft!!.form as EditorForm.Card).kind)
+        f.send(AuthoringAction.Resume); f.await { it.phase == AuthoringPhase.EDITING }
+        f.send(AuthoringAction.ChangeCardKind(CellKind.SPACE))
+        f.await { (it.draft?.form as? EditorForm.Card)?.kind == CellKind.SPACE && it.savePhase == DraftSavePhase.SAVED }
+        assertNull((f.session.state.value.draft!!.form as EditorForm.Card).image)
+        assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+    } }
+
+    @Test fun conflictAllowsKindEditsButCannotApplyAndUnknownCommitIgnoresKindCommands() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeCardKind(CellKind.SPACE))
+        f.nextSave().reply.complete(OperationResult.Failed(Problem(ProblemCode.CONFLICT)))
+        f.await { it.phase == AuthoringPhase.CONFLICT }
+        f.send(AuthoringAction.ChangeCardKind(CellKind.EMPTY))
+        val conflicted = f.nextSave()
+        assertEquals(CellKind.EMPTY, (conflicted.draft.form as EditorForm.Card).kind)
+        conflicted.reply.complete(OperationResult.Completed(Unit)); f.saved()
+        f.send(AuthoringAction.CancelCard)
+        val closingForm = f.nextSave()
+        closingForm.reply.complete(OperationResult.Completed(Unit))
+        f.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }
+        f.send(AuthoringAction.Apply); f.await { it.problem?.code == ProblemCode.CONFLICT }
+        f.open()
+        f.nextSave().reply.complete(OperationResult.UnconfirmedCommit)
+        val frozen = f.await { it.phase == AuthoringPhase.UNCONFIRMED }
+        f.send(AuthoringAction.ChangeCardKind(CellKind.SPACE))
+        f.finish(); assertEquals(frozen, f.session.state.value)
+        assertTrue(f.library.saves.tryReceive().isFailure)
+    } }
 
     @Test fun createFormSaveAndApplyUseRealSqliteAndDistinctLabelSpeech() = runTest { fresh { f ->
         f.start(); f.open()

@@ -2,11 +2,14 @@ package su.linka.pictures.domain
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 
 @Serializable enum class SpeechChoice { TTS, RECORDING, NONE }
 
 @Serializable
 sealed interface EditorForm {
+    @OptIn(ExperimentalSerializationApi::class)
     @Serializable @SerialName("card")
     data class Card(
         val pageId: PageId,
@@ -21,6 +24,8 @@ sealed interface EditorForm {
         val audioText: String? = null,
         val audioVoice: String? = null,
         val extensionsJson: String = "{}",
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val kind: CellKind = CellKind.CONTENT,
     ) : EditorForm {
         init { require(slotIndex >= 0) }
     }
