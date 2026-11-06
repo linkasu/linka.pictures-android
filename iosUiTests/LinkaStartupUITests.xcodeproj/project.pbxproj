@@ -25,7 +25,7 @@
         };
         D00000000000000000000003 = {
             isa = PBXGroup;
-            children = (D00000000000000000000007, D00000000000000000000004);
+            children = (D00000000000000000000007, D0000000000000000000000D, D00000000000000000000004);
             sourceTree = "<group>";
         };
         D00000000000000000000004 = {
@@ -70,7 +70,7 @@
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Debug;
         };
-        D0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (D0000000000000000000000C); runOnlyForDeploymentPostprocessing = 0; };
+        D0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (D0000000000000000000000C, D0000000000000000000000E); runOnlyForDeploymentPostprocessing = 0; };
         D0000000000000000000000B = {
             isa = XCBuildConfiguration;
             buildSettings = {
@@ -82,6 +82,8 @@
             name = Debug;
         };
         D0000000000000000000000C = { isa = PBXBuildFile; fileRef = D00000000000000000000007; };
+        D0000000000000000000000D = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaStartupUITests/FilledBoardImportTests.swift; sourceTree = "<group>"; };
+        D0000000000000000000000E = { isa = PBXBuildFile; fileRef = D0000000000000000000000D; };
     };
     rootObject = D00000000000000000000001;
 }
