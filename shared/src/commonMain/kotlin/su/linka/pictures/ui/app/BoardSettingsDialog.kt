@@ -86,12 +86,14 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
                 val admission = gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner)
                 if (admission !is OperationResult.Completed) result = admission
                 else {
+                    val modeGuard = gate.guard(ProtectedAction.CHANGE_SETTINGS, capability, owner)
                     busy = true
                     scope.launch {
                         try {
                             val saved = saveBoardSettings(controller, owner, capability, loaded, board, pager, selectedMode,
                                 { currentOnSaved(it) }, { chosen ->
-                                    if (currentEnabled && gate.check(ProtectedAction.CHANGE_SETTINGS, currentCapability, owner) is OperationResult.Completed)
+                                    if (currentEnabled && modeGuard() is OperationResult.Completed &&
+                                        gate.check(ProtectedAction.CHANGE_SETTINGS, currentCapability, owner) is OperationResult.Completed)
                                         currentOnSetMode(chosen)
                                 })
                             result = saved

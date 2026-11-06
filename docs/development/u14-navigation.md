@@ -15,16 +15,16 @@ Persisted state, schema, writers и counters не меняются. Settings п�
 
 Image demand привязан к реальному route/epoch/session, берётся только из composed visible demand. Старый owner не должен очищать demand нового. UI auto-entry живёт исключительно в presentation: navigator не отправляет authoring initial commands; guard AuthoringSession неизменен.
 
-## Integration seam (ещё не подключён в этой lane)
+## Подключённые public seams
 
-На базе `21bbbeb + a9fc68c` CommunicationScreen не имеет `onOpenBoardSettings`, а LibraryScreen ещё не имеет trailing `gate`. Чужие модули не изменены. После их интеграции parent должен:
+Public dependencies `04c0d56` и `97a4332` подключены отдельными cherry-pick, без собственных правок чужих модулей. В LinkaApp:
 
-- Передать настоящий `access` в LibraryScreen.gate.
-- Связать communication callback с `navigate(SETTINGS, board = message.message.cursor?.boardId)`.
-- Для SETTINGS с boardId показать CommunicationScreen под `BoardSettingsDialog`, закрывать обратно в COMMUNICATION. Обычный SETTINGS без boardId оставить глобальным экраном.
-- Исключить только board-scoped SETTINGS из существующего audio.interrupt/CommunicationCommand.Stop при входе; глобальный SETTINGS сохраняет прежнее поведение. Сохранить canonical authorization owner и весь navigation close guard.
-- В dialog.onSaved обновить portable settings; в onSetMode явно dispatch SetMode. Сам dialog вызывает onSetMode только после Completed и дополнительной актуальной context-проверки. После конфликта сохраняет snapshot и ввод; после unknown блокирует повтор.
-- Учитывать communication image demand, пока CommunicationScreen видим под модальным окном; не запрашивать целую page и не сбрасывать message.
+- Настоящий `access` передан в LibraryScreen.gate и SettingsScreen.gate; SettingsScreen.onAccess открывает ACCESS.
+- Communication callback вызывает `navigate(SETTINGS, board = capturedBoardId)`.
+- SETTINGS с boardId показывает CommunicationScreen под `BoardSettingsDialog`, закрывается обратно в COMMUNICATION. Обычный SETTINGS без boardId остаётся глобальным экраном.
+- Только board-scoped SETTINGS исключён из audio.interrupt/CommunicationCommand.Stop при входе; глобальный SETTINGS сохраняет прежнее поведение. Canonical authorization owner и navigation close guard сохранены.
+- dialog.onSaved обновляет portable settings; onSetMode явно dispatch SetMode. Dialog вызывает onSetMode только после Completed, проверки исходного generation guard и дополнительной актуальной context-проверки; root дополнительно проверяет identity маршрута. После конфликта сохраняет snapshot и ввод; после unknown блокирует повтор.
+- Communication image demand учитывается, пока CommunicationScreen видим под модальным окном; целая page не запрашивается, message не сбрасывается.
 
 Встроенный icon pack в текущих dependencies отсутствует: back использует доступный 48dp IconButton с текстовым шевроном и contentDescription, без новой зависимости. Старый ImageDemand.kt сохранён, поскольку у него остаются собственные тесты; root больше его не вызывает.
 

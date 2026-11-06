@@ -246,6 +246,15 @@ class ProductNavigationTest {
         f.navigation.start()
         assertSame(request, f.active.value)
         f.navigation.open(ProductPage.COMMUNICATION)
+        val messageBeforeSettings = f.communication.state.value.message
+        f.navigation.open(ProductPage.SETTINGS, boardId = first.id)
+        assertEquals(ProductPage.SETTINGS, f.navigation.route.value?.page)
+        assertEquals(first.id, f.navigation.route.value?.boardId)
+        assertSame(request, f.active.value)
+        assertEquals(interrupts, f.interrupts.value)
+        assertEquals(messageBeforeSettings, f.communication.state.value.message)
+        f.navigation.open(ProductPage.COMMUNICATION)
+        assertSame(request.plan, f.active.value?.plan)
         f.communication.dispatch(CommunicationCommand.ChangePage(CommandId(f.ids.next()), PageId("second")))
         f.awaitCommunication { it.message.cursor?.pageId == PageId("second") && it.savePhase == MessageSavePhase.SAVED }
         f.navigation.open(ProductPage.LIBRARY)

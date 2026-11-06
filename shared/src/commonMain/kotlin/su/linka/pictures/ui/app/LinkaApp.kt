@@ -83,36 +83,52 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
         null, ProductPage.COMMUNICATION -> if (started) communicationAssets else emptySet()
         ProductPage.LIBRARY -> libraryAssets
         ProductPage.EDITOR -> editorAssets
+        ProductPage.SETTINGS -> if (route?.boardId != null) communicationAssets else emptySet()
         else -> emptySet()
     }
     LaunchedEffect(navigation, requested) { assetsNeeded(requested) }
     LinkaTheme(dark, settings.highContrast, settings.textScale) {
         val current = route
-        if (!started || transitioning) {
+        val boardSettings = current?.page == ProductPage.SETTINGS && current.boardId != null
+        val communicationVisible = current == null || boardSettings
+        val capability = current?.capability?.collectAsState()?.value
+        val transferState = current?.transfer?.state?.collectAsState()?.value?.values
+            ?.lastOrNull { it.ownerId == current.owner }
+        val contextAction = when (current?.page) {
+            ProductPage.EDITOR -> current.initialAction?.initialProtectedAction()
+            ProductPage.SETTINGS -> ProtectedAction.CHANGE_SETTINGS
+            ProductPage.TRANSFER -> transferState?.kind?.let(::transferProtectedAction)
+            else -> null
+        }
+        val accessPanel: @Composable () -> Unit = {
+            if (current != null) AssistantAccessPanel(access, current.owner, capability, commandsEnabled,
+                current.page == ProductPage.ACCESS, contextAction,
+                transferState?.transfer?.phase == TransferPhase.AWAITING_CONFIRMATION) {
+                current.capability.value = it
+            }
+        }
+        if (!started || (transitioning && !communicationVisible)) {
             Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                 androidx.compose.material.CircularProgressIndicator()
             }
-        } else if (current == null) {
-            CommunicationScreen(message, ids, voices, { if (isForeground) communication.dispatch(it) },
+        } else if (communicationVisible) {
+            val currentBoard = message.message.cursor?.boardId
+            CommunicationScreen(message, ids, voices, { if (isForeground && current == null) communication.dispatch(it) },
                 { navigate(ProductPage.LIBRARY) }, images,
-                showPageButtons = settings.boards[message.message.cursor?.boardId]?.showPageButtons ?: true,
-                onImagesNeeded = { communicationAssets = it })
+                showPageButtons = settings.boards[currentBoard]?.showPageButtons ?: true,
+                onImagesNeeded = { communicationAssets = it },
+                onOpenBoardSettings = currentBoard?.let { board -> {
+                    if (commandsEnabled && current == null) navigate(ProductPage.SETTINGS, board = board)
+                } })
+            if (boardSettings) key(current.owner) {
+                BoardSettingsDialog(library, controller, access, current.owner, capability, current.boardId!!,
+                    message.message.mode, commandsEnabled, accessPanel, { settings = it },
+                    { mode ->
+                        if (isForeground && navigation.route.value === current)
+                            communication.dispatch(CommunicationCommand.SetMode(CommandId(ids.next()), mode))
+                    }, { if (navigation.route.value === current) navigate(ProductPage.COMMUNICATION) })
+            }
         } else key(current.owner) {
-            val capability by current.capability.collectAsState()
-            val transferState = current.transfer?.state?.collectAsState()?.value?.values
-                ?.lastOrNull { it.ownerId == current.owner }
-            val contextAction = when (current.page) {
-                ProductPage.EDITOR -> current.initialAction?.initialProtectedAction()
-                ProductPage.SETTINGS -> ProtectedAction.CHANGE_SETTINGS
-                ProductPage.TRANSFER -> transferState?.kind?.let(::transferProtectedAction)
-                else -> null
-            }
-            val accessPanel: @Composable () -> Unit = {
-                AssistantAccessPanel(access, current.owner, capability, commandsEnabled, current.page == ProductPage.ACCESS,
-                    contextAction, transferState?.transfer?.phase == TransferPhase.AWAITING_CONFIRMATION) {
-                    current.capability.value = it
-                }
-            }
             when (current.page) {
                 ProductPage.LIBRARY -> LibraryScreen(library, controller, current.owner, capability, commandsEnabled,
                     images, { libraryAssets = it }, accessPanel, { navigate(ProductPage.COMMUNICATION) },
@@ -123,9 +139,10 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                     { navigate(ProductPage.EDITOR, AuthoringAction.EditBoard(it)) },
                     { navigate(ProductPage.EDITOR, AuthoringAction.ResumeDraft(it)) },
                     { navigate(ProductPage.SETTINGS) }, { navigate(ProductPage.ACCESS) },
-                    { navigate(ProductPage.TRANSFER, board = it) })
+                    { navigate(ProductPage.TRANSFER, board = it) }, gate = access)
                 ProductPage.SETTINGS -> SettingsScreen(library, controller, audio, current.owner, capability, commandsEnabled,
-                    dark, { dark = it }, { settings = it }, accessPanel, { navigate(ProductPage.LIBRARY) })
+                    dark, { dark = it }, { settings = it }, accessPanel, { navigate(ProductPage.LIBRARY) },
+                    gate = access, onAccess = { navigate(ProductPage.ACCESS) })
                 ProductPage.ACCESS -> ProductScaffold("Защита помощника", { navigate(ProductPage.LIBRARY) }) { accessPanel() }
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
                     commandsEnabled, isForeground, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })

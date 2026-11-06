@@ -67,8 +67,10 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
             if (!closed || disposed.value || page == ProductPage.COMMUNICATION || problem.value?.code == ProblemCode.IO_FAILURE) return@withLock
             when (page) {
                 ProductPage.EDITOR, ProductPage.SETTINGS, ProductPage.ACCESS, ProductPage.TRANSFER -> {
-                    cleanup { audio.interrupt() }
-                    cleanup { communication.dispatch(CommunicationCommand.Stop(CommandId(ids.next()))) }
+                    if (page != ProductPage.SETTINGS || boardId == null) {
+                        cleanup { audio.interrupt() }
+                        cleanup { communication.dispatch(CommunicationCommand.Stop(CommandId(ids.next()))) }
+                    }
                     if (problem.value?.code == ProblemCode.IO_FAILURE) return@withLock
                 }
                 else -> Unit
