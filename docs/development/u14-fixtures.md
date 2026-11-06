@@ -48,14 +48,39 @@ primary. Здесь production root/reader не менялись. Устарев
 `incomingFixtureRequiresExplicitUiImport`, ожидавший notice от file URI, удалён,
 а не оставлен заведомо падающим или замаскированным тестом.
 
-**Принятое минимальное решение:** полноценный импорт не использует incoming URI.
+**API35: настоящий SAF, без подмены incoming URI.**
 Primary через MCP заранее копирует **только этот архив** в Downloads собственного
 API35 под уникальным именем **LINKa-U14-HOCHU-cfb199d.linka**, измеряет SHA/размер,
 проверяет read state и фиксирует provenance. Тест выбирает этот файл в настоящем
-DocumentsUI, приложение получает штатный SAF content URI/read grant. Нет provider,
-owner bootstrap, StrictMode relax, permission grants, guessed URI или SQL.
-Имеющихся платформенных средств достаточно. Для API21 staging/provider read state
-проверяет primary отдельно; API35 compile не доказывает API21 PASS.
+DocumentsUI, приложение получает штатный SAF content URI/read grant. Этот сценарий
+не использует fixture FileProvider, owner bootstrap, StrictMode relax, runtime
+permission grants, guessed URI или SQL и не заменён API21-сценарием ниже.
+
+**API21: отдельный owned incoming-content путь, не SAF proof.** У выбранного AVD
+нет mounted Downloads/external storage; reset/recreate ради visual slice не нужен.
+Primary добавил в **target debug APK** стандартный `androidx.core.content.FileProvider`:
+authority `${applicationId}.parity-fixtures`, exported=false, grantUriPermissions=true,
+XML только `<cache-path name="u14-fixtures" path="u14-fixtures/"/>`.
+Это provider target UID, не test-APK provider и не custom framework; в этой lane
+manifest/XML не менялись и foreign WIP не копировался.
+
+`filledBoardThroughOwnedIncomingContent` проверяет PackageManager providerInfo
+(authority/class/package/UID/enabled/exported/grantUriPermissions), debuggable
+target и canonical containment cache/u14-fixtures. После общей проверки пустого UI
+создаёт **одну уникальную** cache-копию неизменённого asset, получает URI через
+`FileProvider.getUriForFile`, проверяет точные URI path segments и SHA через
+настоящий ContentResolver. Затем same-UID native
+`Instrumentation.callActivityOnNewIntent(ACTION_VIEW, application/octet-stream)`
+доставляет URI в реальный DevelopmentActivity. Никаких URI grants другому UID.
+Notice и пустая библиотека проверяются до выбора import; дальше общие реальные
+UI prepare → preview → новая capability через UI → ImportNew → grid/phrase.
+После постановки incoming все UI waits разрешают **только target package**:
+DocumentsUI в этом варианте — ошибка, не fallback на другой способ ввода.
+Копия сохраняется до terminal import/проверки фразы; в finally проверяются SHA
+источника и копии, удаляется только эта копия. На ошибке Activity/owner закрывается
+перед удалением; directory/чужие handles/пользовательские файлы не удаляются.
+Это incoming-content + visual/data-state fixture path; **API21 SAF picker и
+cross-UID OS read-grant остаются OPEN**.
 
 Реализованный путь `filledBoardThroughRealSafImport`: **Ваши наборы** → проверка
 пустой библиотеки → **Меню библиотеки → К сообщению** → каноническое
@@ -81,8 +106,8 @@ UI no-autoplay проверяется по состоянию, реальное 
 `DevelopmentParityTest.baselineFixtureHasUnmodifiedNineCardMedia` проверяет SHA,
 версию/сетку/порядок и наличие ненулевых байтов всех 18 медиа.
 
-`filledBoardThroughRealSafImport` до запуска Activity проверяет development
-package/UID, SHA упакованной fixture и обязательные
+Оба import-метода и reopen до запуска Activity проверяют development
+package/UID/debuggable, SHA упакованной fixture и обязательные
 instrumentation arguments:
 
 ```text
@@ -90,7 +115,7 @@ u14FixtureName=LINKa-U14-HOCHU-cfb199d.linka
 u14FixtureSha256=a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b
 ```
 
-SHA-argument — аттестация **измеренного primary** Downloads-файла, не вычисление
+Для SAF SHA-argument — аттестация **измеренного primary** Downloads-файла, не вычисление
 тестом через чужую файловую систему: до выдачи SAF grant файл напрямую не читается.
 Его доступность подтверждается точным filename в реальном DocumentsUI **до выбора**,
 preview/counts и карточки проверяются до и после явного commit соответственно.
@@ -104,11 +129,18 @@ failure с инструкцией reopen-only; никаких дубликато
 
 `reopenFilledBoardWithoutImportOrMessageEdits` требует те же два arguments,
 существующую development-библиотеку, открывает ХОЧУ и проверяет grid/filled phrase;
-не импортирует, не редактирует фразу, не произносит и не очищает. UI открытия доски
+затем отправляет настоящий `KEYCODE_BACK`, ждёт Ваши наборы, повторно открывает
+ХОЧУ и проверяет те же 9 карточек и сохранённую фразу. Это actual Back dispatcher
+regression, не pure navigation calculation. Native `Window.setBackHandler` /
+`LinkaApp.onBackHandlerChanged` связывает primary; до интеграции и device-run PASS нет.
+Не импортирует, не редактирует фразу, не произносит и не очищает. UI открытия доски
 может штатно сохранить cursor. При отсутствии нужного состояния тест останавливается.
 
 Успешный full/reopen test отправляет только passive instrumentation status
-`u14State=board-filled`, fixture SHA, message parts, `UI_STATE_READY_ONLY`.
+`u14State=board-filled`, fixture SHA, message parts, `UI_STATE_READY_ONLY` и
+`u14InputPath`: `real-saf`, `owned-incoming-content; SAF-picker/OS-grant NOT evaluated`
+или `reopen-native-back-regression`. В capture-журнале сохранять фактический путь
+получения, не выдавать incoming-content за SAF evidence.
 Никаких PNG и visual verdict. ActivityScenario штатно закрывается в конце:
 primary после instrumentation снова открывает приложение/доску через MCP и
 проверяет сохранённую фразу перед съёмкой, а не снимает закрывшуюся Activity.
@@ -134,9 +166,15 @@ com.android.documentsui/com.google.android.documentsui. Неожиданное �
 UI tests в одиночку до интеграции navigation lane ожидаемо не пройдут.
 
 После одобрения primary запускает методы на known-owned API35/21 через Android
-MCP/instrumentation runner `androidx.test.runner.AndroidJUnitRunner`, selector
-`su.linka.pictures.activity.DevelopmentParityTest#filledBoardThroughRealSafImport`
-(либо `#reopenFilledBoardWithoutImportOrMessageEdits` для повторного открытия).
+MCP/instrumentation runner `androidx.test.runner.AndroidJUnitRunner`, один selector:
+
+- API35: `su.linka.pictures.activity.DevelopmentParityTest#filledBoardThroughRealSafImport`;
+- API21: `su.linka.pictures.activity.DevelopmentParityTest#filledBoardThroughOwnedIncomingContent`;
+- уже импортированная fixture, actual Back: `su.linka.pictures.activity.DevelopmentParityTest#reopenFilledBoardWithoutImportOrMessageEdits`.
+
+API21 требует интегрированные primary debug provider/XML и incoming-root fix;
+reopen/Back требует интегрированный native Back binding. Ничего из этого тест не
+подменяет и не включает сам.
 Два аргумента выше передаются runner как instrumentation arguments.
 Пустой owned sandbox после `DevelopmentStartupTest` допустим: файл SQLite не
 удалять. Существующий startup test в этой lane не менялся.
@@ -154,8 +192,8 @@ python3 scripts/check-ui-parity-evidence.py --self-test
 последняя selector/precondition correction проверена Kotlin compile и static
 UI-source signatures. Перед device-run пересобрать интегрированный test APK:
 старый локальный APK не содержит correction. Установка и instrumentation/device
-execution не выполнялись. Production files/Gradle/manifest
-не менялись, никаких provider компонентов не добавлено.
+execution не выполнялись. Production files/Gradle/manifest в этой lane не менялись;
+provider используется только уже добавленный primary, без собственного компонента.
 
 ## Manifest настоящих evidence
 
@@ -180,7 +218,9 @@ JSON: `schema_version: 1`, `pairs: [{state: "board-filled", baseline: {...}, new
 | visually_reviewed, user_approved | Изначально **false / false**. Менять только после реального просмотра / отдельного решения пользователя |
 
 Размеры pixels должны совпадать с PNG; dp/orientation/fontScale — с устройством,
-не с выводом о похожести. При system bars указывать viewport полного screenshot,
+не с выводом о похожести. Размеры reference брать из raw PNG (`sips`), не из
+viewer-scaled 2000px: actual raw references primary имеют ширины 2400/2560px,
+а не размер preview. При system bars указывать viewport полного screenshot,
 не смешивать его с размером content-only crop; content area отдельно описать в
 журнале. Нельзя сравнивать landscape с portrait или разные экраны.
 

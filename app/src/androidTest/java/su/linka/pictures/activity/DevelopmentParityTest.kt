@@ -1,5 +1,8 @@
 package su.linka.pictures.activity
 
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.os.Bundle
 import android.os.Process
@@ -8,6 +11,7 @@ import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.core.content.FileProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -34,71 +38,133 @@ class DevelopmentParityTest {
     private val libraryMenu = listOf("Меню библиотеки", "Меню", "Ещё")
 
     @Test fun filledBoardThroughRealSafImport() {
-        assertSandbox()
-        val args = InstrumentationRegistry.getArguments()
-        assertEquals("Primary must stage and verify this exact owned Downloads fixture", fixtureName, args.getString("u14FixtureName"))
-        assertEquals("Primary must attest the staged file's measured SHA", expectedSha, args.getString("u14FixtureSha256"))
-        assertEquals(expectedSha, instrumentation.context.assets.open(fixture).use { sha(it.readBytes()) })
-
+        assertFixtureIdentity()
         ActivityScenario.launch(DevelopmentActivity::class.java).use {
-            awaitLibrary()
-            await("fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate") { root -> find(root) { node ->
-                node.text?.toString()?.startsWith("В библиотеке пока нет досок.") == true
-            } }
-            clickNamed(libraryMenu)
-            clickNamed(listOf("К сообщению"))
-            await("message not empty: use reopen-only verification; never clear existing parts") { root ->
-                named(root, listOf("Общее сообщение: пусто"))
-            }
-            clickNamed(listOf("Открыть библиотеку"))
-            awaitLibrary()
-            val importLabels = listOf("Импорт", "Импорт, резервная копия и восстановление")
-            if (!visibleNamed(importLabels)) clickNamed(libraryMenu)
-            clickNamed(importLabels)
-            awaitNamed("Файлы и восстановление")
-            setField("Название импортируемой доски", "Импортированная доска", "ХОЧУ")
-            clickNamed(listOf("Выбрать .linka для импорта (без записи в библиотеку)"), scroll = true)
+            assertEmptyLibraryAndMessage()
+            prepareNamedImport()
             selectOwnedSafFixture()
+            confirmImportAndCompose()
+            evidenceReady("real-saf")
+        }
+    }
 
-            await("real imported media preview", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
-                find(root) { node -> node.text?.toString()?.contains(
-                    "Страниц: 1; карточек: 9; изображений: 9; записей: 9;") == true }
+    /** API21 visual fixture path only: does NOT exercise SAF picker or an OS cross-UID grant. */
+    @Test fun filledBoardThroughOwnedIncomingContent() {
+        assertFixtureIdentity()
+        val authority = "${target.packageName}.parity-fixtures"
+        val provider = target.packageManager.resolveContentProvider(authority, PackageManager.GET_META_DATA)
+            ?: error("Missing approved debug target FileProvider; integrate primary manifest/XML first")
+        assertEquals(authority, provider.authority)
+        assertEquals(target.packageName, provider.packageName)
+        assertEquals(target.applicationInfo.uid, provider.applicationInfo.uid)
+        assertEquals("androidx.core.content.FileProvider", provider.name)
+        assertFalse("Fixture provider must not be exported", provider.exported)
+        assertTrue("Fixture provider must support scoped URI grants", provider.grantUriPermissions)
+        assertTrue("Fixture provider must be enabled", provider.enabled)
+        val directory = File(target.cacheDir, "u14-fixtures")
+        assertEquals("Fixture directory must stay directly under target cache", target.cacheDir.canonicalFile,
+            directory.canonicalFile.parentFile)
+
+        ActivityScenario.launch(DevelopmentActivity::class.java).use { scenario ->
+            assertEmptyLibraryAndMessage()
+            assertTrue("Cannot create owned fixture cache directory", directory.isDirectory || directory.mkdir())
+            withOwnedCopy(directory) { copy ->
+                try {
+                    val uri = FileProvider.getUriForFile(target, authority, copy)
+                    assertEquals("content", uri.scheme)
+                    assertEquals(authority, uri.authority)
+                    assertEquals("Only the approved cache subtree may be published",
+                        listOf("u14-fixtures", copy.name), uri.pathSegments)
+                    val source = target.contentResolver.openInputStream(uri)
+                        ?: error("Owned fixture content URI is not readable")
+                    assertEquals(expectedSha, source.use { sha(it.readBytes()) })
+                    val intent = Intent(target, DevelopmentActivity::class.java)
+                        .setAction(Intent.ACTION_VIEW).setDataAndType(uri, "application/octet-stream")
+                    // Actual same-UID native delivery; no external URI grant or substituted reader.
+                    scenario.onActivity { instrumentation.callActivityOnNewIntent(it, intent) }
+                    await("owned incoming notice without auto-import") { root -> find(root) { node ->
+                        node.text?.toString()?.startsWith("Получен файл.") == true
+                    } && emptyLibrary(root) }
+                    prepareNamedImport()
+                    // Every following wait permits only target package: unexpected DocumentsUI fails.
+                    confirmImportAndCompose()
+                    evidenceReady("owned-incoming-content; SAF-picker/OS-grant NOT evaluated")
+                } catch (failure: Throwable) {
+                    // Revoke/close the activity owner before deleting its own source on a failed import.
+                    scenario.close()
+                    throw failure
+                }
             }
-            // New owner capability comes only from the actual foreground UI, never a direct access API.
-            clickNamed(listOf("Разрешить команды в этом экране"), scroll = true, backwards = true)
-            clickNamed(listOf("Подтверждаю импорт «ХОЧУ» как новой доски"), scroll = true)
-            awaitNamed("Операция завершена.", scroll = true)
-            clickNamed(listOf("Назад"))
-            awaitLibrary()
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
-            awaitNineCards()
-            await("empty composed message") { root ->
-                named(root, listOf("Общее сообщение: пусто"))
-            }
-            clickNamed(listOf("ХОЧУ"), cardOnly = true)
-            await("first composed part without playback") { root ->
-                named(root, listOf("Произнести")) && !named(root, listOf("Остановить")) &&
-                    named(root, listOf("Общее сообщение: ХОЧУ"))
-            }
-            clickNamed(listOf("КУШАТЬ"), cardOnly = true)
-            awaitFilledMessage()
-            evidenceReady()
         }
     }
 
     @Test fun reopenFilledBoardWithoutImportOrMessageEdits() {
-        assertSandbox()
-        assertEquals("Primary must identify the existing owned fixture sandbox", fixtureName,
-            InstrumentationRegistry.getArguments().getString("u14FixtureName"))
-        assertEquals(expectedSha, InstrumentationRegistry.getArguments().getString("u14FixtureSha256"))
+        assertFixtureIdentity()
         assertTrue("No existing owned library to reopen", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
         ActivityScenario.launch(DevelopmentActivity::class.java).use {
             awaitLibrary()
             clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
             awaitNineCards()
             awaitFilledMessage()
-            evidenceReady()
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            awaitLibrary()
+            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            awaitNineCards()
+            awaitFilledMessage()
+            evidenceReady("reopen-native-back-regression")
         }
+    }
+
+    private fun assertFixtureIdentity() {
+        assertSandbox()
+        val args = InstrumentationRegistry.getArguments()
+        assertEquals("Primary must identify the exact owned fixture", fixtureName, args.getString("u14FixtureName"))
+        assertEquals("Primary must verify the source SHA", expectedSha, args.getString("u14FixtureSha256"))
+        assertEquals(expectedSha, instrumentation.context.assets.open(fixture).use { sha(it.readBytes()) })
+    }
+
+    private fun assertEmptyLibraryAndMessage() {
+        awaitLibrary()
+        await("fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate", predicate = ::emptyLibrary)
+        clickNamed(libraryMenu)
+        clickNamed(listOf("К сообщению"))
+        await("message not empty: use reopen-only verification; never clear existing parts") { root ->
+            named(root, listOf("Общее сообщение: пусто"))
+        }
+        clickNamed(listOf("Открыть библиотеку"))
+        awaitLibrary()
+    }
+
+    private fun prepareNamedImport() {
+        val importLabels = listOf("Импорт", "Импорт, резервная копия и восстановление")
+        if (!visibleNamed(importLabels)) clickNamed(libraryMenu)
+        clickNamed(importLabels)
+        awaitNamed("Файлы и восстановление")
+        setField("Название импортируемой доски", "Импортированная доска", "ХОЧУ")
+        clickNamed(listOf("Выбрать .linka для импорта (без записи в библиотеку)"), scroll = true)
+    }
+
+    private fun confirmImportAndCompose() {
+        await("real imported media preview", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
+            find(root) { node -> node.text?.toString()?.contains(
+                "Страниц: 1; карточек: 9; изображений: 9; записей: 9;") == true }
+        }
+        // New owner capability comes only from the actual foreground UI, never a direct access API.
+        clickNamed(listOf("Разрешить команды в этом экране"), scroll = true, backwards = true)
+        clickNamed(listOf("Подтверждаю импорт «ХОЧУ» как новой доски"), scroll = true)
+        awaitNamed("Операция завершена.", scroll = true)
+        clickNamed(listOf("Назад"))
+        awaitLibrary()
+        clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+        awaitNineCards()
+        await("empty composed message") { root -> named(root, listOf("Общее сообщение: пусто")) }
+        clickNamed(listOf("ХОЧУ"), cardOnly = true)
+        await("first composed part without playback") { root ->
+            named(root, listOf("Произнести")) && !named(root, listOf("Остановить")) &&
+                named(root, listOf("Общее сообщение: ХОЧУ"))
+        }
+        clickNamed(listOf("КУШАТЬ"), cardOnly = true)
+        awaitFilledMessage()
     }
 
     private fun selectOwnedSafFixture() {
@@ -140,14 +206,19 @@ class DevelopmentParityTest {
 
     private fun awaitLibrary() = await("Ваши наборы / library") { named(it, libraryTitles) }
 
-    private fun evidenceReady() = instrumentation.sendStatus(0, Bundle().apply {
+    private fun emptyLibrary(root: AccessibilityNodeInfo) = find(root) { node ->
+        node.text?.toString()?.startsWith("В библиотеке пока нет досок.") == true
+    }
+
+    private fun evidenceReady(inputPath: String) = instrumentation.sendStatus(0, Bundle().apply {
         putString("u14State", "board-filled")
+        putString("u14InputPath", inputPath)
         putString("u14FixtureSha256", expectedSha)
         putString("u14MessageParts", "ХОЧУ|КУШАТЬ")
         putString("u14Verdict", "UI_STATE_READY_ONLY; pixels/visual parity/user approval NOT evaluated")
     })
 
-    @Test fun baselineFixtureHasUnmodifiedNineCardMedia() = withOwnedCopy { copy ->
+    @Test fun baselineFixtureHasUnmodifiedNineCardMedia() = withOwnedCopy(target.cacheDir) { copy ->
         ZipFile(copy).use { zip ->
             val config = JSONObject(zip.getInputStream(zip.getEntry("config.json")).bufferedReader().use { it.readText() })
             assertEquals("1.2", config.getString("version"))
@@ -170,19 +241,21 @@ class DevelopmentParityTest {
         }
     }
 
-    private fun withOwnedCopy(check: (File) -> Unit) {
+    private fun withOwnedCopy(directory: File, check: (File) -> Unit) {
         assertSandbox()
         fun source() = instrumentation.context.assets.open(fixture).use { it.readBytes() }
         val original = source()
         assertEquals(expectedSha, sha(original))
-        val copy = File.createTempFile("u14-owned-", ".linka", target.cacheDir)
+        val copy = File.createTempFile("u14-owned-", ".linka", directory)
         try {
-            assertEquals(target.cacheDir.canonicalFile, copy.canonicalFile.parentFile)
+            assertEquals(directory.canonicalFile, copy.canonicalFile.parentFile)
             copy.writeBytes(original)
             check(copy)
-            assertEquals("Transport changed fixture bytes", expectedSha, sha(copy.readBytes()))
         } finally {
-            try { assertEquals("Packaged fixture changed", expectedSha, sha(source())) }
+            try {
+                assertEquals("Packaged fixture changed", expectedSha, sha(source()))
+                assertEquals("Transport changed fixture bytes", expectedSha, sha(copy.readBytes()))
+            }
             finally { assertTrue("Could not remove this test's own cache copy", copy.delete()) }
         }
     }
@@ -190,6 +263,8 @@ class DevelopmentParityTest {
     private fun assertSandbox() {
         assertEquals("su.linka.pictures.development", target.packageName)
         assertEquals("Instrumentation must run in the target sandbox", target.applicationInfo.uid, Process.myUid())
+        assertTrue("Parity fixture instrumentation requires a debuggable target",
+            target.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
     }
 
     private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
