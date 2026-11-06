@@ -46,7 +46,7 @@ internal fun EditorSettingsDialog(
         }
     }
     val details = input.value
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Параметры доски") },
+    AlertDialog(onDismissRequest = { if (!input.pending) onDismiss() }, title = { Text("Параметры доски") },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(details.name,
@@ -74,5 +74,5 @@ internal fun EditorSettingsDialog(
                     }
                 }
             }
-        }, confirmButton = { TextButton(onDismiss) { Text("Готово") } })
+        }, confirmButton = { TextButton({ if (enabled && !input.pending) onDismiss() }, enabled = enabled && !input.pending) { Text("Готово") } })
 }
