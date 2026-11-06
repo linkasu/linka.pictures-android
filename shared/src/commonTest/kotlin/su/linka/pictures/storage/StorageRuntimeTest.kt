@@ -20,6 +20,8 @@ import kotlinx.coroutines.test.runTest
 import okio.*
 import okio.Path.Companion.toPath
 import su.linka.pictures.application.*
+import su.linka.pictures.application.authoring.AuthoringLease
+import su.linka.pictures.application.communication.MessageLease
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 
@@ -374,6 +376,64 @@ class StorageRuntimeTest {
             two.lease.close()
         } finally { first.close(); second.close() }
     } } }
+
+    @Test fun composedMessageAndAuthoringLeasesReadOnlyLiveOwnedLeaves() = runTest { fresh { root ->
+        val runtime = open(root)
+        val leases = mutableListOf<MediaLease>()
+        try {
+            val one = media(runtime, "one").also { leases += it.lease }
+            val two = media(runtime, "two").also { leases += it.lease }
+            val ids = setOf(one.asset.id, two.asset.id)
+            val composite = MessageLease.retainFrom(ids, listOf(one.lease, two.lease)).ok()
+            val authoring = AuthoringLease(composite) { it() }.also { leases += it }
+            val retained = authoring.retain(setOf(one.asset.id)).ok().also { leases += it }
+            one.lease.close(); two.lease.close()
+            assertEquals(0, runtime.media.collectGarbage().ok().removedAssets)
+            for ((asset, bytes) in listOf(one.asset to "one", two.asset to "two")) {
+                runtime.media.file(asset.id, authoring).ok()
+                assertEquals(bytes, runtime.media.source(asset.id, authoring).ok().buffer().use { it.readUtf8() })
+            }
+            val forged = object : MediaLease {
+                override val assets = ids
+                override fun retain(assets: Set<AssetId>): OperationResult<MediaLease> = error("A read must not reacquire proofs")
+                override fun close() = Unit
+            }
+            runtime.media.file(one.asset.id, forged).problem(ProblemCode.STALE_REQUEST)
+            val foreign = AuthoringLease(MessageLease(listOf(StoragePins().pin(ids)))) { it() }.also { leases += it }
+            runtime.media.source(one.asset.id, foreign).problem(ProblemCode.STALE_REQUEST)
+            authoring.close()
+            runtime.media.file(one.asset.id, authoring).problem(ProblemCode.STALE_REQUEST)
+            runtime.media.file(two.asset.id, retained).problem(ProblemCode.STALE_REQUEST)
+            assertEquals("one", runtime.media.source(one.asset.id, retained).ok().buffer().use { it.readUtf8() })
+            assertEquals(1, runtime.media.collectGarbage().ok().removedAssets)
+            retained.close()
+            runtime.media.source(one.asset.id, retained).problem(ProblemCode.STALE_REQUEST)
+            assertEquals(1, runtime.media.collectGarbage().ok().removedAssets)
+        } finally { leases.forEach { it.close() }; runtime.close() }
+    } }
+
+    @Test fun wrapperCleanupFailureStillRevokesReadsOfItsLiveLeaf() = runTest { fresh { root ->
+        val runtime = open(root)
+        try {
+            val prepared = media(runtime)
+            try {
+                for (message in listOf(false, true)) {
+                    val leaf = prepared.lease.retain(setOf(prepared.asset.id)).ok()
+                    try {
+                        val wrapper = if (message) MessageLease(listOf(object : MediaLease {
+                            override val assets = emptySet<AssetId>()
+                            override fun retain(assets: Set<AssetId>): OperationResult<MediaLease> = error("unused")
+                            override fun close(): Unit = error("cleanup failed")
+                        }, leaf)) else AuthoringLease(leaf) { error("cleanup failed") }
+                        assertFailsWith<IllegalStateException> { wrapper.close() }
+                        runtime.media.file(prepared.asset.id, wrapper).problem(ProblemCode.STALE_REQUEST)
+                        runtime.media.source(prepared.asset.id, wrapper).problem(ProblemCode.STALE_REQUEST)
+                        runtime.media.file(prepared.asset.id, leaf).ok()
+                    } finally { leaf.close() }
+                }
+            } finally { prepared.lease.close() }
+        } finally { runtime.close() }
+    } }
 
     @Test fun closeRejectsNewOperationsAndConsumesRejectedPrepareSource() = runTest { fresh { root ->
         val runtime = open(root)

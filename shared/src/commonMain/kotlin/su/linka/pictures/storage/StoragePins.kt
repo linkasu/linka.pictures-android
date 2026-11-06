@@ -2,6 +2,7 @@ package su.linka.pictures.storage
 
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.MediaLease
+import su.linka.pictures.application.ports.readProof
 import su.linka.pictures.domain.AssetId
 
 // Writer mutex -> pins lock. No SQL, IO, runtime calls or external callbacks under this lock.
@@ -49,9 +50,11 @@ internal class StoragePins {
 
     fun pinned(id: AssetId): Boolean = lock.withLock { id in references }
 
-    fun allows(id: AssetId, lease: MediaLease): Boolean = lock.withLock {
-        val own = lease as? Lease
-        own != null && own.owner === this && !own.closed && id in own.ids
+    fun allows(id: AssetId, lease: MediaLease): Boolean {
+        // Resolve application wrappers before the pins lock: never invoke external code under it.
+        val own = lease.readProof(id) as? Lease ?: return false
+        if (id !in lease.assets) return false
+        return lock.withLock { own.owner === this && !own.closed && id in own.ids }
     }
 
     fun stopRetains() = lock.withLock { retaining = false }

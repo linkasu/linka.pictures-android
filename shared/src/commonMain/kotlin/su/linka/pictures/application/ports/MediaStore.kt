@@ -11,6 +11,14 @@ interface MediaLease : AutoCloseable {
     fun retain(assets: Set<AssetId>): OperationResult<MediaLease>
 }
 
+/** Borrowed proof only: storage still authenticates the leaf's owner, asset and liveness. */
+internal interface DelegatingMediaLease : MediaLease {
+    fun readProof(id: AssetId): MediaLease?
+}
+
+internal fun MediaLease.readProof(id: AssetId): MediaLease? =
+    if (this is DelegatingMediaLease) readProof(id) else this
+
 data class PreparedMedia(val asset: MediaAsset, val lease: MediaLease)
 data class GarbageCollectionReport(val removedAssets: Int, val removedBytes: Long, val failedAssets: Int)
 

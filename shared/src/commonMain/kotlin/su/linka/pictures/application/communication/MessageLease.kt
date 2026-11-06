@@ -4,12 +4,17 @@ import su.linka.pictures.application.OperationResult
 import su.linka.pictures.application.Problem
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.ports.MediaLease
+import su.linka.pictures.application.ports.DelegatingMediaLease
+import su.linka.pictures.application.ports.readProof
 import su.linka.pictures.domain.AssetId
 
 /** Owns independent references obtained from already pinned sources, without an acquire/GC gap. */
-internal class MessageLease(private val leases: List<MediaLease>) : MediaLease {
+internal class MessageLease(private val leases: List<MediaLease>) : DelegatingMediaLease {
     private var closed = false
     override val assets = leases.flatMap { it.assets }.toSet()
+
+    override fun readProof(id: AssetId): MediaLease? =
+        if (closed) null else leases.firstOrNull { id in it.assets }?.readProof(id)
 
     override fun retain(assets: Set<AssetId>): OperationResult<MediaLease> =
         if (closed) OperationResult.Failed(Problem(ProblemCode.MISSING_ASSET)) else retainFrom(assets, leases)
