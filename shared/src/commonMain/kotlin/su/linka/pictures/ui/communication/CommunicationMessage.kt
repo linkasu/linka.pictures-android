@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Surface
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -66,7 +64,7 @@ internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId
                             CommunicationCaption(when (part) {
                                 is MessagePart.Card -> part.snapshot.label
                                 is MessagePart.Text -> part.text
-                            }, maxWidth, maxHeight, Modifier.verticalScroll(rememberScrollState()))
+                            }, maxWidth, maxHeight)
                         }, measurePolicy = CommunicationCardMeasurePolicy)
                     }
                 }

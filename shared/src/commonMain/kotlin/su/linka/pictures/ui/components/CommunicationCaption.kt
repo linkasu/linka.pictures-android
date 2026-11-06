@@ -1,9 +1,12 @@
 package su.linka.pictures.ui.components
 
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -66,5 +69,12 @@ internal fun CommunicationCaption(
             if (balancedWidth == originalWidth) availableWidth else with(density) { balancedWidth.toDp() }
         }
     }
-    Text(label, modifier = modifier.widthIn(max = captionWidth), style = renderedStyle, softWrap = true)
+    key(label) {
+        val scrollState = rememberScrollState()
+        Text(
+            label, modifier = modifier.widthIn(max = captionWidth)
+                .then(if (availableHeight.value.isFinite()) Modifier.verticalScroll(scrollState) else Modifier),
+            style = renderedStyle, softWrap = true,
+        )
+    }
 }

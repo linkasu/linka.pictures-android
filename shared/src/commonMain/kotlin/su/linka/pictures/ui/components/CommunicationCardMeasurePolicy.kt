@@ -6,11 +6,15 @@ import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.dp
 
-/** Caption gets its wrapped height first; loading pixels and selection cannot resize a cell. */
+/** Caption wraps above an image minimum; loading pixels and selection cannot resize a cell. */
 internal object CommunicationCardMeasurePolicy : MeasurePolicy {
     override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
-        val caption = measurables[1].measure(constraints.copy(minWidth = 0, minHeight = 0))
+        val imageMinimum = if (constraints.hasBoundedHeight) minOf(48.dp.roundToPx(), constraints.maxHeight / 3) else 0
+        val caption = measurables[1].measure(constraints.copy(
+            minWidth = 0, minHeight = 0, maxHeight = constraints.maxHeight - imageMinimum,
+        ))
         val width = if (constraints.hasBoundedWidth) constraints.maxWidth else maxOf(constraints.minWidth, caption.width)
         val height = if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.constrainHeight(width + caption.height)
         val imageHeight = (height - caption.height).coerceAtLeast(0)

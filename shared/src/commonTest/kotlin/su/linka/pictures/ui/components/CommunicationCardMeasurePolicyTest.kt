@@ -74,21 +74,55 @@ class CommunicationCardMeasurePolicyTest {
                 }
                 assertEquals(width, result.width)
                 assertEquals(height, result.height)
-                assertEquals(Constraints.fixed(width, height - captionHeight), image.measured)
+                val reserve = minOf(48, height / 3)
+                val captionMaxHeight = height - reserve
+                assertEquals(Constraints.fixed(width, height - minOf(captionHeight, captionMaxHeight)), image.measured)
+                assertEquals(captionMaxHeight, caption.measured!!.maxHeight)
                 assertEquals(0, caption.measured!!.minHeight)
+                assertEquals(0, caption.measured!!.minWidth)
             }
         }
     }
 
     @Test
+    fun oversizedCaptionKeepsAnImageViewportInsideBoundedHeight() {
+        for (pixels in listOf(0, 1000)) {
+            val image = Child(pixels, pixels)
+            val caption = Child(180, 500)
+            val result = with(CommunicationCardMeasurePolicy) {
+                scope.measure(listOf(image, caption), Constraints.fixed(180, 125))
+            }
+            assertEquals(180, result.width)
+            assertEquals(125, result.height)
+            assertEquals(Constraints(maxWidth = 180, maxHeight = 84), caption.measured)
+            assertEquals(Constraints.fixed(180, 41), image.measured)
+        }
+    }
+
+    @Test
+    fun zeroBoundsKeepBothChildrenAndParentAtZero() {
+        val image = Child(1000, 1000)
+        val caption = Child(180, 500)
+        val result = with(CommunicationCardMeasurePolicy) {
+            scope.measure(listOf(image, caption), Constraints.fixed(0, 0))
+        }
+        assertEquals(0, result.width)
+        assertEquals(0, result.height)
+        assertEquals(Constraints.fixed(0, 0), caption.measured)
+        assertEquals(Constraints.fixed(0, 0), image.measured)
+    }
+
+    @Test
     fun unboundedLegacyCallerGetsAnImageSquareWithoutTheOld160Cap() {
         val image = Child(1000, 1000)
+        val caption = Child(180, 32)
         val result = with(CommunicationCardMeasurePolicy) {
-            scope.measure(listOf(image, Child(180, 32)), Constraints(maxWidth = 220))
+            scope.measure(listOf(image, caption), Constraints(maxWidth = 220))
         }
         assertEquals(220, result.width)
         assertEquals(252, result.height)
         assertEquals(Constraints.fixed(220, 220), image.measured)
+        assertEquals(Constraints(maxWidth = 220), caption.measured)
     }
 
     @Test
