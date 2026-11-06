@@ -1,5 +1,6 @@
 package su.linka.pictures.ui.components
 
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -11,9 +12,12 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
+import su.linka.pictures.text.dropLastGrapheme
 
 @Composable
 internal fun CommunicationCaption(
@@ -40,7 +44,27 @@ internal fun CommunicationCaption(
             ).multiParagraph.maxIntrinsicWidth
         }.sp
     }
-    Text(label, modifier = modifier, style = captionStyle.copy(
+    val renderedStyle = captionStyle.copy(
         fontSize = captionSize, lineHeight = captionSize * 1.2f,
-    ), textAlign = TextAlign.Center, softWrap = true)
+        textAlign = TextAlign.Center,
+    )
+    val captionWidth = remember(label, availableWidth, renderedStyle, density.density, density.fontScale, textMeasurer) {
+        val widthPx = with(density) { availableWidth.toPx() }
+        if (label.isEmpty() || label.any { it.isWhitespace() } || !widthPx.isFinite() || widthPx <= 1f) {
+            availableWidth
+        } else {
+            val originalWidth = widthPx.roundToInt()
+            fun measure(width: Int) = textMeasurer.measure(
+                text = label, style = renderedStyle, density = density,
+                constraints = Constraints(maxWidth = width), softWrap = true,
+            )
+            val original = measure(originalWidth)
+            val lastLine = original.lineCount - 1
+            val lastText = label.substring(original.getLineStart(lastLine), original.getLineEnd(lastLine, visibleEnd = true))
+            val hasOrphan = original.lineCount > 1 && lastText.isNotEmpty() && dropLastGrapheme(lastText).isEmpty()
+            val balancedWidth = communicationCaptionWidth(originalWidth, original.lineCount, hasOrphan) { measure(it).lineCount }
+            if (balancedWidth == originalWidth) availableWidth else with(density) { balancedWidth.toDp() }
+        }
+    }
+    Text(label, modifier = modifier.widthIn(max = captionWidth), style = renderedStyle, softWrap = true)
 }
