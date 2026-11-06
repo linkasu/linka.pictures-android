@@ -63,7 +63,7 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
         }
     }
     ProductDialog("Параметры доски", { if (!busy) onDismiss() }) {
-        access()
+        if (gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner) !is OperationResult.Completed) access()
         if (snapshot == null && result == null) Text("Загружаем настройки…")
         snapshot?.let { loaded -> key(loaded) {
             var pager by remember { mutableStateOf(loaded.settings.boards[board]?.showPageButtons ?: true) }

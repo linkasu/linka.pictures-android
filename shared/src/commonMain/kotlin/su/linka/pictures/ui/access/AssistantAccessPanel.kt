@@ -18,7 +18,6 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
     var password by remember(owner, foreground, state, capability) { mutableStateOf("") }
     var newPassword by remember(owner, foreground, state, capability) { mutableStateOf("") }
     var repeatPassword by remember(owner, foreground, state, capability) { mutableStateOf("") }
-    var requested by remember(owner, foreground, state) { mutableStateOf(false) }
     var busy by remember(owner) { mutableStateOf(false) }
     var result by remember(owner) { mutableStateOf<OperationResult<*>?>(null) }
     var disable by remember(owner, foreground) { mutableStateOf(false) }
@@ -26,10 +25,7 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
     val passwordKeyboard = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Password)
     val ready = foreground && !busy && state.commandsAvailable()
     val freshNone = canSkipContextUnlock(state, capability, access, action, owner)
-    if (!manage && freshNone && !requireFreshUnlock && !requested) {
-        Action("Открыть доступ для отдельного подтверждения", ready) { requested = true }
-        return
-    }
+    if (!manage && freshNone && !requireFreshUnlock) return
     val verification = when (val current = state) {
         is AssistantState.Protected -> current.verification
         is AssistantState.Unprotected -> current.verification
@@ -91,7 +87,7 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
         }
     }
     Action("Очистить ввод / закрыть доступ", foreground && !busy) {
-        password = ""; newPassword = ""; repeatPassword = ""; disable = false; requested = false; result = null; access.revokeOwner(owner); onCapability(null)
+        password = ""; newPassword = ""; repeatPassword = ""; disable = false; result = null; access.revokeOwner(owner); onCapability(null)
     }
     Feedback(result)
 }
