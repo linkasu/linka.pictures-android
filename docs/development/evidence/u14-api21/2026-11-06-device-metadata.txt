@@ -1,0 +1,38 @@
+Fri Nov  6 07:35:19 GMT 2026
+1
+linka_platform_probe_api21_arm64
+21
+arm64-v8a
+generic_arm64/sdk_phone_arm64/generic_arm64:5.0.2/LSY66K/8789838:eng/test-keys
+Physical size: 1080x1920
+Physical density: 480
+null
+package:su.linka.pictures.platformprobe.codecs
+package:su.linka.pictures.development
+package:su.linka.pictures.shared.test
+package:su.linka.pictures.development.test
+package:su.linka.pictures.platformprobe
+WINDOW MANAGER DISPLAY CONTENTS (dumpsys window displays)
+  Display: mDisplayId=0
+    init=1080x1920 480dpi cur=1080x1920 app=1080x1776 rng=1080x1005-1794x1701
+    deferred=false layoutNeeded=true
+  mStacks[1]0
+    mStackId=0
+    mDeferDetach=false
+    {taskId=15 appTokens=[AppWindowToken{6443cbe token=Token{22740779 ActivityRecord{3b8bac40 u0 com.android.launcher/com.android.launcher2.Launcher t15}}}]}
+  mStacks[0]1
+    mStackId=1
+    mDeferDetach=false
+
+  Application tokens in bottom up Z order:
+  App #0 AppWindowToken{6443cbe token=Token{22740779 ActivityRecord{3b8bac40 u0 com.android.launcher/com.android.launcher2.Launcher t15}}}:
+    windows=[Window{ebc745c u0 com.android.launcher/com.android.launcher2.Launcher}]
+    windowType=2 hidden=false hasVisible=true
+    app=true voiceInteraction=false
+    allAppWindows=[Window{ebc745c u0 com.android.launcher/com.android.launcher2.Launcher}]
+    groupId=15 appFullscreen=true requestedOrientation=5
+    hiddenRequested=false clientHidden=false willBeHidden=false reportedDrawn=true reportedVisible=true
+    numInterestingWindows=1 numDrawnWindows=1 inPendingTransaction=false allDrawn=true (animator=true)
+    startingData=null removed=false firstWindowDrawn=true
+
+
