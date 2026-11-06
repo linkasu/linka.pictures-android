@@ -4,6 +4,14 @@ internal data class CommunicationCellSize(val width: Float, val height: Float)
 
 internal data class CommunicationVerticalBudget(val phrase: Float, val content: Float)
 
+internal fun communicationMessagePartWidth(availableWidth: Float, height: Float, partCount: Int): Float {
+    val preferred = if (height.isFinite() && height > 0f) maxOf(48f, height) else 48f
+    val visible = partCount.coerceIn(1, 2)
+    return if (availableWidth.isFinite() && availableWidth > 0f) {
+        maxOf(48f, minOf(preferred, availableWidth / visible))
+    } else preferred
+}
+
 internal fun communicationToolbarHeight(width: Float, height: Float): Float {
     require(width.isFinite() && height.isFinite() && width >= 0 && height >= 0)
     return when {

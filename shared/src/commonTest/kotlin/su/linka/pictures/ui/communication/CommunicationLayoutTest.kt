@@ -11,6 +11,39 @@ import androidx.compose.ui.graphics.Color
 
 class CommunicationLayoutTest {
     @Test
+    fun phraseKeepsSinglePreviewAndFitsFirstTwoBeforeScrolling() {
+        assertEquals(120f, communicationMessagePartWidth(180f, 120f, 1))
+        assertEquals(100f, communicationMessagePartWidth(100f, 120f, 1))
+        val two = communicationMessagePartWidth(180f, 120f, 2)
+        assertEquals(90f, two)
+        assertEquals(180f, two * 2)
+        for (count in listOf(3, 4, 100)) {
+            val width = communicationMessagePartWidth(180f, 120f, count)
+            assertEquals(two, width)
+            assertTrue(width * count > 180f)
+        }
+        assertEquals(60f, communicationMessagePartWidth(400f, 60f, 2))
+    }
+
+    @Test
+    fun tinyPhraseViewportsScrollInsteadOfShrinkingBelowFortyEightDp() {
+        assertEquals(48f, communicationMessagePartWidth(80f, 120f, 2))
+        assertEquals(48f, communicationMessagePartWidth(20f, 20f, 1))
+        assertEquals(48f, communicationMessagePartWidth(180f, 20f, 2))
+        assertEquals(120f, communicationMessagePartWidth(180f, 120f, 0))
+        assertEquals(120f, communicationMessagePartWidth(180f, 120f, -1))
+    }
+
+    @Test
+    fun invalidAndUnboundedPhraseBoundsKeepFinitePreferredWidth() {
+        for (bound in listOf(Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NaN, 0f, -1f)) {
+            assertEquals(120f, communicationMessagePartWidth(bound, 120f, 2))
+            assertEquals(48f, communicationMessagePartWidth(180f, bound, 2))
+            assertEquals(48f, communicationMessagePartWidth(bound, bound, 2))
+        }
+    }
+
+    @Test
     fun everyActionGlyphParsesWithoutPlatformResources() {
         for (icon in CommunicationIcon.entries) {
             assertEquals(24f, icon.vector.viewportWidth)

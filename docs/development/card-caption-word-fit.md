@@ -39,7 +39,7 @@ Compose без новых зависимостей. Балансировка с�
 Текст остаётся настоящим,
 без ellipsis, обрезки или bitmap. API, Image ContentScale.Fit, role/focus/selected,
 callbacks, палитра, сетка и CommunicationCardMeasurePolicy не изменены.
-У предпросмотра сохранены `verticalScroll` подписи, `partWidth`, ключи `LazyRow`
+У предпросмотра сохранены `verticalScroll` подписи, ключи `LazyRow`
 и `DemandVisibleImages`; общий компонент не добавляет обёртку в layout.
 
 ## Одинокая графема в последней строке
@@ -64,6 +64,16 @@ Unicode-helper `dropLastGrapheme`, без самостоятельного ра�
 
 ## Проверка и остающиеся условия приёмки
 
+После снимка `docs/progress-screenshots/2026-11-06-caption-gif/iphone17-balanced.png`
+ширина предпросмотра адаптируется чистым `communicationMessagePartWidth`: один
+элемент сохраняет `max(48, height)`, если помещается; два и более ограничиваются
+половиной доступной ширины. Минимум — 48 dp, поэтому при viewport <96 dp два
+элемента прокручиваются, а не уменьшаются ниже минимума. Третий и следующие
+используют ту же ширину и существующий горизонтальный скролл. Неограниченная
+высота даёт 48 dp, неограниченная ширина сохраняет предпочтительную ширину.
+Android21+/iOS17+, включая SE, не исключаются; шрифт и остальные размеры не меняются.
+Основной агент проверяет два целых предпросмотра и прокрутку длинной фразы нативно.
+
 `CommunicationCaptionSizeTest` вызывает production helper с измеренными ширинами:
 узкие карточки, выбор самого широкого (не самого длинного) слова, планшет и крупная
 1×1, пустая подпись, неограниченные размеры, маленькие ячейки, нижняя граница и NaN.
@@ -78,7 +88,7 @@ Unicode-helper `dropLastGrapheme`, без самостоятельного ра�
 JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.19/libexec/openjdk.jdk/Contents/Home ./gradlew :shared:jvmTest --tests 'su.linka.pictures.ui.components.*' --tests 'su.linka.pictures.ui.theme.*' --tests 'su.linka.pictures.ui.communication.*' --offline --max-workers=1
 ```
 
-Результат: PASS, 42 теста в 8 suites, 0 failures/errors/skipped, включая все
+Результат: PASS, 45 тестов в 8 suites, 0 failures/errors/skipped, включая все
 5 существующих тестов чистого расчёта размера без изменений. Фиктивных тестов
 нативной отрисовки нет. `git diff --check`
 также PASS. Связанный вызов в `CommunicationGrid` и существующий measure policy

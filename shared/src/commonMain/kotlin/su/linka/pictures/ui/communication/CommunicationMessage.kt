@@ -39,7 +39,7 @@ internal fun communicationMessageGradient(palette: LinkaPalette): List<Color>? =
 internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId, ImageBitmap>, modifier: Modifier) {
     val palette = LocalLinkaPalette.current
     BoxWithConstraints(modifier.padding(6.dp).semantics { contentDescription = "Общее сообщение: ${state.renderedText.ifEmpty { "пусто" }}" }) {
-        val partWidth = maxOf(48.dp, maxHeight)
+        val partWidth = communicationMessagePartWidth(maxWidth.value, maxHeight.value, state.message.parts.size).dp
         val gradient = communicationMessageGradient(palette)
         LazyRow(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             items(state.message.parts, key = { it.id.value }) { part ->
