@@ -1,4 +1,5 @@
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlin.experimental.ExperimentalNativeApi::class)
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class,
+    kotlin.experimental.ExperimentalNativeApi::class)
 
 package su.linka.pictures.bootstrap
 

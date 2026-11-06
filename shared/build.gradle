@@ -48,6 +48,8 @@ kotlin {
                 defaultSourceSet.dependencies {
                     implementation kotlin('test')
                     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+                    // associateWith exposes main internals but does not inherit its CInterop library.
+                    implementation files(tasks.named(decoderInterop.interopProcessingTaskName).map { it.outputFile })
                 }
             }
             target.binaries.test('appHost', [org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG]) {
@@ -60,13 +62,19 @@ kotlin {
                 org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG, appHostTests)
             appHostFramework.isStatic = true
             target.binaries.add(appHostFramework)
+            appHostFramework.freeCompilerArgs += ['-Xpartial-linkage-loglevel=ERROR']
             tasks.register('verifyAppHostTestFramework') {
                 group = 'verification'
                 dependsOn appHostFramework.linkTaskProvider
                 doLast {
+                    def decoder = tasks.named(decoderInterop.interopProcessingTaskName).get().outputFile
+                    if (!appHostFramework.linkTaskProvider.get().libraries.files.contains(decoder)) {
+                        throw new GradleException('Missing XCTest audio decoder CInterop dependency')
+                    }
                     def header = layout.buildDirectory.file(
                         'bin/iosSimulatorArm64/appHostDebugFramework/SharedAppHostTests.framework/Headers/SharedAppHostTests.h').get().asFile.text
-                    ['KeychainAppHostChecks', 'bytesReopenUpdateAndRevocation', 'boundsAndServiceValidation'].each { method ->
+                    ['KeychainAppHostChecks', 'bytesReopenUpdateAndRevocation', 'boundsAndServiceValidation',
+                     'AudioAppHostChecks', 'clipCompletes', 'installedVoiceSpeechCompletes'].each { method ->
                         if (!header.contains(method)) throw new GradleException("Missing XCTest bridge export: ${method}")
                     }
                 }

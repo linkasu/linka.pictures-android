@@ -12,6 +12,7 @@ import okio.Buffer
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.buffer
+import okio.use
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSUUID
@@ -57,9 +58,11 @@ object AudioAppHostChecks {
             var source: TemporaryFile? = null
             var backend: IosAudioBackend? = null
             var failure: String? = null
+            var stage = "foreground"
             try {
                 withTimeout(20_000) {
                     requireCheck(applicationActive(), "Application is not active")
+                    stage = "broker"
                     val broker = IosPlatformFilesPort(root / "temporary", root / "media", fs,
                         { null }, { false }, CoroutineScope(filesJob + Dispatchers.IO))
                     files = broker
@@ -70,18 +73,21 @@ object AudioAppHostChecks {
                         fs.createDirectories(root / "media")
                     }
                     val decoder = IosAudioDecoder(broker)
+                    stage = "backend"
                     val inspection = IosMediaInspectionPort(decoder::inspect)
                     val audio = IosAudioBackend(broker, inspection, decoder::decodeToWave,
                         { throw CheckFailure("Unexpected microphone permission request") },
                         ::applicationActive, CoroutineScope(backendJob + Dispatchers.Main.immediate))
                     backend = audio
                     if (speech) {
+                        stage = "speech"
                         val capability = audio.voices.first { it.status != VoiceStatus.INITIALIZING }
                         requireCheck(capability.status == VoiceStatus.LOCAL_VOICE_READY, "Installed voice is not ready")
                         val voice = capability.voices.firstOrNull()
                             ?: throw CheckFailure("No installed voice")
                         completed(audio.speak("Linka audio check.", voice.languageTag, voice.id, request))
                     } else {
+                        stage = "tone"
                         val clip = withContext(Dispatchers.IO) {
                             completed(broker.createTemporaryFile("host-tone.wav", "audio/wav")).also {
                                 source = it
@@ -91,6 +97,7 @@ object AudioAppHostChecks {
                         val info = completed(inspection.audio(clip))
                         requireCheck(info.mediaType == "audio/wav" && info.durationMillis == 300L,
                             "Native tone inspection failed")
+                        stage = "clip-playback"
                         completed(audio.playClip(clip, request))
                     }
                 }
@@ -98,9 +105,9 @@ object AudioAppHostChecks {
                 failure = error.message
             } catch (_: TimeoutCancellationException) {
                 failure = "Native audio completion timed out"
-            } catch (_: Throwable) {
+            } catch (error: Throwable) {
                 // Never export native exceptions, file paths, or voice identifiers to XCTest logs.
-                failure = "Audio check failed"
+                failure = "Audio check failed at $stage: ${error::class.simpleName}"
             } finally {
                 withContext(NonCancellable) {
                     suspend fun cleanup(action: suspend () -> Unit) {
