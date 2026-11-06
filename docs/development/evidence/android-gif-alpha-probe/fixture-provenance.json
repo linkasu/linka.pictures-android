@@ -1,0 +1,25 @@
+{
+  "archive": "app/src/androidTest/assets/u14/\u0425\u041e\u0427\u0423.linka",
+  "archiveShaBefore": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+  "archiveShaAfter": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+  "fixtures": [
+    {
+      "entry": "unnamed (4).gif",
+      "bytes": 528975,
+      "sha256": "4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb",
+      "exactArchiveBytes": true
+    },
+    {
+      "entry": "unnamed (2).gif",
+      "bytes": 326240,
+      "sha256": "18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396",
+      "exactArchiveBytes": true
+    },
+    {
+      "entry": "unnamed (3).gif",
+      "bytes": 213437,
+      "sha256": "b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6",
+      "exactArchiveBytes": true
+    }
+  ]
+}
