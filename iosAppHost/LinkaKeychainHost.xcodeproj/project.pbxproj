@@ -28,7 +28,7 @@
         };
         C00000000000000000000003 = {
             isa = PBXGroup;
-            children = (C00000000000000000000007, C0000000000000000000000D, C00000000000000000000017, C00000000000000000000004);
+            children = (C00000000000000000000007, C0000000000000000000000D, C00000000000000000000017, C00000000000000000000020, C00000000000000000000004);
             sourceTree = "<group>";
         };
         C00000000000000000000004 = {
@@ -106,7 +106,7 @@
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Debug;
         };
-        C0000000000000000000001A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0000000000000000000001C); runOnlyForDeploymentPostprocessing = 0; };
+        C0000000000000000000001A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0000000000000000000001C, C00000000000000000000021); runOnlyForDeploymentPostprocessing = 0; };
         C0000000000000000000001B = {
             isa = XCBuildConfiguration;
             buildSettings = {
@@ -123,6 +123,8 @@
         C0000000000000000000001C = { isa = PBXBuildFile; fileRef = C00000000000000000000017; };
         C0000000000000000000001D = { isa = PBXTargetDependency; target = C00000000000000000000005; targetProxy = C0000000000000000000001E; };
         C0000000000000000000001E = { isa = PBXContainerItemProxy; containerPortal = C00000000000000000000001; proxyType = 1; remoteGlobalIDString = C00000000000000000000005; remoteInfo = LinkaKeychainHost; };
+        C00000000000000000000020 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaKeychainHostTests/AudioTests.swift; sourceTree = "<group>"; };
+        C00000000000000000000021 = { isa = PBXBuildFile; fileRef = C00000000000000000000020; };
     };
     rootObject = C00000000000000000000001;
 }
