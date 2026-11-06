@@ -4,6 +4,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
 import okio.Buffer
 import okio.buffer
+import okio.use
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*

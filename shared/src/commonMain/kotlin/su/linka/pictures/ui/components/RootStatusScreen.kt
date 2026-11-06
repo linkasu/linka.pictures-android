@@ -1,0 +1,29 @@
+package su.linka.pictures.ui.components
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import su.linka.pictures.application.Problem
+import su.linka.pictures.ui.theme.LinkaTheme
+import su.linka.pictures.ui.theme.LocalLinkaPalette
+
+@Composable
+fun RootStatusScreen(problem: Problem?) = LinkaTheme(isSystemInDarkTheme(), false, 1f) {
+    val palette = LocalLinkaPalette.current
+    Surface(Modifier.fillMaxSize(), color = palette.background, contentColor = palette.text) {
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
+            .verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (problem == null) Text("Открываем локальную библиотеку…")
+            else {
+                Text("Не удалось безопасно открыть приложение: ${problem.code}.")
+                Text("Данные не сбрасывались, защита не отключена. Закройте окно и проверьте состояние после повторного запуска.")
+            }
+        }
+    }
+}

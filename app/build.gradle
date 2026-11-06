@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 def envOrProperty = { String key ->
@@ -51,6 +52,7 @@ android {
 
     buildTypes {
         debug {
+            applicationIdSuffix '.development'
             buildConfigField "boolean", "TELEMETRY_COLLECTION_ALLOWED", "false"
         }
         release {
@@ -67,6 +69,7 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures {
+        compose true
         buildConfig true
         viewBinding true
     }
@@ -79,6 +82,7 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.compose.ui:ui:1.9.4'
 
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
@@ -105,6 +109,9 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
     androidTestImplementation 'androidx.test:core-ktx:1.6.1'
 }
+
+// The isolated development package has no Firebase identity/initializer; legacy release stays intact until R7.
+tasks.matching { it.name == 'processDebugGoogleServices' }.configureEach { enabled = false }
 
 tasks.register('verifyReleasePrivacy') {
     dependsOn 'generateReleaseBuildConfig', 'processReleaseManifest'
