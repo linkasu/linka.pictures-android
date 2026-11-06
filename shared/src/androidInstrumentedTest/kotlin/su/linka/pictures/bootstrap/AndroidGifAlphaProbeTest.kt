@@ -69,13 +69,12 @@ class AndroidGifAlphaProbeTest {
                 assertEquals(expectedSha, sha(source.readBytes()))
                 val record = JSONObject().put("sdk", Build.VERSION.SDK_INT).put("abi", Build.SUPPORTED_ABIS[0])
                     .put("fixture", name).put("sourceSHA256", expectedSha).put("sourceUnchanged", true)
-                    .put("thumbnailBranch", if (Build.VERSION.SDK_INT >= 28) "ImageDecoder/software" else "BitmapFactory/ARGB_8888")
+                    .put("thumbnailBranch", if (Build.VERSION.SDK_INT >= 28) "ImageDecoder/software" else "GlideGifDecoder/first-frame")
                     .put("directBitmapFactory", directRecord).put("actualThumbnail", thumbnailRecord)
                     .put("legacyMovie", movieRecord ?: JSONObject.NULL)
                     .put("status", if (thumbnailRecord.getInt("alphaBelow255") > 0) "TRANSPARENCY_PRESENT" else "TRANSPARENCY_ABSENT")
                 instrumentation.sendStatus(0, Bundle().apply { putString("stream", "GIF_ALPHA_PROBE $record\n") })
-                // Pin the measured modern reference; API 21's absent alpha remains a reported gap, not a passing transparency claim.
-                if (Build.VERSION.SDK_INT == 35) assertTrue("API 35 GIF thumbnail must retain transparent pixels", thumbnailRecord.getInt("alphaBelow255") > 0)
+                assertTrue("GIF thumbnails must retain transparent pixels on every supported API", thumbnailRecord.getInt("alphaBelow255") > 0)
             } finally { assertTrue("Owned temporary fixture cleanup", source.delete()) }
         }
     }

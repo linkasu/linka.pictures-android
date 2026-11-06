@@ -9,6 +9,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
+import su.linka.pictures.platform.capabilities.InvalidMedia
+import su.linka.pictures.platform.capabilities.AndroidGifDecoder
 import java.io.File
 
 internal class AndroidThumbnailDecoder(private val inspection: MediaInspectionPort) {
@@ -22,7 +24,8 @@ internal class AndroidThumbnailDecoder(private val inspection: MediaInspectionPo
         var owned: Bitmap? = null
         try {
             currentCoroutineContext().ensureActive()
-            owned = if (Build.VERSION.SDK_INT >= 28) modern(file, side) else {
+            owned = if (Build.VERSION.SDK_INT >= 28) modern(file, side)
+            else if (info.mediaType == "image/gif") AndroidGifDecoder.decode(file, info, side) else {
                 val options = BitmapFactory.Options().also {
                     it.inPreferredConfig = Bitmap.Config.ARGB_8888
                     it.inScaled = false
@@ -46,6 +49,8 @@ internal class AndroidThumbnailDecoder(private val inspection: MediaInspectionPo
             owned = null
             OperationResult.Completed(result)
         } catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: InvalidMedia) { failed(failure.code) }
+        catch (_: OutOfMemoryError) { failed(ProblemCode.LIMIT_EXCEEDED) }
         catch (_: Exception) { failed(ProblemCode.IO_FAILURE) }
         finally { owned?.recycle() }
     }

@@ -18,7 +18,14 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
     override suspend fun image(file: LocalFile): OperationResult<ImageInfo> = inspect(file) { source, check ->
         MediaContainer.image(source, check)
         val bounds = BitmapFactory.Options().also { it.inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.path, bounds)
+        source.seek(0)
+        if (source.readInt() == 0x47494638) {
+            // GIF dimensions are fixed header fields; validate metadata before any native decoder.
+            source.seek(6)
+            bounds.outWidth = source.readUnsignedByte() or (source.readUnsignedByte() shl 8)
+            bounds.outHeight = source.readUnsignedByte() or (source.readUnsignedByte() shl 8)
+            bounds.outMimeType = "image/gif"
+        } else BitmapFactory.decodeFile(file.path, bounds)
         val width = bounds.outWidth
         val height = bounds.outHeight
         if (width <= 0 || height <= 0) MediaContainer.invalid()
@@ -26,7 +33,8 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
         val options = BitmapFactory.Options().also { it.inPreferredConfig = Bitmap.Config.RGB_565; it.inSampleSize = 1 }
         while (((width + options.inSampleSize - 1) / options.inSampleSize).toLong() * ((height + options.inSampleSize - 1) / options.inSampleSize) > 1_048_576) options.inSampleSize *= 2
         check()
-        val bitmap = BitmapFactory.decodeFile(file.path, options) ?: MediaContainer.invalid()
+        val bitmap = if (bounds.outMimeType == "image/gif") AndroidGifDecoder.decode(file, ImageInfo(width, height, "image/gif"), 1024)
+            else BitmapFactory.decodeFile(file.path, options) ?: MediaContainer.invalid()
         try {
             if (bitmap.width <= 0 || bitmap.height <= 0) MediaContainer.invalid()
             check()
@@ -137,7 +145,7 @@ internal class AndroidMediaInspectionPort : MediaInspectionPort {
         result
     }
 
-    private suspend fun <T> inspect(file: LocalFile, operation: (RandomAccessFile, () -> Unit) -> T): OperationResult<T> = withContext(Dispatchers.IO) {
+    private suspend fun <T> inspect(file: LocalFile, operation: suspend (RandomAccessFile, () -> Unit) -> T): OperationResult<T> = withContext(Dispatchers.IO) {
         try {
             val source = File(file.path)
             if (!source.isFile || source.length() <= 0) return@withContext OperationResult.Failed(Problem(ProblemCode.INVALID_DATA))

@@ -2,6 +2,37 @@
 
 ## Verdict
 
+**Current implementation update:** the API21 loss is fixed with the existing
+Glide `gifdecoder:4.16.0`, now declared by its shared Android owner. Only the first
+frame is decoded; Movie is not used by product code. API28+ thumbnails retain the
+software ImageDecoder path. GIF inspection validates all frame metadata and uses
+the same bounded first-frame decoder before accepting media.
+
+Native regression went **RED on API21 (0.068s, 0 transparent pixels)** before the
+fix. Afterward **5/5 tests passed on API21 (0.202s) and API35 (0.644s)**: the three
+hash-pinned GIFs retain alpha, out-of-canvas second frames and 4097-frame metadata
+bombs are rejected, a 1×8192 GIF samples to nonzero bounded buffers, and PNG/JPEG
+orientation/byte preservation still pass. API21 transparent pixel counts are now
+**14374 / 11697 / 17076**; API35 remains **29684 / 20880 / 37717**.
+
+Before Glide's header parser/allocations, a source snapshot is structurally
+validated: existing 64MiB/8192-dimension/16M-canvas-pixel limits, all frame
+rectangles inside the canvas, at most4096 frames/16384 metadata commands/1000000
+sub-blocks, bounded reads, complete trailer and valid LZW minimum code size.
+Decode is serialized; estimated source/index/scratch/output/previous-frame
+buffers must fit half of max heap and current heap headroom. Low-memory/resource
+failures report `LIMIT_EXCEEDED`, not opaque-black success or content rewriting.
+Large valid GIFs may need a streaming decoder on low-memory devices; this explicit
+working-memory limit is not a claim that every64MiB GIF fits every phone.
+
+Why not Movie: Android5.0's original
+[SkMovie_gif.cpp](https://android.googlesource.com/platform/external/skia/+/android-5.0.0_r1/src/images/SkMovie_gif.cpp)
+calls `DGifSlurp` for the animation and allocates two full-canvas bitmaps.
+A small Canvas target alone does not constrain those allocations. No source or
+canonical media bytes are re-encoded, and no dependency download was needed.
+Actual product screenshots/font-scale matrix and physical memory acceptance
+remain separate checks. Measurements below are the preserved pre-fix history.
+
 The same three public GIF byte sequences lose transparency during native decoding on the API 21 arm64 emulator. The actual `AndroidThumbnailDecoder(AndroidMediaInspectionPort())` returns opaque black corner pixels; the full-resolution direct `BitmapFactory` control does too. API 35 preserves transparency in both controls and actual thumbnails. `Bitmap.hasAlpha() == true` on **both** platforms is not proof of transparent pixels.
 
 This establishes a decode-level API/device difference without UI imitation, storage writes, or a production change. It does **not** establish a new regression: an old 1.4/API 21 baseline is still missing. It does not prove the physical-phone screenshot has the identical cause.
