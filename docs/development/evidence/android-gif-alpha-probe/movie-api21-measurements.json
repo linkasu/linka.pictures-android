@@ -1,0 +1,350 @@
+{
+  "evidenceKind": "Scalar records transcribed from MCP API21 Movie comparison instrumentation output; not a raw output capture",
+  "serial": "emulator-5554",
+  "avd": "linka_platform_probe_api21_arm64",
+  "runnerResult": "OK (1 test)",
+  "instrumentationCode": -1,
+  "seconds": 0.116,
+  "cleanup": "NO_OWNED_PROBE_TEMP_FILES",
+  "records": [
+    {
+      "sdk": 21,
+      "abi": "arm64-v8a",
+      "fixture": "unnamed (4).gif",
+      "sourceSHA256": "4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb",
+      "sourceUnchanged": true,
+      "thumbnailBranch": "BitmapFactory/ARGB_8888",
+      "directBitmapFactory": {
+        "width": 364,
+        "height": 228,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 0,
+        "pixelCount": 82992,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 363,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 0,
+            "y": 227,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 363,
+            "y": 227,
+            "alpha": 255,
+            "argb": "ff000000"
+          }
+        ]
+      },
+      "actualThumbnail": {
+        "width": 182,
+        "height": 114,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 0,
+        "pixelCount": 20748,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 181,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 0,
+            "y": 113,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 181,
+            "y": 113,
+            "alpha": 255,
+            "argb": "ff000000"
+          }
+        ]
+      },
+      "status": "TRANSPARENCY_ABSENT",
+      "legacyMovie": {
+        "width": 182,
+        "height": 114,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 14629,
+        "pixelCount": 20748,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 181,
+            "y": 0,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 0,
+            "y": 113,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 181,
+            "y": 113,
+            "alpha": 0,
+            "argb": "00000000"
+          }
+        ],
+        "sourceWidth": 364,
+        "sourceHeight": 228,
+        "timeMillis": 0,
+        "setTimeChanged": true,
+        "decodeDrawElapsedNanos": 20484166
+      }
+    },
+    {
+      "sdk": 21,
+      "abi": "arm64-v8a",
+      "fixture": "unnamed (2).gif",
+      "sourceSHA256": "18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396",
+      "sourceUnchanged": true,
+      "thumbnailBranch": "BitmapFactory/ARGB_8888",
+      "directBitmapFactory": {
+        "width": 390,
+        "height": 222,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 0,
+        "pixelCount": 86580,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 389,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 0,
+            "y": 221,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 389,
+            "y": 221,
+            "alpha": 255,
+            "argb": "ff000000"
+          }
+        ]
+      },
+      "actualThumbnail": {
+        "width": 195,
+        "height": 111,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 0,
+        "pixelCount": 21645,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 194,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 0,
+            "y": 110,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 194,
+            "y": 110,
+            "alpha": 255,
+            "argb": "ff000000"
+          }
+        ]
+      },
+      "status": "TRANSPARENCY_ABSENT",
+      "legacyMovie": {
+        "width": 195,
+        "height": 111,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 11894,
+        "pixelCount": 21645,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 194,
+            "y": 0,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 0,
+            "y": 110,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 194,
+            "y": 110,
+            "alpha": 0,
+            "argb": "00000000"
+          }
+        ],
+        "sourceWidth": 390,
+        "sourceHeight": 222,
+        "timeMillis": 0,
+        "setTimeChanged": true,
+        "decodeDrawElapsedNanos": 12194250
+      }
+    },
+    {
+      "sdk": 21,
+      "abi": "arm64-v8a",
+      "fixture": "unnamed (3).gif",
+      "sourceSHA256": "b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6",
+      "sourceUnchanged": true,
+      "thumbnailBranch": "BitmapFactory/ARGB_8888",
+      "directBitmapFactory": {
+        "width": 350,
+        "height": 350,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 0,
+        "pixelCount": 122500,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 349,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 0,
+            "y": 349,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 349,
+            "y": 349,
+            "alpha": 255,
+            "argb": "ff000000"
+          }
+        ]
+      },
+      "actualThumbnail": {
+        "width": 175,
+        "height": 175,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 0,
+        "pixelCount": 30625,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 174,
+            "y": 0,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 0,
+            "y": 174,
+            "alpha": 255,
+            "argb": "ff000000"
+          },
+          {
+            "x": 174,
+            "y": 174,
+            "alpha": 255,
+            "argb": "ff000000"
+          }
+        ]
+      },
+      "status": "TRANSPARENCY_ABSENT",
+      "legacyMovie": {
+        "width": 175,
+        "height": 175,
+        "nativeHasAlpha": true,
+        "alphaBelow255": 17263,
+        "pixelCount": 30625,
+        "corners": [
+          {
+            "x": 0,
+            "y": 0,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 174,
+            "y": 0,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 0,
+            "y": 174,
+            "alpha": 0,
+            "argb": "00000000"
+          },
+          {
+            "x": 174,
+            "y": 174,
+            "alpha": 0,
+            "argb": "00000000"
+          }
+        ],
+        "sourceWidth": 350,
+        "sourceHeight": 350,
+        "timeMillis": 0,
+        "setTimeChanged": true,
+        "decodeDrawElapsedNanos": 6501333
+      }
+    }
+  ]
+}

@@ -60,6 +60,22 @@ Each fixture emits a `GIF_ALPHA_PROBE` JSON status with SDK, ABI, source SHA, na
 
 ## Boundaries and cleanup
 
+### Additional API 21 standard-OS Movie comparison
+
+An additional **test-only** run on `emulator-5554` (`linka_platform_probe_api21_arm64`, SDK 21, arm64-v8a) compared the same already validated fixtures with `android.graphics.Movie.decodeFile`, `setTime(0)`, and `Movie.draw` onto a newly allocated, explicitly transparent ARGB_8888 bitmap. A software `Canvas` scales each frame to the actual production thumbnail dimensions above. No image/screenshot files are generated. Movie is deprecated on modern Android; the helper has a local test-only deprecation suppression and runs **only on SDK 21**. There is no API 35 Movie claim.
+
+| Fixture | Movie target | Movie alpha < 255 | All four corners | Decode + allocation + draw elapsed |
+|---|---|---:|---|---:|
+| ГУЛЯТЬ / `unnamed (4).gif` | 182×114 | **14629** / 20748 | alpha 0 / `00000000` | 20484166 ns (~20.484 ms) |
+| ИГРАТЬ / `unnamed (2).gif` | 195×111 | **11894** / 21645 | alpha 0 / `00000000` | 12194250 ns (~12.194 ms) |
+| ОБНИМАТЬСЯ / `unnamed (3).gif` | 175×175 | **17263** / 30625 | alpha 0 / `00000000` | 6501333 ns (~6.501 ms) |
+
+`setTime(0)` returned true and output `hasAlpha=true` for all three. Movie source dimensions matched the original inspector dimensions. Timing ends after drawing, before scanning pixels; it is a single diagnostic measurement, not a benchmark. The direct BitmapFactory and actual thumbnail comparisons were rerun unchanged and still had **0/0/0** alpha<255 pixels with opaque black corners. The top-level JSON `status` continues to describe the **actual production thumbnail**, not Movie.
+
+**Answer to the narrow question: standard OS Movie preserves transparent pixels for these three first frames on this API 21 emulator.** This is not a production safety recommendation: a bounded output canvas does not bound Movie's parser, native frame decode, or animation memory. Validation, frame/memory bounds for arbitrary or hostile GIFs, cancellation, and production ownership remain separate primary decisions. The test only uses the three hash-pinned, previously inspected small fixtures and independently owns/recycles its output bitmap; it does not pass the thumbnail bitmap to Movie. Movie exposes no explicit recycle/close API.
+
+The additional build used the same offline/JDK17/single-worker task. Only the verified self-target test APK was reinstalled (`-r`, no downgrade) on 5554. The same sole probe class returned `OK (1 test)`, instrumentation code -1, **0.116 s**. API 35 was not installed or run again. `finally` deleted all owned temporary sources and recycled the new output bitmaps; the post-run cache check returned `NO_OWNED_PROBE_TEMP_FILES`. Test APK remains installed; no grants, app UI, production changes, dependencies, or AVD changes. Archive SHA and all three asset SHA/ZIP byte equalities were reverified unchanged. New evidence is `movie-api21-measurements.json`, `movie-api21-build.log`, `movie-apk-manifest.txt`, `movie-apk-sha256.txt`, and `movie-fixture-verification.json` in the existing evidence directory; original API 21/35 evidence remains intact.
+
 Only the test's uniquely named `gif-alpha-probe-*.gif` cache files were written on devices; `finally` deletes each with an assertion. A post-run `run-as su.linka.pictures.shared.test` cache check returned `NO_OWNED_PROBE_TEMP_FILES` on both devices. The self-instrumenting test package remains installed; no uninstall/clear-data, runtime grants, microphone tests, development-app UI actions, screenshots, or AVD changes occurred. Existing application datasets were not opened or modified by the probe. No production decoder, preparation, storage, UI, Gradle, manifest, CI, iOS, or audio-host source was edited.
 
 Actual stored library bytes were **not measured** here. The previously known hash-preserving import/preparation contract is separate from the cache-file immutability measured by this test. On API 35, preserved bitmap alpha gives no grounds to blame canonicalization/decoder for any separate render failure. Physical-device confirmation, actual Compose rendering/compositing, old 1.4/API 21 parity, intermediate Android versions, and AAC/audio parity remain **OPEN**. No Glide/Movie/global image dependency or production workaround is proposed by this lane.

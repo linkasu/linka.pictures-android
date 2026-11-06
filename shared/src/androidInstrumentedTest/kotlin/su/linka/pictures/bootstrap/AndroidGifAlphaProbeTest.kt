@@ -2,8 +2,12 @@ package su.linka.pictures.bootstrap
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Movie
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
@@ -60,12 +64,14 @@ class AndroidGifAlphaProbeTest {
                     val map = image.toPixelMap()
                     pixels(image.width, image.height, native.hasAlpha()) { x, y -> map[x, y].toArgb() }
                 } finally { native.recycle() }
+                val movieRecord = if (Build.VERSION.SDK_INT == 21) moviePixels(source, size, thumbnailRecord) else null
                 assertArrayEquals(bytes, source.readBytes())
                 assertEquals(expectedSha, sha(source.readBytes()))
                 val record = JSONObject().put("sdk", Build.VERSION.SDK_INT).put("abi", Build.SUPPORTED_ABIS[0])
                     .put("fixture", name).put("sourceSHA256", expectedSha).put("sourceUnchanged", true)
                     .put("thumbnailBranch", if (Build.VERSION.SDK_INT >= 28) "ImageDecoder/software" else "BitmapFactory/ARGB_8888")
                     .put("directBitmapFactory", directRecord).put("actualThumbnail", thumbnailRecord)
+                    .put("legacyMovie", movieRecord ?: JSONObject.NULL)
                     .put("status", if (thumbnailRecord.getInt("alphaBelow255") > 0) "TRANSPARENCY_PRESENT" else "TRANSPARENCY_ABSENT")
                 instrumentation.sendStatus(0, Bundle().apply { putString("stream", "GIF_ALPHA_PROBE $record\n") })
                 // Pin the measured modern reference; API 21's absent alpha remains a reported gap, not a passing transparency claim.
@@ -75,6 +81,26 @@ class AndroidGifAlphaProbeTest {
     }
 
     private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    @Suppress("DEPRECATION") // Movie is deprecated on modern Android; this comparison runs only on API 21.
+    private fun moviePixels(source: File, size: Pair<Int, Int>, thumbnail: JSONObject): JSONObject {
+        val started = SystemClock.elapsedRealtimeNanos()
+        val movie = checkNotNull(Movie.decodeFile(source.absolutePath))
+        assertEquals(size.first, movie.width())
+        assertEquals(size.second, movie.height())
+        val target = Bitmap.createBitmap(thumbnail.getInt("width"), thumbnail.getInt("height"), Bitmap.Config.ARGB_8888)
+        try {
+            target.eraseColor(Color.TRANSPARENT)
+            val canvas = Canvas(target)
+            canvas.scale(target.width.toFloat() / movie.width(), target.height.toFloat() / movie.height())
+            val timeChanged = movie.setTime(0)
+            movie.draw(canvas, 0f, 0f)
+            val elapsedNanos = SystemClock.elapsedRealtimeNanos() - started
+            return pixels(target.width, target.height, target.hasAlpha()) { x, y -> target.getPixel(x, y) }
+                .put("sourceWidth", movie.width()).put("sourceHeight", movie.height())
+                .put("timeMillis", 0).put("setTimeChanged", timeChanged).put("decodeDrawElapsedNanos", elapsedNanos)
+        } finally { target.recycle() }
+    }
 
     private fun pixels(width: Int, height: Int, hasAlpha: Boolean, pixel: (Int, Int) -> Int): JSONObject {
         var transparent = 0
