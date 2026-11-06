@@ -50,6 +50,45 @@ Cancel/Save всех трёх видов, late-media cleanup и сохранён
 `withoutSpace` уже выражен `BoardBehavior.inputStyle` и codec mapping LITERAL/CARDS;
 второе persisted поле ради визуального checkbox не добавляется.
 
+### iOS native-window identity: границы исправления admission
+
+При проверке foreground UIKit window/scene сравниваются по строгой нативной
+ObjC-идентичности, **не** по Kotlin wrapper `===`, `hash`, structural `equals`
+или глобальному key-window поиску. Перед функциональным изменением требуется
+подтвердить `Kotlin same=false / nativeSame=true` на фактическом окне. Это не
+основание разрешать действительно другое native window или чужую scene.
+
+Матрица: то же native окно с другим wrapper → прежние app/scene/hidden checks;
+другое native окно → отказ; закрытое/скрытое/disconnected → отказ; background →
+синхронный revoke до UI; app/scene inactive → не fresh admission. Разрешённый ранее
+cached fallback для своего временно отсоединённого fullscreen presenter остаётся
+ограничен open owner и теми же app/scene/hidden checks. Native hide/deactivate/
+disconnect callbacks должны точно сопоставлять свои UIKit объекты даже при смене
+wrapper. Kotlin-owned Window/owner/capability tokens сохраняют referential checks.
+
+Никаких новых credential/DB writers, схемы, lock order, autounlock/autorun/resume
+или расширения Keychain groups. Нужны regressions на alias/foreign/hidden/background,
+затем реальные native UI enabled/import проверки; после диагностики debug traces
+удаляются до окончательного gate.
+
+### U1.4: iOS Files fixture — только тестовый host
+
+Для заполненного iOS UI тестовый архив предоставляется **только** через штатный
+Files/UIDocumentPicker: отдельный Simulator-only UIKit test-host выставляет свой
+Documents с публичной неизменённой fixture. Production/development product file
+sharing не включается; Keychain/библиотека не лежат в Documents этого host.
+`UIFileSharingEnabled` / `LSSupportsOpeningDocumentsInPlace` должны присутствовать
+в **собранном Info.plist**, не только в build settings. Exact own-group signature
+проверяется до install; source SHA проверяется до/после staging/import.
+
+UI test не передаёт URL напрямую в порт/делегат и не пишет SQL: настоящий picker
+и NSFileCoordinator копируют файл в registered temporary. После возврата остаются
+явные unlock и ImportNew; UNCONFIRMED/ошибка/конфликт не дают retry или reset.
+Первый import допускается только при читаемой пустой библиотеке/фразе, после
+публикации — отдельный reopen-only сценарий. Ни этот host, ни test runner не
+получают production/чужую Keychain group. Схема, writers, lock order и persisted
+transfer semantics не меняются; signed Simulator test не закрывает physical/G4.
+
 ### U1.4: inline-параметры сетки — принято COORD до реализации
 
 Перед переходом к следующим UI-парам также зафиксирована inline-grid поправка:

@@ -1,0 +1,12 @@
+Owned iOS17.0 arm64, real development app, 2026-11-06 14:44 local.
+Captured before changing admission, with public objcPtr() identity probe:
+[DEBUG-u14-window] open=true current=true cached=true same=false nativeSame=true app=UIApplicationStateActive hidden=false active=false foreground=false stored=false accessReady=true
+
+RootWindowSnapshot targeted test before the comparator fix:
+3 tests / 2 passed / 1 failed
+FAILED: twoWrappersForTheSameNativeWindowAreNotAWindowReplacement
+Expected own active/foreground window; old wrapper reference test returned false/false.
+Existing foreign/closed/hidden/background/cached-modal tests passed.
+
+No pointer addresses, capability values, passwords or credential bytes were logged.
+Temporary DEBUG traces must not be present in final product source.

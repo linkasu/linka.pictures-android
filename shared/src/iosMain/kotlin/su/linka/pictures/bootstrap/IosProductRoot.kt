@@ -99,17 +99,17 @@ internal class IosProductRoot {
         }
         observe(UISceneWillDeactivateNotification) { notice ->
             val scene = notice?.`object` as? UIScene ?: return@observe
-            windows.values.filter { it.scene === scene }.forEach { owners.setActive(it.id, false) }
+            windows.values.filter { sameUIKitObject(it.scene, scene) }.forEach { owners.setActive(it.id, false) }
         }
         observe(UIApplicationDidBecomeActiveNotification) { updateWindows(); notifyForeground() }
         observe(UISceneDidActivateNotification) { updateWindows(); notifyForeground() }
         observe(UISceneDidDisconnectNotification) { notice ->
             val scene = notice?.`object` as? UIScene ?: return@observe
-            windows.values.filter { it.scene === scene }.toList().forEach { closeWindow(it) }
+            windows.values.filter { sameUIKitObject(it.scene, scene) }.toList().forEach { closeWindow(it) }
         }
         observe(UIWindowDidBecomeHiddenNotification) { notice ->
             val native = notice?.`object` as? UIWindow ?: return@observe
-            windows.values.filter { it.native === native }.forEach { window ->
+            windows.values.filter { sameUIKitObject(it.native, native) }.forEach { window ->
                 owners.setActive(window.id, false)
                 val cleanup = CleanupAttempts(recovery.notice.value.problem)
                 val affected = owners.owners(window.id)
@@ -332,7 +332,7 @@ internal class IosProductRoot {
             current, window.native, application == UIApplicationState.UIApplicationStateActive,
             application == UIApplicationState.UIApplicationStateBackground, { it.hidden },
             { it.windowScene?.activationState?.let { state -> state == UISceneActivationStateForegroundActive } ?: true },
-            { it.windowScene?.activationState == UISceneActivationStateBackground })
+            { it.windowScene?.activationState == UISceneActivationStateBackground }, ::sameUIKitObject)
     }
 
     private fun updateWindows() {
@@ -346,7 +346,7 @@ internal class IosProductRoot {
     }
 
     private fun background(scene: UIScene?) {
-        val affected = windows.values.filter { scene == null || it.scene === scene }
+        val affected = windows.values.filter { scene == null || sameUIKitObject(it.scene, scene) }
         val affectedOwners = affected.flatMap { owners.owners(it.id) }
         affected.forEach { owners.setActive(it.id, false) }
         val cleanup = CleanupAttempts(recovery.notice.value.problem)
