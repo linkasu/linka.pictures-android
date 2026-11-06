@@ -50,20 +50,23 @@ Raw PNG всех трёх tablet-референсов — **2560×1600**, под
   доступен как stateDescription заголовка и пункт «Состояние черновика».
   Cancelled/failed/completed semantics приложения не изменены.
 
-## Блокер shared contract для primary — не выдавать за готовый тип формы
+## Тип формы: shared seam подключён, прежний blocker снят
 
-`EditorForm.Card` не содержит kind; `ChangeCard` не меняет тип;
-`AuthoringSession.saveCard()` всегда создаёт CONTENT. Поэтому выбор SPACE/EMPTY
-в форме пока показан **недоступным**, с явным указанием на рабочее меню ячейки.
-Не применена опасная подмена «CancelCard; SetCell»: она не атомарна,
-не сохраняет тип в durable form и обходит нормальный SaveCard contract.
+Reviewed dependency `278204c` cherry-picked как `ef705b5`: trailing
+`Card.kind: CellKind = CONTENT` с `EncodeDefault.NEVER` и
+`AuthoringAction.ChangeCardKind(kind)`. Radio напрямую отражает `form.kind` и
+посылает одну ChangeCardKind; целая строка label кликабельна, не менее 48 dp,
+с Role.RadioButton и тем же editing-state enabled. Disabled placeholder удалён.
 
-Primary уже заморозил seam в `code-contracts.md`, подраздел U1.4:
-trailing `Card.kind: CellKind = CONTENT` с `EncodeDefault.NEVER` и
-`AuthoringAction.ChangeCardKind(kind)`. Non-CONTENT скрывает поля, но сохраняет их
-в form до Cancel/Save; SaveCard атомарно создаёт card=null и сохраняет cell extensions.
-Implementation lane 7 реализует shared contract; UI radio подключается только после
-готового dependency commit от primary. Здесь application/domain не менялись.
+SPACE/EMPTY скрывают label/image/audio/TTS, но UI не очищает поля формы.
+Image-demand скрытой формы пуст; demand видимой сетки под диалогом остаётся в общем
+provider. Core отдельно удерживает hidden image/audio leases. Возврат к CONTENT
+снова показывает поля/изображение. Save/Cancel остаются в футере; UI не требует
+recording скрытых полей и не заменяет SaveCard последовательностью CancelCard→SetCell.
+Ошибки authoring/audio не скрываются вместе с content-полями.
+
+Atomic SaveCard, old/new compatibility и leases описаны в `u14-card-kind.md`.
+Собственных изменений application/domain/storage/tests core поверх dependency нет.
 
 Legacy `withoutSpace` уже отображается codec-ом в `BoardBehavior.inputStyle`:
 `LinkaWire.document` читает LITERAL/CARDS, `encodeWire` записывает `withoutSpace`
@@ -82,15 +85,18 @@ JDK17, offline, один worker:
 
 ```sh
 JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.19/libexec/openjdk.jdk/Contents/Home \
-  ./gradlew :shared:jvmTest --tests 'su.linka.pictures.ui.*' --max-workers=1 --offline
+  ./gradlew :shared:jvmTest --tests 'su.linka.pictures.ui.*' \
+  --tests '*EditorFormKindSerializationTest' \
+  --tests 'su.linka.pictures.application.authoring.*' --max-workers=1 --offline
 git diff --check
 ```
 
 Новые pure tests: размеры обычной / dense / large-font сетки; CONTENT с пустой
 подписью и EMPTY с metadata; восстановленная card/grid форма на правильной странице;
-векторные toolbar paths; checkbox LITERAL/CARDS с сохранением DIRECT/COMPOSE и details.
-Существующие UI / AuthoringPresentation / image registry tests не изменены.
-Результат focused run: **50 tests, 0 failures, 0 errors** (6 новых с начала editor lane),
+векторные toolbar paths; checkbox LITERAL/CARDS с сохранением DIRECT/COMPOSE и details;
+visibility полей и image-demand для CONTENT/SPACE/EMPTY с возвратом к CONTENT.
+Прежние 50 UI tests и dependency tests не ослаблены, добавлены 2 pure presentation tests.
+Результат focused run: **104 tests, 0 failures, 0 errors** (52 UI + 52 dependency core),
 `git diff --check` PASS. Это не Compose instrumentation и не доказательство визуального паритета.
 
 Не запускались full gate, native build, FFmpeg, download, device/install/permissions.

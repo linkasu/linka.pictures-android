@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -40,6 +42,7 @@ internal fun CardEditorDialog(
 ) {
     val form = state.draft?.form as? EditorForm.Card ?: return
     val enabled = state.editable()
+    val showContent = cardContentVisible(form)
     val palette = LocalLinkaPalette.current
     val focus = LocalFocusManager.current
     var speechMenu by remember { mutableStateOf(false) }
@@ -47,7 +50,7 @@ internal fun CardEditorDialog(
     val change: (String, String, SpeechChoice, Boolean) -> Unit = { label, text, choice, useLabel ->
         dispatch(AuthoringAction.ChangeCard(label, text, choice, useLabel))
     }
-    DemandVisibleImages(form.cardId, setOfNotNull(form.image))
+    DemandVisibleImages(form.cardId, cardImageDemand(form))
     Dialog(onDismissRequest = { if (enabled) dispatch(AuthoringAction.CancelCard) },
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp), contentAlignment = Alignment.Center) {
@@ -56,78 +59,84 @@ internal fun CardEditorDialog(
                 Column(Modifier.padding(12.dp)) {
                     Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Тип карточки", modifier = Modifier.semantics { heading() })
-                        // shortcut: Card draft has no kind field; SPACE/EMPTY remain explicit cell-menu commands until the shared form contract is extended.
-                        FlowRow {
-                            listOf("Стандартная карточка", "Пробел", "Пустая карточка").forEachIndexed { index, label ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(index == 0, onClick = {}, enabled = false)
-                                    Text(label)
+                        FlowRow(Modifier.selectableGroup()) {
+                            CellKind.entries.forEach { kind ->
+                                Row(Modifier.heightIn(min = 48.dp).selectable(form.kind == kind, enabled = enabled, role = Role.RadioButton,
+                                    onClick = { focus.clearFocus(); dispatch(AuthoringAction.ChangeCardKind(kind)) }),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(form.kind == kind, onClick = null, enabled = enabled)
+                                    Text(when (kind) {
+                                        CellKind.CONTENT -> "Стандартная карточка"
+                                        CellKind.SPACE -> "Пробел"
+                                        CellKind.EMPTY -> "Пустая карточка"
+                                    })
                                 }
                             }
                         }
-                        Text("Пробел и пустая ячейка выбираются в меню ячейки.", style = MaterialTheme.typography.caption)
                         AuthoringFeedback(state, dispatch, showSaveStatus = state.savePhase == DraftSavePhase.FAILED || state.savePhase == DraftSavePhase.UNCONFIRMED)
-                        OutlinedTextField(form.label, { change(it, form.speechText, form.speechChoice, form.useLabelForSpeech) },
-                            label = { Text("Название карточки") }, enabled = enabled, colors = authoringFieldColors(),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
-                            modifier = Modifier.fillMaxWidth())
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.weight(1f).height(120.dp), contentAlignment = Alignment.Center) {
-                                form.image?.let { images[it] }?.let { Image(it, "Изображение карточки", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                                    ?: Text(if (form.image == null) "Нет изображения" else "Предпросмотр загружается")
+                        if (showContent) {
+                            OutlinedTextField(form.label, { change(it, form.speechText, form.speechChoice, form.useLabelForSpeech) },
+                                label = { Text("Название карточки") }, enabled = enabled, colors = authoringFieldColors(),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+                                modifier = Modifier.fillMaxWidth())
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.weight(1f).height(120.dp), contentAlignment = Alignment.Center) {
+                                    form.image?.let { images[it] }?.let { Image(it, "Изображение карточки", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
+                                        ?: Text(if (form.image == null) "Нет изображения" else "Предпросмотр загружается")
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Button({ dispatch(AuthoringAction.PickImage) }, enabled = enabled && !state.mediaBusy, modifier = Modifier.fillMaxWidth()) { Text("Выбрать изображение") }
+                                    Button({ dispatch(AuthoringAction.ImageFromText(form.label)) }, enabled = enabled && !state.mediaBusy && form.label.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Из текста") }
+                                    if (form.image != null) TextButton({ dispatch(AuthoringAction.RemoveImage) }, enabled = enabled) { Text("Убрать изображение") }
+                                }
                             }
-                            Column(Modifier.weight(1f)) {
-                                Button({ dispatch(AuthoringAction.PickImage) }, enabled = enabled && !state.mediaBusy, modifier = Modifier.fillMaxWidth()) { Text("Выбрать изображение") }
-                                Button({ dispatch(AuthoringAction.ImageFromText(form.label)) }, enabled = enabled && !state.mediaBusy && form.label.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Из текста") }
-                                if (form.image != null) TextButton({ dispatch(AuthoringAction.RemoveImage) }, enabled = enabled) { Text("Убрать изображение") }
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button({ dispatch(AuthoringAction.Preview) }, enabled = enabled && !state.mediaBusy && form.speechChoice != SpeechChoice.NONE) { Text("Прослушать") }
+                                Button({ dispatch(AuthoringAction.Synthesize) }, enabled = enabled && !state.mediaBusy &&
+                                    (if (form.useLabelForSpeech) form.label else form.speechText).isNotBlank()) { Text("Звук из текста") }
+                                Button({ dispatch(if (state.audio.phase == AudioPhase.RECORDING) AuthoringAction.FinishRecording else AuthoringAction.Record) },
+                                    enabled = enabled && (!state.mediaBusy || state.audio.phase == AudioPhase.RECORDING)) {
+                                    Text(if (state.audio.phase == AudioPhase.RECORDING) "Завершить запись" else "Запись звука")
+                                }
                             }
-                        }
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button({ dispatch(AuthoringAction.Preview) }, enabled = enabled && !state.mediaBusy && form.speechChoice != SpeechChoice.NONE) { Text("Прослушать") }
-                            Button({ dispatch(AuthoringAction.Synthesize) }, enabled = enabled && !state.mediaBusy &&
-                                (if (form.useLabelForSpeech) form.label else form.speechText).isNotBlank()) { Text("Звук из текста") }
-                            Button({ dispatch(if (state.audio.phase == AudioPhase.RECORDING) AuthoringAction.FinishRecording else AuthoringAction.Record) },
-                                enabled = enabled && (!state.mediaBusy || state.audio.phase == AudioPhase.RECORDING)) {
-                                Text(if (state.audio.phase == AudioPhase.RECORDING) "Завершить запись" else "Запись звука")
-                            }
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.weight(1f)) {
-                                TextButton({ speechMenu = true }, enabled = enabled) { Text(when (form.speechChoice) {
-                                    SpeechChoice.TTS -> "Локальный TTS ▾"
-                                    SpeechChoice.RECORDING -> "Аудиозапись ▾"
-                                    SpeechChoice.NONE -> "Без звука ▾"
-                                }) }
-                                DropdownMenu(speechMenu, { speechMenu = false }) {
-                                    SpeechChoice.entries.forEach { choice ->
-                                        DropdownMenuItem({ speechMenu = false; change(form.label, form.speechText, choice, form.useLabelForSpeech) }) {
-                                            Text(when (choice) { SpeechChoice.TTS -> "Локальный TTS"; SpeechChoice.RECORDING -> "Аудиозапись"; SpeechChoice.NONE -> "Без звука" })
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.weight(1f)) {
+                                    TextButton({ speechMenu = true }, enabled = enabled) { Text(when (form.speechChoice) {
+                                        SpeechChoice.TTS -> "Локальный TTS ▾"
+                                        SpeechChoice.RECORDING -> "Аудиозапись ▾"
+                                        SpeechChoice.NONE -> "Без звука ▾"
+                                    }) }
+                                    DropdownMenu(speechMenu, { speechMenu = false }) {
+                                        SpeechChoice.entries.forEach { choice ->
+                                            DropdownMenuItem({ speechMenu = false; change(form.label, form.speechText, choice, form.useLabelForSpeech) }) {
+                                                Text(when (choice) { SpeechChoice.TTS -> "Локальный TTS"; SpeechChoice.RECORDING -> "Аудиозапись"; SpeechChoice.NONE -> "Без звука" })
+                                            }
                                         }
                                     }
                                 }
+                                TextButton({ moreAudio = !moreAudio }) { Text(if (moreAudio) "Скрыть параметры звука" else "Параметры звука") }
                             }
-                            TextButton({ moreAudio = !moreAudio }) { Text(if (moreAudio) "Скрыть параметры звука" else "Параметры звука") }
-                        }
-                        if (state.audio.owner?.purpose == AudioPurpose.PREVIEW && state.audio.phase in setOf(AudioPhase.PREPARING, AudioPhase.PLAYING))
-                            TextButton({ dispatch(AuthoringAction.StopPreview) }, enabled = enabled) { Text("Остановить прослушивание") }
+                            if (state.audio.owner?.purpose == AudioPurpose.PREVIEW && state.audio.phase in setOf(AudioPhase.PREPARING, AudioPhase.PLAYING))
+                                TextButton({ dispatch(AuthoringAction.StopPreview) }, enabled = enabled) { Text("Остановить прослушивание") }
+                            if (moreAudio) {
+                                Row(Modifier.fillMaxWidth().toggleable(form.useLabelForSpeech, enabled = enabled, role = Role.Checkbox,
+                                    onValueChange = { change(form.label, form.speechText, form.speechChoice, it) }), verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(form.useLabelForSpeech, onCheckedChange = null, enabled = enabled)
+                                    Text("Использовать название для речи")
+                                }
+                                if (!form.useLabelForSpeech) OutlinedTextField(form.speechText,
+                                    { change(form.label, it, form.speechChoice, false) }, label = { Text("Текст речи") },
+                                    enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
+                                Text(if (form.recording == null) "Аудиозапись не выбрана" else "Аудиозапись подготовлена")
+                                TextButton({ dispatch(AuthoringAction.PickAudio) }, enabled = enabled && !state.mediaBusy) { Text("Выбрать аудиофайл") }
+                                val source = state.draft.document.pages.firstOrNull { it.id == form.pageId }?.cells
+                                    ?.firstOrNull { it.card?.id == form.cardId }?.card?.speech
+                                (source as? SpeechSource.Tts)?.languageTag?.let { Text("Язык исходной речи: $it (сохраняется)") }
+                            }
+                        } else Text(if (form.kind == CellKind.SPACE) "Добавляет пробел без изображения и звука." else "Пустая ячейка без изображения и звука.")
                         state.audio.problem?.let { Text(authoringProblemLabel(it.code), color = palette.danger,
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
                         if (state.mediaBusy) TextButton({ dispatch(AuthoringAction.CancelMedia) }, enabled = enabled) { Text("Отменить подготовку медиа") }
-                        if (moreAudio) {
-                            Row(Modifier.fillMaxWidth().toggleable(form.useLabelForSpeech, enabled = enabled, role = Role.Checkbox,
-                                onValueChange = { change(form.label, form.speechText, form.speechChoice, it) }), verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(form.useLabelForSpeech, onCheckedChange = null, enabled = enabled)
-                                Text("Использовать название для речи")
-                            }
-                            if (!form.useLabelForSpeech) OutlinedTextField(form.speechText,
-                                { change(form.label, it, form.speechChoice, false) }, label = { Text("Текст речи") },
-                                enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
-                            Text(if (form.recording == null) "Аудиозапись не выбрана" else "Аудиозапись подготовлена")
-                            TextButton({ dispatch(AuthoringAction.PickAudio) }, enabled = enabled && !state.mediaBusy) { Text("Выбрать аудиофайл") }
-                            val source = state.draft.document.pages.firstOrNull { it.id == form.pageId }?.cells
-                                ?.firstOrNull { it.card?.id == form.cardId }?.card?.speech
-                            (source as? SpeechSource.Tts)?.languageTag?.let { Text("Язык исходной речи: $it (сохраняется)") }
-                        }
                         Text("Готово — принять карточку в черновик. Затем сохраните доску в верхней панели редактора.", style = MaterialTheme.typography.caption)
                     }
                     Divider()
