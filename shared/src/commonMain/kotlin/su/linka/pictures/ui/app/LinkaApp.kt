@@ -20,6 +20,8 @@ import su.linka.pictures.ui.editor.EditorScreen
 import su.linka.pictures.ui.editor.AuthoringFeedback
 import su.linka.pictures.ui.library.LibraryScreen
 import su.linka.pictures.ui.portability.TransferScreen
+import su.linka.pictures.ui.portability.transferProtectedAction
+import su.linka.pictures.application.portability.TransferPhase
 import su.linka.pictures.ui.settings.SettingsScreen
 import su.linka.pictures.ui.theme.LinkaTheme
 
@@ -42,6 +44,8 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
             communication, controller, { opened(it) }, { closed(it) }, { replaced(it) })
     }
     val route by navigation.route.collectAsState()
+    var started by remember(navigation) { mutableStateOf(false) }
+    LaunchedEffect(navigation) { navigation.start(); started = true }
     val transitioning by navigation.transitioning.collectAsState()
     val restartProblem by navigation.problem.collectAsState()
     val committedEpoch by navigation.committedEpoch.collectAsState()
@@ -56,6 +60,9 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     var dark by remember { mutableStateOf(systemDark) }
     var libraryAssets by remember(route?.owner) { mutableStateOf<Set<AssetId>>(emptySet()) }
     var editorAssets by remember(route?.owner) { mutableStateOf<Set<AssetId>>(emptySet()) }
+    var communicationAssets by remember(navigation, communication, route, message.stamp.epoch) {
+        mutableStateOf<Set<AssetId>>(emptySet())
+    }
     val uiScope = rememberCoroutineScope()
     fun navigate(page: ProductPage, action: AuthoringAction? = null, board: BoardId? = null) {
         uiScope.launch { navigation.open(page, action, board) }
@@ -71,25 +78,38 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     LaunchedEffect(assistantState.commandsAvailable(), navigation) {
         if (!assistantState.commandsAvailable()) navigation.revokeProtectedAccess()
     }
-    DisposableEffect(navigation) { onDispose { navigation.dispose() } }
+    DisposableEffect(navigation) { onDispose { navigation.dispose(); assetsNeeded(emptySet()) } }
     val requested = when (route?.page) {
-        null, ProductPage.COMMUNICATION -> message.pageImageIds()
+        null, ProductPage.COMMUNICATION -> if (started) communicationAssets else emptySet()
         ProductPage.LIBRARY -> libraryAssets
         ProductPage.EDITOR -> editorAssets
         else -> emptySet()
     }
-    LaunchedEffect(requested) { assetsNeeded(requested) }
+    LaunchedEffect(navigation, requested) { assetsNeeded(requested) }
     LinkaTheme(dark, settings.highContrast, settings.textScale) {
         val current = route
-        if (transitioning) {
-            androidx.compose.material.Text("Закрываем предыдущий экран и освобождаем его ресурсы…")
+        if (!started || transitioning) {
+            Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                androidx.compose.material.CircularProgressIndicator()
+            }
         } else if (current == null) {
             CommunicationScreen(message, ids, voices, { if (isForeground) communication.dispatch(it) },
-                { navigate(ProductPage.LIBRARY) }, images)
+                { navigate(ProductPage.LIBRARY) }, images,
+                showPageButtons = settings.boards[message.message.cursor?.boardId]?.showPageButtons ?: true,
+                onImagesNeeded = { communicationAssets = it })
         } else key(current.owner) {
             val capability by current.capability.collectAsState()
+            val transferState = current.transfer?.state?.collectAsState()?.value?.values
+                ?.lastOrNull { it.ownerId == current.owner }
+            val contextAction = when (current.page) {
+                ProductPage.EDITOR -> current.initialAction?.initialProtectedAction()
+                ProductPage.SETTINGS -> ProtectedAction.CHANGE_SETTINGS
+                ProductPage.TRANSFER -> transferState?.kind?.let(::transferProtectedAction)
+                else -> null
+            }
             val accessPanel: @Composable () -> Unit = {
-                AssistantAccessPanel(access, current.owner, capability, commandsEnabled, current.page == ProductPage.ACCESS) {
+                AssistantAccessPanel(access, current.owner, capability, commandsEnabled, current.page == ProductPage.ACCESS,
+                    contextAction, transferState?.transfer?.phase == TransferPhase.AWAITING_CONFIRMATION) {
                     current.capability.value = it
                 }
             }
@@ -109,7 +129,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                 ProductPage.ACCESS -> ProductScaffold("Защита помощника", { navigate(ProductPage.LIBRARY) }) { accessPanel() }
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
                     commandsEnabled, isForeground, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })
-                ProductPage.EDITOR -> ProductEditor(current, ids, capability, isForeground, commandsEnabled, images, accessPanel,
+                ProductPage.EDITOR -> ProductEditor(current, ids, access, capability, isForeground, commandsEnabled, images, accessPanel,
                     { editorAssets = it }, { navigate(ProductPage.LIBRARY) })
                 ProductPage.COMMUNICATION -> Unit
             }
@@ -132,7 +152,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
 }
 
 @Composable
-private fun ProductEditor(route: ProductRoute, ids: IdSource, capability: AssistantCapability?, foreground: Boolean, commandsEnabled: Boolean,
+private fun ProductEditor(route: ProductRoute, ids: IdSource, gate: AssistantAccess, capability: AssistantCapability?, foreground: Boolean, commandsEnabled: Boolean,
     images: Map<AssetId, ImageBitmap>, access: @Composable () -> Unit, onAssets: (Set<AssetId>) -> Unit,
     onClosed: () -> Unit) {
     val editor = route.editor!!
@@ -141,11 +161,20 @@ private fun ProductEditor(route: ProductRoute, ids: IdSource, capability: Assist
     val dispatch: (AuthoringAction) -> Unit = { action ->
         if (commandsEnabled) editor.send(AuthoringCommand(CommandId(ids.next()), route.owner, capability, action))
     }
+    var entryAttempted by remember(route) { mutableStateOf(false) }
+    LaunchedEffect(route) {
+        val action = route.initialAction
+        val permitted = action?.initialProtectedAction()?.let {
+            gate.check(it, null, route.owner) is OperationResult.Completed
+        } == true
+        val enter = initialEditorEntryReady(action, state.phase, gate.state.value,
+            foreground && commandsEnabled && !route.invalidationStarted.value, permitted, entryAttempted)
+        entryAttempted = true
+        if (enter) dispatch(action!!)
+    }
     LaunchedEffect(state.phase) {
         if (state.phase == AuthoringPhase.CLOSED || state.phase == AuthoringPhase.APPLIED) onClosed()
     }
-    val assets = state.draft?.imageIds().orEmpty()
-    LaunchedEffect(assets) { onAssets(assets) }
     if (state.phase == AuthoringPhase.UNCONFIRMED || state.savePhase == DraftSavePhase.UNCONFIRMED) {
         ProductScaffold("Исход записи черновика неизвестен", onClosed) {
             Feedback(OperationResult.UnconfirmedCommit)
@@ -169,5 +198,6 @@ private fun ProductEditor(route: ProductRoute, ids: IdSource, capability: Assist
                 Action("Остаться в редакторе", foreground) { confirmLeave = false }
             }
         }
-    } else EditorScreen(state, route.owner, capability, ids, { if (commandsEnabled) editor.send(it) }, images)
+    } else EditorScreen(state, route.owner, capability, ids, { if (commandsEnabled) editor.send(it) }, images,
+        onImagesNeeded = onAssets)
 }

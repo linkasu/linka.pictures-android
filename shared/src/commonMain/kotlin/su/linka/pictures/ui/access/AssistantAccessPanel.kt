@@ -12,17 +12,24 @@ import su.linka.pictures.ui.app.*
 
 @Composable
 internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capability: AssistantCapability?,
-    foreground: Boolean, manage: Boolean, onCapability: (AssistantCapability?) -> Unit) {
+    foreground: Boolean, manage: Boolean, action: ProtectedAction? = null, requireFreshUnlock: Boolean = false,
+    onCapability: (AssistantCapability?) -> Unit) {
     val state by access.state.collectAsState()
-    var password by remember(owner, foreground, state) { mutableStateOf("") }
-    var newPassword by remember(owner, foreground, state) { mutableStateOf("") }
-    var repeatPassword by remember(owner, foreground, state) { mutableStateOf("") }
+    var password by remember(owner, foreground, state, capability) { mutableStateOf("") }
+    var newPassword by remember(owner, foreground, state, capability) { mutableStateOf("") }
+    var repeatPassword by remember(owner, foreground, state, capability) { mutableStateOf("") }
+    var requested by remember(owner, foreground, state) { mutableStateOf(false) }
     var busy by remember(owner) { mutableStateOf(false) }
     var result by remember(owner) { mutableStateOf<OperationResult<*>?>(null) }
     var disable by remember(owner, foreground) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val passwordKeyboard = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Password)
     val ready = foreground && !busy && state.commandsAvailable()
+    val freshNone = canSkipContextUnlock(state, capability, access, action, owner)
+    if (!manage && freshNone && !requireFreshUnlock && !requested) {
+        Action("Открыть доступ для отдельного подтверждения", ready) { requested = true }
+        return
+    }
     val verification = when (val current = state) {
         is AssistantState.Protected -> current.verification
         is AssistantState.Unprotected -> current.verification
@@ -34,7 +41,7 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
         is AssistantState.Unprotected -> "Пароль помощника не установлен."
         is AssistantState.Protected -> if (current.legacy) "Существующая защита сохранена (старый формат пароля)." else "Защита помощника включена."
     })
-    if (verification != OwnerVerificationAvailability.AVAILABLE) Text(
+    if (manage && verification != OwnerVerificationAvailability.AVAILABLE) Text(
         "Системная проверка владельца ${if (verification == OwnerVerificationAvailability.UNKNOWN) "ещё не определена" else "недоступна"}. " +
             "На Android 21/22 системная проверка не используется из-за ограничений безопасности. Новый пароль и сброс недоступны; существующая защита автоматически не отключается.")
     if (state is AssistantState.Protected) Field(password, "Текущий пароль", ready,
@@ -84,7 +91,7 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
         }
     }
     Action("Очистить ввод / закрыть доступ", foreground && !busy) {
-        password = ""; newPassword = ""; repeatPassword = ""; disable = false; result = null; access.revokeOwner(owner); onCapability(null)
+        password = ""; newPassword = ""; repeatPassword = ""; disable = false; requested = false; result = null; access.revokeOwner(owner); onCapability(null)
     }
     Feedback(result)
 }

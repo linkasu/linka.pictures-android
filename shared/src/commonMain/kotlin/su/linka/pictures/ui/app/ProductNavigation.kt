@@ -48,10 +48,15 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
     val problem = controller.restartProblem
     private val mutableCommittedEpoch = MutableStateFlow<Long?>(null)
     val committedEpoch = mutableCommittedEpoch.asStateFlow()
-    private var disposed = false
+    private val disposed = MutableStateFlow(false)
+    private val started = MutableStateFlow(false)
+
+    suspend fun start() {
+        if (started.compareAndSet(false, true)) open(ProductPage.LIBRARY)
+    }
 
     suspend fun open(page: ProductPage, action: AuthoringAction? = null, boardId: BoardId? = null) = transition.withLock {
-        if (disposed) return@withLock
+        if (disposed.value) return@withLock
         if (problem.value?.code == ProblemCode.COMMIT_OUTCOME_UNKNOWN && page !in setOf(ProductPage.LIBRARY, ProductPage.COMMUNICATION)) return@withLock
         mutableTransitioning.value = true
         try {
@@ -59,7 +64,7 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
             previous?.let { beginClose(it) }
             val closed = previous?.let { close(it) } ?: true
             mutableRoute.value = null
-            if (!closed || disposed || page == ProductPage.COMMUNICATION || problem.value?.code == ProblemCode.IO_FAILURE) return@withLock
+            if (!closed || disposed.value || page == ProductPage.COMMUNICATION || problem.value?.code == ProblemCode.IO_FAILURE) return@withLock
             when (page) {
                 ProductPage.EDITOR, ProductPage.SETTINGS, ProductPage.ACCESS, ProductPage.TRANSFER -> {
                     cleanup { audio.interrupt() }
@@ -84,6 +89,11 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
             } catch (_: Throwable) {
                 failLifecycle()
                 close(ProductRoute(page, owner, child))
+                return@withLock
+            }
+            if (disposed.value || !currentCoroutineContext().isActive) {
+                close(next)
+                currentCoroutineContext().ensureActive()
                 return@withLock
             }
             mutableRoute.value = next
@@ -129,11 +139,13 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
     }
 
     fun dispose() {
-        disposed = true
-        val current = route.value ?: return
-        beginClose(current)
+        if (!disposed.compareAndSet(false, true)) return
+        route.value?.let { beginClose(it) }
         rootScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            withContext(NonCancellable) { transition.withLock { close(current); mutableRoute.value = null } }
+            withContext(NonCancellable) { transition.withLock {
+                mutableRoute.value?.let { close(it) }
+                mutableRoute.value = null
+            } }
         }
     }
 

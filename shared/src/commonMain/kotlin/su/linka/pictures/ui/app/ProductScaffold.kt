@@ -18,13 +18,16 @@ import su.linka.pictures.ui.theme.LocalLinkaPalette
 internal fun ProductScaffold(title: String, onBack: () -> Unit, scrollContent: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val palette = LocalLinkaPalette.current
     Surface(color = palette.background, contentColor = palette.text) {
-        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(12.dp),
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, style = MaterialTheme.typography.h5, modifier = Modifier.semantics { heading() })
+            TopAppBar(title = { Text(title, modifier = Modifier.semantics { heading() }) },
+                navigationIcon = { IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Назад" }) {
+                    Text("‹", style = MaterialTheme.typography.h4)
+                } },
+                backgroundColor = palette.surface, contentColor = palette.text)
             val scrolling = if (scrollContent) Modifier.verticalScroll(rememberScrollState()) else Modifier
-            Column(Modifier.weight(1f).fillMaxWidth().then(scrolling),
+            Column(Modifier.weight(1f).fillMaxWidth().then(scrolling).padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
-            Action("Назад", onClick = onBack)
         }
     }
 }

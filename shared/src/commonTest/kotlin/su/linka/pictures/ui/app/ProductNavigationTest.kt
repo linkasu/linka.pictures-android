@@ -82,10 +82,11 @@ class ProductNavigationTest {
         val communication = CommunicationSession(runtime.library, runtime.messages, runtime.media, audio, ids, scope)
         val controller = LibraryController(runtime.library, access)
         val events = MutableStateFlow<List<String>>(emptyList())
+        var onOpen: (() -> Unit)? = null
         val closedWhileActive = MutableStateFlow<List<Boolean>>(emptyList())
         val navigation: ProductNavigation = ProductNavigation(runtime.library, runtime.media, runtime.messages,
             access, audio, native, native, native, ids, scope, communication, controller,
-            { owner -> access.open.update { it + owner }; events.update { it + "open:$owner" } },
+            { owner -> access.open.update { it + owner }; events.update { it + "open:$owner" }; onOpen?.invoke() },
             { owner ->
                 closedWhileActive.update { it + (currentJob()?.isActive == true) }
                 access.open.update { it - owner }; events.update { it + "close:$owner" }
@@ -112,6 +113,36 @@ class ProductNavigationTest {
         val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
         val fixture = Fixture(runtime)
         try { test(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
+    }
+
+    @Test fun concurrentStartOpensLibraryOnceAndNeverReopensAfterCommunication() = runTest { fresh { f ->
+        coroutineScope { List(20) { async(Dispatchers.Default) { f.navigation.start() } }.awaitAll() }
+        val first = assertNotNull(f.navigation.route.value)
+        assertEquals(ProductPage.LIBRARY, first.page)
+        assertEquals(listOf("open:${first.owner}"), f.events.value)
+        f.navigation.start()
+        assertSame(first, f.navigation.route.value)
+        f.navigation.open(ProductPage.COMMUNICATION)
+        f.navigation.start()
+        assertNull(f.navigation.route.value)
+        assertEquals(listOf("open:${first.owner}", "close:${first.owner}"), f.events.value)
+    } }
+
+    @Test fun disposedNavigationCannotStartAndDisposalDuringOwnerOpenLeavesNoOrphan() = runTest {
+        fresh { f ->
+            f.navigation.dispose()
+            f.navigation.start()
+            assertNull(f.navigation.route.value)
+            assertTrue(f.events.value.isEmpty())
+        }
+        fresh { f ->
+            f.onOpen = { f.navigation.dispose() }
+            f.navigation.start()
+            assertNull(f.navigation.route.value)
+            assertTrue(f.access.open.value.isEmpty())
+            assertEquals(2, f.events.value.size)
+            assertEquals(f.events.value[0].removePrefix("open:"), f.events.value[1].removePrefix("close:"))
+        }
     }
 
     @Test fun editorOwnersAreUniqueBackgroundPausesAndResumeIsExplicit() = runTest { fresh { f ->
@@ -211,7 +242,8 @@ class ProductNavigationTest {
         val interrupts = f.interrupts.value
         val stops = f.stops.value.size
 
-        f.navigation.open(ProductPage.LIBRARY)
+        f.navigation.start()
+        f.navigation.start()
         assertSame(request, f.active.value)
         f.navigation.open(ProductPage.COMMUNICATION)
         f.communication.dispatch(CommunicationCommand.ChangePage(CommandId(f.ids.next()), PageId("second")))
