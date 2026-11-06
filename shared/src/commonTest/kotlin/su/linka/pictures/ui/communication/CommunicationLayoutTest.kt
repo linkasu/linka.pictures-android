@@ -108,6 +108,9 @@ class CommunicationLayoutTest {
         assertEquals(56f, communicationToolbarHeight(599f, 900f))
         assertEquals(48f, communicationToolbarHeight(900f, 599f))
         assertEquals(56f, communicationToolbarHeight(400f, 800f))
+        assertEquals(112f, communicationToolbarHeight(400f, 800f, 2f))
+        assertEquals(96f, communicationToolbarHeight(900f, 599f, 2f))
+        assertEquals(192f, communicationToolbarHeight(1280f, 800f, 3f))
         assertFailsWith<IllegalArgumentException> { communicationToolbarHeight(Float.NaN, 800f) }
     }
 

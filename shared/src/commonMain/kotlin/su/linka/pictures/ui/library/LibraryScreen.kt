@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -24,6 +25,8 @@ import su.linka.pictures.ui.app.*
 import su.linka.pictures.ui.images.*
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 import su.linka.pictures.ui.theme.Linka14
+import su.linka.pictures.ui.components.ToolbarTitle
+import su.linka.pictures.ui.components.toolbarHeightForFontScale
 
 private data class BoardDecision(val entry: LibraryEntrySummary, val epoch: Long, val delete: Boolean)
 private data class DraftDecision(val draft: DraftSummary, val epoch: Long)
@@ -65,7 +68,8 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     }
     VisibleImageDemand(shownListing.epoch, onAssets) {
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
-      topBar = { TopAppBar(title = { Text("Ваши наборы") }, actions = {
+      topBar = { TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+          title = { ToolbarTitle("Ваши наборы") }, actions = {
           Box {
               IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню библиотеки") }
               DropdownMenu(menu, { menu = false }) {

@@ -7,11 +7,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import su.linka.pictures.application.*
 import su.linka.pictures.ui.components.LabeledActionButton
+import su.linka.pictures.ui.components.ToolbarTitle
+import su.linka.pictures.ui.components.toolbarHeightForFontScale
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
@@ -20,7 +23,8 @@ internal fun ProductScaffold(title: String, onBack: () -> Unit, scrollContent: B
     Surface(color = palette.background, contentColor = palette.text) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TopAppBar(title = { Text(title, modifier = Modifier.semantics { heading() }) },
+            TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+                title = { ToolbarTitle(title, modifier = Modifier.semantics { heading() }) },
                 navigationIcon = { IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Назад" }) {
                     Text("‹", style = MaterialTheme.typography.h4)
                 } },

@@ -9,6 +9,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -21,6 +22,8 @@ import su.linka.pictures.ui.app.*
 import su.linka.pictures.ui.library.needsLibraryAuthorization
 import su.linka.pictures.ui.library.LibraryIcons
 import su.linka.pictures.text.isNativeText
+import su.linka.pictures.ui.components.ToolbarTitle
+import su.linka.pictures.ui.components.toolbarHeightForFontScale
 
 private enum class SettingsInput { TEXT_SCALE, LANGUAGE }
 
@@ -48,7 +51,8 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         }
     }
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(), topBar = {
-        TopAppBar(title = { Text("Настройки") }, navigationIcon = {
+        TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+            title = { ToolbarTitle("Настройки") }, navigationIcon = {
             IconButton(onClick = onBack) { Icon(LibraryIcons.Back, "Назад") }
         }, actions = { Box {
             IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню настроек") }

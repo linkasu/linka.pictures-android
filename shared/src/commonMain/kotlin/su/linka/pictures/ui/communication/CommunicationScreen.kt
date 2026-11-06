@@ -65,7 +65,7 @@ fun CommunicationScreen(
             BoxWithConstraints(
                 Modifier.fillMaxSize(),
             ) {
-                val toolbarHeight = communicationToolbarHeight(maxWidth.value, maxHeight.value).dp
+                val toolbarHeight = communicationToolbarHeight(maxWidth.value, maxHeight.value, LocalDensity.current.fontScale).dp
                 val actionSurface = communicationActionSurface(palette)
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
                 CommunicationControls(

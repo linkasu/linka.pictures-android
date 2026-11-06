@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,6 +25,8 @@ import su.linka.pictures.domain.*
 import su.linka.pictures.ui.card.CardEditorDialog
 import su.linka.pictures.ui.components.LabeledActionButton
 import su.linka.pictures.ui.images.VisibleImageDemand
+import su.linka.pictures.ui.components.ToolbarTitle
+import su.linka.pictures.ui.components.toolbarHeightForFontScale
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -69,8 +70,9 @@ fun EditorScreen(
     VisibleImageDemand(Triple(state.epoch, ownerId, draft?.id), onImagesNeeded) {
         Surface(modifier.fillMaxSize(), color = palette.background, contentColor = palette.text) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-                TopAppBar(backgroundColor = palette.primary, contentColor = palette.onPrimary,
-                    title = { Text(document?.name ?: "Редактор доски", maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics {
+                TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+                    backgroundColor = palette.primary, contentColor = palette.onPrimary,
+                    title = { ToolbarTitle(document?.name ?: "Редактор доски", modifier = Modifier.semantics {
                         heading(); stateDescription = draftSaveLabel(state.savePhase)
                     }) },
                     navigationIcon = {

@@ -20,6 +20,7 @@ import su.linka.pictures.domain.InteractionMode
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 import su.linka.pictures.ui.theme.LinkaPalette
 import su.linka.pictures.ui.theme.linkaPalette
+import su.linka.pictures.ui.components.ToolbarTitle
 
 internal fun communicationActionSurface(palette: LinkaPalette): Color =
     if (palette == linkaPalette(false, false)) Color(0xFFD6D7D7) else palette.disabledSurface
@@ -43,7 +44,7 @@ internal fun CommunicationControls(
     fun id() = CommandId(ids.next())
     TopAppBar(
         modifier = Modifier.height(toolbarHeight),
-        title = { Text(title, modifier = Modifier.padding(start = 8.dp)) },
+        title = { ToolbarTitle(title, modifier = Modifier.padding(start = 8.dp)) },
         backgroundColor = palette.primary, contentColor = palette.onPrimary,
         navigationIcon = { CommunicationIconButton(CommunicationIcon.Back, "Открыть библиотеку", presentation.commandsEnabled, onOpenLibrary,
             Modifier.padding(start = 8.dp)) },

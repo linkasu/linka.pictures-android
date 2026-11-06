@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.communication
 
+import su.linka.pictures.ui.components.toolbarHeightForFontScale
+
 internal data class CommunicationCellSize(val width: Float, val height: Float)
 
 internal data class CommunicationVerticalBudget(val phrase: Float, val content: Float)
@@ -13,13 +15,14 @@ internal fun communicationMessagePartWidth(availableWidth: Float, height: Float,
     } else preferred
 }
 
-internal fun communicationToolbarHeight(width: Float, height: Float): Float {
+internal fun communicationToolbarHeight(width: Float, height: Float, fontScale: Float = 1f): Float {
     require(width.isFinite() && height.isFinite() && width >= 0 && height >= 0)
-    return when {
+    val base = when {
         minOf(width, height) >= 600f -> 64f
         width > height -> 48f
         else -> 56f
     }
+    return toolbarHeightForFontScale(base, fontScale)
 }
 
 internal fun communicationVerticalBudget(height: Float, fontScale: Float, multiplePages: Boolean): CommunicationVerticalBudget {
