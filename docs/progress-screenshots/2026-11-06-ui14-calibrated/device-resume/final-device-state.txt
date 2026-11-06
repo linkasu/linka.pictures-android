@@ -1,0 +1,10 @@
+1
+35
+arm64-v8a
+Physical size: 1600x2560
+Physical density: 320
+1.0
+bdbb277474cbcdc61ca03318e6bd53fcb16c12dd26363df66c4e9c57cd1183df  /data/app/~~hKlc_hkgs1zmJxIuKCBrfg==/su.linka.pictures.development-dqn-VOb46Tit5CmSXc_3aA==/base.apk
+4e7b0ea9f60b13d9d5ec49fd8812a7ed05d3b9ea0bad7310acd20e0a5300e487  /data/app/~~jqzE0tAXI7V4ig1r4ngZRw==/su.linka.pictures.development.test-vsrBKBeu29goG3CmqiPt0A==/base.apk
+    topResumedActivity=ActivityRecord{1bd3947 u0 su.linka.pictures.development/su.linka.pictures.activity.DevelopmentActivity t45}
+    init=1600x2560 320dpi mMinSizeOfResizeableTaskDp=220 cur=2560x1600 app=2560x1600 rng=1600x1600-2560x2560
