@@ -24,6 +24,6 @@ fun LabeledActionButton(
         if (destructive) palette.onDanger else palette.onPrimary,
         onClick, modifier.sizeIn(minWidth = LinkaTargets.actionButton, minHeight = LinkaTargets.actionButton),
     ) {
-        Text(label, style = MaterialTheme.typography.button, textAlign = TextAlign.Center, softWrap = true)
+        Text(label.uppercase(), style = MaterialTheme.typography.button, textAlign = TextAlign.Center, softWrap = true)
     }
 }

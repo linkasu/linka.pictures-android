@@ -1,12 +1,14 @@
 package su.linka.pictures.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Surface
@@ -18,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -27,7 +30,9 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import su.linka.pictures.ui.theme.LinkaTargets
+import su.linka.pictures.ui.theme.Linka14
 import su.linka.pictures.ui.theme.LocalLinkaPalette
+import su.linka.pictures.ui.theme.linkaPalette
 
 @Composable
 internal fun PrimitiveSurface(
@@ -45,7 +50,9 @@ internal fun PrimitiveSurface(
     val interactions = remember { MutableInteractionSource() }
     val focused by interactions.collectIsFocusedAsState()
     val pressed by interactions.collectIsPressedAsState()
-    val shape = RoundedCornerShape(12.dp)
+    val card = selected != null
+    val baselineCard = card && palette == linkaPalette(false, false)
+    val shape = RoundedCornerShape(if (card) Linka14.cardCorner else 4.dp)
     val activation = if (enabled) Modifier.clickable(
         interactionSource = interactions,
         indication = null,
@@ -63,8 +70,8 @@ internal fun PrimitiveSurface(
             }
             .then(activation)
             .border(LinkaTargets.focusRing, if (enabled && focused) palette.focus else Color.Transparent, shape)
-            // Always reserve the ring and gap: focus never changes layout or the selected border.
-            .padding(6.dp),
+            // Focus is drawn inside the hit target, never charged to the grid's content budget.
+            .padding(if (card) Linka14.cardMargin else 0.dp),
         propagateMinConstraints = true,
     ) {
         Surface(
@@ -72,12 +79,22 @@ internal fun PrimitiveSurface(
                 else if (pressed) palette.pressedSurface(surface, contentColor) else surface,
             contentColor = if (enabled) contentColor else palette.disabledText,
             shape = shape,
-            border = BorderStroke(if (selected == true) 3.dp else 1.dp,
-                if (selected == true) palette.primary else palette.border),
+            border = when {
+                selected == true -> BorderStroke(3.dp, palette.primary)
+                baselineCard -> BorderStroke(0.5.dp, Brush.verticalGradient(listOf(Linka14.cardBorderTop, Linka14.cardBorderBottom)))
+                card -> BorderStroke(1.dp, palette.border)
+                else -> null
+            },
         ) {
             CompositionLocalProvider(LocalContentAlpha provides 1f) {
                 Box(
-                    Modifier.clearAndSetSemantics {}.padding(12.dp),
+                    Modifier.clearAndSetSemantics {}
+                        .then(if (baselineCard && enabled) Modifier.background(
+                            Brush.verticalGradient(listOf(Linka14.cardTop, Linka14.cardBottom).map {
+                                if (pressed) palette.pressedSurface(it, contentColor) else it
+                            }),
+                        ) else Modifier)
+                        .padding(if (card) Linka14.cardPadding else PaddingValues(horizontal = 16.dp, vertical = 8.dp)),
                     contentAlignment = Alignment.Center,
                 ) { content() }
             }

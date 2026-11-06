@@ -7,6 +7,7 @@ import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -14,8 +15,8 @@ import androidx.compose.ui.unit.dp
 val LocalLinkaPalette = staticCompositionLocalOf { linkaPalette(false, false) }
 
 object LinkaTargets {
-    val communicationCard = 96.dp
-    val actionButton = 56.dp
+    val communicationCard = 48.dp
+    val actionButton = 48.dp
     val focusRing = 3.dp
 }
 
@@ -35,15 +36,17 @@ fun LinkaTheme(
     val palette = linkaPalette(darkTheme, highContrast)
     val density = LocalDensity.current
     val colors = if (darkTheme) darkColors() else lightColors()
+    val baseline = !darkTheme && !highContrast
     CompositionLocalProvider(
         LocalLinkaPalette provides palette,
         LocalDensity provides Density(density.density, linkaFontScale(density.fontScale, textScale)),
     ) {
         MaterialTheme(
             colors = colors.copy(
-                primary = palette.primary, primaryVariant = palette.primary,
-                secondary = palette.primary, secondaryVariant = palette.primary,
-                onPrimary = palette.onPrimary, onSecondary = palette.onPrimary,
+                primary = palette.primary, primaryVariant = if (baseline) Linka14.primaryDark else palette.primary,
+                secondary = if (baseline) Linka14.accent else palette.primary,
+                secondaryVariant = if (baseline) Linka14.accent else palette.primary,
+                onPrimary = palette.onPrimary, onSecondary = if (baseline) Color.Black else palette.onPrimary,
                 background = palette.background, surface = palette.surface,
                 onBackground = palette.text, onSurface = palette.text,
                 error = palette.danger, onError = palette.onDanger,

@@ -45,9 +45,9 @@ fun linkaPalette(darkTheme: Boolean, highContrast: Boolean): LinkaPalette = when
         Color(0xFF243737), Color(0xFFB2C8C8), false,
     )
     else -> LinkaPalette(
-        Color(0xFF006A6A), Color.White, Color(0xFFF7FAFA), Color.White,
-        Color(0xFF172B2B), Color(0xFF435B5B), Color(0xFF6C8585),
+        Linka14.primary, Color.White, Color.White, Color.White,
+        Color.Black, Color(0xFF757575), Color(0xFF777777),
         Color(0xFFB42318), Color.White, Color(0xFF002F6C),
-        Color(0xFFE5EEEE), Color(0xFF435B5B), false,
+        Color(0xFFE0E0E0), Color(0xFF435B5B), false,
     )
 }

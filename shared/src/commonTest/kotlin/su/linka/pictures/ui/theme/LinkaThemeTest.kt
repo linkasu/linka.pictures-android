@@ -57,11 +57,30 @@ class LinkaThemeTest {
     }
 
     @Test
-    fun targetsExceedBothPlatformMinimumsAndFocusIsSeparate() {
-        assertEquals(96f, LinkaTargets.communicationCard.value)
-        assertEquals(56f, LinkaTargets.actionButton.value)
+    fun targetsMeetBothPlatformMinimumsWithoutOverridingTheGrid() {
+        assertEquals(48f, LinkaTargets.communicationCard.value)
+        assertEquals(48f, LinkaTargets.actionButton.value)
         assertTrue(LinkaTargets.communicationCard.value >= 48f)
         assertTrue(LinkaTargets.actionButton.value >= 48f)
         assertEquals(3f, LinkaTargets.focusRing.value)
+    }
+
+    @Test
+    fun defaultPaletteUses14ResourcesAndBlackCardCaptions() {
+        val p = linkaPalette(false, false)
+        assertEquals(Color(0xFF197377), p.primary)
+        assertEquals(Color(0xFFBED64F), Linka14.primaryDark)
+        assertEquals(Color(0xFFFBCC30), Linka14.accent)
+        assertEquals(Color.White, p.background)
+        assertEquals(Color.White, p.surface)
+        assertEquals(Color.Black, p.text)
+        assertEquals(Color(0xFFE0E0E0), p.disabledSurface)
+        for (surface in listOf(Linka14.cardTop, Linka14.cardBottom)) {
+            assertTrue((surface.luminance() + 0.05f) / 0.05f >= 4.5f)
+            val pressed = p.pressedSurface(surface, p.text)
+            assertEquals(1f, pressed.alpha)
+            assertTrue(pressed.luminance() < surface.luminance())
+            assertTrue((pressed.luminance() + 0.05f) / 0.05f >= 4.5f)
+        }
     }
 }
