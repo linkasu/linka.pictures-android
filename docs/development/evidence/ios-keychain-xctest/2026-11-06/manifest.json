@@ -1,0 +1,24 @@
+{
+  "status": "PASS: isolated Simulator Keychain app-host compartment only",
+  "tests": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "expectedFailures": 0
+  },
+  "source_commit": "93b42626fd47aff4b42c8b0422455e81d2458090",
+  "build_gradle_wip_sha256": "cd0496081806140b0dcbb9e6e7eb0258d5e958c8db7711e0d7daeb6fd11451e0",
+  "full_xcresult_local_path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/simulator-managed-tests.xcresult",
+  "signature_scope": "Explicitly user-approved Xcode-managed Simulator signing; exact own Mach-O Keychain group; no profiles or security bypass",
+  "installed_executable_hashes_match_verified_build": true,
+  "production_signing": false,
+  "physical_acceptance": false,
+  "product_runtime_acceptance": false,
+  "artifacts": {
+    "README.md": "0ceb879de0ba96533130636913b095c18c34886b1acb9efaa947308e805a7d9e",
+    "development-signature-launch-failure.txt": "38b3a0c5ef7d4c92b602b576a422c59cd52ded54c502d71085439b311eb8a963",
+    "hosted-xctest.log": "91e53a57dafd2c80c560dcfa811c6a8d9de57270ed69088450ab735d2fabd65c",
+    "verified-simulator-signatures.json": "5063e5e91ed8771f6b44e00c9dcc09df61d54be8acb0503484d5d2a3b85f93a9",
+    "xcresult-summary.json": "65ad51e774d71f654981749e3489339cb4a7ad9a4b9beda5b70406aa2786d366"
+  }
+}

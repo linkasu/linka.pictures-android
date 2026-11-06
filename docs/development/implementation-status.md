@@ -4,6 +4,30 @@
 
 ## Актуально: возобновление с visual slice — 6 ноября 2026
 
+### Новый срез: настоящий Keychain host и объединённые UI-коррекции
+
+- **2/2 actual app-hosted XCTest PASS на owned iOS17.0**, 0 skips/expected failures.
+  Подтверждены индивидуальные тесты и `.xcresult` summary; до install проверены
+  strict signatures и exact own-group Mach-O Simulator payload, после запуска —
+  совпадение installed executable SHA с проверенной сборкой.
+- Valid Development identity подготовлена пользователем вручную. Принудительно
+  Development-подписанный host был отклонён AMFI−413/no matching profile до тестов.
+  После этого пользователь **явно разрешил штатную Xcode Simulator-подпись нового
+  UIKit app-hosted XCTest**; именно этот путь дал2 PASS. Profiles/trust/ACL/AMFI/SIP
+  не менялись. [Границы и actual evidence](ios-keychain-xctest-host.md).
+- Исправлен Gradle framework seam: compilation задаётся при создании binary,
+  а не после замораживания main link inputs. Экспорт двух bridge методов проверяет
+  `:shared:verifyAppHostTestFramework`; unlinked-symbol warnings устранены.
+- После review интегрированы inline-grid `5b021c9` и контраст functional selection
+  `93b4262`: persisted form первым вводом, resize только SaveGrid, серый/teal
+  функциональный UI и сохранённый жёлтый FAB. Объединённые focused JVM **158/158 PASS**,
+  оба Android development/test APK собраны отдельно; device-проверка и новые PNG
+  пока не приняты — MCP увидел пустой список, эмуляторы оказались остановлены.
+
+Это закрывает только Simulator Keychain test compartment. Продуктовый iOS root,
+физическая security/audio/AAC/large-font матрица, UI approval и полный G4/release
+не объявляются PASS. Более ранние BLOCKED/counts ниже сохранены как история.
+
 ### Последний delta: реальная заполненная доска, не U1.4 approval
 
 Восемь изолированных исполнителей подготовили и проверили UI, связки, atomic card

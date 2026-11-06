@@ -1,0 +1,29 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test-without-building -xctestrun /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/SimulatorManaged/Build/Products/LinkaKeychainHost_iphonesimulator27.2-arm64.xctestrun -destination "platform=iOS Simulator,id=DD0F9A3F-DC32-4373-BA08-400FECE3A1CC" -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 "-only-testing:LinkaKeychainHostTests/KeychainTests" -resultBundlePath /private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/simulator-managed-tests.xcresult
+
+Writing result bundle at path:
+	/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/simulator-managed-tests.xcresult
+
+Test Suite 'Selected tests' started at 2026-11-06 12:53:16.916.
+Test Suite 'LinkaKeychainHostTests.xctest' started at 2026-11-06 12:53:16.916.
+Test Suite 'KeychainTests' started at 2026-11-06 12:53:16.917.
+Test Case '-[LinkaKeychainHostTests.KeychainTests testBoundsAndServiceValidation]' started.
+Test Case '-[LinkaKeychainHostTests.KeychainTests testBoundsAndServiceValidation]' passed (0.028 seconds).
+Test Case '-[LinkaKeychainHostTests.KeychainTests testBytesReopenUpdateAndRevocation]' started.
+Test Case '-[LinkaKeychainHostTests.KeychainTests testBytesReopenUpdateAndRevocation]' passed (0.031 seconds).
+Test Suite 'KeychainTests' passed at 2026-11-06 12:53:16.977.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.059 (0.060) seconds
+Test Suite 'LinkaKeychainHostTests.xctest' passed at 2026-11-06 12:53:16.977.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.059 (0.060) seconds
+Test Suite 'Selected tests' passed at 2026-11-06 12:53:16.977.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.059 (0.061) seconds
+2026-11-06 12:53:17.257 xcodebuild[25948:11397948] [MT] IDETestOperationsObserverDebug: 5.027 elapsed -- Testing started completed.
+2026-11-06 12:53:17.257 xcodebuild[25948:11397948] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-06 12:53:17.257 xcodebuild[25948:11397948] [MT] IDETestOperationsObserverDebug: 5.027 sec, +5.027 sec -- end
+
+Test session results, code coverage, and logs:
+	/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/simulator-managed-tests.xcresult
+
+** TEST EXECUTE SUCCEEDED **
+
+Testing started

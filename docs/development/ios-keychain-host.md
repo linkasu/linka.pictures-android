@@ -2,6 +2,35 @@
 
 ## Актуальное продолжение — 6 ноября
 
+### Уточнённая граница Simulator после фактического запуска
+
+Framework/link seam исправлен: binary сразу создаётся с appHostTest compilation,
+поэтому Native link не замораживает main inputs. Проверены оба exported bridge
+метода, Swift ABI и отсутствие unlinked-symbol warnings; добавлен отдельный
+`:shared:verifyAppHostTestFramework`.
+
+Xcode Simulator штатно выбрал ad-hoc, несмотря на переданную Development identity.
+Явное `AD_HOC_CODE_SIGNING_ALLOWED=NO` отвергнуто SDK. Подписанные штатным codesign
+с настоящей valid Development identity host/bundle прошли strict signature и exact
+own-group entitlement checks, но actual XCTest runner не запущен: host taskgated /
+AMFI **−413, No matching profile found**. Это **0 actual PASS**, не провал двух
+Keychain assertions. Profiles не получались, настройки безопасности не менялись.
+
+После сообщения этих фактов пользователь явно выбрал **«Штатный XCTest»**:
+разрешена Xcode-managed Simulator-подпись **только нового isolated UIKit app-host
+с app-hosted XCTest**. Прежний запрет повторять CLI/ad-hoc AMFI−424 wrapper,
+снимать entitlements, отключать AMFI/SIP/ACL или получать profiles автоматически
+остаётся. Перед следующим запуском проверяются signature и штатный Simulator
+`__entitlements` payload с одной exact own Keychain group. При отказе ОС — STOP.
+Результат Simulator не подменяет physical / production signing / P08/G4 gates.
+
+**Итог этого разрешённого пути: 2/2 настоящих XCTest PASS на iOS17.0**, без skip
+или expected failure. Runtime подтвердил bytes/reopen/update/revoked guard и
+size/service validation. До install проверены strict signatures и фактический
+Mach-O Simulator entitlement payload; после тестов installed executable hashes
+совпали с проверенной сборкой. Product library/основная credential service не
+открывались. [Команды/границы и evidence](ios-keychain-xctest-host.md).
+
 После ручной настройки пользователем создана Apple Development identity. Read-only
 проверка сначала обнаружила MissingIntermediate; с официальным Apple WWDR G3
 (`dcf21878c77f4198e4b4614f03d696d89c66c66008d4244e1b99161aac91601f`)
@@ -24,7 +53,7 @@ bundle (host не линкует второй Kotlin runtime). Два Swift те
 Schema/миграция/release signing не меняются. Нет profile fetch, снятия entitlements,
 AMFI/SIP/ACL обхода или автоматического подтверждения системных запросов.
 
-Матрица результата: нет valid identity/нужен prompt → BLOCKED; local signature
+Первоначальная матрица (Simulator signing уточнён явным решением выше): нет valid identity/нужен prompt → BLOCKED; local signature
 проверяется как non-ad-hoc + exact own entitlements до install; выполняются ровно
 2 настоящих XCTest cases на explicit owned iOS17; native Keychain error не считается
 пустым store/успехом. Только фактические2 PASS закрывают этот compartment, не весь

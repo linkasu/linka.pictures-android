@@ -1,0 +1,24 @@
+{
+  "scope": "user-approved-xcode-managed-isolated-simulator-host",
+  "products": {
+    "LinkaKeychainHost.app": {
+      "signature": "Xcode Simulator ad-hoc (explicitly authorised)",
+      "entitlements": {
+        "application-identifier": "<test-team>.<isolated-simulator-host>",
+        "com.apple.developer.team-identifier": "<test-team>",
+        "get-task-allow": true,
+        "keychain-access-groups": [
+          "<test-team>.<isolated-simulator-host>"
+        ]
+      },
+      "executable_sha256": "0115ae70faf3eba74b1310228f9419a02eccbaa438f5dc549a2b8c30ac6d4e69",
+      "bundle_id_isolated": true
+    },
+    "LinkaKeychainHostTests.xctest": {
+      "signature": "Xcode Simulator ad-hoc (explicitly authorised)",
+      "entitlements": {},
+      "executable_sha256": "42f3eaa5a7bcf63c196ddcc3f59f541b070c39d432340d6557aa2989d766418e",
+      "bundle_id_isolated": true
+    }
+  }
+}

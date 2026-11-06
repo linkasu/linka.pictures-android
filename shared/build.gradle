@@ -54,10 +54,22 @@ kotlin {
                 compilation = appHostTests
                 baseName = 'AppHostTests'
             }
-            target.binaries.framework('appHost', [org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG]) {
-                compilation = appHostTests
-                baseName = 'SharedAppHostTests'
-                isStatic = true
+            // Native link inputs are frozen at construction, before a later compilation assignment.
+            def appHostFramework = new org.jetbrains.kotlin.gradle.plugin.mpp.Framework(
+                'appHostDebugFramework', 'SharedAppHostTests',
+                org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG, appHostTests)
+            appHostFramework.isStatic = true
+            target.binaries.add(appHostFramework)
+            tasks.register('verifyAppHostTestFramework') {
+                group = 'verification'
+                dependsOn appHostFramework.linkTaskProvider
+                doLast {
+                    def header = layout.buildDirectory.file(
+                        'bin/iosSimulatorArm64/appHostDebugFramework/SharedAppHostTests.framework/Headers/SharedAppHostTests.h').get().asFile.text
+                    ['KeychainAppHostChecks', 'bytesReopenUpdateAndRevocation', 'boundsAndServiceValidation'].each { method ->
+                        if (!header.contains(method)) throw new GradleException("Missing XCTest bridge export: ${method}")
+                    }
+                }
             }
         }
     }

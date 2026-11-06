@@ -50,6 +50,25 @@ Cancel/Save всех трёх видов, late-media cleanup и сохранён
 `withoutSpace` уже выражен `BoardBehavior.inputStyle` и codec mapping LITERAL/CARDS;
 второе persisted поле ради визуального checkbox не добавляется.
 
+### U1.4: inline-параметры сетки — принято COORD до реализации
+
+Перед переходом к следующим UI-парам также зафиксирована inline-grid поправка:
+в1.4 два числовых поля и применение сетки видны над редактором, а не спрятаны в
+новый modal. `AuthoringAction.ChangeGrid` получает trailing `pageId: PageId? = null`.
+Для существующей Grid form команда меняет только rowsText/columnsText; другой
+explicit pageId отвергается без подмены формы. Если формы нет и pageId принадлежит
+документу — одна actor-команда создаёт Grid form сразу с введённым текстом. Card
+form не закрывается/не заменяется этим путём. Старый caller без pageId сохраняет
+прежний контракт; отдельные OpenGrid/SaveGrid/CancelGrid остаются совместимыми.
+
+Inline-поля отображают persisted Grid form либо текущие размеры страницы; до
+SaveGrid документ не меняется. Apply/смена страницы блокируются незавершённой
+формой, invalid input остаётся autosaved/видимым; SaveGrid атомарно сохраняет
+overflow и закрывает форму. Cancel/Back/reauth и version/epoch/guard прежние.
+Новых serialized fields, схемы, SQL writer или UI reducer нет; backup/old-data
+совместимость не меняется. Нужны actor create/edit/cancel/conflict/reopen tests
+и matched-fixture editor PNG. Это исправление UI-сценария1.4, не новый resize mode.
+
 ### U1.4: native Back — принято COORD до binding
 
 LinkaApp может зарегистрировать принадлежащий текущей композиции эфемерный handler
