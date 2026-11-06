@@ -5,6 +5,13 @@ import su.linka.pictures.domain.*
 import androidx.compose.ui.graphics.vector.PathParser
 
 class EditorGridPresentationTest {
+    @Test fun inlineGridKeepsFieldsTogetherAndWrapsApplyOnNarrowOrLargeTextLayouts() {
+        assertEquals(2, editorGridGroupsPerRow(1000f, 1f))
+        assertEquals(2, editorGridGroupsPerRow(600f, 1f))
+        assertEquals(1, editorGridGroupsPerRow(360f, 1f))
+        assertEquals(1, editorGridGroupsPerRow(1000f, 2f))
+    }
+
     @Test fun withoutSpaceCheckboxUsesExistingInputStyleWithoutChangingDirectMode() {
         InteractionMode.entries.forEach { mode ->
             val document = BoardDocument(BoardId("board"), "Название", listOf(BoardPage(PageId("page"), 3, 3, emptyList())),

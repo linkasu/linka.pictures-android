@@ -1,14 +1,21 @@
 package su.linka.pictures.ui.editor
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import su.linka.pictures.application.authoring.*
@@ -19,6 +26,7 @@ import su.linka.pictures.ui.components.LabeledActionButton
 import su.linka.pictures.ui.images.VisibleImageDemand
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EditorScreen(
     state: AuthoringState,
@@ -45,6 +53,10 @@ fun EditorScreen(
     var showSaveStatus by remember { mutableStateOf(false) }
     val page = editorPage(draft, selectedPage)
     val pageIndex = document?.pages?.indexOf(page) ?: -1
+    val gridForm = draft?.form as? EditorForm.Grid
+    val gridEnabled = enabled && draft?.form !is EditorForm.Card && !state.mediaBusy
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(draft?.id, draft?.form != null, page?.id) {
         if (draft?.form != null) selectedPage = page?.id?.value
     }
@@ -93,9 +105,36 @@ fun EditorScreen(
                         Checkbox(document.behavior.inputStyle == InputStyle.LITERAL, onCheckedChange = null, enabled = structural)
                         Text("Вводить без пробела")
                     }
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Строки: ${page.rows}   Столбцы: ${page.columns}", Modifier.weight(1f))
-                        TextButton({ moveSource = null; dispatch(AuthoringAction.OpenGrid(page.id)) }, enabled = structural) { Text("Размер сетки") }
+                    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                        val rows = gridForm?.rowsText ?: page.rows.toString()
+                        val columns = gridForm?.columnsText ?: page.columns.toString()
+                        val groupsPerRow = editorGridGroupsPerRow(maxWidth.value, LocalDensity.current.fontScale)
+                        Column(Modifier.heightIn(max = maxHeight / 2).verticalScroll(rememberScrollState())) {
+                            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                maxItemsInEachRow = groupsPerRow) {
+                                Row(Modifier.weight(2f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextField(rows, { moveSource = null; dispatch(AuthoringAction.ChangeGrid(it, columns, page.id)) },
+                                        Modifier.weight(1f).semantics { contentDescription = "Количество строк" },
+                                        enabled = gridEnabled, singleLine = true, colors = authoringFieldColors(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                                    TextField(columns, { moveSource = null; dispatch(AuthoringAction.ChangeGrid(rows, it, page.id)) },
+                                        Modifier.weight(1f).semantics { contentDescription = "Количество столбцов" },
+                                        enabled = gridEnabled, singleLine = true, colors = authoringFieldColors(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                                }
+                                Button({
+                                    focus.clearFocus(); keyboard?.hide()
+                                    dispatch(AuthoringAction.SaveGrid)
+                                }, Modifier.weight(1f).heightIn(min = 48.dp), enabled = gridEnabled) {
+                                    Text("ИЗМЕНИТЬ РАЗМЕР СЕТКИ")
+                                }
+                            }
+                            if (gridForm != null) TextButton({
+                                focus.clearFocus(); keyboard?.hide()
+                                dispatch(AuthoringAction.CancelGrid)
+                            }, enabled = gridEnabled, modifier = Modifier.align(Alignment.End)) { Text("Отмена") }
+                        }
                     }
                     if (moveSource != null) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Выберите ячейку назначения (можно на другой странице).", Modifier.weight(1f))
@@ -117,7 +156,6 @@ fun EditorScreen(
                 }
             }
             if (showSettings && document != null) EditorSettingsDialog(document, enabled, dispatch, { showSettings = false })
-            (draft?.form as? EditorForm.Grid)?.let { EditorGridDialog(it, state, dispatch) }
             if (draft?.form is EditorForm.Card) CardEditorDialog(state, dispatch, images)
             if (showSaveStatus) AlertDialog(onDismissRequest = { showSaveStatus = false },
                 title = { Text("Состояние черновика") }, text = { Column {

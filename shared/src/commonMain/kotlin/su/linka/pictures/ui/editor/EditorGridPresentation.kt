@@ -9,6 +9,9 @@ import su.linka.pictures.domain.EditorForm
 internal fun editorCellExtent(available: Float, count: Int, minimum: Float): Float =
     ((available - 4f * (count - 1)) / count).coerceAtLeast(minimum)
 
+internal fun editorGridGroupsPerRow(width: Float, fontScale: Float): Int =
+    if (width < 600f * fontScale) 1 else 2
+
 internal fun editorCellLabel(cell: BoardCell?): String = when (cell?.kind) {
     CellKind.CONTENT -> cell.card!!.label.ifEmpty { "Карточка без подписи" }
     CellKind.SPACE -> "Пробел"

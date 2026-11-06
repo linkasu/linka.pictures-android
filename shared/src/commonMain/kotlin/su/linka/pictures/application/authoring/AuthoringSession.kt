@@ -236,7 +236,20 @@ class AuthoringSession(
                         change(draft.copy(form = EditorForm.Grid(page.id, page.rows.toString(), page.columns.toString())))
                     }
                     is AuthoringAction.ChangeGrid -> {
-                        val form = draft.form as? EditorForm.Grid ?: return
+                        val form = when (val current = draft.form) {
+                            is EditorForm.Card -> { report(ProblemCode.UNFINISHED_FORM); return }
+                            is EditorForm.Grid -> {
+                                if (action.pageId != null && action.pageId != current.pageId) {
+                                    report(ProblemCode.UNFINISHED_FORM); return
+                                }
+                                current
+                            }
+                            null -> {
+                                val pageId = action.pageId ?: return
+                                if (draft.document.pages.none { it.id == pageId }) { report(ProblemCode.INVALID_DATA); return }
+                                EditorForm.Grid(pageId, action.rowsText, action.columnsText)
+                            }
+                        }
                         if (validText(action.rowsText) && validText(action.columnsText)) {
                             change(draft.copy(form = form.copy(rowsText = action.rowsText, columnsText = action.columnsText)))
                         }

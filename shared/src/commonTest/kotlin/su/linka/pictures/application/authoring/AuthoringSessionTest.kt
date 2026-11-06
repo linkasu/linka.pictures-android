@@ -536,6 +536,200 @@ class AuthoringSessionTest {
         assertEquals(SpeechSource.Tts("Другая речь", "ru-RU"), changed.card.speech)
     } }
 
+    @Test fun inlineGridFirstKeystrokeCreatesOnlyOneSnapshotWithoutResizing() = runTest { fresh { f ->
+        f.start()
+        val draft = f.session.state.value.draft!!
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeGrid("", "3", draft.document.pages[0].id))
+        val save = f.nextSave()
+        assertEquals(draft.copy(form = EditorForm.Grid(draft.document.pages[0].id, "", "3")), save.draft)
+        save.reply.complete(OperationResult.Completed(Unit)); f.saved()
+        assertTrue(f.library.saves.tryReceive().isFailure)
+        f.send(AuthoringAction.ChangeGrid("2", "4", draft.document.pages[0].id))
+        val edited = f.nextSave()
+        assertEquals(save.draft.copy(form = EditorForm.Grid(draft.document.pages[0].id, "2", "4")), edited.draft)
+        edited.reply.complete(OperationResult.Completed(Unit)); f.saved()
+        assertTrue(f.library.saves.tryReceive().isFailure)
+    } }
+
+    @Test fun inlineGridValidAndInvalidTextResumeAfterActualSqliteCloseReopen() = runTest {
+        for (rows in listOf("2", "", "not a number", "99999999999999999999")) fresh { f ->
+            f.start()
+            val page = f.session.state.value.draft!!.document.pages[0]
+            f.send(AuthoringAction.ChangeGrid(rows, "4", page.id))
+            val saved = f.await { it.draft?.form == EditorForm.Grid(page.id, rows, "4") && it.savePhase == DraftSavePhase.SAVED }.draft!!
+            assertEquals(page, saved.document.pages[0])
+            f.finish(); f.runtime.close()
+            val reopened = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(f.root, FileSystem.SYSTEM, BundledSQLiteDriver())).value
+            val resumed = Fixture(reopened, Dispatchers.Default, f.root)
+            try {
+                resumed.send(AuthoringAction.ResumeDraft(saved.id))
+                assertEquals(saved, resumed.await { it.phase == AuthoringPhase.EDITING }.draft)
+            } finally { resumed.finish(); reopened.close() }
+        }
+    }
+
+    @Test fun inlineGridDoesNotReplaceAnotherPageOrCardFormAndLegacyNoFormIsNoop() = runTest {
+        val dispatcher = QueuedDispatcher()
+        fresh(dispatcher) { f ->
+            f.start()
+            val original = f.session.state.value.draft!!
+            f.send(AuthoringAction.ChangeGrid("1", "1"))
+            dispatcher.runAll()
+            assertEquals(original, f.session.state.value.draft)
+            f.send(AuthoringAction.ChangeGrid("1", "1", PageId("missing")))
+            f.await { it.problem?.code == ProblemCode.INVALID_DATA }
+            assertEquals(original, f.session.state.value.draft)
+            f.send(AuthoringAction.AddPage(2, 2))
+            val document = f.await { it.draft?.document?.pages?.size == 2 && it.savePhase == DraftSavePhase.SAVED }.draft!!.document
+            val page = document.pages[0]
+            f.send(AuthoringAction.ChangeGrid("2", "3", page.id))
+            val grid = f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }.draft!!
+            f.send(AuthoringAction.ChangeGrid("4", "4", document.pages[1].id))
+            f.await { it.problem?.code == ProblemCode.UNFINISHED_FORM }
+            assertEquals(grid, f.session.state.value.draft)
+            f.send(AuthoringAction.CancelGrid)
+            f.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }
+            f.open(); f.saved()
+            val card = f.session.state.value.draft!!
+            f.send(AuthoringAction.ChangeGrid("5", "5", page.id))
+            dispatcher.runAll()
+            assertEquals(ProblemCode.UNFINISHED_FORM, f.session.state.value.problem?.code)
+            assertEquals(card, f.session.state.value.draft)
+        }
+    }
+
+    @Test fun inlineGridRejectsUnsafeTextBeforeSavingButAllowsUnfinishedNumericInput() = runTest {
+        val dispatcher = QueuedDispatcher()
+        fresh(dispatcher) { f ->
+            f.start()
+            val original = f.session.state.value.draft!!
+            val page = original.document.pages[0].id
+            for ((text, code) in listOf("\u0000" to ProblemCode.INVALID_DATA, "\uD800" to ProblemCode.INVALID_DATA,
+                "1".repeat(65537) to ProblemCode.LIMIT_EXCEEDED)) {
+                f.send(AuthoringAction.ChangeGrid(text, "3", page))
+                dispatcher.runAll()
+                assertEquals(code, f.session.state.value.problem?.code)
+                assertEquals(original, f.session.state.value.draft)
+            }
+            f.send(AuthoringAction.ChangeGrid("-", "3", page))
+            f.await { (it.draft?.form as? EditorForm.Grid)?.rowsText == "-" && it.savePhase == DraftSavePhase.SAVED }
+            assertEquals(original.document, f.session.state.value.draft!!.document)
+        }
+    }
+
+    @Test fun inlineGridSaveValidatesBoundsAndOverflowWithoutDroppingForm() = runTest {
+        for ((rows, columns, code) in listOf(Triple("0", "1", ProblemCode.LIMIT_EXCEEDED), Triple("65", "1", ProblemCode.LIMIT_EXCEEDED),
+            Triple("1", "-1", ProblemCode.LIMIT_EXCEEDED), Triple("2147483648", "1", ProblemCode.INVALID_DATA))) fresh { f ->
+            f.start()
+            val original = f.session.state.value.draft!!
+            f.send(AuthoringAction.ChangeGrid(rows, columns, original.document.pages[0].id))
+            val saved = f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }.draft!!
+            f.send(AuthoringAction.SaveGrid)
+            f.await { it.problem?.code == code }
+            assertEquals(saved, f.session.state.value.draft)
+            assertEquals(original.document, saved.document)
+        }
+    }
+
+    @Test fun inlineGridCancelAndAtomicSavePreserveCellsMetadataAndPublishedDocument() = runTest { fresh { f ->
+        val cells = (0..3).map { BoardCell(it, CellKind.CONTENT, CardDocument(CardId("card-$it"), "Карточка $it",
+            extensionsJson = "{\"card\":$it}"), "{\"cell\":$it}") }
+        val doc = BoardDocument(BoardId("board"), "Источник", listOf(BoardPage(PageId("page"), 2, 2, cells, extensionsJson = "{\"page\":1}")))
+        assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, WritePermit(0) { OperationResult.Completed(Unit) }))
+        val card = cells[3].card!!
+        val message = StoredMessage(0, 1, MessageDraft(listOf(MessagePart.Card(MessagePartId("selected"),
+            CardSelectionSnapshot(SelectionOrigin(doc.id, 1, doc.pages[0].id, card.id), card.label, null, card.speech)))))
+        assertIs<OperationResult.Completed<Unit>>(f.runtime.messages.saveMessage(message))
+        f.send(AuthoringAction.EditBoard(doc.id)); f.saved()
+        f.send(AuthoringAction.ChangeGrid("1", "1", doc.pages[0].id))
+        f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }
+        f.send(AuthoringAction.CancelGrid)
+        assertEquals(doc, f.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }.draft!!.document)
+        f.send(AuthoringAction.ChangeGrid("1", "1", doc.pages[0].id))
+        val before = f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }.durableVersion!!
+        f.library.delayed = true
+        f.send(AuthoringAction.SaveGrid)
+        val save = f.nextSave()
+        assertEquals(before, save.expected)
+        assertNull(save.draft.form)
+        val changed = save.draft.document
+        assertEquals(4, changed.pages.size)
+        assertEquals(cells.map { it.copy(position = 0) }, changed.pages.flatMap { it.cells })
+        assertEquals(doc.pages[0].extensionsJson, changed.pages[0].extensionsJson)
+        val stored = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(save.draft.id)).value
+        assertEquals(doc, stored.draft.draft.document); assertIs<EditorForm.Grid>(stored.draft.draft.form); stored.lease.close()
+        save.reply.complete(OperationResult.Completed(Unit))
+        assertEquals(before + 1, f.await { it.savePhase == DraftSavePhase.SAVED }.durableVersion)
+        assertTrue(f.library.saves.tryReceive().isFailure)
+        val published = assertIs<OperationResult.Completed<LeasedBoard>>(f.runtime.library.board(doc.id)).value
+        assertEquals(doc, published.board.document); published.lease.close()
+        assertEquals(message, assertIs<OperationResult.Completed<StoredMessage>>(f.runtime.messages.message()).value)
+    } }
+
+    @Test fun inlineGridCannotStartOrSaveWithoutApplicationAuthorization() = runTest { fresh { f ->
+        f.start()
+        val original = f.session.state.value.draft!!
+        val page = original.document.pages[0].id
+        f.native.authorized = false
+        f.send(AuthoringAction.ChangeGrid("1", "1", page))
+        f.await { it.phase == AuthoringPhase.PAUSED && it.problem?.code == ProblemCode.UNAUTHORIZED }
+        assertEquals(original, f.session.state.value.draft)
+        f.native.authorized = true; f.send(AuthoringAction.Resume)
+        f.await { it.phase == AuthoringPhase.EDITING }
+        f.send(AuthoringAction.ChangeGrid("1", "1", page))
+        val saved = f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }.draft!!
+        f.native.authorized = false; f.send(AuthoringAction.SaveGrid)
+        f.await { it.phase == AuthoringPhase.PAUSED }
+        assertEquals(saved, f.session.state.value.draft)
+    } }
+
+    @Test fun inlineGridBlocksStructuralCommandsAndApplyUntilExplicitCompletion() = runTest {
+        val dispatcher = QueuedDispatcher()
+        fresh(dispatcher) { f ->
+            f.start()
+            val page = f.session.state.value.draft!!.document.pages[0]
+            f.send(AuthoringAction.ChangeGrid("2", "2", page.id))
+            val saved = f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }.draft!!
+            for (action in listOf(AuthoringAction.Apply, AuthoringAction.AddPage(),
+                AuthoringAction.ResizeGrid(page.id, 1, 1), AuthoringAction.OpenCard(page.id, 0))) {
+                f.send(action); dispatcher.runAll()
+                assertEquals(ProblemCode.UNFINISHED_FORM, f.session.state.value.problem?.code)
+                assertEquals(saved, f.session.state.value.draft)
+                assertNull(f.session.state.value.published)
+            }
+        }
+    }
+
+    @Test fun inlineGridPageOverflowLimitRejectsWholeSaveWithoutTruncation() = runTest { fresh { f ->
+        val first = BoardPage(PageId("page-0"), 1, 2, listOf(BoardCell(1, CellKind.SPACE, extensionsJson = "{\"keep\":1}")))
+        val pages = listOf(first) + (1..255).map { BoardPage(PageId("page-$it"), 1, 1, emptyList()) }
+        val doc = BoardDocument(BoardId("board"), "Источник", pages)
+        assertIs<OperationResult.Completed<PublishedBoard>>(f.runtime.library.addBoard(doc, WritePermit(0) { OperationResult.Completed(Unit) }))
+        f.send(AuthoringAction.EditBoard(doc.id)); f.saved()
+        f.send(AuthoringAction.ChangeGrid("1", "1", first.id))
+        val saved = f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }.draft!!
+        f.send(AuthoringAction.SaveGrid)
+        f.await { it.problem?.code == ProblemCode.LIMIT_EXCEEDED }
+        assertEquals(saved, f.session.state.value.draft)
+        assertEquals(doc, saved.document)
+    } }
+
+    @Test fun inlineGridSaveStillChecksApplicationPermitAtDurableBoundary() = runTest { fresh { f ->
+        f.start()
+        val page = f.session.state.value.draft!!.document.pages[0]
+        f.send(AuthoringAction.ChangeGrid("1", "1", page.id))
+        val saved = f.await { it.draft?.form is EditorForm.Grid && it.savePhase == DraftSavePhase.SAVED }.draft!!
+        f.library.delayed = true
+        f.send(AuthoringAction.SaveGrid)
+        val save = f.nextSave()
+        f.native.authorized = false
+        save.reply.complete(OperationResult.Completed(Unit))
+        f.await { it.phase == AuthoringPhase.PAUSED && it.savePhase == DraftSavePhase.FAILED }
+        val retained = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(saved.id)).value
+        assertEquals(saved, retained.draft.draft); retained.lease.close()
+    } }
+
     @Test fun gridFormIsDurableAndValidationDoesNotDropUnappliedText() = runTest { fresh { f ->
         f.start()
         val page = f.session.state.value.draft!!.document.pages[0]

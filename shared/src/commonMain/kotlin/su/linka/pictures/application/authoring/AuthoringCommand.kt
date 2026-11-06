@@ -21,7 +21,7 @@ sealed interface AuthoringAction {
     data class RemovePage(val pageId: PageId) : AuthoringAction
     data class ResizeGrid(val pageId: PageId, val rows: Int, val columns: Int) : AuthoringAction
     data class OpenGrid(val pageId: PageId) : AuthoringAction
-    data class ChangeGrid(val rowsText: String, val columnsText: String) : AuthoringAction
+    data class ChangeGrid(val rowsText: String, val columnsText: String, val pageId: PageId? = null) : AuthoringAction
     data object SaveGrid : AuthoringAction
     data object CancelGrid : AuthoringAction
     data class SetCell(val pageId: PageId, val position: Int, val kind: CellKind) : AuthoringAction
