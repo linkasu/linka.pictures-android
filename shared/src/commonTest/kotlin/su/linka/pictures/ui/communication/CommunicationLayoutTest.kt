@@ -145,18 +145,10 @@ class CommunicationLayoutTest {
     }
 
     @Test
-    fun readOnlyPreviewsUseHouseGradientOnlyInDefaultLightTheme() {
-        assertEquals(listOf(Linka14.cardTop, Linka14.cardBottom), communicationMessageGradient(linkaPalette(false, false)))
-        assertNull(communicationMessageGradient(linkaPalette(true, false)))
-        assertNull(communicationMessageGradient(linkaPalette(false, true)))
-        assertNull(communicationMessageGradient(linkaPalette(true, true)))
-    }
-
-    @Test
-    fun phraseActionGrayIsMeasuredLightChromeNotADarkOrHighContrastFallback() {
-        assertEquals(Color(0xFFD6D7D7), communicationActionSurface(linkaPalette(false, false)))
+    fun phraseActionsUseNavigationSurfaceInEveryThemeNotDisabledChrome() {
+        assertEquals(Color(0xFFE2EEEA), communicationActionSurface(linkaPalette(false, false)))
         for (palette in listOf(linkaPalette(true, false), linkaPalette(false, true), linkaPalette(true, true))) {
-            assertEquals(palette.disabledSurface, communicationActionSurface(palette))
+            assertEquals(palette.navigationSurface, communicationActionSurface(palette))
         }
     }
 }

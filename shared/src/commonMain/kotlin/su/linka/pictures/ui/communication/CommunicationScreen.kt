@@ -82,29 +82,27 @@ fun CommunicationScreen(
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(8.dp)) {
                     val pages = state.board?.document?.pages.orEmpty()
                     val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1)
-                    val actionWidth = maxOf(48.dp, maxWidth / 6)
+                    val actionWidth = (maxWidth / 8).coerceIn(48.dp, 96.dp)
                     Box(Modifier.fillMaxSize()) {
                         Column(Modifier.fillMaxWidth().height(budget.content.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(Modifier.fillMaxWidth().height(budget.phrase.dp)) {
-                                val action = Modifier.width(actionWidth).fillMaxHeight().drawBehind {
-                                    val horizontal = 4.dp.toPx()
-                                    val vertical = 6.dp.toPx()
-                                    drawRect(actionSurface, Offset(horizontal, vertical),
-                                        Size((size.width - 2 * horizontal).coerceAtLeast(0f), (size.height - 2 * vertical).coerceAtLeast(0f)))
-                                }
-                                CommunicationIconButton(CommunicationIcon.Backspace, "Удалить последнее", presentation.editEnabled,
-                                    { dispatch(CommunicationCommand.Backspace(CommandId(ids.next()))) }, action)
-                                CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight())
-                                CommunicationIconButton(if (presentation.stopping) CommunicationIcon.Stop else CommunicationIcon.Speak,
+                                val action = Modifier.width(actionWidth).fillMaxHeight()
+                                CommunicationActionButton(if (presentation.stopping) CommunicationIcon.Stop else CommunicationIcon.Speak,
                                     if (presentation.stopping) "Остановить" else "Произнести", presentation.speechEnabled,
                                     {
                                         val id = CommandId(ids.next())
                                         dispatch(if (presentation.stopping) CommunicationCommand.Stop(id) else CommunicationCommand.Speak(id))
-                                    }, action.semantics { stateDescription = presentation.audioStatus })
-                                CommunicationIconButton(CommunicationIcon.Clear, "Очистить сообщение", presentation.editEnabled,
-                                    { dispatch(CommunicationCommand.Clear(CommandId(ids.next()))) }, action)
+                                     }, action.semantics { stateDescription = presentation.audioStatus })
+                                CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight())
+                                CommunicationActionButton(CommunicationIcon.Backspace, "Удалить последнее", presentation.editEnabled,
+                                    { dispatch(CommunicationCommand.Backspace(CommandId(ids.next()))) }, action)
+                                CommunicationActionButton(if (presentation.undoEnabled) CommunicationIcon.Undo else CommunicationIcon.Clear,
+                                    if (presentation.undoEnabled) "Вернуть сообщение" else "Очистить сообщение",
+                                    presentation.editEnabled || presentation.undoEnabled,
+                                    { dispatch(if (presentation.undoEnabled) CommunicationCommand.UndoClear(CommandId(ids.next()))
+                                        else CommunicationCommand.Clear(CommandId(ids.next()))) }, action)
                             }
-                            Divider(color = palette.primary)
+                            Divider(color = palette.divider)
                             fun changePage(direction: Int): Boolean {
                                 val target = pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) ?: return false
                                 dispatch(CommunicationCommand.ChangePage(CommandId(ids.next()), pages[target].id))

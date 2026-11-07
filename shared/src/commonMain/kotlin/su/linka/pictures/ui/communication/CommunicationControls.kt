@@ -21,9 +21,10 @@ import su.linka.pictures.ui.theme.LocalLinkaPalette
 import su.linka.pictures.ui.theme.LinkaPalette
 import su.linka.pictures.ui.theme.linkaPalette
 import su.linka.pictures.ui.components.ToolbarTitle
+import su.linka.pictures.ui.app.ProductTopBar
 
 internal fun communicationActionSurface(palette: LinkaPalette): Color =
-    if (palette == linkaPalette(false, false)) Color(0xFFD6D7D7) else palette.disabledSurface
+    palette.navigationSurface
 
 @Composable
 internal fun CommunicationControls(
@@ -42,10 +43,9 @@ internal fun CommunicationControls(
     var menu by remember { mutableStateOf(false) }
     var enteringText by rememberSaveable { mutableStateOf(false) }
     fun id() = CommandId(ids.next())
-    TopAppBar(
+    ProductTopBar(
         modifier = Modifier.height(toolbarHeight),
-        title = { ToolbarTitle(title, modifier = Modifier.padding(start = 8.dp)) },
-        backgroundColor = palette.primary, contentColor = palette.onPrimary,
+        title = title,
         navigationIcon = { CommunicationIconButton(CommunicationIcon.Back, "Открыть библиотеку", presentation.commandsEnabled, onOpenLibrary,
             Modifier.padding(start = 8.dp)) },
         actions = {
