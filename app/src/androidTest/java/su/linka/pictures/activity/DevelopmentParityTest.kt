@@ -57,6 +57,17 @@ class DevelopmentParityTest {
             electronScreenshot("settings")
             clickNamed(listOf("Масштаб текста"))
             awaitNamed("Масштаб текста (0.5–3)")
+            val automation = instrumentation.uiAutomation
+            automation.serviceInfo = automation.serviceInfo.apply {
+                flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            }
+            await("dialog actions above the actual keyboard, not merely AX-clickable") { root ->
+                val keyboard = automation.windows.firstOrNull {
+                    it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
+                }?.let { Rect().also(it::getBoundsInScreen) }
+                val cancel = namedHitBounds(root, listOf("Отмена"))
+                keyboard != null && cancel != null && cancel.bottom <= keyboard.top
+            }
             electronScreenshot("scale-dialog")
             clickNamed(listOf("Отмена"))
             clickNamed(listOf("Назад")); awaitLibrary()

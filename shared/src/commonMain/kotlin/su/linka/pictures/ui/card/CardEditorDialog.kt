@@ -31,6 +31,7 @@ import su.linka.pictures.ui.editor.authoringProblemLabel
 import su.linka.pictures.ui.editor.editable
 import su.linka.pictures.ui.images.DemandVisibleImages
 import su.linka.pictures.ui.theme.LocalLinkaPalette
+import su.linka.pictures.ui.app.productDialogProperties
 
 @Composable
 internal fun CardEditorDialog(
@@ -47,7 +48,7 @@ internal fun CardEditorDialog(
     val palette = LocalLinkaPalette.current
     val cancel = { input.discardPending(); dispatch(AuthoringAction.CancelCard) }
     Dialog(onDismissRequest = { if (enabled) cancel() },
-        properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        properties = productDialogProperties()) {
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp), contentAlignment = Alignment.Center) {
             Surface(modifier.widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight.coerceAtMost(640.dp)),
                 color = palette.surface, contentColor = palette.text, shape = MaterialTheme.shapes.medium) {

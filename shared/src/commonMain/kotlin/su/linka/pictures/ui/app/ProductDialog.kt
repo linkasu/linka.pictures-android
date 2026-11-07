@@ -24,7 +24,7 @@ internal fun ProductDialog(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val palette = LocalLinkaPalette.current
-    Dialog(onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismiss, properties = productDialogProperties()) {
         BoxWithConstraints(
             Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp),
             contentAlignment = Alignment.Center,

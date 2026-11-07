@@ -83,6 +83,7 @@ internal fun EditorSettingsDialog(
     val canDismiss = editorSettingsCanDismiss(draft.form, input.pending, grid?.pending == true)
     val details = input.value
     AlertDialog(onDismissRequest = { if (canDismiss) onDismiss() }, title = { Text("Параметры доски") },
+        properties = su.linka.pictures.ui.app.productDialogProperties(),
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AuthoringFeedback(state, dispatch, showSaveStatus = state.savePhase == DraftSavePhase.FAILED || state.savePhase == DraftSavePhase.UNCONFIRMED)
