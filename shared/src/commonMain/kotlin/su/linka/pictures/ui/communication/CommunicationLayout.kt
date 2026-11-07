@@ -32,7 +32,8 @@ internal fun communicationVerticalBudget(height: Float, fontScale: Float, multip
     val remaining = height - actions
     val fixed = 1f + if (multiplePages) 32f * scale else 0f
     // Only the grid scrolls; never grow the parent and scroll speech controls away.
-    val phrase = maxOf(64f * scale, (remaining - fixed) / 5).coerceIn(0f, remaining / 2)
+    val previewMinimum = if (stackedActions) maxOf(104f, 64f * scale) else 64f * scale
+    val phrase = maxOf(previewMinimum, (remaining - fixed) / 5).coerceIn(0f, remaining / 2)
     return CommunicationVerticalBudget(phrase, height, actions)
 }
 

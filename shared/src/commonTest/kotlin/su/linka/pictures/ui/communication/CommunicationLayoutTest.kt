@@ -14,6 +14,7 @@ class CommunicationLayoutTest {
     fun compactAndLargeTextReserveASeparatePinnedActionRowWithoutOverflow() {
         val normal = communicationVerticalBudget(591f, 1f, false, stackedActions = true)
         assertEquals(64f, normal.actions)
+        assertEquals(104f, communicationVerticalBudget(511f, 1f, false, stackedActions = true).phrase)
         val large = communicationVerticalBudget(535f, 2f, false, stackedActions = true)
         assertEquals(128f, large.actions)
         assertTrue(large.phrase + large.actions + 1f < large.content)
