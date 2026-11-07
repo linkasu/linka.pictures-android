@@ -10,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 
 val LocalLinkaPalette = staticCompositionLocalOf { linkaPalette(false, false) }
 
@@ -40,6 +41,12 @@ fun LinkaTheme(
     ) {
         MaterialTheme(
             colors = linkaMaterialColors(darkTheme, palette),
+            typography = LinkaTypography,
+            shapes = androidx.compose.material.Shapes(
+                small = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                medium = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                large = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            ),
             content = content,
         )
     }
