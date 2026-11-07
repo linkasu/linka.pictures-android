@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.constrainHeight
 import su.linka.pictures.ui.theme.LinkaMetrics
 
-/** The grid reserves the full caption height before allocating its scrollable cells. */
+/** Reserve the full caption height before assigning the remaining space to the image. */
 internal object CommunicationCardMeasurePolicy : MeasurePolicy {
     override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
         val gap = if (constraints.hasBoundedHeight) minOf(LinkaMetrics.imageCaptionGap.roundToPx(), constraints.maxHeight)

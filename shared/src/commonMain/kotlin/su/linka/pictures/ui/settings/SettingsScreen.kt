@@ -36,7 +36,8 @@ private enum class SettingsInput { TEXT_SCALE, LANGUAGE }
 internal fun SettingsScreen(library: LibraryStore, controller: LibraryController, audio: AudioPort,
     owner: String, capability: AssistantCapability?, enabled: Boolean, dark: Boolean, onDark: (Boolean) -> Unit,
     onSaved: (PortableSettings) -> Unit, access: @Composable () -> Unit, onBack: () -> Unit,
-    gate: AssistantGate? = null, onAccess: (() -> Unit)? = null) {
+    gate: AssistantGate? = null, onAccess: (() -> Unit)? = null,
+    validateSettings: suspend (PortableSettings) -> String? = { null }) {
     var loaded by remember { mutableStateOf<SettingsSnapshot?>(null) }
     var result by remember { mutableStateOf<OperationResult<*>?>(null) }
     var refresh by remember { mutableStateOf(0) }
@@ -78,7 +79,7 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         }
         if (loaded == null && result == null) Text("Загружаем настройки…")
         loaded?.let { snapshot -> key(snapshot) {
-            SettingsForm(snapshot, controller, owner, capability, enabled, voices, gate, access, result) { outcome, value ->
+            SettingsForm(snapshot, controller, owner, capability, enabled, voices, gate, access, result, validateSettings) { outcome, value ->
                 result = if (outcome is OperationResult.Completed) null else outcome
                 if (outcome is OperationResult.Completed) savedAwaitingReload = true
                 when (val read = reloadSettingsAfterSave(library, outcome, value, onSaved)) {
@@ -119,6 +120,7 @@ internal fun voiceStatusLabel(status: VoiceStatus): String = when (status) {
 private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryController, owner: String,
     capability: AssistantCapability?, enabled: Boolean, voices: VoiceCapability, gate: AssistantGate?,
     access: @Composable () -> Unit, feedback: OperationResult<*>?,
+    validateSettings: suspend (PortableSettings) -> String?,
     onResult: suspend (OperationResult<Long>, PortableSettings) -> Unit) {
     var scale by remember { mutableStateOf(snapshot.value.textScale.toString()) }
     var language by remember { mutableStateOf(snapshot.value.languageTag) }
@@ -131,6 +133,8 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     var pending by remember { mutableStateOf<PortableSettings?>(null) }
     var input by remember { mutableStateOf<SettingsInput?>(null) }
     var editingValue by remember { mutableStateOf("") }
+    var layoutNotice by remember { mutableStateOf<String?>(null) }
+    val currentValidation by rememberUpdatedState(validateSettings)
     val scope = rememberCoroutineScope()
     val editable = enabled && !busy && !committed && pending == null
     fun save(value: PortableSettings) {
@@ -138,6 +142,8 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
         busy = true
         scope.launch {
             try {
+                layoutNotice = currentValidation(value)
+                if (layoutNotice != null) { pending = null; authorize = false; return@launch }
                 val result = controller.settings(owner, capability, value, snapshot.listing.revision, snapshot.listing.epoch)
                 authorize = needsLibraryAuthorization(result)
                 if (!authorize) pending = null
@@ -164,8 +170,17 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
           else settingsInputValid(scale.toFloatOrNull(), editingValue)
       ProductDialog(if (isScale) "Масштаб текста" else "Язык", { input = null }, actions = {
         TextButton(onClick = {
-            if (isScale) scale = editingValue else language = editingValue
-            input = null
+            if (!isScale) { language = editingValue; input = null }
+            else {
+                busy = true
+                scope.launch {
+                    try {
+                        val proposed = PortableSettings(editingValue.toFloat(), contrast, language, boards)
+                        layoutNotice = currentValidation(proposed)
+                        if (layoutNotice == null) { scale = editingValue; input = null }
+                    } finally { busy = false }
+                }
+            }
         }, enabled = editable && validInput) { Text("Применить") }
         TextButton(onClick = { input = null }) { Text("Отмена") }
       }) {
@@ -181,6 +196,9 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
         }
       }
     }
+    if (layoutNotice != null) ProductDialog(layoutNotice!!, { layoutNotice = null }, actions = {
+        TextButton(onClick = { layoutNotice = null }) { Text("Закрыть") }
+    }) { Text("Текущая доска не помещается целиком. Настройки и сообщение не изменены.") }
     ProductSection("Кнопки страниц") {
         snapshot.listing.items.filter { it.kind == LibraryEntryKind.BOARD }.forEach { entry ->
             val show = boards[entry.id]?.showPageButtons ?: true
@@ -192,6 +210,7 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     val parsed = scale.toFloatOrNull()
     val valid = settingsInputValid(parsed, language)
     if (!valid) Text("Введите масштаб от 0.5 до 3 и корректный непустой код языка длиной до 128 символов.")
+    Text("Совместимость остальных наборов проверяется до открытия: все страницы должны помещаться целиком.")
     Button(onClick = {
         val value = PortableSettings(parsed!!, contrast, language, boards)
         authorize = needsLibraryAuthorization(gate?.check(ProtectedAction.CHANGE_SETTINGS, capability, owner))

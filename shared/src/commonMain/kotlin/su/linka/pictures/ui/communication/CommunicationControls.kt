@@ -17,10 +17,7 @@ import su.linka.pictures.application.communication.CommunicationCommand
 import su.linka.pictures.application.ports.IdSource
 import su.linka.pictures.domain.CommandId
 import su.linka.pictures.domain.InteractionMode
-import su.linka.pictures.ui.theme.LocalLinkaPalette
 import su.linka.pictures.ui.theme.LinkaPalette
-import su.linka.pictures.ui.theme.linkaPalette
-import su.linka.pictures.ui.components.ToolbarTitle
 import su.linka.pictures.ui.app.ProductTopBar
 
 internal fun communicationActionSurface(palette: LinkaPalette): Color =
@@ -39,14 +36,14 @@ internal fun CommunicationControls(
     onInputFocusChange: (Boolean) -> Unit,
     toolbarHeight: Dp,
 ) {
-    val palette = LocalLinkaPalette.current
     var menu by remember { mutableStateOf(false) }
     var enteringText by rememberSaveable { mutableStateOf(false) }
     fun id() = CommandId(ids.next())
     ProductTopBar(
-        modifier = Modifier.heightIn(min = toolbarHeight),
+        modifier = Modifier.height(toolbarHeight),
         title = title,
-        navigationIcon = { CommunicationIconButton(CommunicationIcon.Back, "Открыть библиотеку", presentation.commandsEnabled, onOpenLibrary,
+        minimumRowHeight = 48.dp,
+        navigationIcon = { CommunicationIconButton(CommunicationIcon.Back, "Открыть библиотеку", true, onOpenLibrary,
             Modifier.padding(start = 8.dp)) },
         actions = {
             if (onOpenBoardSettings != null) CommunicationIconButton(

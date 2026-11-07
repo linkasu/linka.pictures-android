@@ -1,11 +1,6 @@
 package su.linka.pictures.ui.communication
 
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.material.LocalContentAlpha
@@ -23,7 +18,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import su.linka.pictures.application.communication.CommunicationCommand
@@ -36,12 +30,13 @@ import su.linka.pictures.ui.images.VisibleImageDemand
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
-fun CommunicationScreen(
+internal fun CommunicationScreen(
     state: CommunicationState,
     ids: IdSource,
     voices: VoiceCapability,
     onCommand: (CommunicationCommand) -> Unit,
     onOpenLibrary: () -> Unit,
+    layout: FixedCommunicationBoardLayout,
     images: Map<AssetId, ImageBitmap> = emptyMap(),
     modifier: Modifier = Modifier,
     showPageButtons: Boolean = true,
@@ -72,107 +67,75 @@ fun CommunicationScreen(
                 else CommunicationCommand.Clear(CommandId(ids.next()))) }, action)
     }
     VisibleImageDemand(state.stamp.epoch, onImagesNeeded) {
-    val paging = Modifier.communicationPaging(inputFocused, presentation.commandsEnabled) { direction ->
         val pages = state.board?.document?.pages.orEmpty()
-        pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled)?.let {
-            dispatch(CommunicationCommand.ChangePage(CommandId(ids.next()), pages[it].id))
+        fun changePage(direction: Int): Boolean {
+            val target = pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) ?: return false
+            dispatch(CommunicationCommand.ChangePage(CommandId(ids.next()), pages[target].id))
+            return true
         }
-    }
-    Surface(modifier.fillMaxSize().then(paging), color = palette.background, contentColor = palette.text) {
-        CompositionLocalProvider(LocalContentAlpha provides 1f) {
-            BoxWithConstraints(
-                Modifier.fillMaxSize(),
-            ) {
-                val toolbarHeight = communicationToolbarHeight(maxWidth.value, maxHeight.value, LocalDensity.current.fontScale).dp
-                val actionSurface = communicationActionSurface(palette)
-                Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-                CommunicationControls(
-                    state.board?.document?.name ?: "Общение", presentation, ids, dispatch,
-                    { if (presentation.commandsEnabled) onOpenLibrary() }, onOpenBoardSettings,
-                    input, { if (presentation.commandsEnabled) input = it }, { inputFocused = it },
-                    toolbarHeight,
-                )
-                val notices = communicationNotices(state, presentation, voices)
-                if (notices.isNotEmpty()) Column(
-                    Modifier.fillMaxWidth().heightIn(max = 160.dp).verticalScroll(rememberScrollState()).padding(8.dp)
-                        .semantics { liveRegion = LiveRegionMode.Polite },
-                ) { notices.forEach { Text(it, color = palette.danger) } }
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                    val pages = state.board?.document?.pages.orEmpty()
-                    val stackedActions = communicationUsesStackedActions(maxWidth.value, maxHeight.value, LocalDensity.current.fontScale)
-                    val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1, stackedActions)
-                    val actionWidth = (maxWidth / 8).coerceIn(48.dp, 96.dp)
-                    Box(Modifier.fillMaxSize()) {
-                        Column(Modifier.fillMaxWidth().height(budget.content.dp)) {
-                            Row(Modifier.fillMaxWidth().height(budget.phrase.dp)) {
-                                val action = Modifier.width(actionWidth).fillMaxHeight()
-                                if (!stackedActions) speechAction(action)
-                                CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight())
-                                if (!stackedActions) { backspaceAction(action); clearAction(action) }
-                             }
-                             if (stackedActions) Row(Modifier.fillMaxWidth().height(budget.actions.dp)) {
-                                 val action = Modifier.weight(1f).fillMaxHeight()
-                                 speechAction(action); backspaceAction(action); clearAction(action)
-                             }
-                            Divider(color = palette.divider)
-                             fun changePage(direction: Int): Boolean {
-                                val target = pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) ?: return false
-                                dispatch(CommunicationCommand.ChangePage(CommandId(ids.next()), pages[target].id))
-                                 return true
-                             }
-                             val pagingVisible = showPageButtons && pages.size > 1
-                             val pageAction: @Composable (Int, Modifier) -> Unit = { direction, action ->
-                                 CommunicationIconButton(if (direction < 0) CommunicationIcon.Previous else CommunicationIcon.Next,
-                                     if (direction < 0) "Предыдущая страница" else "Следующая страница",
-                                     pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) != null,
-                                     { changePage(direction) }, action)
-                             }
-                             Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                 if (pagingVisible && !stackedActions) pageAction(-1, Modifier.width(48.dp).fillMaxHeight())
-                                val page = presentation.page
-                                key(state.message.cursor?.boardId, page?.id, state.message.cursor?.firstCell) {
-                                    CommunicationGrid(
-                                        page, state.message.cursor?.firstCell ?: 0,
-                                        presentation.selectedCards, presentation.commandsEnabled,
-                                        presentation.composing, images,
-                                        { position ->
-                                            if (page != null && presentation.commandsEnabled) dispatch(
-                                                CommunicationCommand.Select(CommandId(ids.next()), page.id, position),
-                                            )
-                                        },
-                                        Modifier.weight(1f).fillMaxHeight(),
-                                    )
-                                }
-                                 if (pagingVisible && !stackedActions) pageAction(1, Modifier.width(48.dp).fillMaxHeight())
-                             }
-                             val pageCounter: @Composable (Modifier) -> Unit = { counter -> Text(
-                                 if (stackedActions) "${presentation.pageIndex + 1} / ${pages.size}" else "Страница ${presentation.pageIndex + 1} из ${pages.size}",
-                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                 modifier = counter.clearAndSetSemantics {
-                                     contentDescription = "Страница ${presentation.pageIndex + 1} из ${pages.size}"
+        val paging = Modifier.communicationPaging(inputFocused, presentation.commandsEnabled) { changePage(it) }
+        Surface(modifier.fillMaxSize().then(paging), color = palette.background, contentColor = palette.text) {
+            CompositionLocalProvider(LocalContentAlpha provides 1f) {
+                Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))) {
+                    CommunicationControls(
+                        state.board?.document?.name ?: "Общение", presentation, ids, dispatch,
+                        onOpenLibrary, onOpenBoardSettings,
+                        input, { if (presentation.commandsEnabled) input = it }, { inputFocused = it },
+                        layout.toolbarHeight.dp,
+                    )
+                    Row(Modifier.fillMaxWidth().height(layout.phraseHeight.dp)) {
+                        val action = Modifier.width(layout.actionWidth.dp).fillMaxHeight()
+                        speechAction(action)
+                        CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight())
+                        backspaceAction(action)
+                        clearAction(action)
+                    }
+                    Divider(color = palette.divider, thickness = 1.dp)
+                    val page = presentation.page
+                    val gridModifier = Modifier.fillMaxWidth().height(layout.gridHeight.dp)
+                    key(state.message.cursor?.boardId, page?.id, state.message.cursor?.firstCell) {
+                        if (page == null) Box(gridModifier) else CommunicationGrid(
+                            page, state.message.cursor?.firstCell ?: 0,
+                            presentation.selectedCards, presentation.commandsEnabled,
+                            presentation.composing, images,
+                            { position ->
+                                if (presentation.commandsEnabled) dispatch(
+                                    CommunicationCommand.Select(CommandId(ids.next()), page.id, position),
+                                )
+                            },
+                            pageLayout = layout.pages.getValue(page.id),
+                            modifier = gridModifier,
+                        )
+                    }
+                    Row(Modifier.fillMaxWidth().height(layout.footerHeight.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (page != null && pages.size > 1) {
+                            val pagingVisible = showPageButtons && pages.size > 1
+                            val pageAction: @Composable (Int) -> Unit = { direction ->
+                                CommunicationIconButton(if (direction < 0) CommunicationIcon.Previous else CommunicationIcon.Next,
+                                    if (direction < 0) "Предыдущая страница" else "Следующая страница",
+                                    pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) != null,
+                                    { changePage(direction) }, Modifier.size(48.dp))
+                            }
+                            if (pagingVisible) pageAction(-1)
+                            Text(
+                                "Страница ${presentation.pageIndex + 1} из ${pages.size}",
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.weight(1f).clearAndSetSemantics {
+                                    contentDescription = "Страница ${presentation.pageIndex + 1} из ${pages.size}"
                                     customActions = listOfNotNull(
                                         if (pageTarget(presentation.pageIndex, pages.size, -1, presentation.commandsEnabled) != null)
                                             CustomAccessibilityAction("Предыдущая страница") { changePage(-1) } else null,
                                         if (pageTarget(presentation.pageIndex, pages.size, 1, presentation.commandsEnabled) != null)
                                             CustomAccessibilityAction("Следующая страница") { changePage(1) } else null,
-                                     )
-                                 },
-                             ) }
-                             if (presentation.page != null && pages.size > 1) {
-                                 if (stackedActions) Row(Modifier.fillMaxWidth().heightIn(min = if (pagingVisible) 48.dp else 0.dp),
-                                     verticalAlignment = Alignment.CenterVertically) {
-                                     if (pagingVisible) pageAction(-1, Modifier.size(48.dp))
-                                     pageCounter(Modifier.weight(1f))
-                                     if (pagingVisible) pageAction(1, Modifier.size(48.dp))
-                                 } else pageCounter(Modifier.align(Alignment.CenterHorizontally))
-                             }
-                         }
+                                    )
+                                },
+                            )
+                            if (pagingVisible) pageAction(1)
+                        }
                     }
-                }
                 }
             }
         }
-    }
     }
 }
 

@@ -2,17 +2,10 @@ package su.linka.pictures.ui.communication
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -27,7 +20,6 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.CollectionItemInfo
@@ -54,6 +46,7 @@ internal fun CommunicationGrid(
     composing: Boolean,
     images: Map<AssetId, ImageBitmap>,
     onSelect: (Int) -> Unit,
+    pageLayout: FixedCommunicationPageLayout,
     modifier: Modifier,
 ) {
     val palette = LocalLinkaPalette.current
@@ -63,19 +56,14 @@ internal fun CommunicationGrid(
     }
     val slots = remember(page) { communicationSlots(page) }
     val focus = LocalFocusManager.current
-    BoxWithConstraints(modifier) {
-        val size = measuredCommunicationCells(page, maxWidth.value, maxHeight.value)
-        val cellWidth = size.width.dp
-        val cellHeight = size.height.dp
-        val cursor = firstCell.coerceIn(0, page.capacity - 1)
-        val horizontal = rememberScrollState(with(LocalDensity.current) { (cellWidth * (cursor % page.columns)).roundToPx() })
-        val vertical = rememberLazyListState(initialFirstVisibleItemIndex = cursor / page.columns)
-        Box(
-            Modifier.fillMaxSize().horizontalScroll(horizontal).focusGroup()
+    val cellWidth = pageLayout.cellWidth.dp
+    val cellHeight = pageLayout.cellHeight.dp
+    Box(modifier) {
+        Column(
+            Modifier.requiredSize(cellWidth * page.columns, cellHeight * page.rows).focusGroup()
                 .semantics {
                     collectionInfo = CollectionInfo(page.rows, page.columns)
-                    stateDescription = "Сетка ${page.rows} на ${page.columns}." +
-                        if (cellWidth * page.columns > maxWidth || cellHeight * page.rows > maxHeight) " Доступна прокрутка." else ""
+                    stateDescription = "Сетка ${page.rows} на ${page.columns}."
                 }
                 .onPreviewKeyEvent { event ->
                     if (!enabled || event.type != KeyEventType.KeyDown || event.isAltPressed || event.isCtrlPressed || event.isMetaPressed) false
@@ -91,35 +79,31 @@ internal fun CommunicationGrid(
                     }
                 },
         ) {
-            LazyColumn(
-                state = vertical,
-                modifier = Modifier.width(cellWidth * page.columns).fillMaxSize(),
-            ) {
-                items(page.rows, key = { it }) { row ->
-                    DemandVisibleImages(page.id to row, visibleRowImages(page, row))
-                    Row {
-                        for (column in 0 until page.columns) {
-                            val position = row * page.columns + column
-                            val cell = slots[position]
-                            val itemModifier = Modifier.width(cellWidth).height(cellHeight)
-                            if (cell == null || cell.kind == CellKind.EMPTY) {
-                                Box(itemModifier.border(1.dp, palette.border))
-                            } else {
-                                val label = if (cell.kind == CellKind.SPACE) "Пробел" else cell.card!!.label
-                                CommunicationCard(
-                                    label = if (cell.kind == CellKind.SPACE) "⎵" else label,
-                                    accessibleName = label.ifEmpty { "Карточка без подписи, позиция ${position + 1}" },
-                                    activationLabel = if (composing) "Добавить в сообщение" else "Произнести карточку",
-                                    image = cell.card?.image?.let { images[it] },
-                                    hasImage = cell.card?.image != null,
-                                    selected = cell.card?.id in selectedCards,
-                                    enabled = enabled,
-                                    onActivate = { onSelect(position) },
-                                    modifier = itemModifier.semantics {
-                                         collectionItemInfo = CollectionItemInfo(row, 1, column, 1)
-                                    },
-                                )
-                            }
+            for (row in 0 until page.rows) {
+                DemandVisibleImages(page.id to row, visibleRowImages(page, row))
+                Row {
+                    for (column in 0 until page.columns) {
+                        val position = row * page.columns + column
+                        val cell = slots[position]
+                        val itemModifier = Modifier.requiredSize(cellWidth, cellHeight).semantics {
+                            collectionItemInfo = CollectionItemInfo(row, 1, column, 1)
+                        }
+                        if (cell == null || cell.kind == CellKind.EMPTY) {
+                            Box(itemModifier.border(1.dp, palette.border))
+                        } else {
+                            val label = if (cell.kind == CellKind.SPACE) "Пробел" else cell.card!!.label
+                            CommunicationCard(
+                                label = if (cell.kind == CellKind.SPACE) "⎵" else label,
+                                accessibleName = label.ifEmpty { "Карточка без подписи, позиция ${position + 1}" },
+                                activationLabel = if (composing) "Добавить в сообщение" else "Произнести карточку",
+                                image = cell.card?.image?.let { images[it] },
+                                hasImage = cell.card?.image != null,
+                                imageBesideCaption = pageLayout.imageSides[position]?.dp,
+                                selected = cell.card?.id in selectedCards,
+                                enabled = enabled,
+                                onActivate = { onSelect(position) },
+                                modifier = itemModifier,
+                            )
                         }
                     }
                 }

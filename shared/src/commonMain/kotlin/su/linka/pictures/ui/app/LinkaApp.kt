@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.material.Text
 import kotlinx.coroutines.*
 import su.linka.pictures.application.OperationResult
 import su.linka.pictures.application.ProblemCode
@@ -16,6 +19,9 @@ import su.linka.pictures.domain.*
 import su.linka.pictures.ui.access.AssistantAccessPanel
 import su.linka.pictures.ui.access.commandsAvailable
 import su.linka.pictures.ui.communication.CommunicationScreen
+import su.linka.pictures.ui.communication.rememberCommunicationBoardMeasurer
+import su.linka.pictures.ui.communication.communicationPresentation
+import su.linka.pictures.ui.communication.communicationNotices
 import su.linka.pictures.ui.editor.EditorScreen
 import su.linka.pictures.ui.editor.AuthoringFeedback
 import su.linka.pictures.ui.library.LibraryScreen
@@ -66,6 +72,10 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     }
     var editorBack by remember(navigation, route) { mutableStateOf<(() -> Unit)?>(null) }
     val uiScope = rememberCoroutineScope()
+    val measurer = rememberCommunicationBoardMeasurer()
+    var openingBoard by remember { mutableStateOf(false) }
+    var openingJob by remember { mutableStateOf<Job?>(null) }
+    var admissionNotice by remember { mutableStateOf<String?>(null) }
     fun navigate(page: ProductPage, action: AuthoringAction? = null, board: BoardId? = null) {
         uiScope.launch { navigation.open(page, action, board) }
     }
@@ -112,6 +122,59 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
         else -> emptySet()
     }
     LaunchedEffect(navigation, requested) { assetsNeeded(requested) }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val density = LocalDensity.current
+    val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
+    val boardWidth = maxWidth.value - with(density) {
+        (insets.getLeft(this, LayoutDirection.Ltr) + insets.getRight(this, LayoutDirection.Ltr)).toDp().value
+    }
+    val boardHeight = maxHeight.value - with(density) { (insets.getTop(this) + insets.getBottom(this)).toDp().value }
+    fun measureBoard(document: BoardDocument, value: PortableSettings) = measurer.measure(document,
+        boardWidth, boardHeight, value.textScale, value.boards[document.id]?.showPageButtons ?: true)
+    val boardLayout = remember(message.board, measurer, boardWidth, boardHeight, settings) {
+        message.board?.let { measureBoard(it.document, settings) }
+    }
+    val presentation = remember(message, voices) { communicationPresentation(message, voices) }
+    LaunchedEffect(route, isForeground, measurer, boardWidth, boardHeight, settings) {
+        openingJob?.cancel()
+    }
+    fun returnToCommunication() {
+        if (boardLayout == null) admissionNotice = "Масштаб не поддерживается"
+        else if (!presentation.commandsEnabled) return
+        else navigate(ProductPage.COMMUNICATION)
+    }
+    suspend fun validateSettings(value: PortableSettings): String? =
+        message.board?.let { if (measureBoard(it.document, value) == null) "Масштаб не поддерживается" else null }
+    fun openBoard(board: BoardId) {
+        if (openingBoard || !isForeground) return
+        val previousRoute = navigation.route.value
+        openingBoard = true
+        openingJob = uiScope.launch {
+            try {
+                when (val read = library.board(board)) {
+                    is OperationResult.Completed -> {
+                        val loaded = read.value
+                        val supported = try { measureBoard(loaded.board.document, settings) != null }
+                            finally { loaded.lease.close() }
+                        currentCoroutineContext().ensureActive()
+                        if (!supported) admissionNotice = "Масштаб не поддерживается"
+                        else if (navigation.route.value === previousRoute && isForeground) {
+                            when (val openedBoard = communication.openBoard(board, expectedRevision = loaded.board.revision)) {
+                                is OperationResult.Completed -> if (navigation.route.value === previousRoute)
+                                    navigate(ProductPage.COMMUNICATION)
+                                is OperationResult.Failed -> admissionNotice = "Не удалось открыть набор. Вернитесь к выбору набора."
+                                else -> Unit
+                            }
+                        }
+                    }
+                    else -> admissionNotice = "Не удалось открыть набор. Вернитесь к выбору набора."
+                }
+            } finally { openingBoard = false }
+        }
+    }
+    LaunchedEffect(route, boardLayout) {
+        if (started && route == null && boardLayout == null) navigation.open(ProductPage.LIBRARY)
+    }
     LinkaTheme(dark, settings.highContrast, settings.textScale) {
         val current = route
         val boardSettings = current?.page == ProductPage.SETTINGS && current.boardId != null
@@ -136,10 +199,10 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
             Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                 androidx.compose.material.CircularProgressIndicator()
             }
-        } else if (communicationVisible) {
+        } else if (communicationVisible && boardLayout != null) {
             val currentBoard = message.message.cursor?.boardId
             CommunicationScreen(message, ids, voices, { if (isForeground && current == null) communication.dispatch(it) },
-                { navigate(ProductPage.LIBRARY) }, images,
+                { navigate(ProductPage.LIBRARY) }, boardLayout, images,
                 showPageButtons = settings.boards[currentBoard]?.showPageButtons ?: true,
                 onImagesNeeded = { communicationAssets = it },
                 onOpenBoardSettings = currentBoard?.let { board -> {
@@ -151,23 +214,23 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                     { mode ->
                         if (isForeground && navigation.route.value === current)
                             communication.dispatch(CommunicationCommand.SetMode(CommandId(ids.next()), mode))
-                    }, { if (navigation.route.value === current) navigate(ProductPage.COMMUNICATION) })
+                    }, { if (navigation.route.value === current) returnToCommunication() },
+                    validateSettings = ::validateSettings)
             }
-        } else key(current.owner) {
+        } else if (current != null) key(current.owner) {
             when (current.page) {
-                ProductPage.LIBRARY -> LibraryScreen(library, controller, current.owner, capability, commandsEnabled,
-                    images, { libraryAssets = it }, accessPanel, { navigate(ProductPage.COMMUNICATION) },
-                    { board ->
-                        communication.dispatch(CommunicationCommand.OpenBoard(CommandId(ids.next()), board))
-                        navigate(ProductPage.COMMUNICATION)
-                    }, { navigate(ProductPage.EDITOR, AuthoringAction.NewBoard()) },
+                ProductPage.LIBRARY -> LibraryScreen(library, controller, current.owner, capability, commandsEnabled && !openingBoard,
+                    images, { libraryAssets = it }, accessPanel, ::returnToCommunication,
+                    ::openBoard, { navigate(ProductPage.EDITOR, AuthoringAction.NewBoard()) },
                     { navigate(ProductPage.EDITOR, AuthoringAction.EditBoard(it)) },
                     { navigate(ProductPage.EDITOR, AuthoringAction.ResumeDraft(it)) },
                     { navigate(ProductPage.SETTINGS) }, { navigate(ProductPage.ACCESS) },
-                    { navigate(ProductPage.TRANSFER, board = it) }, gate = access)
+                    { navigate(ProductPage.TRANSFER, board = it) }, gate = access,
+                    canReturnToCommunication = boardLayout != null && !openingBoard && presentation.commandsEnabled,
+                    communicationNotices = communicationNotices(message, presentation, voices))
                 ProductPage.SETTINGS -> SettingsScreen(library, controller, audio, current.owner, capability, commandsEnabled,
                     dark, { dark = it }, { settings = it }, accessPanel, { navigate(ProductPage.LIBRARY) },
-                    gate = access, onAccess = { navigate(ProductPage.ACCESS) })
+                    gate = access, onAccess = { navigate(ProductPage.ACCESS) }, validateSettings = ::validateSettings)
                 ProductPage.ACCESS -> ProductScaffold("Защита помощника", { navigate(ProductPage.LIBRARY) }) { accessPanel() }
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
                     commandsEnabled, isForeground, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })
@@ -175,6 +238,10 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                     { editorAssets = it }, { navigate(ProductPage.LIBRARY) }, { editorBack = it })
                 ProductPage.COMMUNICATION -> Unit
             }
+        }
+        if (admissionNotice != null && current != null) ProductDialog(admissionNotice!!,
+            { admissionNotice = null }, actions = { Action("Закрыть") { admissionNotice = null } }) {
+            Text("Выберите другой масштаб или набор во взрослом разделе. Текущая доска и сообщение не изменены.")
         }
         if (restartProblem?.code == ProblemCode.IO_FAILURE && !hideLifecycleProblem) {
             ProductDialog("Не удалось завершить закрытие / перезагрузку", {
@@ -191,6 +258,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                 androidx.compose.material.Text("Для безопасного продолжения требуется перезапуск приложения. Новые защищённые действия запрещены; автоматического повтора нет.")
             }
         }
+    }
     }
 }
 

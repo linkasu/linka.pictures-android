@@ -35,7 +35,8 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     onAssets: (Set<AssetId>) -> Unit, access: @Composable () -> Unit, onBack: () -> Unit,
     onOpen: (BoardId) -> Unit, onCreate: () -> Unit, onEdit: (BoardId) -> Unit,
     onResume: (DraftId) -> Unit, onSettings: () -> Unit, onAccess: () -> Unit,
-    onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null) {
+    onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null,
+    canReturnToCommunication: Boolean = true, communicationNotices: List<String> = emptyList()) {
     val listing by library.listing.collectAsState()
     val shownListing = listing
     var drafts by remember { mutableStateOf<OperationResult<List<DraftSummary>>?>(null) }
@@ -75,13 +76,14 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
                   DropdownMenuItem(onClick = { menu = false; showDrafts = true }) { Text("Сохранённые черновики") }
                   DropdownMenuItem(onClick = { menu = false; onAccess() }, enabled = enabled && !busy) { Text("Защита помощника") }
                   DropdownMenuItem(onClick = { menu = false; refresh++ }, enabled = !busy) { Text("Обновить список") }
-                  DropdownMenuItem(onClick = { menu = false; onBack() }) { Text("К сообщению") }
+                   DropdownMenuItem(onClick = { menu = false; onBack() }, enabled = canReturnToCommunication && !busy) { Text("К сообщению") }
               }
           }
       }) }) { padding ->
       LazyVerticalGrid(GridCells.Adaptive(libraryTileMinWidth(LocalDensity.current.fontScale).dp),
           Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(8.dp)) {
-       item(span = { GridItemSpan(maxLineSpan) }) { Column {
+        item(span = { GridItemSpan(maxLineSpan) }) { Column {
+           communicationNotices.forEach { Text(it) }
           restartProblem?.let { Feedback(OperationResult.Failed(it)) }
           listing.refreshProblem?.let { Feedback(OperationResult.Failed(it)) }
          if (listing.items.isEmpty()) Text(if (listing.refreshProblem == null) "В библиотеке пока нет досок. Создайте доску или импортируйте файл .linka." else "Не удалось прочитать библиотеку. Данные не заменены пустым списком.")

@@ -37,7 +37,8 @@ internal suspend fun saveBoardSettings(controller: LibraryController, owner: Str
 internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryController, gate: AssistantGate,
     owner: String, capability: AssistantCapability?, board: BoardId, mode: InteractionMode, enabled: Boolean,
     access: @Composable () -> Unit, onSaved: (PortableSettings) -> Unit,
-    onSetMode: (InteractionMode) -> Unit, onDismiss: () -> Unit) {
+    onSetMode: (InteractionMode) -> Unit, onDismiss: () -> Unit,
+    validateSettings: suspend (PortableSettings) -> String? = { null }) {
     var snapshot by remember(owner, board) { mutableStateOf<BoardSettingsSnapshot?>(null) }
     var result by remember(owner, board) { mutableStateOf<OperationResult<*>?>(null) }
     var refresh by remember(owner, board) { mutableStateOf(0) }
@@ -48,6 +49,8 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
     val currentCapability by rememberUpdatedState(capability)
     val currentOnSaved by rememberUpdatedState(onSaved)
     val currentOnSetMode by rememberUpdatedState(onSetMode)
+    val currentValidation by rememberUpdatedState(validateSettings)
+    var layoutNotice by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(owner, board, refresh) {
         snapshot = null; result = null
         val listing = library.listing.value
@@ -76,7 +79,11 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
                         val modeGuard = gate.guard(ProtectedAction.CHANGE_SETTINGS, capability, owner)
                         busy = true
                         scope.launch {
-                            try {
+                             try {
+                                val proposed = loaded.settings.copy(boards = loaded.settings.boards +
+                                    (board to BoardPresentation(pager)))
+                                layoutNotice = currentValidation(proposed)
+                                if (layoutNotice != null) return@launch
                                 val saved = saveBoardSettings(controller, owner, capability, loaded, board, pager, selectedMode,
                                     { currentOnSaved(it) }, { chosen ->
                                         if (currentEnabled && modeGuard() is OperationResult.Completed &&
@@ -94,6 +101,7 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
             Action("Закрыть", !busy, onClick = onDismiss)
         }
     }) {
+        layoutNotice?.let { Text(it) }
         if (gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner) !is OperationResult.Completed) access()
         if (snapshot == null && result == null) Text("Загружаем настройки…")
         snapshot?.let {
