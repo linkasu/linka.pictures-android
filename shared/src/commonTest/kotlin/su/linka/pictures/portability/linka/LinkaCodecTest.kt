@@ -24,6 +24,44 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 class LinkaCodecTest {
+    @Test fun legacySpaceAndEmptyIgnoreInactiveMediaLikeElectronWithoutChangingSlots() = runTest {
+        val config = """{"version":"1.0","rows":1,"columns":2,"withoutSpace":true,"cards":[{"id":45,"cardType":1,"title":",","imagePath":"inactive.png","custom":"keep"},{"id":59,"cardType":2,"title":"+","imagePath":"inactive.png","audioPath":"unused.mp3"}]}"""
+        val rig = CodecTestRig()
+        val bytes = syntheticZip(listOf(configEntry(config), SyntheticEntry("inactive.png", byteArrayOf(1)), SyntheticEntry("unused.mp3", byteArrayOf(2))))
+        val input = rig.input(bytes)
+        val board = rig.codec.read(input, "Клавиатура").value()
+        try {
+            assertEquals(3, board.report.ignoredInactiveMediaReferences)
+            val cells = board.document.pages.single().cells
+            assertEquals(listOf(0, 1), cells.map { it.position })
+            assertEquals(listOf(CellKind.SPACE, CellKind.EMPTY), cells.map { it.kind })
+            assertTrue(cells.all { it.card == null })
+            assertEquals(InputStyle.LITERAL, board.document.behavior.inputStyle)
+            assertEquals("keep", boundedJson(cells.first().extensionsJson).string("custom"))
+            assertEquals(0, rig.inspections)
+            assertEquals(0, rig.prepares)
+            assertContentEquals(bytes, rig.raw(input))
+            val exported = rig.codec.write(PublishedBoard(board.document, 1), board.lease).value()
+            try {
+                val again = rig.codec.read(exported, "Клавиатура").value()
+                try { assertEquals(cells.map { it.kind }, again.document.pages.single().cells.map { it.kind }) }
+                finally { again.close() }
+            } finally { rig.discard(exported) }
+        } finally { board.close() }
+        clean(rig)
+    }
+
+    @Test fun ignoredLegacyAttachmentsStillValidatePathsAndCanonicalFormatRemainsStrict() = runTest {
+        val legacy = """{"version":"1.0","rows":1,"columns":1,"cards":[{"cardType":2,"imagePath":"../escape"}]}"""
+        val rig = CodecTestRig()
+        assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(legacy)))), "test"), ProblemCode.UNSAFE_ARCHIVE)
+        val canonical = cardConfig(card("space", image = "inactive.png").changed("cardType", JsonPrimitive(1)))
+        assertFailure(rig.codec.read(rig.input(syntheticZip(listOf(configEntry(canonical), SyntheticEntry("inactive.png", byteArrayOf(1))))), "test"), ProblemCode.INVALID_DATA)
+        val privateUpgrade = legacy.replace("1.0", "1.3").replace("../escape", "inactive.png")
+        assertFailure(rig.codec.readLegacyUpgrade(rig.input(syntheticZip(listOf(configEntry(privateUpgrade), SyntheticEntry("inactive.png", byteArrayOf(1))))), "test"), ProblemCode.INVALID_DATA)
+        assertEquals(0, rig.prepares); assertEquals(0, rig.inspections)
+        clean(rig)
+    }
     @Test fun privateUpgradeAcceptsShippedFlat13WithoutExpandingExternalVersionWhitelist() = runTest {
         val config = """{"version":"1.3","rows":1,"columns":1,"directSet":true,"description":"сохранить","cards":[{"id":7,"cardType":0,"title":"Болит","width":2,"height":2,"custom":{"source":"legacy"}}]}"""
         val rig = CodecTestRig()

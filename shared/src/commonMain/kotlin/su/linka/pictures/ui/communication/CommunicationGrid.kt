@@ -107,7 +107,7 @@ internal fun CommunicationGrid(
                             } else {
                                 val label = if (cell.kind == CellKind.SPACE) "Пробел" else cell.card!!.label
                                 CommunicationCard(
-                                    label = label,
+                                    label = if (cell.kind == CellKind.SPACE) "⎵" else label,
                                     accessibleName = label.ifEmpty { "Карточка без подписи, позиция ${position + 1}" },
                                     activationLabel = if (composing) "Добавить в сообщение" else "Произнести карточку",
                                     image = cell.card?.image?.let { images[it] },

@@ -98,7 +98,10 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
                 Text("После выбора файла войдите повторно / разрешите команды выше. Старый доступ мог быть отозван; выбор файла не предоставляет доступ.")
             operation.preview?.let { preview ->
                 preview.name?.let { Text("Доска: «$it»") }
-                preview.board?.let { Text("Страниц: ${it.pages}; карточек: ${it.cards}; изображений: ${it.images}; записей: ${it.recordings}; байт медиа: ${it.mediaBytes}.${if (it.layoutNormalized) " Сетка нормализована для приложения." else ""}") }
+                preview.board?.let {
+                    Text("Страниц: ${it.pages}; карточек: ${it.cards}; изображений: ${it.images}; записей: ${it.recordings}; байт медиа: ${it.mediaBytes}.${if (it.layoutNormalized) " Сетка нормализована для приложения." else ""}")
+                    if (it.ignoredInactiveMediaReferences > 0) Text("Неактивных вложений EMPTY/SPACE: ${it.ignoredInactiveMediaReferences}. Как в «Смотри», они не отображаются и не озвучиваются. Эти вложения не переносятся в рабочую доску; исходный архив не изменяется.")
+                }
                 preview.snapshot?.let { Text("Досок: ${it.boards}; черновиков: ${it.drafts}; сохранённых нечитаемых архивов: ${it.retained}; медиа: ${it.assets}; байт медиа: ${it.assetBytes}.") }
                 preview.expectedLibraryRevision?.let { Text("Подтверждение относится к версии библиотеки $it и показанному сообщению. При изменении данных операция будет отклонена.") }
                 val canConfirm = readiness.canConfirm

@@ -13,6 +13,9 @@ private val cardFields = setOf("id", "cardType", "title", "imagePath", "audioPat
 internal data class WireCard(val raw: JsonObject, val type: Int, val title: String, val image: String?, val audio: String?, val width: Double, val height: Double)
 internal data class WirePage(val raw: JsonObject, val rows: Int, val columns: Int, val cards: List<WireCard?>)
 internal data class LinkaWire(val raw: JsonObject, val pages: List<WirePage>, val literal: Boolean, val direct: Boolean, val description: String?) {
+    val ignoredInactiveMediaReferences: Int get() = pages.sumOf { page -> page.cards.filterNotNull().sumOf { card ->
+        if (card.type == 0) 0 else listOf(card.raw.string("imagePath"), card.raw.string("audioPath")).count { !it.isNullOrEmpty() }
+    } }
     val references: Map<String, MediaKind> get() {
         val refs = linkedMapOf<String, MediaKind>()
         for (card in pages.flatMap { it.cards }.filterNotNull()) {
@@ -64,9 +67,10 @@ internal data class LinkaWire(val raw: JsonObject, val pages: List<WirePage>, va
                         val image = reference(card.string("imagePath"))
                         val audio = reference(card.string("audioPath"))
                         card.string("audioText"); card.string("audioVoice")
-                        checkData(type == 0 || image == null && audio == null)
+                        checkData(legacy && version != "1.3" || type == 0 || image == null && audio == null)
                         passive(JsonObject(card.filterKeys { it !in cardFields }))
-                        WireCard(card, type, title, image, audio, span(card["width"]), span(card["height"]))
+                        // Electron never loads media on SPACE/EMPTY/NewCard; still validate raw paths before ignoring them.
+                        WireCard(card, type, title, image.takeIf { type == 0 }, audio.takeIf { type == 0 }, span(card["width"]), span(card["height"]))
                     }
                 }
                 if (!legacy) passive(JsonObject(page.filterKeys { it !in pageFields }))

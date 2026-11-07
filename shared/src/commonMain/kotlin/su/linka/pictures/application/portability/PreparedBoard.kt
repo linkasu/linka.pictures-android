@@ -10,8 +10,9 @@ data class BoardTransferReport(
     val recordings: Int,
     val mediaBytes: Long,
     val layoutNormalized: Boolean,
+    val ignoredInactiveMediaReferences: Int = 0,
 ) {
-    init { require(pages > 0 && cards >= 0 && images >= 0 && recordings >= 0 && mediaBytes >= 0) }
+    init { require(pages > 0 && cards >= 0 && images >= 0 && recordings >= 0 && mediaBytes >= 0 && ignoredInactiveMediaReferences >= 0) }
 }
 
 class PreparedBoard(

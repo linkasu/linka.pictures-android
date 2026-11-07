@@ -19,7 +19,7 @@ internal fun measuredCommunicationCells(page: BoardPage, width: Float, height: F
     val style = MaterialTheme.typography.body1.merge(CommunicationCaptionStyle)
     return remember(page, width, height, density, style, measurer) {
         val labels = page.cells.filter { it.kind != CellKind.EMPTY }.map {
-            (if (it.kind == CellKind.SPACE) "Пробел" else it.card!!.label) to (it.card?.image != null)
+            (if (it.kind == CellKind.SPACE) "⎵" else it.card!!.label) to (it.card?.image != null)
         }
         with(density) {
             // One width for the page: no word splitting, media-loading resize, or stored-grid changes.
