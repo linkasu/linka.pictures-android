@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +26,6 @@ import su.linka.pictures.ui.app.*
 import su.linka.pictures.ui.library.needsLibraryAuthorization
 import su.linka.pictures.ui.library.LibraryIcons
 import su.linka.pictures.text.isNativeText
-import su.linka.pictures.ui.components.ToolbarTitle
 import su.linka.pictures.ui.components.toolbarHeightForFontScale
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 import su.linka.pictures.ui.theme.linkaPalette
@@ -45,7 +43,6 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
     var menu by remember { mutableStateOf(false) }
     var showAccess by remember { mutableStateOf(false) }
     var savedAwaitingReload by remember { mutableStateOf(false) }
-    val palette = LocalLinkaPalette.current
     val voices by audio.voices.collectAsState()
     LaunchedEffect(refresh) {
         if (!savedAwaitingReload) loaded = null
@@ -59,9 +56,8 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         }
     }
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(), topBar = {
-        TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
-            backgroundColor = palette.surface, contentColor = palette.text, elevation = 0.dp,
-            title = { ToolbarTitle("Настройки") }, navigationIcon = {
+        ProductTopBar("Настройки", modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+            navigationIcon = {
             IconButton(onClick = onBack) { Icon(LibraryIcons.Back, "Назад") }
         }, actions = { Box {
             IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню настроек") }
@@ -72,12 +68,12 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
     }) { padding ->
       Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
           verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SettingsPanel("Родительский контроль") {
+        ProductSection("Родительский контроль") {
             SettingsRow("Защита помощника", "Настроить блокировку важных действий", enabled) {
                 if (onAccess != null) onAccess() else showAccess = true
             }
         }
-        SettingsPanel("Оформление сеанса") {
+        ProductSection("Оформление сеанса") {
             SettingsSwitch("Тёмная тема", dark, enabled, "Только для текущего сеанса") { onDark(it) }
         }
         if (loaded == null && result == null) Text("Загружаем настройки…")
@@ -98,14 +94,15 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
                 Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             if (result is OperationResult.Failed) Feedback(result)
         } else if (result !is OperationResult.Completed) Feedback(result)
-        SettingsPanel("Данные на этом устройстве") {
+        ProductSection("Данные на этом устройстве") {
             SettingsRow("Локальные данные", "Доски, изображения и аудио остаются на устройстве. Ручной экспорт и резервное копирование доступны через меню библиотеки.")
         }
       }
     }
-    if (showAccess) ProductDialog("Защита помощника", { showAccess = false }) {
-        Text("Управление защитой доступно через меню библиотеки → Защита помощника.")
+    if (showAccess) ProductDialog("Защита помощника", { showAccess = false }, actions = {
         TextButton(onClick = { showAccess = false }) { Text("Закрыть") }
+    }) {
+        Text("Управление защитой доступно через меню библиотеки → Защита помощника.")
     }
 }
 
@@ -150,12 +147,12 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
             } finally { busy = false }
         }
     }
-    SettingsPanel("Оформление карточек") {
+    ProductSection("Оформление карточек") {
         SettingsSwitch("Высокий контраст", contrast, editable) { contrast = it }
         SettingsRow("Масштаб текста", scale, editable) { editingValue = scale; input = SettingsInput.TEXT_SCALE }
         SettingsPreview(scale.toFloatOrNull() ?: snapshot.value.textScale, snapshot.value.textScale, contrast)
     }
-    SettingsPanel("Озвучивание") {
+    ProductSection("Озвучивание") {
         SettingsRow("Голос на этом устройстве", voiceStatusLabel(voices.status))
         SettingsRow("Язык", language, editable) { editingValue = language; input = SettingsInput.LANGUAGE }
         if (voices.voices.isEmpty()) SettingsRow("Локальные голоса недоступны", "Установите голос средствами ОС; общение без озвучивания доступно.")
@@ -163,7 +160,15 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     }
     input?.let { shown ->
       val isScale = shown == SettingsInput.TEXT_SCALE
-      ProductDialog(if (isScale) "Масштаб текста" else "Язык", { input = null }) {
+      val validInput = if (isScale) settingsInputValid(editingValue.toFloatOrNull(), language)
+          else settingsInputValid(scale.toFloatOrNull(), editingValue)
+      ProductDialog(if (isScale) "Масштаб текста" else "Язык", { input = null }, actions = {
+        TextButton(onClick = {
+            if (isScale) scale = editingValue else language = editingValue
+            input = null
+        }, enabled = editable && validInput) { Text("Применить") }
+        TextButton(onClick = { input = null }) { Text("Отмена") }
+      }) {
         Field(editingValue, if (isScale) "Масштаб текста (0.5–3)" else "Язык (например ru-RU)", editable,
             keyboard = KeyboardOptions(keyboardType = if (isScale) KeyboardType.Decimal else KeyboardType.Text), singleLine = true) { editingValue = it }
         if (!isScale && voices.voices.isNotEmpty()) Box {
@@ -174,16 +179,9 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
                 }
             }
         }
-        val validInput = if (isScale) settingsInputValid(editingValue.toFloatOrNull(), language)
-            else settingsInputValid(scale.toFloatOrNull(), editingValue)
-        TextButton(onClick = {
-            if (isScale) scale = editingValue else language = editingValue
-            input = null
-        }, enabled = editable && validInput) { Text("Применить") }
-        TextButton(onClick = { input = null }) { Text("Отмена") }
       }
     }
-    SettingsPanel("Кнопки страниц") {
+    ProductSection("Кнопки страниц") {
         snapshot.listing.items.filter { it.kind == LibraryEntryKind.BOARD }.forEach { entry ->
             val show = boards[entry.id]?.showPageButtons ?: true
             SettingsSwitch(entry.name, show, editable) { selected ->
@@ -199,38 +197,21 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
         authorize = needsLibraryAuthorization(gate?.check(ProtectedAction.CHANGE_SETTINGS, capability, owner))
         if (authorize) pending = value else save(value)
     }, enabled = editable && valid) { Text("Сохранить настройки") }
-    if (authorize) ProductDialog("Сохранение настроек", { if (!busy) { authorize = false; pending = null } }) {
-        Text("Подтвердите сохранение проверенных настроек. Авторизация сама по себе не применяет изменения.")
-        access()
-        Feedback(feedback)
+    if (authorize) ProductDialog("Сохранение настроек", { if (!busy) { authorize = false; pending = null } }, actions = {
         TextButton(onClick = {
             val value = pending ?: PortableSettings(parsed!!, contrast, language, boards)
             save(value)
         }, enabled = enabled && !busy && !committed) { Text("Сохранить настройки") }
         TextButton(onClick = { authorize = false; pending = null }, enabled = !busy) { Text("Отмена") }
+    }) {
+        Text("Подтвердите сохранение проверенных настроек. Авторизация сама по себе не применяет изменения.")
+        access()
+        Feedback(feedback)
     }
 }
 
 internal fun settingsInputValid(scale: Float?, language: String): Boolean =
     scale != null && scale.isFinite() && scale in 0.5f..3f && language.isNotBlank() && language.length <= 128 && isNativeText(language)
-
-@Composable
-private fun SettingsHeading(title: String) {
-    Text(title, style = MaterialTheme.typography.h6,
-        modifier = Modifier.padding(16.dp).semantics { heading() })
-}
-
-@Composable
-private fun SettingsPanel(title: String, content: @Composable ColumnScope.() -> Unit) {
-    val palette = LocalLinkaPalette.current
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = palette.surface,
-        contentColor = palette.text, border = BorderStroke(1.dp, palette.border), elevation = 0.dp) {
-        Column {
-            SettingsHeading(title)
-            content()
-        }
-    }
-}
 
 internal fun settingsPreviewFontScale(current: Float, saved: Float, draft: Float): Float = current / saved * draft
 
@@ -238,7 +219,7 @@ internal fun settingsPreviewFontScale(current: Float, saved: Float, draft: Float
 private fun SettingsPreview(scale: Float, savedScale: Float, contrast: Boolean) {
     val palette = linkaPalette(!MaterialTheme.colors.isLight, contrast)
     val density = LocalDensity.current
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Предпросмотр карточки — без озвучивания и действий", style = MaterialTheme.typography.body2)
         CompositionLocalProvider(LocalDensity provides Density(density.density,
             settingsPreviewFontScale(density.fontScale, savedScale, scale))) {
@@ -256,7 +237,7 @@ private fun SettingsPreview(scale: Float, savedScale: Float, contrast: Boolean) 
 @Composable
 private fun SettingsRow(title: String, summary: String? = null, enabled: Boolean = false, onClick: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().then(if (onClick == null) Modifier else Modifier.clickable(enabled = enabled, onClick = onClick))
-        .padding(16.dp)) {
+        .padding(vertical = 16.dp)) {
         Text(title, style = MaterialTheme.typography.body1)
         summary?.let { Text(it, style = MaterialTheme.typography.body2, color = LocalLinkaPalette.current.secondaryText) }
     }
@@ -264,7 +245,7 @@ private fun SettingsRow(title: String, summary: String? = null, enabled: Boolean
 
 @Composable
 private fun SettingsSwitch(title: String, checked: Boolean, enabled: Boolean, summary: String? = null, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(end = 16.dp)) {
             Text(title)

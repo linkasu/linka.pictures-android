@@ -24,7 +24,6 @@ import su.linka.pictures.domain.*
 import su.linka.pictures.ui.app.*
 import su.linka.pictures.ui.images.*
 import su.linka.pictures.ui.theme.LocalLinkaPalette
-import su.linka.pictures.ui.components.ToolbarTitle
 import su.linka.pictures.ui.components.toolbarHeightForFontScale
 
 private data class BoardDecision(val entry: LibraryEntrySummary, val epoch: Long, val delete: Boolean)
@@ -39,7 +38,6 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null) {
     val listing by library.listing.collectAsState()
     val shownListing = listing
-    val palette = LocalLinkaPalette.current
     var drafts by remember { mutableStateOf<OperationResult<List<DraftSummary>>?>(null) }
     var draftsEpoch by remember { mutableStateOf<Long?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -66,9 +64,8 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     }
     VisibleImageDemand(shownListing.epoch, onAssets) {
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
-      topBar = { TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
-          backgroundColor = palette.surface, contentColor = palette.text, elevation = 0.dp,
-          title = { ToolbarTitle("Ваши наборы") }, actions = {
+      topBar = { ProductTopBar("Ваши наборы",
+          modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp), actions = {
           IconButton(onClick = onCreate, enabled = enabled && !busy) { Icon(LibraryIcons.Add, "Создать набор") }
           Box {
               IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню библиотеки") }
@@ -101,7 +98,9 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
       }
     }
     }
-    if (showDrafts && draftDecision == null) ProductDialog("Сохранённые черновики", { if (!busy) showDrafts = false }) {
+    if (showDrafts && draftDecision == null) ProductDialog("Сохранённые черновики", { if (!busy) showDrafts = false }, actions = {
+        TextButton(onClick = { showDrafts = false }, enabled = !busy) { Text("Закрыть") }
+    }) {
         when (val loaded = drafts) {
              null -> Text("Загружаем черновики…")
             is OperationResult.Completed -> {
@@ -119,15 +118,9 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
              else -> Feedback(loaded)
         }
          if (result !is OperationResult.Completed) Feedback(result)
-         TextButton(onClick = { showDrafts = false }, enabled = !busy) { Text("Закрыть") }
     }
     decision?.let { shown ->
-      ProductDialog(if (shown.delete) "Удаление доски" else "Название доски", { if (!busy) decision = null }) {
-            Text(if (shown.delete) "Удалить доску «${shown.entry.name}» из библиотеки? Уже составленное сообщение не очищается."
-                else "Новое название для «${shown.entry.name}»")
-             if (!shown.delete) Field(name, "Название", !busy) { name = it }
-             if (authorize) access()
-             Feedback(result)
+      ProductDialog(if (shown.delete) "Удаление доски" else "Название доски", { if (!busy) decision = null }, actions = {
             Action(if (shown.delete) "Подтверждаю удаление «${shown.entry.name}»" else "Сохранить название «${shown.entry.name}»", enabled && !busy && (shown.delete || name.isNotBlank()), shown.delete) {
                 val entered = name; busy = true
                 scope.launch {
@@ -139,14 +132,17 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
                     } finally { busy = false }
                 }
             }
-            Action("Отмена", !busy) { decision = null; name = "" }
+             Action("Отмена", !busy) { decision = null; name = "" }
+      }) {
+            Text(if (shown.delete) "Удалить доску «${shown.entry.name}» из библиотеки? Уже составленное сообщение не очищается."
+                else "Новое название для «${shown.entry.name}»")
+             if (!shown.delete) Field(name, "Название", !busy) { name = it }
+             if (authorize) access()
+             Feedback(result)
       }
     }
     draftDecision?.let { shown ->
-      ProductDialog("Удаление черновика", { if (!busy) draftDecision = null }) {
-             Text("Удалить сохранённый черновик «${shown.draft.name}» версии ${shown.draft.version}? Опубликованная доска останется.")
-             if (authorize) access()
-             Feedback(result)
+      ProductDialog("Удаление черновика", { if (!busy) draftDecision = null }, actions = {
             Action("Подтверждаю удаление черновика «${shown.draft.name}»", enabled && !busy, true) {
                 busy = true
                 scope.launch {
@@ -158,7 +154,11 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
                     finally { busy = false }
                 }
             }
-            Action("Оставить черновик", !busy) { draftDecision = null }
+             Action("Оставить черновик", !busy) { draftDecision = null }
+      }) {
+             Text("Удалить сохранённый черновик «${shown.draft.name}» версии ${shown.draft.version}? Опубликованная доска останется.")
+             if (authorize) access()
+             Feedback(result)
       }
     }
 }
