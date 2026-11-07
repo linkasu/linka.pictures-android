@@ -1,7 +1,7 @@
 package su.linka.pictures.ui.library
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -10,11 +10,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.*
 import kotlinx.coroutines.*
 import su.linka.pictures.application.*
@@ -24,7 +24,6 @@ import su.linka.pictures.domain.*
 import su.linka.pictures.ui.app.*
 import su.linka.pictures.ui.images.*
 import su.linka.pictures.ui.theme.LocalLinkaPalette
-import su.linka.pictures.ui.theme.Linka14
 import su.linka.pictures.ui.components.ToolbarTitle
 import su.linka.pictures.ui.components.toolbarHeightForFontScale
 
@@ -41,7 +40,6 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     val listing by library.listing.collectAsState()
     val shownListing = listing
     val palette = LocalLinkaPalette.current
-    val baseline = MaterialTheme.colors.isLight && !palette.highContrast
     var drafts by remember { mutableStateOf<OperationResult<List<DraftSummary>>?>(null) }
     var draftsEpoch by remember { mutableStateOf<Long?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -69,7 +67,9 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     VisibleImageDemand(shownListing.epoch, onAssets) {
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
       topBar = { TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+          backgroundColor = palette.surface, contentColor = palette.text, elevation = 0.dp,
           title = { ToolbarTitle("Ваши наборы") }, actions = {
+          IconButton(onClick = onCreate, enabled = enabled && !busy) { Icon(LibraryIcons.Add, "Создать набор") }
           Box {
               IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню библиотеки") }
               DropdownMenu(menu, { menu = false }) {
@@ -81,16 +81,9 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
                   DropdownMenuItem(onClick = { menu = false; onBack() }) { Text("К сообщению") }
               }
           }
-      }) },
-      floatingActionButton = {
-          FloatingActionButton(onClick = { if (enabled && !busy) onCreate() },
-               backgroundColor = if (baseline) Linka14.accent else palette.primary,
-               contentColor = if (baseline) Color.Black else palette.onPrimary,
-              modifier = Modifier.padding(8.dp).semantics { if (!enabled || busy) disabled() }) {
-              Icon(LibraryIcons.Add, "Создать набор")
-          }
-      }) { padding ->
-      LazyVerticalGrid(GridCells.Fixed(LibraryColumns), Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(8.dp)) {
+      }) }) { padding ->
+      LazyVerticalGrid(GridCells.Adaptive(libraryTileMinWidth(LocalDensity.current.fontScale).dp),
+          Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(8.dp)) {
        item(span = { GridItemSpan(maxLineSpan) }) { Column {
           restartProblem?.let { Feedback(OperationResult.Failed(it)) }
           listing.refreshProblem?.let { Feedback(OperationResult.Failed(it)) }
@@ -199,19 +192,22 @@ private fun LibraryTile(library: LibraryStore, entry: LibraryEntrySummary, epoch
     onOpen: () -> Unit, onEdit: () -> Unit, onExport: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
     var menu by remember(entry.id) { mutableStateOf(false) }
     val board = entry.kind == LibraryEntryKind.BOARD
-    val contrast = LocalLinkaPalette.current.highContrast
-    Box(Modifier.fillMaxWidth().heightIn(min = 128.dp).padding(1.dp)
-        .clickable(enabled = canOpen && board, onClickLabel = "Открыть ${entry.name}", onClick = onOpen)
-        .semantics { stateDescription = libraryEntryDescription(entry) }) {
-        Box(Modifier.matchParentSize()) { LibraryCover(library, entry, epoch, images) }
-        Column(Modifier.fillMaxWidth().heightIn(min = 126.dp).background(Color.Black.copy(alpha = if (contrast) 0.8f else 0.6f))
-            .padding(horizontal = 12.dp, vertical = 36.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center) {
-            Text(entry.name, color = Color.White, fontSize = 14.sp)
-            if (!board) Text(libraryEntryDescription(entry), color = Color.White, fontSize = 12.sp)
+    val palette = LocalLinkaPalette.current
+    Surface(Modifier.fillMaxWidth().padding(1.dp), color = palette.surface, contentColor = palette.text,
+        border = BorderStroke(if (palette.highContrast) 2.dp else 1.dp, palette.border), elevation = 0.dp) {
+      Box(Modifier.clickable(enabled = canOpen && board, role = Role.Button,
+          onClickLabel = "Открыть ${entry.name}", onClick = onOpen)
+          .semantics { stateDescription = libraryEntryDescription(entry) }) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.fillMaxWidth().height(88.dp).padding(horizontal = 24.dp)) {
+                LibraryCover(library, entry, epoch, images)
+            }
+            Text(entry.name, Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 8.dp),
+                fontSize = 16.sp, textAlign = TextAlign.Center)
+            if (!board) Text(libraryEntryDescription(entry), fontSize = 12.sp, textAlign = TextAlign.Center)
         }
         Box(Modifier.align(Alignment.TopEnd)) {
-            IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Действия с набором «${entry.name}»", tint = Color.White) }
+            IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Действия с набором «${entry.name}»") }
             DropdownMenu(menu, { menu = false }) {
                 DropdownMenuItem(onClick = { menu = false; onOpen() }, enabled = canOpen && board) { Text("Открыть") }
                 DropdownMenuItem(onClick = { menu = false; onEdit() }, enabled = enabled && board) { Text("Редактировать") }
@@ -220,5 +216,6 @@ private fun LibraryTile(library: LibraryStore, entry: LibraryEntrySummary, epoch
                 DropdownMenuItem(onClick = { menu = false; onDelete() }, enabled = enabled) { Text("Удалить…") }
             }
         }
+      }
     }
 }

@@ -6,8 +6,10 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 
 class LibraryPresentationTest {
-    @Test fun baselineUsesThreeColumnsWithoutOrientationOrTabletRedesign() {
-        assertEquals(3, LibraryColumns)
+    @Test fun adaptiveTilesKeepReadableMinimumAndGrowWithFonts() {
+        assertEquals(160f, libraryTileMinWidth(1f))
+        assertEquals(160f, libraryTileMinWidth(0.5f))
+        assertEquals(320f, libraryTileMinWidth(2f))
         assertEquals(24f, LibraryIcons.Add.viewportWidth)
         assertEquals(24f, LibraryIcons.More.viewportHeight)
         assertTrue(LibraryIcons.Back.autoMirror)

@@ -4,7 +4,7 @@ import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 
-internal const val LibraryColumns = 3
+internal fun libraryTileMinWidth(fontScale: Float): Float = 160f * fontScale.coerceAtLeast(1f)
 
 internal fun libraryEntryDescription(entry: LibraryEntrySummary): String =
     if (entry.kind == LibraryEntryKind.RETAINED_ARCHIVE) "Сохранённый нечитаемый архив. ${entry.problem?.code ?: "Открытие недоступно"}"
