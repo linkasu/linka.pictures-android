@@ -7,7 +7,7 @@
 | Шаг | Состояние | Evidence |
 |---|---|---|
 | V00 | DONE | Новый контракт; прежнее1.4 требование помечено историческим |
-| V01 | TODO | |
+| V01 | DONE | Детерминированный генератор6 public fixtures, source SHA, self-check; native import остаётся проверкой runtime |
 | V02 | TODO | |
 | V03 | TODO | |
 | V04 | TODO | |
