@@ -18,7 +18,7 @@
         <activity android:name="su.linka.pictures.activity.SettingsActivity" android:enabled="false" />
         <activity android:name="su.linka.pictures.activity.BroadcastReceiverActivity" android:enabled="false" />
         <activity android:name="su.linka.pictures.activity.DevelopmentActivity" android:exported="true"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop" android:screenOrientation="sensorLandscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
