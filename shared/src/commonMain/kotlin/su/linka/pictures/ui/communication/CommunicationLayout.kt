@@ -28,7 +28,7 @@ internal fun communicationToolbarHeight(width: Float, height: Float, fontScale: 
 internal fun communicationVerticalBudget(height: Float, fontScale: Float, multiplePages: Boolean): CommunicationVerticalBudget {
     require(height.isFinite() && height >= 0 && fontScale.isFinite() && fontScale > 0)
     val scale = maxOf(1f, fontScale)
-    val fixed = 17f + if (multiplePages) 32f * scale else 0f
+    val fixed = 1f + if (multiplePages) 32f * scale else 0f
     // Only the grid scrolls; never grow the parent and scroll speech controls away.
     val phrase = maxOf(64f * scale, (height - fixed) / 5).coerceIn(0f, height / 2)
     return CommunicationVerticalBudget(phrase, height)

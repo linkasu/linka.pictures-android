@@ -33,7 +33,7 @@ import su.linka.pictures.ui.components.PrimitiveSurfaceChrome
 @Composable
 internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId, ImageBitmap>, modifier: Modifier) {
     val palette = LocalLinkaPalette.current
-    BoxWithConstraints(modifier.padding(6.dp).semantics { contentDescription = "Общее сообщение: ${state.renderedText.ifEmpty { "пусто" }}" }) {
+    BoxWithConstraints(modifier.padding(2.dp).semantics { contentDescription = "Общее сообщение: ${state.renderedText.ifEmpty { "пусто" }}" }) {
         val partWidth = communicationMessagePartWidth(maxWidth.value, maxHeight.value, state.message.parts.size).dp
         LazyRow(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             items(state.message.parts, key = { it.id.value }) { part ->
@@ -41,12 +41,12 @@ internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId
                 DemandVisibleImages(part.id, setOfNotNull(card?.image))
                 Surface(
                     modifier = Modifier.width(partWidth).fillMaxHeight()
-                        .padding(4.dp).semantics(mergeDescendants = true) {},
+                        .padding(horizontal = 2.dp).semantics(mergeDescendants = true) {},
                     color = palette.surface, contentColor = palette.text,
                     shape = RoundedCornerShape(LinkaMetrics.cardRadius),
                 ) {
                     BoxWithConstraints(
-                        Modifier.padding(6.dp),
+                        Modifier.padding(2.dp),
                     ) {
                         Layout(content = {
                             Box(contentAlignment = Alignment.Center) {

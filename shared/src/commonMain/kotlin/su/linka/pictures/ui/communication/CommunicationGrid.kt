@@ -101,9 +101,7 @@ internal fun CommunicationGrid(
                         for (column in 0 until page.columns) {
                             val position = row * page.columns + column
                             val cell = slots[position]
-                            // Nested grid margin is on the caller; these are btn_default's visible insets.
                             val itemModifier = Modifier.width(cellWidth).height(cellHeight)
-                                .padding(start = 4.dp, top = 1.5.dp, end = 4.dp, bottom = 6.dp)
                             if (cell == null || cell.kind == CellKind.EMPTY) {
                                 Box(itemModifier.border(1.dp, palette.border))
                             } else {

@@ -65,7 +65,7 @@ class CommunicationLayoutTest {
 
     @Test
     fun phraseKeepsOneFifthWithoutMakingTheWholeScreenScrollable() {
-        assertEquals(CommunicationVerticalBudget(96.6f, 500f), communicationVerticalBudget(500f, 1f, false))
+        assertEquals(CommunicationVerticalBudget(99.8f, 500f), communicationVerticalBudget(500f, 1f, false))
         assertEquals(CommunicationVerticalBudget(64f, 240f), communicationVerticalBudget(240f, 1f, false))
         val short = communicationVerticalBudget(80f, 3f, true)
         assertTrue(short.phrase <= 40f)
@@ -123,10 +123,10 @@ class CommunicationLayoutTest {
     }
 
     @Test
-    fun fixedMarginsAndDividerAreRemovedBeforeOneToFourWeights() {
+    fun onlyDividerIsRemovedBeforeOneToFourWeightsWithoutLegacyGridMargins() {
         val budget = communicationVerticalBudget(664f, 1f, false)
-        assertEquals(129.4f, budget.phrase)
-        val grid = budget.content - budget.phrase - 17f
+        assertEquals(132.6f, budget.phrase)
+        val grid = budget.content - budget.phrase - 1f
         assertEquals(budget.phrase * 4, grid, 0.001f)
         val cell = communicationCellSize(1248f, grid, 3, 3, 1f)
         assertEquals(416f, cell.width)

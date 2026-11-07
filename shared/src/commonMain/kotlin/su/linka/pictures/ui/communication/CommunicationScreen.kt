@@ -79,12 +79,12 @@ fun CommunicationScreen(
                     Modifier.fillMaxWidth().heightIn(max = 160.dp).verticalScroll(rememberScrollState()).padding(8.dp)
                         .semantics { liveRegion = LiveRegionMode.Polite },
                 ) { notices.forEach { Text(it, color = palette.danger) } }
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(8.dp)) {
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                     val pages = state.board?.document?.pages.orEmpty()
                     val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1)
                     val actionWidth = (maxWidth / 8).coerceIn(48.dp, 96.dp)
                     Box(Modifier.fillMaxSize()) {
-                        Column(Modifier.fillMaxWidth().height(budget.content.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.fillMaxWidth().height(budget.content.dp)) {
                             Row(Modifier.fillMaxWidth().height(budget.phrase.dp)) {
                                 val action = Modifier.width(actionWidth).fillMaxHeight()
                                 CommunicationActionButton(if (presentation.stopping) CommunicationIcon.Stop else CommunicationIcon.Speak,
@@ -124,7 +124,7 @@ fun CommunicationScreen(
                                                 CommunicationCommand.Select(CommandId(ids.next()), page.id, position),
                                             )
                                         },
-                                        Modifier.weight(1f).fillMaxHeight().padding(horizontal = 8.dp),
+                                        Modifier.weight(1f).fillMaxHeight(),
                                     )
                                 }
                                 if (pagingVisible) CommunicationIconButton(CommunicationIcon.Next, "Следующая страница",
