@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import su.linka.pictures.ui.theme.LinkaMetrics
 import su.linka.pictures.ui.theme.LocalLinkaPalette
@@ -40,6 +41,7 @@ internal fun PrimitiveSurface(
     onClick: () -> Unit,
     modifier: Modifier,
     kind: PrimitiveSurfaceKind = if (selected != null) PrimitiveSurfaceKind.CARD else PrimitiveSurfaceKind.ACTION,
+    description: String? = null,
     content: @Composable () -> Unit,
 ) {
     val palette = LocalLinkaPalette.current
@@ -59,6 +61,7 @@ internal fun PrimitiveSurface(
         modifier
             .semantics(mergeDescendants = true) {
                 contentDescription = accessibleName
+                if (description != null) stateDescription = description
                 role = Role.Button
                 if (selected != null) this.selected = selected
                 if (!enabled) disabled()

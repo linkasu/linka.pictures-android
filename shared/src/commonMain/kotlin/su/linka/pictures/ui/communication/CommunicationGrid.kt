@@ -117,9 +117,6 @@ internal fun CommunicationGrid(
                                     onActivate = { onSelect(position) },
                                     modifier = itemModifier.semantics {
                                          collectionItemInfo = CollectionItemInfo(row, 1, column, 1)
-                                         cell.card?.image?.let {
-                                             stateDescription = if (images[it] != null) "Изображение показано" else "Изображение ещё не показано"
-                                         }
                                     },
                                 )
                             }

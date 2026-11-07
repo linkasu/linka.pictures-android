@@ -31,6 +31,7 @@ fun CommunicationCard(
         accessibleName, activationLabel, enabled, selected, palette.surface, palette.text,
         onActivate, modifier.sizeIn(minWidth = LinkaMetrics.touchTarget, minHeight = LinkaMetrics.touchTarget),
         kind = PrimitiveSurfaceKind.CARD,
+        description = if (!hasImage) null else if (image != null) "Изображение показано" else "Изображение ещё не показано",
     ) {
         BoxWithConstraints {
             val captionWidth = maxWidth
