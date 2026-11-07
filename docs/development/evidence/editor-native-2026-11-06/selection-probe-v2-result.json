@@ -1,0 +1,125 @@
+{
+  "device": "DD0F9A3F-DC32-4373-BA08-400FECE3A1CC",
+  "native_attempts_v2": 1,
+  "passed": 0,
+  "failed": 1,
+  "duration_seconds": 27.66,
+  "build": "PASS",
+  "commands": [
+    {
+      "command": "CMD+Down",
+      "api": "app.typeKey",
+      "visual": "No visible selection highlight; caret not visible in captured PNG."
+    },
+    {
+      "command": "CMD+Shift+Up",
+      "api": "app.typeKey",
+      "visual": "No visible selection highlight; cannot establish actual selected range from AX label."
+    },
+    {
+      "command": "CMD+A",
+      "api": "app.typeKey",
+      "visual": "No visible selection highlight; cannot establish actual selected range from AX label."
+    }
+  ],
+  "initial_caret_visual": "At end of NATIVE-CARD-17, keyboard shown.",
+  "field_preservation": {
+    "observed": true,
+    "label": "NATIVE-CARD-17",
+    "value": "",
+    "all_captured_stages": {
+      "selection-probe-v2-keyboard-caret-field.json": {
+        "frame": {
+          "height": 64,
+          "width": 319,
+          "x": 28,
+          "y": 192
+        },
+        "label": "NATIVE-CARD-17",
+        "stage": "selection-probe-v2-keyboard-caret",
+        "value": ""
+      },
+      "selection-probe-v2-command-a-field.json": {
+        "frame": {
+          "height": 64,
+          "width": 319,
+          "x": 28,
+          "y": 192
+        },
+        "label": "NATIVE-CARD-17",
+        "stage": "selection-probe-v2-command-a",
+        "value": ""
+      },
+      "selection-probe-v2-original-field.json": {
+        "frame": {
+          "height": 64,
+          "width": 319,
+          "x": 28,
+          "y": 195
+        },
+        "label": "NATIVE-CARD-17",
+        "stage": "selection-probe-v2-original",
+        "value": ""
+      },
+      "selection-probe-v2-command-shift-up-field.json": {
+        "frame": {
+          "height": 64,
+          "width": 319,
+          "x": 28,
+          "y": 192
+        },
+        "label": "NATIVE-CARD-17",
+        "stage": "selection-probe-v2-command-shift-up",
+        "value": ""
+      },
+      "selection-probe-v2-command-down-field.json": {
+        "frame": {
+          "height": 64,
+          "width": 319,
+          "x": 28,
+          "y": 192
+        },
+        "label": "NATIVE-CARD-17",
+        "stage": "selection-probe-v2-command-down",
+        "value": ""
+      }
+    }
+  },
+  "cancel": {
+    "tapped": true,
+    "original_grid_label_assertion": "PASS",
+    "form_closed_visual": true,
+    "keyboard_hidden_visual": true
+  },
+  "failure": {
+    "confirmed": "Probe incorrectly asserted app.textViews.count == 0 after Cancel; actual count 2. Screenshot shows board editor with grid dimensions, no card form.",
+    "source_correction": "Replaced global textViews count assertion with explicit absence of card-form title Тип карточки; no native rerun.",
+    "saved_status_and_back_library": "Not reached; stopped on first assertion failure."
+  },
+  "replacement_root_cause": "UNKNOWN. Absence of visible full-selection highlight is confirmed; prior malformed replacement cause is not established.",
+  "document_preservation": "Original draft cell label asserted after Cancel. No SaveCard/SaveBoard/Publish actions; no payload typed or clipboard access. Published document and global phrase not reopened in this attempt.",
+  "leftover": {
+    "screen": "owned board draft editor grid, not library",
+    "card_form": "closed",
+    "keyboard": "hidden",
+    "foreground": "su.linka.pictures.development",
+    "draft": "same existing owned draft",
+    "device_lease": "released to parent"
+  },
+  "artifacts": [
+    "selection-probe-v2-command-a.png",
+    "selection-probe-v2-command-a-field.json",
+    "selection-probe-v2-command-shift-up.png",
+    "selection-probe-v2-command-shift-up-field.json",
+    "selection-probe-v2-command-down.png",
+    "selection-probe-v2-command-down-field.json",
+    "selection-probe-v2-keyboard-caret.png",
+    "selection-probe-v2-keyboard-caret-field.json",
+    "selection-probe-v2-original.png",
+    "selection-probe-v2-original-field.json",
+    "selection-probe-v2-library.png",
+    "selection-probe-v2-after-cancel-stopped.png"
+  ],
+  "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/selection-probe-v2.xcresult",
+  "previous_attempt_artifacts": "unchanged"
+}

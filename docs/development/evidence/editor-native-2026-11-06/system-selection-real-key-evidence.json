@@ -1,0 +1,38 @@
+{
+  "scope": "Differential: same visible full selection, one real native keyboard tap instead of XCTest app.typeText",
+  "passed": 1,
+  "failed": 0,
+  "skipped": 0,
+  "seconds": 42.857,
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "observed": "Real ф key replaces full NATIVE-CARD-17 with exactly ф; native Cancel restores original draftcard; SAVED, published originalcard and globalmessage ХОЧУ КУШАТЬ observed",
+  "primary_reviewed_selection_replacement_and_published_screens": true,
+  "product_code_changed": false,
+  "clipboard_or_private_input_used": false,
+  "original_malformed_injected_typing_remains_red": true,
+  "conclusion": "Ordinary on-screen single-key replacement succeeds. Failure is specific to the XCTest injected-input path in tested comparison; exact internal mechanism and external hardware-keyboard behavior are unproven.",
+  "screenshots": [
+    {
+      "file": "system-selection-keyboard-tap-phone-38ABC414-25B7-44A2-A312-88FD59AC95CA.png",
+      "sha256": "163670f44321472f112fb86f6687c48d3eedf60742b622383d87a9a180e285ac"
+    },
+    {
+      "file": "system-selection-keyboard-tap-phone-285B5DA7-0718-4902-ABB3-7CA59C0E8D21.png",
+      "sha256": "07e600de6de113ed5466d10136e4864d7a19a2ab1bcf7a283c407a0df3725c1a"
+    },
+    {
+      "file": "system-selection-keyboard-tap-phone-7CEE36EC-7121-4007-9786-BAE71048545C.png",
+      "sha256": "4c05f5b46286e9bc67bbb19babb3ff380a02b9fb17d3f6cb70d1b1b6173fd8de"
+    },
+    {
+      "file": "system-selection-keyboard-tap-phone-E18C06BC-62D1-4EFE-9D90-E764D36E7F77.png",
+      "sha256": "6d5c3bdcae68b8fba4bc33db9495f93e11cc514cedec7af170dd5ad5ac776942"
+    },
+    {
+      "file": "system-selection-keyboard-tap-phone-FBB1103A-BEED-4E9A-BCC5-A33C1281D35F.png",
+      "sha256": "0a8b5350cbfddc180cfcd06581ed08d7162e6da71ed5adcbd3c792796fcee098"
+    }
+  ],
+  "whole_editor_accepted": false,
+  "physical_aac_accepted": false
+}

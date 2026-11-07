@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-06",
+  "scope": "One bounded native UI scenario on the preinstalled development runtime; evidence only",
+  "result": "BLOCKED_BOARD_TITLE_INPUT_MISMATCH",
+  "device": {
+    "serial": "emulator-5556",
+    "verifiedAvdName": "linka_audit_tablet",
+    "verifiedApi": "35",
+    "listedModel": "sdk_gphone64_arm64",
+    "foregroundPackageVerifiedByHierarchy": "su.linka.pictures.development",
+    "exclusiveLeaseReleased": true
+  },
+  "runtimeArtifactsProvidedByParentNotRehashedInLane": {
+    "apkSha256": "f7aaffb04f9b3e4fe902a0ef8fcd3963e49206d84ff7a55df937aeb318ceb669",
+    "testApkSha256": "172dd98b0e279482909aa43451d7d11f11baf934520a24dc2d3da65261b9d381"
+  },
+  "steps": [
+    "Listed devices through ADB MCP; selected only emulator-5556; verified its AVD name and API with read-only MCP shell commands.",
+    "Initial foreground was launcher; launched only su.linka.pictures.development through MCP.",
+    "Observed library Ваши наборы with existing ХОЧУ tile; did not open or modify that tile.",
+    "Tapped Создать набор once; native editor opened with Новая доска and a 3 by 3 grid.",
+    "Opened Меню редактора then Параметры доски once each.",
+    "Focused Название доски; native input keycombination 113 29 selected existing text; one MCP type_text call sent LINKa-EDITOR-6F9C; Back hid IME.",
+    "Investigated resulting target-app hierarchy: EditText text was LINKaEDITOR-69C-. Actual screenshot independently confirms this and the same changed editor heading.",
+    "Stopped without retrying input, tapping Готово, publishing, or dismissing the dialog."
+  ],
+  "blocker": {
+    "expectedText": "LINKa-EDITOR-6F9C",
+    "actualText": "LINKaEDITOR-69C-",
+    "lastStage": "Native board name input in Параметры доски",
+    "observation": "ASCII characters were lost/reordered between one MCP native input call and the visible app field. The input call returned success.",
+    "cause": "Unconfirmed: app asynchronous field-update behavior versus native input/tool timing; no code fix or workaround attempted.",
+    "attemptCount": 1
+  },
+  "leftover": {
+    "newBoardPublished": false,
+    "ownEditorTitleVisible": "LINKaEDITOR-69C-",
+    "ownDraftDurability": "Not verified; a new editor session remains open and may have an autosaved draft under the observed title. No draft was discarded or deleted.",
+    "foreground": "Параметры доски dialog, Название доски focused, IME hidden, original 3 by 3 grid behind dialog",
+    "currentComposedMessage": "ХОЧУ КУШАТЬ was supplied by parent; not displayed in this lane and therefore not independently verified. No card selection, append, clear, playback, or message mutation action was performed.",
+    "existingBoards": "Not edited, selected, deleted, or renamed"
+  },
+  "notReached": [
+    "Contextual helper access/unlock",
+    "2 by 2 compact inputs and explicit SaveGrid",
+    "Native card label input and speech NONE",
+    "SaveCard draft-only boundary",
+    "SaveBoard publication",
+    "Library reopen and persisted grid/card verification",
+    "Own-board rename and persisted-name verification",
+    "Existing own-card edit/cancel verification"
+  ],
+  "evidence": [{
+    "path": "docs/development/evidence/editor-native-2026-11-06/5556-board-title-input-mismatch.png",
+    "sha256": "5329c47e0e9b7ce42d71b3b068fd4200651ca6bf1d201581c0d2e6fcff939df3",
+    "source": "Actual ADB MCP screenshot, visually inspected"
+  }],
+  "safety": "No builds, installs, tests, state injection, settings changes, permission prompts, credentials, microphone, voice, file picker, network operation, device restart, or existing data deletion. All actionable app hierarchy belonged to the target package; other devices untouched.",
+  "claimLimit": "This is not a release, U1.4, physical-device, or completed-product PASS."
+}

@@ -1,0 +1,26 @@
+{
+  "scope": "Same original owned draft; long press inside actual text instead of trailing blank area",
+  "passed": 0,
+  "failed": 1,
+  "seconds": 32.056,
+  "stage": "system-selection-context-menu",
+  "observed": "No visible selection or context menu after long press at35percent width; NATIVE-CARD-17 unchanged",
+  "replacement_payload_typed": false,
+  "save_or_publish_performed": false,
+  "next_single_variable_probe": "Double tap at same coordinate for native word selection",
+  "rootcause_of_original_malformed_replacement": "UNKNOWN",
+  "screenshots": [
+    {
+      "file": "system-selection-on-word-phone-C398DB13-5D29-4246-9D88-C7F849171DE2.png",
+      "sha256": "aea2398fe3752e10c1802b14840cb0c7dd17e2ac1ea111c733923c1c88882e69"
+    },
+    {
+      "file": "system-selection-on-word-phone-F2FB79C0-BC73-4F3B-AB10-E239FAABCBA0.png",
+      "sha256": "28653fc8df8089bddfa1da744a4ea7050b545439f3797b123ccb5daeddc5ce00"
+    },
+    {
+      "file": "system-selection-on-word-phone-432171FC-2042-4547-9A3E-29A1FB4EA779.png",
+      "sha256": "448f54f268a9c816d8d093e3bdeb27c6ca5a0ed65cc88b343f8c32ba8d27089a"
+    }
+  ]
+}
