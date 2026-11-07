@@ -115,16 +115,20 @@ fun CommunicationScreen(
                                  speechAction(action); backspaceAction(action); clearAction(action)
                              }
                             Divider(color = palette.divider)
-                            fun changePage(direction: Int): Boolean {
+                             fun changePage(direction: Int): Boolean {
                                 val target = pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) ?: return false
                                 dispatch(CommunicationCommand.ChangePage(CommandId(ids.next()), pages[target].id))
-                                return true
-                            }
-                            Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                val pagingVisible = showPageButtons && pages.size > 1
-                                if (pagingVisible) CommunicationIconButton(CommunicationIcon.Previous, "Предыдущая страница",
-                                    pageTarget(presentation.pageIndex, pages.size, -1, presentation.commandsEnabled) != null,
-                                    { changePage(-1) }, Modifier.width(48.dp).fillMaxHeight())
+                                 return true
+                             }
+                             val pagingVisible = showPageButtons && pages.size > 1
+                             val pageAction: @Composable (Int, Modifier) -> Unit = { direction, action ->
+                                 CommunicationIconButton(if (direction < 0) CommunicationIcon.Previous else CommunicationIcon.Next,
+                                     if (direction < 0) "Предыдущая страница" else "Следующая страница",
+                                     pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) != null,
+                                     { changePage(direction) }, action)
+                             }
+                             Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                 if (pagingVisible && !stackedActions) pageAction(-1, Modifier.width(48.dp).fillMaxHeight())
                                 val page = presentation.page
                                 key(state.message.cursor?.boardId, page?.id, state.message.cursor?.firstCell) {
                                     CommunicationGrid(
@@ -139,22 +143,30 @@ fun CommunicationScreen(
                                         Modifier.weight(1f).fillMaxHeight(),
                                     )
                                 }
-                                if (pagingVisible) CommunicationIconButton(CommunicationIcon.Next, "Следующая страница",
-                                    pageTarget(presentation.pageIndex, pages.size, 1, presentation.commandsEnabled) != null,
-                                    { changePage(1) }, Modifier.width(48.dp).fillMaxHeight())
-                            }
-                            if (presentation.page != null && pages.size > 1) Text(
-                                "Страница ${presentation.pageIndex + 1} из ${pages.size}",
-                                modifier = Modifier.align(Alignment.CenterHorizontally).semantics {
+                                 if (pagingVisible && !stackedActions) pageAction(1, Modifier.width(48.dp).fillMaxHeight())
+                             }
+                             val pageCounter: @Composable (Modifier) -> Unit = { counter -> Text(
+                                 if (stackedActions) "${presentation.pageIndex + 1} / ${pages.size}" else "Страница ${presentation.pageIndex + 1} из ${pages.size}",
+                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                 modifier = counter.clearAndSetSemantics {
+                                     contentDescription = "Страница ${presentation.pageIndex + 1} из ${pages.size}"
                                     customActions = listOfNotNull(
                                         if (pageTarget(presentation.pageIndex, pages.size, -1, presentation.commandsEnabled) != null)
                                             CustomAccessibilityAction("Предыдущая страница") { changePage(-1) } else null,
                                         if (pageTarget(presentation.pageIndex, pages.size, 1, presentation.commandsEnabled) != null)
                                             CustomAccessibilityAction("Следующая страница") { changePage(1) } else null,
-                                    )
-                                },
-                            )
-                        }
+                                     )
+                                 },
+                             ) }
+                             if (presentation.page != null && pages.size > 1) {
+                                 if (stackedActions) Row(Modifier.fillMaxWidth().heightIn(min = if (pagingVisible) 48.dp else 0.dp),
+                                     verticalAlignment = Alignment.CenterVertically) {
+                                     if (pagingVisible) pageAction(-1, Modifier.size(48.dp))
+                                     pageCounter(Modifier.weight(1f))
+                                     if (pagingVisible) pageAction(1, Modifier.size(48.dp))
+                                 } else pageCounter(Modifier.align(Alignment.CenterHorizontally))
+                             }
+                         }
                     }
                 }
                 }
