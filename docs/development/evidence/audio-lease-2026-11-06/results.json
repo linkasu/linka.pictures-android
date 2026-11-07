@@ -1,0 +1,115 @@
+{
+  "date": "2026-11-06",
+  "base_head": "3af7fbce2d4038dc0c7cc7237c1d16e7d896f476",
+  "scope": "development only; existing synthetic boards and phrase; no reset/reimport/permissions/network/volume changes",
+  "source_sha256": {
+    "shared/build.gradle": "82501ea818958068e822ae45ba6c2927ca2c861e447301d41a267b62100a3f05",
+    "shared/src/commonMain/kotlin/su/linka/pictures/application/ports/MediaStore.kt": "88c4b1cfb3d0ffcbd540802481afb363d2366c9952663f12e11749fedd2f5af4",
+    "shared/src/commonMain/kotlin/su/linka/pictures/application/communication/MessageLease.kt": "c7472c4acbca419e6913683c3ce90cae6e1d31bd21664581029ac30921b21ec9",
+    "shared/src/commonMain/kotlin/su/linka/pictures/application/authoring/AuthoringLease.kt": "830bf126757d58dc2a19710153d17a5f2eec7a476767bdf844ccd350f621514e",
+    "shared/src/commonMain/kotlin/su/linka/pictures/storage/StoragePins.kt": "627ec98049c8240a5ace1879bf48909ac78bfb632a8d116b6d185b5a1af83338",
+    "shared/src/commonTest/kotlin/su/linka/pictures/integration/CommunicationPlaybackIntegrationTest.kt": "e66cb180c4c8400804eab97d6a5185cf34531a373d844bc0b895f59b1a8699ac",
+    "shared/src/commonTest/kotlin/su/linka/pictures/storage/StorageRuntimeTest.kt": "2c10a1a458bace1d01c93c1fefc309df1fc48c4e4d354ac2ef5c19b9be7e0c3b",
+    "shared/src/iosAppHostTest/kotlin/su/linka/pictures/audio/AudioAppHostChecks.kt": "05a208adaaec97d1861aad78f5dbf4c52fbebf73313c9fe6d730c4d5e852f0ac",
+    "app/src/androidTest/java/su/linka/pictures/activity/DevelopmentParityTest.kt": "c59ae18fc08a42aab4979109f5dd1411d542e0731d7547d76f8a2987482ec833",
+    "iosUiTests/LinkaStartupUITests/FilledBoardImportTests.swift": "eb57acb5ad85a766309300111161b48a883c44dc209ea5e426cf3e0b6c39c5db"
+  },
+  "fixture_sha256": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+  "full_jvm": {
+    "tests": 479,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "full_native": {
+    "passed": 603,
+    "suites": 67,
+    "milliseconds": 62103,
+    "log": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/audio-lease-current-full-native17.log",
+    "log_sha256": "80a47876bcf1308eec46fee502da6f4c77983b2496eaf4964c7b69aaa479ef38"
+  },
+  "android_product_ui": {
+    "21": {
+      "serial": "emulator-5554",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 5.046,
+      "observed_audio_states": [
+        "Воспроизведение завершено.",
+        "Подготовка произнесения…",
+        "Сообщение звучит.",
+        "Воспроизведение остановлено.",
+        "Воспроизведение остановлено.",
+        "Воспроизведение завершено."
+      ],
+      "log": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/audio-lease-emulator-5554-ui.txt",
+      "log_sha256": "e2d29cf5d10988c0113b672beb08c6be3555cd8d3950145cea354f20ea613a69"
+    },
+    "35": {
+      "serial": "emulator-5556",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 28.809,
+      "observed_audio_states": [
+        "Воспроизведение остановлено.",
+        "Воспроизведение завершено.",
+        "Подготовка произнесения…",
+        "Сообщение звучит.",
+        "Воспроизведение остановлено.",
+        "Воспроизведение остановлено.",
+        "Воспроизведение завершено."
+      ],
+      "log": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/audio-lease-emulator-5556-ui.txt",
+      "log_sha256": "9b5575dbc07cef07d811a55f3d00c864963e6073e55bef763a5008eaa4e91729"
+    }
+  },
+  "ios_product_ui": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/product-audio-ui-stop.xcresult",
+    "seconds": 45.232,
+    "log": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/product-audio-ui-stop.log"
+  },
+  "host_clip": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/audio-linked-clip.xcresult",
+    "seconds": 0.672,
+    "verified_executables": {
+      "LinkaKeychainHost.app": "23845d9ebccf03f0f72c9f8d9ae5ca92c174dbb255cbbfc4dc888794ca71fe5b",
+      "LinkaKeychainHostTests.xctest": "8e85cfcdfbf063ecb99878787231649381771014149636b5b199f94f13ede4c3"
+    }
+  },
+  "artifact_sha256": {
+    "app/build/outputs/apk/debug/app-debug.apk": "25393a79fcd6b85bfd44828edf87c4f1fdba5e910452eaa739fb1bec9ba67fdf",
+    "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk": "172dd98b0e279482909aa43451d7d11f11baf934520a24dc2d3da65261b9d381",
+    "shared/build/bin/iosSimulatorArm64/debugTest/test.kexe": "8a61b36194ae0a9d396fbd6eda7443a53d9aeb93587d8b9f6a14e7b228c22b8d",
+    "build/u14-ios-audio-lease/Debug-iphonesimulator/LinkaPokazhi.app/LinkaPokazhi": "a931a3e46e07d2f50e62dc88362ac938c59712c559c8c2799a70d625c2416fc5"
+  },
+  "screenshots_sha256": {
+    "docs/progress-screenshots/2026-11-06-audio/ios-stopped.png": "985b668b3fe07a7434a1c0da0ce6bb171388b5a6914a25b91f49aa43e3cda3a1",
+    "docs/progress-screenshots/2026-11-06-audio/ios-reopened.png": "985b668b3fe07a7434a1c0da0ce6bb171388b5a6914a25b91f49aa43e3cda3a1"
+  },
+  "red_before_fix": {
+    "host_clip": "0.242s, tone: IrLinkageError; missing custom compilation CInterop",
+    "product_ui": "STALE_REQUEST before native playback; authentic leaf rejected through MessageLease",
+    "jvm_regressions": {
+      "tests": 2,
+      "failures": 2,
+      "log": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/composed-media-lease-red.log"
+    }
+  },
+  "harness_corrections": [
+    "Android audio state is on the clickable ancestor, not necessarily the named Icon child.",
+    "iOS redundant visibility wait after PLAYING missed the short recording; tap directly after the state assertion."
+  ],
+  "open": [
+    "nonempty TTS and offline voice proof",
+    "physical audio quality and output Stop latency/silence",
+    "microphone/routes/interruptions acceptance",
+    "full UI1.4, API21 GIF alpha and remaining captions",
+    "migration/G4/ARMv7/AAC/legal/store release"
+  ]
+}
