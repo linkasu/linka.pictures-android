@@ -99,7 +99,7 @@ fun CommunicationScreen(
                 ) { notices.forEach { Text(it, color = palette.danger) } }
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                     val pages = state.board?.document?.pages.orEmpty()
-                    val stackedActions = maxWidth.value < 600f * LocalDensity.current.fontScale.coerceAtLeast(1f)
+                    val stackedActions = communicationUsesStackedActions(maxWidth.value, maxHeight.value, LocalDensity.current.fontScale)
                     val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1, stackedActions)
                     val actionWidth = (maxWidth / 8).coerceIn(48.dp, 96.dp)
                     Box(Modifier.fillMaxSize()) {

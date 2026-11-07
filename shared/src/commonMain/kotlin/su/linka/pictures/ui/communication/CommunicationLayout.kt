@@ -6,6 +6,9 @@ internal data class CommunicationCellSize(val width: Float, val height: Float)
 
 internal data class CommunicationVerticalBudget(val phrase: Float, val content: Float, val actions: Float = 0f)
 
+internal fun communicationUsesStackedActions(width: Float, height: Float, fontScale: Float): Boolean =
+    width < height && width < 600f * maxOf(1f, fontScale)
+
 internal fun communicationMessagePartWidth(availableWidth: Float, height: Float, partCount: Int): Float {
     // Short landscape windows need caption room, not a square narrower than its own padding and label.
     val preferred = if (height.isFinite() && height > 0f) maxOf(96f, height) else 48f

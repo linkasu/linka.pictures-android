@@ -4,12 +4,20 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import su.linka.pictures.ui.theme.Linka14
 import su.linka.pictures.ui.theme.linkaPalette
 import androidx.compose.ui.graphics.Color
 
 class CommunicationLayoutTest {
+    @Test
+    fun shortLandscapeUsesSideActionsInsteadOfSpendingGridHeightOnAnotherRow() {
+        assertFalse(communicationUsesStackedActions(598f, 280f, 1f))
+        assertFalse(communicationUsesStackedActions(667f, 240f, 2f))
+        assertFalse(communicationUsesStackedActions(1194f, 600f, 3f))
+        assertTrue(communicationUsesStackedActions(375f, 500f, 2f))
+    }
     @Test
     fun measuredWordsAndWholeCaptionsGrowCellsInsteadOfChangingTheStoredGrid() {
         // Two 57.6dp lines at scale2 + a 96dp image + gap6 + padding8.
