@@ -1,0 +1,107 @@
+{
+  "scope": "Isolated iOS17 UI sentinel -> real Files restore -> ReturnToRecovery -> DeleteRecovery -> cold launch",
+  "device": {
+    "udid": "EA356A64-6182-404B-B78A-54E9791129DB",
+    "name": "linka_recovery_probe_ios17_67846f",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-17-0",
+    "device_type": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation",
+    "scope": "new isolated synthetic restore/recovery test; old devices untouched",
+    "user_authorization": "Explicit yes and future yes for simulator operations, 2026-11-07"
+  },
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "native": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 226.584,
+    "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/recovery-probe-native-testroot.xcresult"
+  },
+  "guard": {
+    "expected_udid": "EA356A64-6182-404B-B78A-54E9791129DB",
+    "native_SIMULATOR_UDID_checked": true,
+    "empty_library_required": true,
+    "xctestrun_format": 1,
+    "guarded_xctestrun_sha256": "f8c8b42c512c1093e708df64ec7d857eca5b60e0cb5372525100009343df6742"
+  },
+  "backup": {
+    "sha256_before_and_after": "1c198000ed5be181f8d8102b8f800ec69cb94adc7af3d40c279f383f8ad0baed",
+    "source_and_copied_input_unchanged": true
+  },
+  "observed_sequence": [
+    "Empty library",
+    "Sentinel Новая доска published via UI:3x3/one SPACE/no assets",
+    "Real Files selected copied library.linkabackup;1board/0drafts preview",
+    "Restored imported board with9cards and empty message",
+    "Recovery holds sentinel:1board/0drafts/0media bytes",
+    "Explicit ReturnToRecovery restores sentinel",
+    "Explicit DeleteRecovery removes imported recovery:3159856media bytes",
+    "Operation completed and no recovery observed",
+    "Cold launch shows sentinel only"
+  ],
+  "setup_failures_preserved": [
+    "Initial runner guard editing assumed xctestrun FormatVersion2; no native execution",
+    "Guarded xctestrun outside Products broke __TESTROOT__; code70 Missing test product before native execution"
+  ],
+  "screenshots": [
+    {
+      "file": "recovery-probe-final-cold-library.png",
+      "sha256": "abbaad1759cc6628932642a8d97228aa23ee0ffc8dded5ae8e6c2bc9f325b23f",
+      "native_attachment": "0B34AB68-8170-4BF5-AF82-3AABD80443A3.png"
+    },
+    {
+      "file": "recovery-probe-point-deleted.png",
+      "sha256": "e5a0d4734a4cd32210c24bc934c6259861724beb035c6d34d3f8b07175ba4615",
+      "native_attachment": "27A4AB9F-3BF0-4C13-B088-1E19FE8E5C10.png"
+    },
+    {
+      "file": "recovery-probe-delete-confirmation.png",
+      "sha256": "30b9b06aec2996c2f1206d68c6b963647727477aa4e05c66c3243e1f652e42d5",
+      "native_attachment": "FB8855E4-C8DF-4490-A9FA-8BF28E38EA62.png"
+    },
+    {
+      "file": "recovery-probe-returned-sentinel.png",
+      "sha256": "640ab687948ca1809885ea27492ab93fff3889d035c6f1b9043880d638ee8816",
+      "native_attachment": "D4548B75-C338-4375-BC1C-B1F70EA73E94.png"
+    },
+    {
+      "file": "recovery-probe-original-point-present.png",
+      "sha256": "141e50ed12fa2441204fef635704d7820d46081dc026cb691783bbec74425234",
+      "native_attachment": "478E4885-7E77-42F3-920E-BB04575905FD.png"
+    },
+    {
+      "file": "recovery-probe-restored-library.png",
+      "sha256": "34b820af7bd7f696be7c7414b085d896c2a5f951b2aacaec06bacef2ced144b3",
+      "native_attachment": "8723DA1A-BA27-4E61-8F49-29E27E20C74D.png"
+    },
+    {
+      "file": "recovery-probe-restore-preview.png",
+      "sha256": "ee8b4475778a9c336d014b6721197cd27ed7aee34b3d5e618174e99194b58fcc",
+      "native_attachment": "63FFD515-9FF0-4245-BCB7-3484804DBCB4.png"
+    },
+    {
+      "file": "recovery-probe-pick-owned-backup.png",
+      "sha256": "9913e1e49e6afeead3ff15e06183b0199f3eb7546fc160e154ee5fe6949db72f",
+      "native_attachment": "ACB6F3EB-A2EA-4164-BB1D-89743547E961.png"
+    },
+    {
+      "file": "recovery-probe-sentinel-published.png",
+      "sha256": "37f056b8351d555230e8735056eaad7a040e04c723981e314cc9ab2aeabcb4c8",
+      "native_attachment": "5D41F24B-93CF-4555-9E48-59A01BC01721.png"
+    },
+    {
+      "file": "recovery-probe-empty-library.png",
+      "sha256": "a6e20c82482b56cb3395dfd6e299c1b7246a2602e7de2b5cbc3ea84abbcafa68",
+      "native_attachment": "055D7C35-75B0-4447-A584-9373A6F75833.png"
+    }
+  ],
+  "primary_reviewed_stages": [
+    "restored-library",
+    "original-point-present",
+    "point-deleted",
+    "final-cold-library"
+  ],
+  "android_restore_accepted": false,
+  "real_upgrade_accepted": false,
+  "physical_aac_accepted": false,
+  "publication_authorized": false
+}
