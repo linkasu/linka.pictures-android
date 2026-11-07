@@ -48,9 +48,14 @@ class SmotriOriginalSetsTest {
         }
     }
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val automation = instrumentation.uiAutomation.apply {
+        serviceInfo = serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        }
+    }
     private val target = instrumentation.targetContext
     private val picker = setOf("com.android.documentsui", "com.google.android.documentsui")
-    private var capturePrefix = ""
+    private val capturePrefix = "fixed-"
     private data class Fixture(val file: String, val name: String, val slug: String, val pages: Int,
         val rows: Int, val columns: Int, val mode: String, val sha: String)
     private val fixtures = listOf(
@@ -64,10 +69,6 @@ class SmotriOriginalSetsTest {
 
     @Test fun importOrReuseOriginalsAndCaptureEveryPageWithoutSelection() {
         assertEquals("su.linka.pictures.development", target.packageName)
-        val automation = instrumentation.uiAutomation
-        automation.serviceInfo = automation.serviceInfo.apply {
-            flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-        }
         ActivityScenario.launch(DevelopmentActivity::class.java).use {
             awaitNamed("Ваши наборы")
             click("Меню библиотеки")
@@ -83,9 +84,8 @@ class SmotriOriginalSetsTest {
         }
     }
 
-    @Test fun captureExistingOriginalsAtCurrentScale() {
+    @Test fun testFixedPagesAndAdultRejection() {
         assertEquals("su.linka.pictures.development", target.packageName)
-        capturePrefix = "current-scale-"
         ActivityScenario.launch(DevelopmentActivity::class.java).use {
             awaitNamed("Ваши наборы")
             captureBoards()
@@ -99,52 +99,241 @@ class SmotriOriginalSetsTest {
         }
     }
 
-    @Test fun restoreBaselineCaptureSettingsAndComposeMode() {
+    @Test fun captureExistingKeyboardWithoutWrites() {
         ActivityScenario.launch(DevelopmentActivity::class.java).use {
             awaitNamed("Ваши наборы")
-            click("Меню библиотеки")
-            click("Настройки")
-            awaitNamed("1.0", scroll = true)
+            captureBoards(fixtures.takeLast(1))
+        }
+    }
+
+    @Test fun testBaselinePresentationSettingsReadOnly() {
+        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+            awaitNamed("Ваши наборы")
+            openSettings()
+            assertEquals("Portable baseline", "1.0" to false, readPresentationSettings())
             click("Назад")
-            check(findLibraryBoard(fixtures.first().name))
-            click("Действия с набором «${fixtures.first().name}»")
-            click("Открыть")
-            awaitNamed("Меню общения")
-            setSessionMode(false)
-            click("Меню общения")
-            awaitNamed("Перейти в прямой режим")
-            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-            await("message semantics restored") { publicState("Общее сообщение:") != null }
-            capture("restored-compose", stable = false)
-            click("Открыть библиотеку")
             awaitNamed("Ваши наборы")
         }
     }
 
-    private fun captureBoards(selected: List<Fixture> = fixtures) {
-        instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply {
-            flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+    @Test fun landscapePolicyPreservesMessageAcrossDeviceRotation() {
+        val automatic = android.provider.Settings.System.getInt(target.contentResolver,
+            android.provider.Settings.System.ACCELEROMETER_ROTATION, 1) != 0
+        val original = (target.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager)
+            .defaultDisplay.rotation
+        try {
+            ActivityScenario.launch(DevelopmentActivity::class.java).use { scenario ->
+                awaitNamed("Ваши наборы")
+                scenario.onActivity { assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, it.requestedOrientation) }
+                check(findLibraryBoard(fixtures.first().name))
+                click("Действия с набором «${fixtures.first().name}»")
+                click("Открыть")
+                awaitNamed("Меню общения")
+                await("message before rotation") { publicState("Общее сообщение:") != null }
+                val before = publicState("Общее сообщение:")
+                for (rotation in listOf(0, 1, 2, 3)) {
+                    assertTrue(automation.setRotation(rotation))
+                    await("landscape after rotation $rotation") {
+                        target.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
+                            publicState("Общее сообщение:") == before
+                    }
+                    assertFalse(exists("Остановить"))
+                }
+                capture("landscape-policy", stable = false)
+                click("Открыть библиотеку")
+                awaitNamed("Ваши наборы")
+            }
+        } finally {
+            check(automation.setRotation(if (automatic) android.app.UiAutomation.ROTATION_UNFREEZE else original))
         }
+    }
+
+    @Test fun testUnsupportedScaleDoesNotChangeWorkingBoard() {
+        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+            awaitNamed("Ваши наборы")
+            openSettings()
+            assertEquals("Portable baseline", "1.0" to false, readPresentationSettings())
+            click("Назад")
+            openPhrase()
+            val message = checkNotNull(publicState("Общее сообщение:"))
+            val audio = checkNotNull(publicState("Произнести"))
+            val counter = checkNotNull(publicState("Страница "))
+            val mode = checkNotNull(publicState("Меню общения"))
+            click("Открыть библиотеку")
+            awaitNamed("Ваши наборы")
+            openSettings()
+            click("Масштаб текста", scroll = true)
+            await("proposed unsupported scale") { root -> find(root) { node ->
+                (node.isEditable || node.className?.toString() == "android.widget.EditText") &&
+                    node.isEnabled && setText(node, "3.0")
+            } }
+            await("scale input updated") { root -> find(root) { node ->
+                (node.isEditable || node.className?.toString() == "android.widget.EditText") &&
+                    node.text?.toString() == "3.0"
+            } }
+            dismissKeyboard()
+            click("Применить", scroll = true)
+            awaitNamed("Масштаб не поддерживается")
+            assertFalse("Scale rejection must remain adult-only", exists("Меню общения"))
+            capture("fixed-scale-unsupported", stable = false)
+            click("Закрыть")
+            dismissKeyboard()
+            click("Отмена", scroll = true)
+            click("Назад")
+            awaitNamed("Ваши наборы")
+            openSettings()
+            assertEquals("1.0" to false, readPresentationSettings())
+            click("Назад")
+            returnToMessage()
+            awaitNamed(fixtures.first().name)
+            await("rejected scale preserves working board") { root ->
+                unchangedCommunication(root, message, audio) &&
+                    publicState("Страница ", root) == counter && publicState("Меню общения", root) == mode
+            }
+        }
+    }
+
+    @Test fun testRejectedBoardPreservesWorkingBoardAndMessage() {
+        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+            awaitNamed("Ваши наборы")
+            openPhrase()
+            click("Следующая страница")
+            awaitNamed("Страница 2 из 2")
+            val message = checkNotNull(publicState("Общее сообщение:"))
+            val audio = checkNotNull(publicState("Произнести"))
+            val counter = checkNotNull(publicState("Страница "))
+            val mode = checkNotNull(publicState("Меню общения"))
+            click("Открыть библиотеку")
+            awaitNamed("Ваши наборы")
+            val dense = fixtures.single { it.slug == "keyboard" }
+            check(findLibraryBoard(dense.name))
+            click("Действия с набором «${dense.name}»")
+            click("Открыть")
+            awaitNamed("Масштаб не поддерживается")
+            assertFalse("Rejected board must not enter child mode", exists("Меню общения"))
+            assertFalse("Rejection must not start playback", exists("Остановить"))
+            capture("fixed-rejected-board", stable = false)
+            click("Закрыть")
+            awaitNamed("Ваши наборы")
+            assertFalse(exists("Меню общения"))
+            returnToMessage()
+            awaitNamed(fixtures.first().name)
+            await("rejected board preserves working board and message") { root ->
+                unchangedCommunication(root, message, audio) &&
+                    publicState("Страница ", root) == counter && publicState("Меню общения", root) == mode
+            }
+        }
+    }
+
+    private fun openPhrase() {
+        val phrase = fixtures.first()
+        if (!findLibraryBoard(phrase.name)) await("phrase library entry", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) { root ->
+            find(root) { matches(it, listOf("Действия с набором «${phrase.name}»")) }
+        }
+        click("Действия с набором «${phrase.name}»")
+        click("Открыть")
+        awaitNamed("Меню общения")
+        awaitNamed(phrase.name)
+        awaitNamed("Страница 1 из ${phrase.pages}")
+        await("phrase message and audio ready") { root ->
+            publicState("Общее сообщение:", root) != null && publicState("Произнести", root) != null
+        }
+    }
+
+    private fun returnToMessage() {
+        click("Меню библиотеки")
+        click("К сообщению")
+        awaitNamed("Меню общения")
+    }
+
+    private fun openSettings() {
+        click("Меню библиотеки")
+        click("Настройки")
+        awaitNamed("Настройки")
+    }
+
+    private fun readPresentationSettings(): Pair<String, Boolean> {
+        await("settings form start", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) { root ->
+            find(root) { matches(it, listOf("Родительский контроль")) }
+        }
+        var contrast: Boolean? = null
+        await("saved high contrast", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
+            find(root) { node ->
+                if (matches(node, listOf("Высокий контраст"))) {
+                    contrast = checkableState(node)
+                    contrast != null
+                } else false
+            }
+        }
+        click("Масштаб текста", scroll = true)
+        var scale: String? = null
+        await("portable text scale dialog") { root -> find(root) { node ->
+            if (node.isEditable || node.className?.toString() == "android.widget.EditText") {
+                scale = node.text?.toString()
+                scale != null
+            } else false
+        } }
+        dismissKeyboard()
+        click("Отмена", scroll = true)
+        return checkNotNull(scale) to checkNotNull(contrast)
+    }
+
+    private fun dismissKeyboard() {
+        automation.waitForIdle(250, 5000)
+        fun shown() = automation.windows.any {
+            it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
+        }
+        if (shown()) {
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            await("keyboard dismissed") { !shown() }
+        }
+    }
+
+    private fun checkableState(node: AccessibilityNodeInfo): Boolean? {
+        if (node.isCheckable) return node.isChecked
+        val parent = node.parent ?: return null
+        return try { checkableState(parent) } finally { parent.recycle() }
+    }
+
+    private fun captureBoards(selected: List<Fixture> = fixtures) {
         for (fixture in selected) {
-            check(findLibraryBoard(fixture.name)) { "Missing ${fixture.name}; capture never imports" }
+            if (!findLibraryBoard(fixture.name)) await("fixture library entry", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) { root ->
+                find(root) { matches(it, listOf("Действия с набором «${fixture.name}»")) }
+            }
             click("Действия с набором «${fixture.name}»")
             click("Открыть")
+            await("adult rejection or admitted child board") { root ->
+                find(root) { matches(it, listOf("Масштаб не поддерживается", "Меню общения")) }
+            }
+            if (exists("Масштаб не поддерживается")) {
+                assertFalse("Rejected board must remain adult-only", exists("Меню общения"))
+                assertFalse("Rejection must not start playback", exists("Остановить"))
+                capture(capturePrefix + "${fixture.slug}-unsupported", stable = false)
+                instrumentation.sendStatus(0, Bundle().apply { putString("smotriAdmission", "${fixture.slug}:unsupported") })
+                click("Закрыть")
+                awaitNamed("Ваши наборы")
+                assertFalse(exists("Меню общения"))
+                continue
+            }
             awaitNamed("Меню общения")
             awaitNamed(fixture.name)
             awaitNamed("Страница 1 из ${fixture.pages}")
+            instrumentation.sendStatus(0, Bundle().apply { putString("smotriAdmission", "${fixture.slug}:supported") })
             val previousDirect = setSessionMode(fixture.mode == "DIRECT")
-            await("message semantics after mode change") { publicState("Общее сообщение:") != null }
-            val messageBefore = publicState("Общее сообщение:")
+            var messageBefore: String? = null
+            var audioBefore: String? = null
+            await("message and speech semantics after mode change") { root ->
+                messageBefore = publicState("Общее сообщение:", root)
+                audioBefore = publicState("Произнести", root)
+                messageBefore != null && audioBefore != null
+            }
             assertNotNull("Message semantics required for no-selection check", messageBefore)
-            val audioBefore = publicState("Произнести")
+            assertNotNull("Speech semantics required for no-selection check", audioBefore)
             try { for (page in 1..fixture.pages) {
                 awaitNamed("Страница $page из ${fixture.pages}")
-                assertFalse("No playback or card selection", exists("Остановить"))
-                assertEquals("Pagination must not edit message", messageBefore, publicState("Общее сообщение:"))
-                assertEquals("Pagination must not start audio", audioBefore, publicState("Произнести"))
-                captureOverflow(fixture, page)
-                assertEquals(messageBefore, publicState("Общее сообщение:"))
-                assertEquals(audioBefore, publicState("Произнести"))
+                await("pagination preserves communication state") { root -> unchangedCommunication(root, messageBefore!!, audioBefore!!) }
+                captureWholePage(fixture, page)
+                await("whole-page capture preserves communication state") { root -> unchangedCommunication(root, messageBefore!!, audioBefore!!) }
                 if (page < fixture.pages) click("Следующая страница")
             } } finally { if (exists("Меню общения")) setSessionMode(previousDirect) }
             click("Открыть библиотеку")
@@ -166,6 +355,10 @@ class SmotriOriginalSetsTest {
         await("mode menu dismissed") { root -> find(root) {
             it.text?.startsWith("Страница ") == true || it.contentDescription?.startsWith("Страница ") == true
         } }
+        // API21 may omit the menu stateDescription; its actual opposite-mode action is authoritative.
+        click("Меню общения")
+        awaitNamed(if (direct) "Составлять сообщение" else "Перейти в прямой режим")
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         return previous
     }
 
@@ -179,88 +372,17 @@ class SmotriOriginalSetsTest {
         }
     }
 
-    private fun captureOverflow(fixture: Fixture, page: Int) {
-        val root = checkNotNull(instrumentation.uiAutomation.rootInActiveWindow)
-        val viewport = Rect()
-        var cellWidth = 0
-        var cellHeight = 0
-        try {
-            check(find(root) { grid ->
-                if (AccessibilityNodeInfoCompat.wrap(grid).stateDescription?.startsWith("Сетка ") != true) false
-                else {
-                    grid.getBoundsInScreen(viewport)
-                    find(grid) { node ->
-                        val bounds = Rect().also(node::getBoundsInScreen)
-                        if (node != grid && node.collectionInfo == null && !node.contentDescription.isNullOrBlank() && Rect.intersects(bounds, viewport)) {
-                            cellWidth = maxOf(cellWidth, bounds.width())
-                            cellHeight = maxOf(cellHeight, bounds.height())
-                        }
-                        false
-                    }
-                    true
-                }
-            }) { "Actual grid bounds missing" }
-        } finally { root.recycle() }
-        check(cellWidth > 0 && cellHeight > 0)
-        val horizontalSteps = maxOf(0, kotlin.math.ceil((cellWidth.toDouble() * fixture.columns - viewport.width() - 1) / (viewport.width() * 0.4)).toInt())
-        val verticalSteps = maxOf(0, kotlin.math.ceil((cellHeight.toDouble() * fixture.rows - viewport.height() - 1) / (viewport.height() * 0.4)).toInt())
-        check(horizontalSteps <= 64 && verticalSteps <= 64 && (horizontalSteps + 1) * (verticalSteps + 1) <= 256)
-        fun scroll(horizontal: Boolean, forward: Boolean) {
-            val low = if (horizontal) viewport.left else viewport.top
-            val length = if (horizontal) viewport.width() else viewport.height()
-            val start = low + length * (if (forward) 0.8f else 0.2f)
-            val end = low + length * (if (forward) 0.2f else 0.8f)
-            val x1 = if (horizontal) start.toInt() else viewport.centerX()
-            val y1 = if (horizontal) viewport.centerY() else start.toInt()
-            val x2 = if (horizontal) end.toInt() else viewport.centerX()
-            val y2 = if (horizontal) viewport.centerY() else end.toInt()
-            instrumentation.uiAutomation.executeShellCommand("input swipe $x1 $y1 $x2 $y2 250").use { descriptor ->
-                FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
-            }
-            instrumentation.uiAutomation.waitForIdle(100, 2000)
-        }
-        fun centeredLabels(): Set<String> {
-            val current = checkNotNull(instrumentation.uiAutomation.rootInActiveWindow)
-            val labels = mutableSetOf<String>()
-            try {
-                find(current) { node ->
-                    val bounds = Rect().also(node::getBoundsInScreen)
-                    node.contentDescription?.toString()?.takeIf { viewport.contains(bounds.centerX(), bounds.centerY()) }
-                        ?.let(labels::add)
-                    false
-                }
-            } finally { current.recycle() }
-            return labels
-        }
-        val origin = centeredLabels()
-        val seen = linkedSetOf<String>()
-        var captures = 0
-        fun captureViewport(row: Int, column: Int) {
-            check(++captures <= 256) { "Grid exceeds 256 viewports; evidence incomplete" }
-            val content = gridSnapshot()
-            seen.addAll(content.lines())
-            inspectGrid(fixture, page)
-            instrumentation.sendStatus(0, Bundle().apply {
-                putString("smotriVisibleIdentifiers", content)
-                putString("smotriViewport", "row=$row;column=$column")
-            })
-            capture(capturePrefix + "${fixture.slug}-page-$page" + if (captures == 1) "" else "-v$row-h$column")
-        }
-        for (row in 0..verticalSteps) {
-            for (column in 0..horizontalSteps) {
-                captureViewport(row, column)
-                if (column < horizontalSteps) scroll(true, true)
-            }
-            repeat(horizontalSteps) { scroll(true, false) }
-            if (row < verticalSteps) scroll(false, true)
-        }
-        repeat(verticalSteps) { scroll(false, false) }
-        await("grid origin restored") { centeredLabels() == origin }
-        instrumentation.sendStatus(0, Bundle().apply { putString("smotriReachableIdentifiers", seen.joinToString("\n")) })
+    private fun captureWholePage(fixture: Fixture, page: Int) {
+        awaitVisibleMedia()
+        inspectGrid(fixture, page)
+        instrumentation.sendStatus(0, Bundle().apply {
+            putString("smotriVisibleIdentifiers", gridSnapshot())
+        })
+        capture(capturePrefix + "${fixture.slug}-page-$page", stable = false)
     }
 
     private fun gridSnapshot(): String {
-        val root = checkNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+        val root = checkNotNull(automation.rootInActiveWindow)
         val visible = mutableListOf<String>()
         try {
             assertEquals(target.packageName, root.packageName?.toString())
@@ -298,12 +420,12 @@ class SmotriOriginalSetsTest {
     }
 
     private fun scrollLibrary(action: Int): Boolean {
-        val root = checkNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+        val root = checkNotNull(automation.rootInActiveWindow)
         val moved = try {
             assertEquals(target.packageName, root.packageName?.toString())
             find(root) { it.isScrollable && it.performAction(action) }
         } finally { root.recycle() }
-        if (moved) instrumentation.uiAutomation.waitForIdle(100, 2000)
+        if (moved) automation.waitForIdle(100, 2000)
         return moved
     }
 
@@ -318,7 +440,7 @@ class SmotriOriginalSetsTest {
             (node.isEditable || node.className?.toString() == "android.widget.EditText") && node.isEnabled && setText(node, fixture.name)
         } }
         await("accepted import name") { root -> find(root) { it.text?.toString() == fixture.name } }
-        if (instrumentation.uiAutomation.windows.any {
+        if (automation.windows.any {
             it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
         }) instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         click("Выбрать .linka для импорта (без записи в библиотеку)", scroll = true)
@@ -359,49 +481,84 @@ class SmotriOriginalSetsTest {
     }
 
     private fun inspectGrid(fixture: Fixture, page: Int) {
-        val root = checkNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+        val root = checkNotNull(automation.rootInActiveWindow)
         try {
-            val metadata = mutableListOf<String>()
-            var items = 0
+            var phraseBottom: Int? = null
+            var footerTop: Int? = null
             find(root) { node ->
-                if (node.collectionItemInfo != null) items++
-                node.collectionInfo?.let {
-                    metadata.add("rows=${it.rowCount};columns=${it.columnCount}")
-                    if (AccessibilityNodeInfoCompat.wrap(node).stateDescription?.startsWith("Сетка ") == true) {
-                        assertEquals(fixture.rows, it.rowCount)
-                        assertEquals(fixture.columns, it.columnCount)
-                    }
-                }
-                if (matches(node, listOf("Меню общения"))) {
-                    AccessibilityNodeInfoCompat.wrap(node).stateDescription?.let {
-                        assertEquals(if (fixture.mode == "DIRECT") "Прямой режим" else "Составление сообщения", it.toString())
-                    }
+                val label = node.contentDescription?.toString() ?: node.text?.toString()
+                val bounds = Rect().also(node::getBoundsInScreen)
+                if (label?.startsWith("Общее сообщение:") == true) phraseBottom = bounds.bottom
+                if (matches(node, listOf("Страница $page из ${fixture.pages}", "Предыдущая страница", "Следующая страница"))) {
+                    footerTop = minOf(footerTop ?: bounds.top, bounds.top)
                 }
                 false
             }
+            val positions = linkedSetOf<Pair<Int, Int>>()
+            val minimum = Math.round(48f * target.resources.displayMetrics.density)
+            check(find(root) { grid ->
+                if (AccessibilityNodeInfoCompat.wrap(grid).stateDescription?.startsWith("Сетка ") != true) false
+                else {
+                    val collection = checkNotNull(grid.collectionInfo) { "Grid collection metadata missing" }
+                    assertEquals("Full page rows", fixture.rows, collection.rowCount)
+                    assertEquals("Full page columns", fixture.columns, collection.columnCount)
+                    assertFalse("Fixed grid must not scroll", grid.isScrollable)
+                    val viewport = Rect().also(grid::getBoundsInScreen)
+                    assertTrue("Positive grid viewport", viewport.width() > 0 && viewport.height() > 0)
+                    assertTrue("Grid below phrase", viewport.top >= checkNotNull(phraseBottom))
+                    assertTrue("Grid above footer", viewport.bottom <= checkNotNull(footerTop))
+                    find(grid) { node ->
+                        node.collectionItemInfo?.let { item ->
+                            val position = item.rowIndex to item.columnIndex
+                            val bounds = Rect().also(node::getBoundsInScreen)
+                            assertTrue("Cell $position row", item.rowIndex in 0 until fixture.rows)
+                            assertTrue("Cell $position column", item.columnIndex in 0 until fixture.columns)
+                            assertTrue("Cell $position has positive bounds", bounds.width() > 0 && bounds.height() > 0)
+                            assertTrue("Cell $position fully within viewport", viewport.contains(bounds))
+                            assertTrue("Cell $position width at least 48dp", bounds.width() >= minimum)
+                            assertTrue("Cell $position height at least 48dp", bounds.height() >= minimum)
+                            positions.add(position)
+                        }
+                        false
+                    }
+                    true
+                }
+            }) { "Actual board grid semantics missing" }
+            assertEquals("Every cell, including EMPTY, must be visible", fixture.rows * fixture.columns, positions.size)
             val attachment = Bundle().apply {
                 putString("smotriPage", "${fixture.slug}:$page")
-                putString("smotriGrid", metadata.joinToString("|").ifEmpty { "AX collection metadata absent" })
+                putString("smotriGrid", "rows=${fixture.rows};columns=${fixture.columns}")
                 putString("smotriExpectedMode", fixture.mode)
-                putInt("smotriVisibleCollectionItems", items)
+                putInt("smotriVisibleCollectionItems", positions.size)
             }
             instrumentation.sendStatus(0, attachment)
         } finally { root.recycle() }
     }
 
     private fun publicState(prefix: String): String? {
-        val root = checkNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+        val root = automation.rootInActiveWindow ?: return null
+        return try { publicState(prefix, root) } finally { root.recycle() }
+    }
+
+    private fun publicState(prefix: String, root: AccessibilityNodeInfo): String? {
         var state: String? = null
-        try {
-            find(root) { node ->
-                val label = node.contentDescription?.toString() ?: node.text?.toString()
-                if (label?.startsWith(prefix) == true) {
-                    state = "$label|${AccessibilityNodeInfoCompat.wrap(node).stateDescription}"
-                    true
-                } else false
-            }
-        } finally { root.recycle() }
+        find(root) { node ->
+            val label = node.contentDescription?.toString() ?: node.text?.toString()
+            if (label?.startsWith(prefix) == true) {
+                state = "$label|${AccessibilityNodeInfoCompat.wrap(node).stateDescription}"
+                true
+            } else false
+        }
         return state
+    }
+
+    private fun unchangedCommunication(root: AccessibilityNodeInfo, message: String, audio: String): Boolean {
+        assertFalse("No playback or card selection", find(root) { matches(it, listOf("Остановить")) })
+        val actualMessage = publicState("Общее сообщение:", root) ?: return false
+        val actualAudio = publicState("Произнести", root) ?: return false
+        assertEquals("Navigation must not edit message", message, actualMessage)
+        assertEquals("Navigation must not start audio", audio, actualAudio)
+        return true
     }
 
     private fun capture(name: String, stable: Boolean = true) {
@@ -410,11 +567,15 @@ class SmotriOriginalSetsTest {
             awaitVisibleMedia()
             awaitStablePixels()
         }
-        val path = "/data/local/tmp/smotri-$name.png"
-        instrumentation.uiAutomation.executeShellCommand("screencap -p $path").use { descriptor ->
-            FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
+        // UiAutomation rotates native pixels correctly; API21 shell screencap keeps the panel's portrait axes.
+        val file = java.io.File(target.cacheDir, "smotri-$name.png")
+        val bitmap = checkNotNull(automation.takeScreenshot())
+        try {
+            file.outputStream().use { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
+        } finally {
+            bitmap.recycle()
         }
-        instrumentation.sendStatus(0, Bundle().apply { putString("smotriScreenshot", path) })
+        instrumentation.sendStatus(0, Bundle().apply { putString("smotriScreenshot", file.path) })
     }
 
     private var lastPendingImage: String? = null
@@ -447,7 +608,7 @@ class SmotriOriginalSetsTest {
         var since = SystemClock.uptimeMillis()
         try {
             while (SystemClock.uptimeMillis() < deadline) {
-                val next = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+                val next = checkNotNull(automation.takeScreenshot())
                 val same = previous?.sameAs(next) == true
                 previous?.recycle()
                 previous = next
@@ -464,7 +625,7 @@ class SmotriOriginalSetsTest {
         }
         if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)) return true
         val bounds = Rect().also(node::getBoundsInScreen)
-        instrumentation.uiAutomation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}").use { descriptor ->
+        automation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}").use { descriptor ->
             FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
         }
         return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
@@ -483,7 +644,7 @@ class SmotriOriginalSetsTest {
         node.text?.toString() in names || node.contentDescription?.toString() in names
 
     private fun exists(name: String, packages: Set<String> = setOf(target.packageName)): Boolean {
-        val root = instrumentation.uiAutomation.rootInActiveWindow ?: return false
+        val root = automation.rootInActiveWindow ?: return false
         return try { root.packageName?.toString() in packages && find(root) { matches(it, listOf(name)) } }
         finally { root.recycle() }
     }
@@ -500,14 +661,27 @@ class SmotriOriginalSetsTest {
         var scrolls = 0
         while (SystemClock.uptimeMillis() < deadline) {
             instrumentation.waitForIdleSync()
-            val root = instrumentation.uiAutomation.rootInActiveWindow ?: continue
+            val root = automation.rootInActiveWindow ?: continue
             try {
                 assertTrue("Unexpected package at $state", root.packageName?.toString() in packages)
                 if (predicate(root)) return
-                if (scrollAction != null && scrolls < 12 && root.packageName?.toString() == target.packageName) {
+                if (scrollAction != null && scrolls < 24 && root.packageName?.toString() == target.packageName) {
                     swipeWindow(root, scrollAction == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
                     scrolls++
                 }
+            } finally { root.recycle() }
+        }
+        automation.rootInActiveWindow?.let { root ->
+            try {
+                val nodes = mutableListOf<String>()
+                find(root) { node ->
+                    if (nodes.size < 80 && (!node.text.isNullOrEmpty() || !node.contentDescription.isNullOrEmpty())) {
+                        val bounds = Rect().also(node::getBoundsInScreen)
+                        nodes += "${node.className}|${node.text}|${node.contentDescription}|enabled=${node.isEnabled}|${bounds.toShortString()}"
+                    }
+                    false
+                }
+                instrumentation.sendStatus(0, Bundle().apply { putString("smotriTimeoutTree", nodes.joinToString("\n")) })
             } finally { root.recycle() }
         }
         capture("timeout", stable = false)
@@ -516,7 +690,7 @@ class SmotriOriginalSetsTest {
 
     private fun swipeWindow(root: AccessibilityNodeInfo, forward: Boolean) {
         val bounds = Rect().also(root::getBoundsInScreen)
-        val keyboardTop = instrumentation.uiAutomation.windows.firstOrNull {
+        val keyboardTop = automation.windows.firstOrNull {
             it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
         }?.let { Rect().also(it::getBoundsInScreen).top }
         val top = bounds.top + (bounds.height() * 0.12f).toInt()
@@ -525,12 +699,13 @@ class SmotriOriginalSetsTest {
         check(height > 60)
         // Stay inside the form content; the outer right gutter does not dispatch drags to its scroll container.
         val x = bounds.left + (bounds.width() * 0.8f).toInt()
-        val start = top + (height * (if (forward) 0.8f else 0.2f)).toInt()
-        val end = top + (height * (if (forward) 0.2f else 0.8f)).toInt()
-        instrumentation.uiAutomation.executeShellCommand("input swipe $x $start $x $end 250").use { descriptor ->
+        // Overlap short large-text viewports instead of jumping past a whole setting row.
+        val start = top + (height * (if (forward) 0.65f else 0.35f)).toInt()
+        val end = top + (height * (if (forward) 0.35f else 0.65f)).toInt()
+        automation.executeShellCommand("input swipe $x $start $x $end 250").use { descriptor ->
             FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
         }
-        instrumentation.uiAutomation.waitForIdle(100, 2000)
+        automation.waitForIdle(100, 2000)
     }
 
     private fun click(name: String, packages: Set<String> = setOf(target.packageName), scroll: Boolean = false,
@@ -548,7 +723,17 @@ class SmotriOriginalSetsTest {
                         action.recycle()
                         action = parent
                     }
-                    action?.let { it.isEnabled && it.performAction(AccessibilityNodeInfo.ACTION_CLICK) } == true
+                    if (action?.isEnabled != true) false else {
+                        val bounds = Rect().also(node::getBoundsInScreen)
+                        if (bounds.isEmpty) false else {
+                            // Tap the labelled element itself: merged API21 nodes can route ACTION_CLICK to its tile.
+                            automation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}").use { descriptor ->
+                                FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
+                            }
+                            automation.waitForIdle(100, 2000)
+                            true
+                        }
+                    }
                 } finally { action?.recycle() }
             }
         } }
