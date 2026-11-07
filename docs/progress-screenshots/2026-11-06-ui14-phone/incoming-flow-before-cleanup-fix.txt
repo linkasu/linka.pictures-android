@@ -1,0 +1,191 @@
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+su.linka.pictures.activity.DevelopmentParityTest:
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: test=filledBoardThroughOwnedIncomingContent
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Меню библиотеки / Меню / Ещё
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Меню библиотеки
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[960,123][1032,195]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click К сообщению
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=К сообщению
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[331,951][617,1018]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=message not empty: use reopen-only verification; never clear existing parts
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Открыть библиотеку
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Открыть библиотеку
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[72,123][144,195]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=owned-content-read-verified
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=before-native-content-intent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=owned incoming notice without auto-import
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=prepare-import-enter
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Меню библиотеки / Меню / Ещё
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Меню библиотеки
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[960,270][1032,342]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Импорт / Импорт, резервная копия и восстановление
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Импорт
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[331,533][1018,666]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=Файлы и восстановление
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=set named field Название импортируемой доски
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=verify field Название импортируемой доски
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=prepare-import-before-click
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Выбрать .linka для импорта (без записи в библиотеку)
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Выбрать .linka для импорта (без записи в библиотеку)
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[36,1555][1044,1700]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=prepare-import-click-delivered
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=real imported media preview
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=import-preview-observed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Разрешить команды в этом экране
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Разрешить команды в этом экране
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[36,375][1044,520]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Подтверждаю импорт «ХОЧУ» как новой доски
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Подтверждаю импорт «ХОЧУ» как новой доски
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[36,1752][1044,1776]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=Операция завершена.
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Назад
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Назад
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[68,99][101,219]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Открыть «ХОЧУ» / ХОЧУ
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=Открыть «ХОЧУ»
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[137,423][255,495]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=nine visible named cards with explicit 3x3 AX metadata; if absent run inspectOwnedFixtureGridSemantics
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=empty composed message
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click ХОЧУ
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=ХОЧУ
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[388,992][692,1351]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=first composed part without playback
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click КУШАТЬ
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputMethod=native-accessibility-click
+INSTRUMENTATION_STATUS: u14Tap=КУШАТЬ
+INSTRUMENTATION_STATUS: u14NodeClass=android.view.View
+INSTRUMENTATION_STATUS: u14TapBounds=[60,610][364,969]
+INSTRUMENTATION_STATUS: u14ClickSupported=true
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=ХОЧУ КУШАТЬ composed; no displayed autoplay
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14InputPath=owned-incoming-content; SAF-picker/OS-grant NOT evaluated
+INSTRUMENTATION_STATUS: u14Verdict=UI_STATE_READY_ONLY; pixels/visual parity/user approval NOT evaluated
+INSTRUMENTATION_STATUS: u14State=board-filled
+INSTRUMENTATION_STATUS: u14MessageParts=ХОЧУ|КУШАТЬ
+INSTRUMENTATION_STATUS: u14FixtureSha256=a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+Error in filledBoardThroughOwnedIncomingContent(su.linka.pictures.activity.DevelopmentParityTest):
+java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+	at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+	at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+	at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+	at kotlin.io.CloseableKt.closeFinally(Closeable.kt:46)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:67)
+
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: test=filledBoardThroughOwnedIncomingContent
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+	at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+	at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+	at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+	at kotlin.io.CloseableKt.closeFinally(Closeable.kt:46)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:67)
+
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 47.813
+There was 1 failure:
+1) filledBoardThroughOwnedIncomingContent(su.linka.pictures.activity.DevelopmentParityTest)
+java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+	at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+	at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+	at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+	at kotlin.io.CloseableKt.closeFinally(Closeable.kt:46)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:67)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

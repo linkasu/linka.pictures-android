@@ -2,7 +2,7 @@
 
 `iosUiTests/LinkaStartupUITests.xcodeproj` contains one standalone native XCTest UI-testing target and shared scheme, both named `LinkaStartupUITests`. Target Application is None: Xcode generates its standard UI-test runner; the project neither rebuilds nor copies the application or any Kotlin framework.
 
-`DevelopmentLibraryTests.testDevelopmentLibrarySurvivesRelaunch` launches only the already-installed `su.linka.pictures.development`. On each of two launches (with terminate between them), it waits up to 15 seconds per accessibility element for the visible, hittable library title `Ваши наборы`, library menu `Меню библиотеки`, and create control `Создать набор`. Controls are located by accessibility identifier or label, regardless of element type. No controls are tapped. Each successful stage and the first failed assertion stage attach an actual application screenshot to the result bundle.
+`DevelopmentLibraryTests.testDevelopmentLibrarySurvivesRelaunch` launches only the already-installed `su.linka.pictures.development`. On each of two launches (with terminate between them), it waits up to 15 seconds per accessibility element for the visible, hittable **and enabled** library title `Ваши наборы`, library menu `Меню библиотеки`, and button-role create control `Создать набор`. No controls are tapped. Each successful stage and the first failed assertion stage attach an actual application screenshot to the result bundle.
 
 This is a startup/relaunch regression for the development app's Keychain credential creation/read path: a startup failure must not satisfy the library assertions. It does not inspect credentials, reset state, assert an empty library, supply fixtures, or change authentication. It is not a standalone proof of Keychain contents or signing correctness.
 
@@ -31,7 +31,11 @@ xcodebuild test -showBuildSettings -project iosUiTests/LinkaStartupUITests.xcode
 
 ## Actual run, 6 November 2026
 
-**1/1 native XCUI test PASS,13.512s**, owned iOS17.0 arm64, 0 failures/skips.
+Initial visibility/hittability-only version: **1/1 native XCUI PASS,13.512s**.
+It did not prove readiness of protected controls. After the actual filled-flow
+test exposed the UIKit-wrapper identity issue and that issue was fixed,
+the stronger **enabled/button-role version also passed1/1,11.920s**, owned
+iOS17.0 arm64, 0 failures/skips.
 Both real app launches reached the title and hittable menu/create AX controls;
 actual screenshots are attached to the local result bundle. Before execution,
 strict runner/test signatures and isolated runner-only generated entitlements

@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-06",
+  "ui_commit": "6ae5a47",
+  "user_answer": "Принимаю срез",
+  "approved_scope": "Adaptive communication board and phrase in the shown portrait/landscape screenshots; small devices retained",
+  "shown_files": [
+    "phone-height64-atlas-portrait-full-screen.png",
+    "phone-height64-atlas-landscape-full-screen.png",
+    "android21-landscape-height64-stable.png"
+  ],
+  "preferred_preview_width_dp": 96,
+  "first_two_half_viewport_cap": true,
+  "minimum_phrase_height_dp": 64,
+  "whole_u14_approved": false,
+  "large_font_contrast_keyboard_screen_reader_accepted": false,
+  "production_migration_admission_accepted": false,
+  "physical_aac_accepted": false,
+  "publication_authorized": false
+}

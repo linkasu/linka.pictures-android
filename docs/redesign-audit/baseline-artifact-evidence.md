@@ -81,3 +81,37 @@ ADB MCP `list_devices` нашёл два устройства. Все после
 - Upgrade на новый бинарник: целевого бинарника ещё нет, baseline только сохранён.
 - Полная семантика миграции и покрытие UI: см. отдельные результаты P00. Чтение fixtures не доказывает их декодирование обеими платформами.
 - Сохранение будущих пользовательских данных, G1 и остальные gates. Этот отчёт не разрешает обход зависимостей пакетов.
+
+## Дополнение 6 ноября: публичный publisher artifact найден
+
+По поручению пользователя «сам ищи» проверены public Play page, publisher GitHub
+release и сторонний каталог. GitHub MCP в этой сессии недоступен; только public
+HTTPS read-only, без аккаунтов/токенов/изменений репозитория.
+
+- [Publisher release v1.4](https://github.com/linkasu/linka.pictures-android/releases/tag/v1.4)
+  связан с commit2073d91 и Android CI run47, указывает versionCode5.
+- Найден и скачан **AAB, не APK**:
+  `https://github.com/linkasu/linka.pictures-android/releases/download/v1.4/app-release.aab`.
+  SHA256 файла совпал с publisher release asset:
+  `ea8e689cdb152a8b2c75e6388cc1fed162cb08a400ea939a13368a56a94d93f9`.
+  Локально: approved OpenCode temp `linka-v1.4-release.aab`, не в Git.
+- Публичный сертификат AAB: SHA256
+  `c2a14bc75f908f620540e1035699c61abe2d634470ed4f41490ea5cd72e1c814`,
+  SHA1 `9e5e09287e9640360a53a7f385b492bbd5d63a9d`.
+  Это сертификат опубликованного bundle; он не объявлен Play app-signing cert.
+- [Google Play](https://play.google.com/store/apps/details?id=su.linka.pictures&hl=ru&gl=RU)
+  по-прежнему показывает последнее обновление19июля2026, но не выдаёт публичный
+  APK URL, signing fingerprint или версии закрытых треков.
+- [APKPure candidate](https://apkpure.com/linka-%D0%BF%D0%BE%D0%BA%D0%B0%D0%B6%D0%B8/su.linka.pictures/download)
+  заявляет1.4/code5, base+config.en+config.mdpi и signatureSHA1
+  `f517aeddca1744e0c4c3395d7360ef8cae742ed2`. Его дата13октября не доказывает
+  дату Play release. Попытка HTTPS download завершилась curl56; APK не установлен.
+  Fingerprint не совпадает с AAB; разделение upload/app-signing keys возможно,
+  но без Play certificate это **не доказательство подлинного Play APK**.
+- `https://linka.su/.well-known/assetlinks.json` вернул404; публичной привязки
+  package к Play certificate этим путём не получено. Keystore/private keys не читались.
+
+Итого: publisher release bundle и его integrity теперь установлены, но Play-delivered
+APK/splits, Play signing chain, max versionCode по трекам и настоящий store upgrade
+остаются OPEN. Физические устройства/AAC по ответу пользователя пока недоступны;
+это не снимает обязательный release gate.

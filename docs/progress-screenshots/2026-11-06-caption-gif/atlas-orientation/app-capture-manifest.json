@@ -1,0 +1,83 @@
+{
+  "scope": "Read-only existing board/library portrait/landscape; no message changes",
+  "product_executable_sha256": "ef1cba85d8bc96c9088c9ac1c6653e3b93bb13b1f2f6aeefc5d578d244a83a16",
+  "pixel_verdict": "OPEN: app-scoped landscape captures contain black/cropped regions; AX PASS is not visual acceptance",
+  "physical_acceptance": false,
+  "user_visual_approval": false,
+  "results": [
+    {
+      "device": "phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/atlas-orientation-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "phone-portrait-library-app-capture.png",
+          "sha256": "f1409e703d7d4ca4be68baa76901f2b800f3cf6c6f44ebf38abe07fae792554d",
+          "orientation": "portrait",
+          "screen": "library",
+          "native_exported_file": "425E4640-E06D-44AE-A307-EB8704836C51.png"
+        },
+        {
+          "file": "phone-portrait-board-app-capture.png",
+          "sha256": "c0eb77345efd4dd0988c480b7e16c59c7b35b7725e800c99869f45148e8ae821",
+          "orientation": "portrait",
+          "screen": "board",
+          "native_exported_file": "220D01C1-C191-471A-B9D8-90E036213DDA.png"
+        },
+        {
+          "file": "phone-landscape-library-app-capture.png",
+          "sha256": "46a3af8f8edc45cf46b9f10f0051f58964b7a6186cc1ceb37db4aec4a11ca7da",
+          "orientation": "landscape",
+          "screen": "library",
+          "native_exported_file": "7BFD893C-60A7-47ED-9972-14B21AD30D90.png"
+        },
+        {
+          "file": "phone-landscape-board-app-capture.png",
+          "sha256": "c986f45a82a5b109d88520e593df30a819736dcd343d2472149fd3c755378868",
+          "orientation": "landscape",
+          "screen": "board",
+          "native_exported_file": "BEDA4C42-9A61-45AC-AB04-8F9B4A9AD9B7.png"
+        }
+      ]
+    },
+    {
+      "device": "ipad",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/atlas-orientation-ipad.xcresult",
+      "screenshots": [
+        {
+          "file": "ipad-portrait-library-app-capture.png",
+          "sha256": "45ddf1d10509b8f2bc20f3db4816a805a2be1d82b626c6e03c81fac2b1df1c29",
+          "orientation": "portrait",
+          "screen": "library",
+          "native_exported_file": "985E99F1-E5DF-4837-9506-9995FEB1B634.png"
+        },
+        {
+          "file": "ipad-portrait-board-app-capture.png",
+          "sha256": "b74cc4f8f86d27a5c5998a241fdf9ce636c285eb9d1143810a0545e84104325f",
+          "orientation": "portrait",
+          "screen": "board",
+          "native_exported_file": "D45EEFAA-7E8E-4416-8ED1-18BC0D3B15EA.png"
+        },
+        {
+          "file": "ipad-landscape-library-app-capture.png",
+          "sha256": "297c0218ed3bd2da54ddd3b1df52f37170f12430cc4b1f7b8025251e9f0101ce",
+          "orientation": "landscape",
+          "screen": "library",
+          "native_exported_file": "53F3F42D-FA1B-488B-9241-78DD8EF3943D.png"
+        },
+        {
+          "file": "ipad-landscape-board-app-capture.png",
+          "sha256": "249321fd9ad0b17d3d4d6504af51dd1182f9156e495b3efabbcae9ab28e5d6f4",
+          "orientation": "landscape",
+          "screen": "board",
+          "native_exported_file": "EE90A8B4-3CAA-48A6-9D83-CC39AD8FFD98.png"
+        }
+      ]
+    }
+  ]
+}

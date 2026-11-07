@@ -1,0 +1,125 @@
+{
+  "status": "These compartments PASS; full release/G4/U1.4 OPEN",
+  "jvm_full": {
+    "tests": 471,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "native_full": {
+    "passed": 593,
+    "suites": 64,
+    "elapsed_ms": 60852,
+    "executable_sha256": "99a3e517e5446c41c6bbe2a6d81e68320543b443257c980d87972669ed1aec46"
+  },
+  "hosted_keychain_xctest": {
+    "passed": 2,
+    "skipped": 0
+  },
+  "native_xcui_startup_relaunch": {
+    "passed": 1,
+    "skipped": 0
+  },
+  "android_permission_tests": {
+    "passed": 3,
+    "actual_microphone_permission_granted": false,
+    "microphone_recorded": false,
+    "revocation_race_is_modelled": true
+  },
+  "android_intent_resolution_tests": {
+    "passed": 1,
+    "legacy_activity_launched": false
+  },
+  "android_latest_apk_reopen_back": {
+    "passed": 1,
+    "elapsed_seconds": 30.448,
+    "installed_apk_sha_matches": true,
+    "message": "ХОЧУ КУШАТЬ",
+    "visible_explicit_ax_cards": 9
+  },
+  "lint": {
+    "shared": {
+      "severities": {
+        "Warning": 7
+      },
+      "warning_ids": {
+        "ExifInterface": 1,
+        "UseRequiresApi": 1,
+        "UseKtx": 5
+      },
+      "report_sha256": "28dc1c442e88ffb1c02b4630af458437208fc746bf12b9cef2bf54f525216ba0"
+    },
+    "app": {
+      "severities": {
+        "Warning": 46
+      },
+      "warning_ids": {
+        "UnusedAttribute": 1,
+        "UseSwitchCompatOrMaterialCode": 2,
+        "UseSwitchCompatOrMaterialXml": 2,
+        "SpUsage": 1,
+        "DiscouragedApi": 2,
+        "ObsoleteSdkInt": 2,
+        "VectorPath": 1,
+        "DisableBaselineAlignment": 1,
+        "NestedWeights": 4,
+        "UnusedResources": 6,
+        "IconDuplicates": 5,
+        "ButtonOrder": 1,
+        "TextFields": 2,
+        "Autofill": 4,
+        "ContentDescription": 7,
+        "LabelFor": 3,
+        "SetTextI18n": 2
+      },
+      "report_sha256": "4456fe5166132e7ea06cd34c75173a519bed60576264c46838cf6f9983a4a0d3"
+    }
+  },
+  "frozen_android_artifacts": {
+    "source_head": "a3230219bc3010004f81aa3baf5ee7af3fda5679",
+    "source_diff_sha256": "3845b7f5456cc5f5f2b9b71b23865df299bb0bd8f1ac8e390d8299c83ab378c1",
+    "artifacts": {
+      "app": {
+        "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-android-lint-verified-ky93ktc4/app.apk",
+        "sha256": "9e3eb90139a592d9aece5c5f1855b74d7e6b34531d6d7f870a95cdcaec0c0a79"
+      },
+      "appTest": {
+        "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-android-lint-verified-ky93ktc4/appTest.apk",
+        "sha256": "f8bd2277df88d44e221a78c46689ce0eba6ad04c0ca7d187b9d0e1414034d2c4"
+      }
+    },
+    "new_test_source_sha256": "da0e7dfd3824227e91202763a46f90b4b9f45a6c57a85f5e9950d3a8d30fc9e1"
+  },
+  "local_logs": {
+    "u14-shared-full-jvm-native-build.log": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-shared-full-jvm-native-build.log",
+      "sha256": "bbdec3f40b84491dac1e4c2db6ae84d459f8cb279955d4461ae4490841884fa3"
+    },
+    "u14-shared-full-native17.log": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-shared-full-native17.log",
+      "sha256": "b17cd306bb07022a4dfe9ab95b106941937535b6a64a543b2c96d3a9f08493bc"
+    },
+    "u14-android-lint.log": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-android-lint.log",
+      "sha256": "3db7cde84764426381a6fa6334a5617347362d68b8ebeb21dc5bf74ed3daa39d"
+    },
+    "u14-android-lint-resolved.log": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-android-lint-resolved.log",
+      "sha256": "d8fc2662563f48331f3cdc8447231be3d552684be7a7ce5b246fb0df3b27de47"
+    },
+    "u14-android-permission-complete-check.log": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-android-permission-complete-check.log",
+      "sha256": "18a410aef445ebb15b6adefda12db98e313a92bbdc90cd5b99191bb489f150fb"
+    },
+    "u14-app-manifest-lint-check.log": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-app-manifest-lint-check.log",
+      "sha256": "9bf4a92483c7627fa11e360f8a9a8cebf4351fbb4218c5dd40e34e984646ffb5"
+    }
+  },
+  "stored_logs": {
+    "android-intent-resolution.txt": "6cd2dd32ff4c5aff93597f3896b45c591a3ac3f33ff8f0c3f86321c87f3648d3",
+    "android-microphone-red.txt": "adad3702f112d435ce874a14213581e62b9754341692477be39fbf72a00f239e",
+    "android-final-reopen.txt": "0f96e251c832474972453ad9feef608f48e4f2ac7255e73d204d211fc81f09b3",
+    "android-microphone-green.txt": "0a8f41a82aa926d0fc86376d4e5ed1cacd93fe4f63ceab117e7e4ac9e0123883"
+  }
+}

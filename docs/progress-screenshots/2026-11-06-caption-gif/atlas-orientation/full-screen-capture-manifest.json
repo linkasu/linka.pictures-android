@@ -1,0 +1,126 @@
+{
+  "scope": "Full native screen separates app-scoped XCTest crop from real short-landscape caption clipping",
+  "verdict": "App capture black/cropped area is not a layout verdict. Width96 made phrase labels readable; image height remains the next correction, not accepted by these captures.",
+  "user_visual_approval": false,
+  "physical_acceptance": false,
+  "minimum_height64_validated": false,
+  "results": [
+    {
+      "case": "atlas-full-screen-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/atlas-full-screen-phone.xcresult",
+      "captures": [
+        {
+          "file": "phone-atlas-landscape-capture-geometry.txt",
+          "sha256": "064ef26c59a3fcbdb588e9613af55ad1cf513ab8b011e8b1ca4cf2e83f5d7620",
+          "native_attachment": "489C3CA3-CBD1-4CC2-B613-99DC64B3EB7A.txt",
+          "native_geometry": "appFrame=(0.0, 0.0, 667.0, 375.0); screenImage=(667.0, 375.0); imageOrientation=2"
+        },
+        {
+          "file": "phone-atlas-landscape-full-screen.png",
+          "sha256": "77cecea936cf74ff8ebc412d9a2fca7285fe37c4d635acb352754994447da63a",
+          "native_attachment": "1A0D3748-D5A1-4C7B-BA87-2CF6808F26DA.png",
+          "raw_png_dimensions": [
+            750,
+            1334
+          ]
+        },
+        {
+          "file": "phone-atlas-portrait-capture-geometry.txt",
+          "sha256": "3d211e21904d96b41127bf029dcf9582cfa6b2bb39bccd584dd693fb6a32a6f8",
+          "native_attachment": "8A3CCA75-77A0-4B46-81B1-FA13D6D3F442.txt",
+          "native_geometry": "appFrame=(0.0, 0.0, 375.0, 667.0); screenImage=(375.0, 667.0); imageOrientation=0"
+        },
+        {
+          "file": "phone-atlas-portrait-full-screen.png",
+          "sha256": "b6369f667f246470c514828aa40d7e1d7a40ab16e28dd9fc401e7969a62559fb",
+          "native_attachment": "811BD95D-EA2C-41EE-A683-737EF3B1E0B2.png",
+          "raw_png_dimensions": [
+            750,
+            1334
+          ]
+        }
+      ]
+    },
+    {
+      "case": "atlas-full-screen-ipad",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/atlas-full-screen-ipad.xcresult",
+      "captures": [
+        {
+          "file": "ipad-atlas-landscape-capture-geometry.txt",
+          "sha256": "8d5113d62e7bd086fd0b8d6b94f5d3edfe047aa48674ac8be176069bfeb19b50",
+          "native_attachment": "D8B45378-AE60-477D-915E-4073BD62D527.txt",
+          "native_geometry": "appFrame=(0.0, 0.0, 1194.0, 834.0); screenImage=(1194.0, 834.0); imageOrientation=2"
+        },
+        {
+          "file": "ipad-atlas-landscape-full-screen.png",
+          "sha256": "e6395106183fa68ce120b3b8e63d6cdac3ff96726f6cd129cd3f6f0d773887b1",
+          "native_attachment": "73DA44FC-B622-4869-9A90-FD32C2D953D4.png",
+          "raw_png_dimensions": [
+            1668,
+            2388
+          ]
+        },
+        {
+          "file": "ipad-atlas-portrait-capture-geometry.txt",
+          "sha256": "eb25d854766e457f790a539089134ba1da314b84941484103e7fc5e48789a403",
+          "native_attachment": "523B56E4-9D7E-4E31-B4BB-939F0236613F.txt",
+          "native_geometry": "appFrame=(0.0, 0.0, 834.0, 1194.0); screenImage=(834.0, 1194.0); imageOrientation=0"
+        },
+        {
+          "file": "ipad-atlas-portrait-full-screen.png",
+          "sha256": "3e0358408174a901a78c8667cc8bdd549fdb3f9e9645211aa2c3a9c54eeda477",
+          "native_attachment": "8925B074-3C6C-4FCD-B352-C10D2986CEB7.png",
+          "raw_png_dimensions": [
+            1668,
+            2388
+          ]
+        }
+      ]
+    },
+    {
+      "case": "landscape-phrase-phone-fixed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/landscape-phrase-phone-fixed.xcresult",
+      "captures": [
+        {
+          "file": "phone-width96-atlas-landscape-capture-geometry.txt",
+          "sha256": "064ef26c59a3fcbdb588e9613af55ad1cf513ab8b011e8b1ca4cf2e83f5d7620",
+          "native_attachment": "7505528C-2607-430E-A2BC-2C88367B97EE.txt",
+          "native_geometry": "appFrame=(0.0, 0.0, 667.0, 375.0); screenImage=(667.0, 375.0); imageOrientation=2"
+        },
+        {
+          "file": "phone-width96-atlas-landscape-full-screen.png",
+          "sha256": "b905b358cab015a43028a7bbd8014bd572b9b791ca88017dd5a8bbcbe23ec316",
+          "native_attachment": "AA32C592-9538-47BE-B851-BC7FEA160AC3.png",
+          "raw_png_dimensions": [
+            750,
+            1334
+          ]
+        },
+        {
+          "file": "phone-width96-atlas-portrait-capture-geometry.txt",
+          "sha256": "3d211e21904d96b41127bf029dcf9582cfa6b2bb39bccd584dd693fb6a32a6f8",
+          "native_attachment": "5079368C-9000-480F-B99B-D4EE22B1ECB1.txt",
+          "native_geometry": "appFrame=(0.0, 0.0, 375.0, 667.0); screenImage=(375.0, 667.0); imageOrientation=0"
+        },
+        {
+          "file": "phone-width96-atlas-portrait-full-screen.png",
+          "sha256": "5025855460241db2fb35e78d7d43ce9430bdb06a0e99f961114839a882f1ea08",
+          "native_attachment": "93F79413-9EB8-4D2C-A286-503CC5FE91CF.png",
+          "raw_png_dimensions": [
+            750,
+            1334
+          ]
+        }
+      ]
+    }
+  ]
+}
