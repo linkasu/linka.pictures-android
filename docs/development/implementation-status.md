@@ -73,6 +73,14 @@
   его точный внутренний механизм и external keyboard остаются OPEN. Исправленные
   assertions ранних probes не объявляются native PASS.
   [История редактора](evidence/editor-native-2026-11-06/).
+- Новые XCTest key-event probes остаются **RED**: raw1/2 дали1→12,
+  raw Backspace не удалил2; настоящая экранная Backspace дала12→1,
+  но raw Cmd+A/3 дали13 вместо3. Это не physical hardware proof и не product fix.
+  После RED выполнен Cancel/SAVED/исходная опубликованная карточка/фраза:
+  **1/1 PASS,29.406s**; повтор экранного ввода после выделения общего helper:
+  **1/1 PASS,45.619s**. В конце форма закрыта, клавиатура скрыта, исходный
+  сохранённый черновик оставлен. Core/runtime не менялись;509/633 и app70/70
+  выше остаются прежним техническим gate, не полным UI PASS.
 
 **Ещё OPEN:** полный font/system-scale/landscape/keyboard/screen-reader atlas,
 весь U1.4 approval, Android native restore/recovery, Electron runtime exchange, codecs/

@@ -260,6 +260,48 @@ final class DevelopmentLibraryTests: XCTestCase {
     }
 
     func testOwnedCardReplacementThroughSystemKeyboardThenCancel() throws {
+        try verifyOwnedCardSelectionAndCancel { app in
+            var replacement = ""
+            for key in ["ф", "ы", "в"] {
+                let letter = try editorVisible(app.keyboards.keys.matching(NSPredicate(format: "label ==[c] %@", key)))
+                replacement += letter.label
+                letter.tap()
+                _ = try editorVisible(app.textViews.matching(identifier: replacement))
+            }
+            return replacement
+        }
+    }
+
+    func testOwnedCardReplacementThroughHardwareKeyEventsThenCancel() throws {
+        try verifyOwnedCardSelectionAndCancel { app in
+            for (key, expected) in [("1", "1"), ("2", "12"), (XCUIKeyboardKey.delete.rawValue, "1")] {
+                app.typeKey(key, modifierFlags: [])
+                _ = try editorVisible(app.textViews.matching(identifier: expected))
+            }
+            app.typeKey("a", modifierFlags: .command)
+            app.typeKey("3", modifierFlags: [])
+            _ = try editorVisible(app.textViews.matching(identifier: "3"))
+            return "3"
+        }
+    }
+
+    func testOwnedCardNativeBackspaceAndHardwareSelectAllThenCancel() throws {
+        try verifyOwnedCardSelectionAndCancel { app in
+            for (key, expected) in [("1", "1"), ("2", "12")] {
+                app.typeKey(key, modifierFlags: [])
+                _ = try editorVisible(app.textViews.matching(identifier: expected))
+            }
+            try editorTap(app.keyboards.keys.matching(NSPredicate(format: "label IN %@ OR identifier IN %@",
+                ["delete", "Delete", "Удалить", "⌫"], ["delete", "Delete", "Удалить", "⌫"])))
+            _ = try editorVisible(app.textViews.matching(identifier: "1"))
+            app.typeKey("a", modifierFlags: .command)
+            app.typeKey("3", modifierFlags: [])
+            _ = try editorVisible(app.textViews.matching(identifier: "3"))
+            return "3"
+        }
+    }
+
+    private func verifyOwnedCardSelectionAndCancel(_ replace: (XCUIApplication) throws -> String) throws {
         continueAfterFailure = false
         let name = "LINKa-EDITOR-iOS17-20261106-RENAMED"
         let original = "NATIVE-CARD-17"
@@ -272,7 +314,7 @@ final class DevelopmentLibraryTests: XCTestCase {
             try editorTap(editorNamed("Сохранённые черновики", in: app))
             try editorTap(app.buttons.matching(identifier: "Продолжить «\(name)»"))
             if editorNamed("Тип карточки", in: app).firstMatch.exists,
-               app.textViews.firstMatch.label == "NANCEL-CHECK-17ATIVE-CARD-17" {
+               ["NANCEL-CHECK-17ATIVE-CARD-17", "12"].contains(app.textViews.firstMatch.label) {
                 try editorTap(app.buttons.matching(identifier: "Отмена"))
                 _ = try editorVisible(app.buttons.matching(identifier: "\(original). Строка 1, столбец 1"))
             }
@@ -293,13 +335,7 @@ final class DevelopmentLibraryTests: XCTestCase {
             editorStage = "system-selection-before-replacement"
             attachScreenshot(of: app, stage: editorStage)
             editorStage = "system-selection-replacement-result"
-            var replacement = ""
-            for key in ["ф", "ы", "в"] {
-                let letter = try editorVisible(app.keyboards.keys.matching(NSPredicate(format: "label ==[c] %@", key)))
-                replacement += letter.label
-                letter.tap()
-                _ = try editorVisible(app.textViews.matching(identifier: replacement))
-            }
+            let replacement = try replace(app)
             XCTAssertEqual(app.textViews.firstMatch.label, replacement)
             attachScreenshot(of: app, stage: editorStage)
             try editorTap(app.buttons.matching(identifier: "Отмена"))

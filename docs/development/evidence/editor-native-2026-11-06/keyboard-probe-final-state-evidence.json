@@ -1,0 +1,71 @@
+{
+  "scope": "After hardware-event RED, cancel the same changed form and verify shared selection/cancel harness with native touch keys",
+  "cases": [
+    {
+      "name": "hardware-probe-cancel-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 29.406,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/hardware-probe-cancel-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "hardware-probe-cancel-phone-80133F15-EB45-4259-91E4-FDC86A6B6557.png",
+          "sha256": "62bb3af90f06abf4f120b32670646b874528d86570fab74a6ce282652f69ecf9"
+        },
+        {
+          "file": "hardware-probe-cancel-phone-D58F32F2-977F-414A-81D9-57E6DDF05A96.png",
+          "sha256": "eca199021b1ae8dbff4a22acafd2783d4f372bd0012eede340969e7b0c955b45"
+        },
+        {
+          "file": "hardware-probe-cancel-phone-8A181C76-7AF1-467E-8A90-7D9CACC24D3E.png",
+          "sha256": "93a2bb113dff0a188b3a2474ec9820f9ddfa0ceb3da529dbb0934037b5ff59df"
+        },
+        {
+          "file": "hardware-probe-cancel-phone-D49B60DB-110A-47D8-8F15-2CB1731CE624.png",
+          "sha256": "b7a0fd7eb57ff90a893f8e002e0f638a203777a238186caf27ac4392a82d6f59"
+        }
+      ]
+    },
+    {
+      "name": "software-keys-after-helper-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 45.619,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/software-keys-after-helper-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "software-keys-after-helper-phone-47B79374-92B5-482E-BBE7-E3482BF2678E.png",
+          "sha256": "62bb3af90f06abf4f120b32670646b874528d86570fab74a6ce282652f69ecf9"
+        },
+        {
+          "file": "software-keys-after-helper-phone-0FECCDC7-E42E-4956-9BB8-2B2D7A2748DC.png",
+          "sha256": "33acae2f0d74462a504b5406e0d24d6825573314514cfa17465d808cc3d3602b"
+        },
+        {
+          "file": "software-keys-after-helper-phone-298EEFCA-D5C7-49A8-9F99-53D5153FC6B5.png",
+          "sha256": "4d12f3f285a7e9c7e9c4ad4dcd2e3ade833945b4a4e4fdd81e155cf0b5cef993"
+        },
+        {
+          "file": "software-keys-after-helper-phone-C49BD2DA-2649-4553-A331-A43F44EA9B22.png",
+          "sha256": "2c364464ca42716b9cd2f48b4a677c30d5539c8ec68b9f5d72020c0ac806dd23"
+        },
+        {
+          "file": "software-keys-after-helper-phone-EC485497-0AD9-428A-A4A7-B1D27D4D0F4F.png",
+          "sha256": "cbe6e351ca7636a4e5b4ea57560ab414f64d58f8306d014ed7bfdce859efd481"
+        }
+      ]
+    }
+  ],
+  "final_state": "Published original NATIVE-CARD-17 visible; global ХОЧУ КУШАТЬ unchanged; form closed/keyboard hidden; own original saved draft retained",
+  "primary_reviewed_final_card_message_and_replacement": true,
+  "native_touch_sequence": [
+    "ф",
+    "фы",
+    "фыв"
+  ],
+  "hardware_event_red_not_relabelled": true,
+  "product_code_changed": false,
+  "production_data_or_signing_changed": false
+}
