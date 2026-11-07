@@ -26,6 +26,9 @@ Dark и high contrast сохраняются и проверяются отде�
 - Размер доступного окна, не device-name. Начальные пороги600/900; широкий inspector
   только при достаточной высоте и месте для сетки. Пороги не являются persisted mode.
 - Фраза и Speak/Stop закреплены; scroll сетки не уносит их. Все карточки доступны.
+- Compact/large text: фраза отдельно, под ней три равных закреплённых действия;
+  wide normal — inline как в Electron. Preferred minimum104dp относится только
+  к compact preview, ограничивается доступной высотой и не меняет размеры доски.
 - Сохранённые rows/columns/order/EMPTY/SPACE не меняются от resize, медиа или темы.
 - Общая фраза, immutable snapshots, DIRECT/COMPOSE, Stop и UndoClear сохраняются.
 - `SaveCard` принимает форму в draft; `Apply` публикует и завершает текущий редактор.
