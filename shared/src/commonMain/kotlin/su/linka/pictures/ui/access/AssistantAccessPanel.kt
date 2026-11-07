@@ -31,6 +31,7 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
         is AssistantState.Unprotected -> current.verification
         else -> OwnerVerificationAvailability.UNKNOWN
     }
+    ProductSection(if (manage) "Защита важных действий" else "Подтвердите доступ") {
     Text(when (val current = state) {
         AssistantState.Initializing -> "Проверяем защиту помощника… Общение остаётся доступным."
         is AssistantState.Unavailable -> "Защищённые команды недоступны: ${current.problem.code}. Общение доступно."
@@ -90,4 +91,5 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
         password = ""; newPassword = ""; repeatPassword = ""; disable = false; result = null; access.revokeOwner(owner); onCapability(null)
     }
     Feedback(result)
+    }
 }

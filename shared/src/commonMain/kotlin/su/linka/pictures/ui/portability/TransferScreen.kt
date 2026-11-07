@@ -50,7 +50,8 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
         scope.launch { try { result = transfer.confirm(owner, id, capability, confirmation) } finally { busy = false } }
     }
     ProductScaffold("Файлы и восстановление", onBack) {
-        access()
+        ProductSection("Доступ помощника") { access() }
+        ProductSection("Импорт и экспорт доски") {
         Text("Файлы .linka и резервные копии — открытые архивы, не зашифрованные. Они могут содержать личные изображения, записи голоса и текст. Выбирайте доверенный файл и место хранения.")
         Field(name, "Название импортируемой доски", canPrepare) { name = it }
         Action("Выбрать .linka для импорта (без записи в библиотеку)", canPrepare && name.isNotBlank()) {
@@ -59,6 +60,8 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
         if (boardId != null) Action("Подготовить экспорт выбранной доски .linka", canPrepare) {
             prepare(ProtectedAction.EXPORT_BOARD) { transfer.prepareExport(owner, boardId) }
         }
+        }
+        ProductSection("Резервная копия и восстановление") {
         Action("Подготовить резервную копию всей библиотеки", canPrepare) {
             prepare(ProtectedAction.CREATE_BACKUP) { transfer.prepareBackup(owner) }
         }
@@ -83,7 +86,9 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
             else -> Feedback(info)
         }
         Action("Обновить сведения о точке восстановления", canPrepare) { scope.launch { recovery = library.recovery() } }
+        }
         current?.let { operation ->
+          ProductSection("Текущая операция") {
             val readiness = transferReadiness(operation, owner, capability, gate, enabled, foreground, busy)
             Text(transferPhaseLabel(operation.transfer.phase), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             if (operation.kind == TransferKind.EXPORT || operation.kind == TransferKind.BACKUP)
@@ -128,6 +133,7 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
             if (!terminal && operation.transfer.phase != TransferPhase.UNCONFIRMED) Action("Отменить текущую операцию", readiness.canCancel) {
                 scope.launch { result = transfer.cancel(owner, operation.transfer.id, capability) }
             }
+          }
         }
         Feedback(result)
         Text("После ухода в фон операция не возобновляется автоматически: снова откройте доступ и явно выберите файл / подготовку заново.")
