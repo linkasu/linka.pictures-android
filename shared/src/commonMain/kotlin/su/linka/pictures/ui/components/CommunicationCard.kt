@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
-import su.linka.pictures.ui.theme.LinkaTargets
+import su.linka.pictures.ui.theme.LinkaMetrics
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
 @Composable
@@ -28,10 +28,11 @@ fun CommunicationCard(
     val palette = LocalLinkaPalette.current
     PrimitiveSurface(
         accessibleName, activationLabel, enabled, selected, palette.surface, palette.text,
-        onActivate, modifier.sizeIn(minWidth = LinkaTargets.communicationCard, minHeight = LinkaTargets.communicationCard),
+        onActivate, modifier.sizeIn(minWidth = LinkaMetrics.touchTarget, minHeight = LinkaMetrics.touchTarget),
+        kind = PrimitiveSurfaceKind.CARD,
     ) {
         BoxWithConstraints {
-            // The old 4:1 image/caption split scales with the parent, but text is no longer a bitmap.
+            // The caption scrolls independently while the image retains its own viewport.
             Layout(content = {
                 Box(contentAlignment = Alignment.Center) {
                     if (image != null) Image(

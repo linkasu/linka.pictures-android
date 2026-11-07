@@ -10,17 +10,23 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import su.linka.pictures.text.dropLastGrapheme
+
+internal val CommunicationCaptionStyle = TextStyle(
+    fontSize = 24.sp, lineHeight = 28.8.sp, fontWeight = FontWeight.Bold,
+    letterSpacing = 0.sp, lineBreak = LineBreak.Heading, hyphens = Hyphens.Auto,
+    textAlign = TextAlign.Center,
+)
 
 @Composable
 internal fun CommunicationCaption(
@@ -31,26 +37,7 @@ internal fun CommunicationCaption(
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
-    val captionStyle = MaterialTheme.typography.body1.copy(
-        fontWeight = FontWeight.Normal, letterSpacing = 0.sp,
-        lineBreak = LineBreak.Heading, hyphens = Hyphens.Auto,
-    )
-    val captionSize = remember(label, availableHeight, availableWidth, captionStyle, density.density, textMeasurer) {
-        // Fit base typography only; the displayed Text keeps the inherited accessibility scale.
-        val baseDensity = Density(density.density, fontScale = 1f)
-        communicationCaptionSize(
-            label, availableHeight.value, with(baseDensity) { availableWidth.toPx() },
-        ) { word, size ->
-            textMeasurer.measure(
-                text = word, style = captionStyle.copy(fontSize = size.sp),
-                softWrap = false, density = baseDensity,
-            ).multiParagraph.maxIntrinsicWidth
-        }.sp
-    }
-    val renderedStyle = captionStyle.copy(
-        fontSize = captionSize, lineHeight = captionSize * 1.2f,
-        textAlign = TextAlign.Center,
-    )
+    val renderedStyle = MaterialTheme.typography.body1.merge(CommunicationCaptionStyle)
     val captionWidth = remember(label, availableWidth, renderedStyle, density.density, density.fontScale, textMeasurer) {
         val widthPx = with(density) { availableWidth.toPx() }
         if (label.isEmpty() || label.any { it.isWhitespace() } || !widthPx.isFinite() || widthPx <= 1f) {

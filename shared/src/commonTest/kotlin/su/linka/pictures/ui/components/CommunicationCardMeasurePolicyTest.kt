@@ -11,8 +11,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
-import su.linka.pictures.ui.theme.Linka14
-import su.linka.pictures.ui.theme.LinkaTargets
+import su.linka.pictures.ui.theme.LinkaMetrics
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -47,10 +46,8 @@ class CommunicationCardMeasurePolicyTest {
 
     @Test
     fun platformMinimumStillLeavesPixelsAndCaptionInsideTheRealMeasurePolicy() {
-        val padding = Linka14.cardPadding
-        val margin = 2 * Linka14.cardMargin.value
-        val width = (LinkaTargets.communicationCard.value - margin - padding.calculateLeftPadding(LayoutDirection.Ltr).value - padding.calculateRightPadding(LayoutDirection.Ltr).value).toInt()
-        val height = (LinkaTargets.communicationCard.value - margin - padding.calculateTopPadding().value - padding.calculateBottomPadding().value).toInt()
+        val width = (LinkaMetrics.touchTarget.value - 8).toInt()
+        val height = (LinkaMetrics.touchTarget.value - 8).toInt()
         assertTrue(width >= 25)
         assertTrue(height >= 29)
         val image = Child(500, 500)
@@ -60,7 +57,7 @@ class CommunicationCardMeasurePolicyTest {
         }
         assertEquals(width, result.width)
         assertEquals(height, result.height)
-        assertEquals(Constraints.fixed(width, height - 8), image.measured)
+        assertEquals(Constraints.fixed(width, height - 8 - 6), image.measured)
     }
 
     @Test
@@ -75,8 +72,8 @@ class CommunicationCardMeasurePolicyTest {
                 assertEquals(width, result.width)
                 assertEquals(height, result.height)
                 val reserve = minOf(48, height / 3)
-                val captionMaxHeight = height - reserve
-                assertEquals(Constraints.fixed(width, height - minOf(captionHeight, captionMaxHeight)), image.measured)
+                val captionMaxHeight = height - reserve - 6
+                assertEquals(Constraints.fixed(width, height - minOf(captionHeight, captionMaxHeight) - 6), image.measured)
                 assertEquals(captionMaxHeight, caption.measured!!.maxHeight)
                 assertEquals(0, caption.measured!!.minHeight)
                 assertEquals(0, caption.measured!!.minWidth)
@@ -94,7 +91,7 @@ class CommunicationCardMeasurePolicyTest {
             }
             assertEquals(180, result.width)
             assertEquals(125, result.height)
-            assertEquals(Constraints(maxWidth = 180, maxHeight = 84), caption.measured)
+            assertEquals(Constraints(maxWidth = 180, maxHeight = 78), caption.measured)
             assertEquals(Constraints.fixed(180, 41), image.measured)
         }
     }
@@ -120,7 +117,7 @@ class CommunicationCardMeasurePolicyTest {
             scope.measure(listOf(image, caption), Constraints(maxWidth = 220))
         }
         assertEquals(220, result.width)
-        assertEquals(252, result.height)
+        assertEquals(258, result.height)
         assertEquals(Constraints.fixed(220, 220), image.measured)
         assertEquals(Constraints(maxWidth = 220), caption.measured)
     }
@@ -133,7 +130,7 @@ class CommunicationCardMeasurePolicyTest {
         }
         assertEquals(48, result.width)
         assertEquals(96, result.height)
-        assertEquals(Constraints.fixed(48, 84), image.measured)
+        assertEquals(Constraints.fixed(48, 78), image.measured)
     }
 
     @Test
@@ -145,7 +142,21 @@ class CommunicationCardMeasurePolicyTest {
             }
             assertEquals(180, result.width)
             assertEquals(72, result.height)
-            assertEquals(Constraints.fixed(180, 48), image.measured)
+            assertEquals(Constraints.fixed(180, 42), image.measured)
+        }
+    }
+
+    @Test
+    fun tinyBoundsCapTheGapWithoutLosingTheImageReservation() {
+        for (height in 1..8) {
+            val image = Child(1000, 1000)
+            val caption = Child(48, 500)
+            val result = with(CommunicationCardMeasurePolicy) {
+                scope.measure(listOf(image, caption), Constraints.fixed(48, height))
+            }
+            assertEquals(height, result.height)
+            assertEquals(height / 3, image.measured!!.maxHeight)
+            assertTrue(caption.measured!!.maxHeight >= 0)
         }
     }
 }
