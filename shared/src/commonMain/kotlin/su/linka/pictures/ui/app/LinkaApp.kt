@@ -180,14 +180,15 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
             ProductDialog("Не удалось завершить закрытие / перезагрузку", {
                 hideLifecycleProblem = true
                 navigate(ProductPage.COMMUNICATION)
-            }) {
-                committedEpoch?.let { androidx.compose.material.Text("Последнее подтверждённое изменение библиотеки — эпоха $it. Ошибка завершения не отменяет эту запись. Не повторяйте восстановление.") }
-                Feedback(restartProblem?.let { OperationResult.Failed(it) })
-                androidx.compose.material.Text("Для безопасного продолжения требуется перезапуск приложения. Новые защищённые действия запрещены; автоматического повтора нет.")
+            }, actions = {
                 Action("К экрану общения") {
                     hideLifecycleProblem = true
                     navigate(ProductPage.COMMUNICATION)
                 }
+            }) {
+                committedEpoch?.let { androidx.compose.material.Text("Последнее подтверждённое изменение библиотеки — эпоха $it. Ошибка завершения не отменяет эту запись. Не повторяйте восстановление.") }
+                Feedback(restartProblem?.let { OperationResult.Failed(it) })
+                androidx.compose.material.Text("Для безопасного продолжения требуется перезапуск приложения. Новые защищённые действия запрещены; автоматического повтора нет.")
             }
         }
     }

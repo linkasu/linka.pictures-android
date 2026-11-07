@@ -23,26 +23,16 @@ internal fun ProductScaffold(title: String, onBack: () -> Unit, scrollContent: B
     Surface(color = palette.background, contentColor = palette.text) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
-                title = { ToolbarTitle(title, modifier = Modifier.semantics { heading() }) },
+            ProductTopBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+                title = title,
                 navigationIcon = { IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Назад" }) {
                     Text("‹", style = MaterialTheme.typography.h4)
-                } },
-                backgroundColor = palette.surface, contentColor = palette.text)
+                } })
             val scrolling = if (scrollContent) Modifier.verticalScroll(rememberScrollState()) else Modifier
             Column(Modifier.weight(1f).fillMaxWidth().then(scrolling).padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
         }
     }
-}
-
-@Composable
-internal fun ProductDialog(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    val p = LocalLinkaPalette.current
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(title) },
-        text = { Column(Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp), content = content) }, buttons = {},
-        backgroundColor = p.surface, contentColor = p.text)
 }
 
 @Composable

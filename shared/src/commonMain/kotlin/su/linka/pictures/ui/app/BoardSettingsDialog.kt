@@ -62,14 +62,41 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
             else -> result = read
         }
     }
-    ProductDialog("Параметры доски", { if (!busy) onDismiss() }) {
+    var pager by remember(snapshot) { mutableStateOf(snapshot?.settings?.boards?.get(board)?.showPageButtons ?: true) }
+    var selectedMode by remember(snapshot) { mutableStateOf<InteractionMode?>(null) }
+    val writable = enabled && !busy && !stopped && !controller.requiresRestart &&
+        library.listing.value.refreshProblem == null
+    ProductDialog("Параметры доски", { if (!busy) onDismiss() }, actions = {
+        androidx.compose.foundation.layout.Column {
+            snapshot?.let { loaded ->
+                Action("Сохранить", writable) {
+                    val admission = gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner)
+                    if (admission !is OperationResult.Completed) result = admission
+                    else {
+                        val modeGuard = gate.guard(ProtectedAction.CHANGE_SETTINGS, capability, owner)
+                        busy = true
+                        scope.launch {
+                            try {
+                                val saved = saveBoardSettings(controller, owner, capability, loaded, board, pager, selectedMode,
+                                    { currentOnSaved(it) }, { chosen ->
+                                        if (currentEnabled && modeGuard() is OperationResult.Completed &&
+                                            gate.check(ProtectedAction.CHANGE_SETTINGS, currentCapability, owner) is OperationResult.Completed)
+                                            currentOnSetMode(chosen)
+                                    })
+                                result = saved
+                                if (saved is OperationResult.Completed) { stopped = true; onDismiss() }
+                                if (saved == OperationResult.UnconfirmedCommit) stopped = true
+                            } finally { busy = false }
+                        }
+                    }
+                }
+            }
+            Action("Закрыть", !busy, onClick = onDismiss)
+        }
+    }) {
         if (gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner) !is OperationResult.Completed) access()
         if (snapshot == null && result == null) Text("Загружаем настройки…")
-        snapshot?.let { loaded -> key(loaded) {
-            var pager by remember { mutableStateOf(loaded.settings.boards[board]?.showPageButtons ?: true) }
-            var selectedMode by remember { mutableStateOf<InteractionMode?>(null) }
-            val writable = enabled && !busy && !stopped && !controller.requiresRestart &&
-                library.listing.value.refreshProblem == null
+        snapshot?.let {
             Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)
                 .toggleable(pager, enabled = writable, role = Role.Checkbox, onValueChange = { pager = it })) {
                 Checkbox(pager, null, enabled = writable)
@@ -82,30 +109,8 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
                 RadioButton((selectedMode ?: mode) == choice, null, enabled = writable)
                 Text(if (choice == InteractionMode.COMPOSE) "Составлять сообщение" else "Говорить сразу")
             } }
-            Action("Сохранить", writable) {
-                val admission = gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner)
-                if (admission !is OperationResult.Completed) result = admission
-                else {
-                    val modeGuard = gate.guard(ProtectedAction.CHANGE_SETTINGS, capability, owner)
-                    busy = true
-                    scope.launch {
-                        try {
-                            val saved = saveBoardSettings(controller, owner, capability, loaded, board, pager, selectedMode,
-                                { currentOnSaved(it) }, { chosen ->
-                                    if (currentEnabled && modeGuard() is OperationResult.Completed &&
-                                        gate.check(ProtectedAction.CHANGE_SETTINGS, currentCapability, owner) is OperationResult.Completed)
-                                        currentOnSetMode(chosen)
-                                })
-                            result = saved
-                            if (saved is OperationResult.Completed) { stopped = true; onDismiss() }
-                            if (saved == OperationResult.UnconfirmedCommit) stopped = true
-                        } finally { busy = false }
-                    }
-                }
-            }
-        } }
+        }
         Feedback(result)
         Action("Перечитать настройки (отбросить ввод)", enabled && !busy && !stopped && !controller.requiresRestart) { refresh++ }
-        Action("Закрыть", !busy, onClick = onDismiss)
     }
 }
