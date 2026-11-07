@@ -9,6 +9,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import su.linka.pictures.ui.theme.LinkaMetrics
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
@@ -19,7 +22,8 @@ internal fun CommunicationActionButton(
 ) {
     val palette = LocalLinkaPalette.current
     OutlinedButton(
-        onClick, modifier.sizeIn(minWidth = LinkaMetrics.touchTarget, minHeight = LinkaMetrics.touchTarget),
+        onClick, modifier.sizeIn(minWidth = LinkaMetrics.touchTarget, minHeight = LinkaMetrics.touchTarget)
+            .semantics { contentDescription = label },
         enabled = enabled, shape = RoundedCornerShape(LinkaMetrics.cardRadius),
         border = BorderStroke(1.dp, palette.border), contentPadding = PaddingValues(4.dp),
         colors = ButtonDefaults.outlinedButtonColors(backgroundColor = palette.navigationSurface,
@@ -27,7 +31,14 @@ internal fun CommunicationActionButton(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(icon.vector, null, Modifier.size(24.dp))
-            Text(label, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(when (icon) {
+                CommunicationIcon.Backspace -> "Убрать"
+                CommunicationIcon.Clear -> "Очистить"
+                CommunicationIcon.Undo -> "Вернуть"
+                CommunicationIcon.Stop -> "Стоп"
+                else -> label
+            }, modifier = Modifier.clearAndSetSemantics {}, fontSize = 12.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }

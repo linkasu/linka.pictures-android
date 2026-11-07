@@ -37,7 +37,9 @@ internal fun ProductScaffold(title: String, onBack: () -> Unit, scrollContent: B
 
 @Composable
 internal fun Action(label: String, enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) =
-    LabeledActionButton(label, enabled, destructive, onClick, Modifier.fillMaxWidth())
+    LabeledActionButton(label, enabled, destructive, onClick, Modifier.fillMaxWidth(),
+        appearance = if (destructive) su.linka.pictures.ui.components.ActionAppearance.DESTRUCTIVE
+            else su.linka.pictures.ui.components.ActionAppearance.SECONDARY)
 
 @Composable
 internal fun Field(value: String, label: String, enabled: Boolean = true,
