@@ -1,0 +1,82 @@
+package su.linka.pictures.ui.card
+
+import androidx.compose.runtime.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.*
+import su.linka.pictures.application.authoring.*
+import su.linka.pictures.domain.*
+import kotlin.test.*
+
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+class CardEditorInputTest {
+    private val form = EditorForm.Card(PageId("page"), 0, CardId("card"), label = "Initial")
+    private val initial = AuthoringState(ownerId = "owner", epoch = 1, phase = AuthoringPhase.EDITING,
+        draft = EditorDraft(DraftId("draft"), null, null,
+            BoardDocument(BoardId("board"), "Board", listOf(BoardPage(form.pageId, 1, 1, emptyList()))), form))
+
+    @Test fun resizeAndPhaseChangesKeepPendingInputAndItsAcknowledgement() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val recomposer = Recomposer(coroutineContext)
+        val composition = Composition(EmptyApplier(), recomposer)
+        try {
+            var state = initial
+            var wide = false
+            var input: CardEditorInput? = null
+            var callback: ((AuthoringState) -> Unit)? = null
+            fun render() {
+                composition.setContent {
+                    val owner = rememberCardEditorInput(state, "owner") { _, handled -> callback = handled }
+                    SideEffect { input = owner }
+                    if (wide) key("inspector") { SideEffect {} } else key("dialog") { SideEffect {} }
+                }
+            }
+            render()
+            val original = assertNotNull(input)
+            original.change(original.value.copy(label = "Pending"))
+            wide = true
+            state = state.copy(phase = AuthoringPhase.PAUSED)
+            render()
+            assertSame(original, input)
+            assertEquals("Pending", input!!.value.label)
+            assertTrue(input!!.pending)
+            callback!!(state.copy(editVersion = 1, draft = state.draft!!.copy(form = form.copy(label = "Pending"))))
+            runCurrent()
+            assertFalse(input!!.pending)
+            assertEquals("Pending", input!!.value.label)
+            assertEquals(DraftSavePhase.UNSAVED, state.savePhase)
+
+            val oldCallback = callback!!
+            state = initial.copy(draft = initial.draft!!.copy(form = form.copy(cardId = CardId("other"))))
+            render()
+            val replacement = assertNotNull(input)
+            assertNotSame(original, replacement)
+            replacement.change(replacement.value.copy(label = "New pending"))
+            oldCallback(initial.copy(editVersion = 2, draft = initial.draft.copy(form = form.copy(label = "Late"))))
+            runCurrent()
+            assertEquals("New pending", replacement.value.label)
+            assertTrue(replacement.pending)
+        } finally {
+            composition.dispose()
+            recomposer.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun acknowledgementRequiresEveryAuthorityAndFormIdentity() {
+        val identity = CardInputIdentity("owner", 1, DraftId("draft"), form.pageId, form.cardId)
+        assertTrue(identity.matches(initial))
+        assertFalse(identity.matches(initial.copy(ownerId = "other")))
+        assertFalse(identity.matches(initial.copy(epoch = 2)))
+        assertFalse(identity.matches(initial.copy(draft = initial.draft!!.copy(id = DraftId("other")))))
+        assertFalse(identity.matches(initial.copy(draft = initial.draft!!.copy(form = form.copy(pageId = PageId("other"))))))
+        assertFalse(identity.matches(initial.copy(draft = initial.draft!!.copy(form = null))))
+    }
+
+    private class EmptyApplier : AbstractApplier<Unit>(Unit) {
+        override fun insertTopDown(index: Int, instance: Unit) = Unit
+        override fun insertBottomUp(index: Int, instance: Unit) = Unit
+        override fun remove(index: Int, count: Int) = Unit
+        override fun move(from: Int, to: Int, count: Int) = Unit
+        override fun onClear() = Unit
+    }
+}

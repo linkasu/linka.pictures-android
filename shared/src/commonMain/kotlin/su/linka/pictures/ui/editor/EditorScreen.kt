@@ -23,6 +23,7 @@ import su.linka.pictures.application.authoring.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.card.CardEditorDialog
+import su.linka.pictures.ui.card.rememberCardEditorInput
 import su.linka.pictures.ui.components.LabeledActionButton
 import su.linka.pictures.ui.images.VisibleImageDemand
 import su.linka.pictures.ui.components.ToolbarTitle
@@ -64,6 +65,7 @@ fun EditorScreen(
     val gridEnabled = enabled && draft?.form !is EditorForm.Card && !state.mediaBusy
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    val cardInput = rememberCardEditorInput(state, ownerId, dispatchEdited)
     LaunchedEffect(draft?.id, draft?.form != null, page?.id) {
         if (draft?.form != null) selectedPage = page?.id?.value
     }
@@ -192,7 +194,7 @@ fun EditorScreen(
                 }
             }
             if (showSettings && document != null) EditorSettingsDialog(state, ownerId, enabled, dispatchEdited, { showSettings = false })
-            if (draft?.form is EditorForm.Card) CardEditorDialog(state, ownerId, dispatch, dispatchEdited, images)
+            if (draft?.form is EditorForm.Card) CardEditorDialog(state, ownerId, dispatch, dispatchEdited, images, input = cardInput)
             if (showSaveStatus) AlertDialog(onDismissRequest = { showSaveStatus = false },
                 title = { Text("Состояние черновика") }, text = { Column {
                     Text(draftSaveLabel(state.savePhase))

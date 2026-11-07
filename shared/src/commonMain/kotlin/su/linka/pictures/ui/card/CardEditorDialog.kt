@@ -21,27 +21,49 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import su.linka.pictures.application.authoring.*
 import su.linka.pictures.application.ports.AudioPhase
 import su.linka.pictures.application.ports.AudioPurpose
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.editor.AuthoringFeedback
-import su.linka.pictures.ui.editor.BufferedAuthoringInput
 import su.linka.pictures.ui.editor.authoringFieldColors
 import su.linka.pictures.ui.editor.authoringProblemLabel
 import su.linka.pictures.ui.editor.editable
 import su.linka.pictures.ui.images.DemandVisibleImages
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CardEditorDialog(
     state: AuthoringState,
     ownerId: String,
     dispatch: (AuthoringAction) -> Unit,
     dispatchEdited: (AuthoringAction, (AuthoringState) -> Unit) -> Unit,
+    images: Map<AssetId, ImageBitmap>,
+    modifier: Modifier = Modifier,
+    input: CardEditorInput? = rememberCardEditorInput(state, ownerId, dispatchEdited),
+) {
+    input ?: return
+    val enabled = state.editable()
+    val palette = LocalLinkaPalette.current
+    val cancel = { input.discardPending(); dispatch(AuthoringAction.CancelCard) }
+    Dialog(onDismissRequest = { if (enabled) cancel() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp), contentAlignment = Alignment.Center) {
+            Surface(modifier.widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight.coerceAtMost(640.dp)),
+                color = palette.surface, contentColor = palette.text, shape = MaterialTheme.shapes.medium) {
+                CardEditorContent(state, input, dispatch, images, Modifier.padding(16.dp))
+            }
+        }
+    }
+}
+
+/** Shared form and pinned actions; its input owner must live above dialog/inspector branches. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun CardEditorContent(
+    state: AuthoringState,
+    input: CardEditorInput,
+    dispatch: (AuthoringAction) -> Unit,
     images: Map<AssetId, ImageBitmap>,
     modifier: Modifier = Modifier,
 ) {
@@ -52,38 +74,11 @@ internal fun CardEditorDialog(
     val focus = LocalFocusManager.current
     var speechMenu by remember { mutableStateOf(false) }
     var moreAudio by remember { mutableStateOf(false) }
-    val draftId = state.draft.id
-    val epoch = state.epoch
-    val pageId = form.pageId
-    val cardId = form.cardId
-    val input = remember(ownerId, epoch, draftId, state.phase, pageId, cardId) {
-        BufferedAuthoringInput(AuthoringAction.ChangeCard(form.label, form.speechText, form.speechChoice, form.useLabelForSpeech), state.editVersion)
-    }
-    val scope = rememberCoroutineScope()
-    SideEffect { input.acceptExternal(AuthoringAction.ChangeCard(form.label, form.speechText, form.speechChoice, form.useLabelForSpeech), state.editVersion) }
-    val change: (AuthoringAction.ChangeCard) -> Unit = { next ->
-        val token = input.edit(next)
-        dispatchEdited(next) { accepted ->
-            val actual = accepted.draft?.form as? EditorForm.Card
-            if (accepted.ownerId == ownerId && accepted.epoch == epoch && accepted.draft?.id == draftId &&
-                actual?.pageId == pageId && actual.cardId == cardId) {
-                val payload = AuthoringAction.ChangeCard(actual.label, actual.speechText, actual.speechChoice, actual.useLabelForSpeech)
-                val editVersion = accepted.editVersion
-                scope.launch(Dispatchers.Main.immediate) {
-                    input.handled(token, payload, editVersion)
-                }
-            }
-        }
-    }
     val content = input.value
+    val change = input.change
     val cancel = { input.discardPending(); dispatch(AuthoringAction.CancelCard) }
     DemandVisibleImages(form.cardId, cardImageDemand(form))
-    Dialog(onDismissRequest = { if (enabled) cancel() },
-        properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp), contentAlignment = Alignment.Center) {
-            Surface(modifier.widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight.coerceAtMost(640.dp)),
-                color = palette.surface, contentColor = palette.text, shape = MaterialTheme.shapes.medium) {
-                Column(Modifier.padding(12.dp)) {
+                Column(modifier) {
                     Column(Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Тип карточки", modifier = Modifier.semantics { heading() })
                         FlowRow(Modifier.selectableGroup()) {
@@ -172,7 +167,4 @@ internal fun CardEditorDialog(
                         TextButton({ if (!input.pending) { focus.clearFocus(); dispatch(AuthoringAction.SaveCard) } }, enabled = enabled && !input.pending && !state.mediaBusy, modifier = Modifier.weight(1f)) { Text("Готово") }
                     }
                 }
-            }
-        }
-    }
 }
