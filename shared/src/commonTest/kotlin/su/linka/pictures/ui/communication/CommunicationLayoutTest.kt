@@ -11,6 +11,20 @@ import androidx.compose.ui.graphics.Color
 
 class CommunicationLayoutTest {
     @Test
+    fun compactAndLargeTextReserveASeparatePinnedActionRowWithoutOverflow() {
+        val normal = communicationVerticalBudget(591f, 1f, false, stackedActions = true)
+        assertEquals(64f, normal.actions)
+        val large = communicationVerticalBudget(535f, 2f, false, stackedActions = true)
+        assertEquals(128f, large.actions)
+        assertTrue(large.phrase + large.actions + 1f < large.content)
+        for (height in listOf(0f, 32f, 80f, 240f, 664f)) {
+            val budget = communicationVerticalBudget(height, 6f, true, stackedActions = true)
+            assertEquals(height, budget.content)
+            assertTrue(budget.phrase >= 0 && budget.actions >= 0)
+            assertTrue(budget.phrase + budget.actions <= height)
+        }
+    }
+    @Test
     fun phraseKeepsSinglePreviewAndFitsFirstTwoBeforeScrolling() {
         assertEquals(120f, communicationMessagePartWidth(180f, 120f, 1))
         assertEquals(100f, communicationMessagePartWidth(100f, 120f, 1))

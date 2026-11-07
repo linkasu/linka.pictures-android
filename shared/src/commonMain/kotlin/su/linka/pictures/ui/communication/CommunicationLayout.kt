@@ -4,7 +4,7 @@ import su.linka.pictures.ui.components.toolbarHeightForFontScale
 
 internal data class CommunicationCellSize(val width: Float, val height: Float)
 
-internal data class CommunicationVerticalBudget(val phrase: Float, val content: Float)
+internal data class CommunicationVerticalBudget(val phrase: Float, val content: Float, val actions: Float = 0f)
 
 internal fun communicationMessagePartWidth(availableWidth: Float, height: Float, partCount: Int): Float {
     // Short landscape windows need caption room, not a square narrower than its own padding and label.
@@ -25,13 +25,15 @@ internal fun communicationToolbarHeight(width: Float, height: Float, fontScale: 
     return toolbarHeightForFontScale(base, fontScale)
 }
 
-internal fun communicationVerticalBudget(height: Float, fontScale: Float, multiplePages: Boolean): CommunicationVerticalBudget {
+internal fun communicationVerticalBudget(height: Float, fontScale: Float, multiplePages: Boolean, stackedActions: Boolean = false): CommunicationVerticalBudget {
     require(height.isFinite() && height >= 0 && fontScale.isFinite() && fontScale > 0)
     val scale = maxOf(1f, fontScale)
+    val actions = if (stackedActions) minOf(64f * scale, height / 3) else 0f
+    val remaining = height - actions
     val fixed = 1f + if (multiplePages) 32f * scale else 0f
     // Only the grid scrolls; never grow the parent and scroll speech controls away.
-    val phrase = maxOf(64f * scale, (height - fixed) / 5).coerceIn(0f, height / 2)
-    return CommunicationVerticalBudget(phrase, height)
+    val phrase = maxOf(64f * scale, (remaining - fixed) / 5).coerceIn(0f, remaining / 2)
+    return CommunicationVerticalBudget(phrase, height, actions)
 }
 
 internal fun communicationCellSize(width: Float, height: Float, columns: Int, rows: Int, fontScale: Float): CommunicationCellSize {

@@ -53,6 +53,24 @@ fun CommunicationScreen(
     var inputFocused by remember { mutableStateOf(false) }
     val palette = LocalLinkaPalette.current
     val dispatch: (CommunicationCommand) -> Unit = { if (presentation.commandsEnabled) onCommand(it) }
+    val speechAction: @Composable (Modifier) -> Unit = { action ->
+        CommunicationActionButton(if (presentation.stopping) CommunicationIcon.Stop else CommunicationIcon.Speak,
+            if (presentation.stopping) "Остановить" else "Произнести", presentation.speechEnabled,
+            { dispatch(if (presentation.stopping) CommunicationCommand.Stop(CommandId(ids.next()))
+                else CommunicationCommand.Speak(CommandId(ids.next()))) },
+            action.semantics { stateDescription = presentation.audioStatus })
+    }
+    val backspaceAction: @Composable (Modifier) -> Unit = { action ->
+        CommunicationActionButton(CommunicationIcon.Backspace, "Удалить последнее", presentation.editEnabled,
+            { dispatch(CommunicationCommand.Backspace(CommandId(ids.next()))) }, action)
+    }
+    val clearAction: @Composable (Modifier) -> Unit = { action ->
+        CommunicationActionButton(if (presentation.undoEnabled) CommunicationIcon.Undo else CommunicationIcon.Clear,
+            if (presentation.undoEnabled) "Вернуть сообщение" else "Очистить сообщение",
+            presentation.editEnabled || presentation.undoEnabled,
+            { dispatch(if (presentation.undoEnabled) CommunicationCommand.UndoClear(CommandId(ids.next()))
+                else CommunicationCommand.Clear(CommandId(ids.next()))) }, action)
+    }
     VisibleImageDemand(state.stamp.epoch, onImagesNeeded) {
     val paging = Modifier.communicationPaging(inputFocused, presentation.commandsEnabled) { direction ->
         val pages = state.board?.document?.pages.orEmpty()
@@ -81,27 +99,21 @@ fun CommunicationScreen(
                 ) { notices.forEach { Text(it, color = palette.danger) } }
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                     val pages = state.board?.document?.pages.orEmpty()
-                    val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1)
+                    val stackedActions = maxWidth.value < 600f * LocalDensity.current.fontScale.coerceAtLeast(1f)
+                    val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1, stackedActions)
                     val actionWidth = (maxWidth / 8).coerceIn(48.dp, 96.dp)
                     Box(Modifier.fillMaxSize()) {
                         Column(Modifier.fillMaxWidth().height(budget.content.dp)) {
                             Row(Modifier.fillMaxWidth().height(budget.phrase.dp)) {
                                 val action = Modifier.width(actionWidth).fillMaxHeight()
-                                CommunicationActionButton(if (presentation.stopping) CommunicationIcon.Stop else CommunicationIcon.Speak,
-                                    if (presentation.stopping) "Остановить" else "Произнести", presentation.speechEnabled,
-                                    {
-                                        val id = CommandId(ids.next())
-                                        dispatch(if (presentation.stopping) CommunicationCommand.Stop(id) else CommunicationCommand.Speak(id))
-                                     }, action.semantics { stateDescription = presentation.audioStatus })
+                                if (!stackedActions) speechAction(action)
                                 CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight())
-                                CommunicationActionButton(CommunicationIcon.Backspace, "Удалить последнее", presentation.editEnabled,
-                                    { dispatch(CommunicationCommand.Backspace(CommandId(ids.next()))) }, action)
-                                CommunicationActionButton(if (presentation.undoEnabled) CommunicationIcon.Undo else CommunicationIcon.Clear,
-                                    if (presentation.undoEnabled) "Вернуть сообщение" else "Очистить сообщение",
-                                    presentation.editEnabled || presentation.undoEnabled,
-                                    { dispatch(if (presentation.undoEnabled) CommunicationCommand.UndoClear(CommandId(ids.next()))
-                                        else CommunicationCommand.Clear(CommandId(ids.next()))) }, action)
-                            }
+                                if (!stackedActions) { backspaceAction(action); clearAction(action) }
+                             }
+                             if (stackedActions) Row(Modifier.fillMaxWidth().height(budget.actions.dp)) {
+                                 val action = Modifier.weight(1f).fillMaxHeight()
+                                 speechAction(action); backspaceAction(action); clearAction(action)
+                             }
                             Divider(color = palette.divider)
                             fun changePage(direction: Int): Boolean {
                                 val target = pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) ?: return false
