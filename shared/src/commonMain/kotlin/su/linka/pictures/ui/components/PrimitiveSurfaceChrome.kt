@@ -3,7 +3,6 @@ package su.linka.pictures.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import su.linka.pictures.ui.theme.Linka14
 import su.linka.pictures.ui.theme.LinkaMetrics
 import su.linka.pictures.ui.theme.LinkaPalette
 
@@ -20,9 +19,4 @@ internal object PrimitiveSurfaceChrome {
         else -> null
     }
 
-    // Compatibility for CommunicationMessage until its separate screen migration.
-    fun cardGradient(palette: LinkaPalette, contentColor: Color, pressed: Boolean): List<Color> =
-        listOf(Linka14.cardTop, Linka14.cardBottom).map {
-            if (pressed) palette.pressedSurface(it, contentColor) else it
-        }
 }
