@@ -36,7 +36,8 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     onOpen: (BoardId) -> Unit, onCreate: () -> Unit, onEdit: (BoardId) -> Unit,
     onResume: (DraftId) -> Unit, onSettings: () -> Unit, onAccess: () -> Unit,
     onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null,
-    canReturnToCommunication: Boolean = true, communicationNotices: List<String> = emptyList()) {
+    canReturnToCommunication: Boolean = true, communicationNotices: List<String> = emptyList(),
+    canOpenBoards: Boolean = true) {
     val listing by library.listing.collectAsState()
     val shownListing = listing
     var drafts by remember { mutableStateOf<OperationResult<List<DraftSummary>>?>(null) }
@@ -90,7 +91,7 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
          if (result !is OperationResult.Completed) Feedback(result)
        } }
         items(shownListing.items, key = { "board:${it.id.value}" }) { entry ->
-             LibraryTile(library, entry, shownListing.epoch, images, enabled && !busy, !busy,
+              LibraryTile(library, entry, shownListing.epoch, images, enabled && !busy, !busy && canOpenBoards,
                  { onOpen(entry.id) }, { onEdit(entry.id) }, { onTransfer(entry.id) },
                  { decision = BoardDecision(entry, shownListing.epoch, false); name = entry.name
                      result = null; requestAuthorization(ProtectedAction.RENAME_BOARD) },

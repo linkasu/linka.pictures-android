@@ -63,6 +63,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     val voices by audio.voices.collectAsState()
     val listing by library.listing.collectAsState()
     var settings by remember(library) { mutableStateOf(PortableSettings()) }
+    var settingsLoaded by remember(library, listing.epoch) { mutableStateOf(false) }
     val systemDark = isSystemInDarkTheme()
     var dark by remember { mutableStateOf(systemDark) }
     var libraryAssets by remember(route?.owner) { mutableStateOf<Set<AssetId>>(emptySet()) }
@@ -103,7 +104,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
         val read = library.settings()
         currentCoroutineContext().ensureActive()
         if (library.listing.value.epoch == snapshot.epoch && library.listing.value.revision == snapshot.revision)
-            (read as? OperationResult.Completed)?.value?.let { settings = it }
+            (read as? OperationResult.Completed)?.value?.let { settings = it; settingsLoaded = true }
     }
     LaunchedEffect(isForeground, navigation) { if (!isForeground) navigation.background() }
     LaunchedEffect(assistantState.commandsAvailable(), navigation) {
@@ -146,7 +147,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     suspend fun validateSettings(value: PortableSettings): String? =
         message.board?.let { if (measureBoard(it.document, value) == null) "Масштаб не поддерживается" else null }
     fun openBoard(board: BoardId) {
-        if (openingBoard || !isForeground) return
+        if (openingBoard || !isForeground || !settingsLoaded) return
         val previousRoute = navigation.route.value
         openingBoard = true
         openingJob = uiScope.launch {
@@ -199,7 +200,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
             Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                 androidx.compose.material.CircularProgressIndicator()
             }
-        } else if (communicationVisible && boardLayout != null) {
+        } else if (communicationVisible && boardLayout != null && settingsLoaded) {
             val currentBoard = message.message.cursor?.boardId
             CommunicationScreen(message, ids, voices, { if (isForeground && current == null) communication.dispatch(it) },
                 { navigate(ProductPage.LIBRARY) }, boardLayout, images,
@@ -226,10 +227,11 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                     { navigate(ProductPage.EDITOR, AuthoringAction.ResumeDraft(it)) },
                     { navigate(ProductPage.SETTINGS) }, { navigate(ProductPage.ACCESS) },
                     { navigate(ProductPage.TRANSFER, board = it) }, gate = access,
-                    canReturnToCommunication = boardLayout != null && !openingBoard && presentation.commandsEnabled,
+                    canOpenBoards = settingsLoaded,
+                    canReturnToCommunication = settingsLoaded && boardLayout != null && !openingBoard && presentation.commandsEnabled,
                     communicationNotices = communicationNotices(message, presentation, voices))
                 ProductPage.SETTINGS -> SettingsScreen(library, controller, audio, current.owner, capability, commandsEnabled,
-                    dark, { dark = it }, { settings = it }, accessPanel, { navigate(ProductPage.LIBRARY) },
+                    dark, { dark = it }, { settings = it; settingsLoaded = true }, accessPanel, { navigate(ProductPage.LIBRARY) },
                     gate = access, onAccess = { navigate(ProductPage.ACCESS) }, validateSettings = ::validateSettings)
                 ProductPage.ACCESS -> ProductScaffold("Защита помощника", { navigate(ProductPage.LIBRARY) }) { accessPanel() }
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
