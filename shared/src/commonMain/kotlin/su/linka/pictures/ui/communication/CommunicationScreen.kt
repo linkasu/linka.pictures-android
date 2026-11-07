@@ -83,7 +83,7 @@ fun CommunicationScreen(
                     val pages = state.board?.document?.pages.orEmpty()
                     val budget = communicationVerticalBudget(maxHeight.value, LocalDensity.current.fontScale, pages.size > 1)
                     val actionWidth = maxOf(48.dp, maxWidth / 6)
-                    Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    Box(Modifier.fillMaxSize()) {
                         Column(Modifier.fillMaxWidth().height(budget.content.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(Modifier.fillMaxWidth().height(budget.phrase.dp)) {
                                 val action = Modifier.width(actionWidth).fillMaxHeight().drawBehind {

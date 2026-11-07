@@ -29,10 +29,9 @@ internal fun communicationVerticalBudget(height: Float, fontScale: Float, multip
     require(height.isFinite() && height >= 0 && fontScale.isFinite() && fontScale > 0)
     val scale = maxOf(1f, fontScale)
     val fixed = 17f + if (multiplePages) 32f * scale else 0f
-    // Leave room for an image above a readable caption even in short landscape windows.
-    val phrase = maxOf(64f * scale, (height - fixed) / 5)
-    val minimum = phrase + 64f * scale + fixed
-    return CommunicationVerticalBudget(phrase, maxOf(height, minimum))
+    // Only the grid scrolls; never grow the parent and scroll speech controls away.
+    val phrase = maxOf(64f * scale, (height - fixed) / 5).coerceIn(0f, height / 2)
+    return CommunicationVerticalBudget(phrase, height)
 }
 
 internal fun communicationCellSize(width: Float, height: Float, columns: Int, rows: Int, fontScale: Float): CommunicationCellSize {

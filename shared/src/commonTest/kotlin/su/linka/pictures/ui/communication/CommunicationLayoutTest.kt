@@ -64,13 +64,21 @@ class CommunicationLayoutTest {
     }
 
     @Test
-    fun phraseKeepsOneFifthAndShortLargeTextWindowsCanScrollToGrid() {
+    fun phraseKeepsOneFifthWithoutMakingTheWholeScreenScrollable() {
         assertEquals(CommunicationVerticalBudget(96.6f, 500f), communicationVerticalBudget(500f, 1f, false))
         assertEquals(CommunicationVerticalBudget(64f, 240f), communicationVerticalBudget(240f, 1f, false))
         val short = communicationVerticalBudget(80f, 3f, true)
-        assertEquals(192f, short.phrase)
-        assertEquals(497f, short.content)
-        assertTrue(short.content > 80)
+        assertTrue(short.phrase <= 40f)
+        assertEquals(80f, short.content)
+    }
+
+    @Test
+    fun everyViewportBudgetStaysInsideItsParentEvenAtMaximumTextScale() {
+        for (height in listOf(0f, 32f, 80f, 240f, 664f)) for (scale in listOf(1f, 3f, 6f)) {
+            val budget = communicationVerticalBudget(height, scale, true)
+            assertEquals(height, budget.content)
+            assertTrue(budget.phrase in 0f..height / 2f)
+        }
     }
 
     @Test
