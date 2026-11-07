@@ -11,6 +11,49 @@ final class FilledBoardImportTests: XCTestCase {
     private var stage = "00-launch"
     private struct Unavailable: Error {}
 
+    func testElectronEditorAtlasWithoutPublishing() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        app.launch()
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            let landscape = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                app.frame.width > app.frame.height
+            }, object: nil)
+            guard XCTWaiter.wait(for: [landscape], timeout: 15) == .completed else { throw Unavailable() }
+        }
+        defer { XCUIDevice.shared.orientation = .portrait }
+        _ = try visible(named("Ваши наборы", in: app))
+        try tap(app.buttons.matching(identifier: "Действия с набором «\(importedBoardName)»"))
+        try tap(named("Редактировать", in: app))
+        if wait(app.buttons.matching(identifier: "Разрешить команды в этом экране"), timeout: 2) {
+            try tap(app.buttons.matching(identifier: "Разрешить команды в этом экране"))
+        }
+        if app.buttons.matching(identifier: "Начать редактирование").firstMatch.exists {
+            try tap(app.buttons.matching(identifier: "Начать редактирование"))
+        }
+        stage = "electron-editor-grid"
+        _ = try visible(app.buttons.matching(identifier: "КУШАТЬ. Строка 1, столбец 1"))
+        screenshot(app)
+        try tap(app.buttons.matching(identifier: "КУШАТЬ. Строка 1, столбец 1"))
+        stage = "electron-editor-card"
+        _ = try visible(named("Тип карточки", in: app))
+        screenshot(app)
+        try tap(app.textViews.matching(identifier: "КУШАТЬ"))
+        guard app.keyboards.firstMatch.waitForExistence(timeout: 5) else { throw Unavailable() }
+        stage = "electron-editor-keyboard"
+        screenshot(app)
+        try tap(app.keyboards.descendants(matching: .any).matching(NSPredicate(
+            format: "label IN %@ OR identifier IN %@", ["Готово", "Done"], ["Готово", "Done"])))
+        try tap(app.buttons.matching(identifier: "Отмена"))
+        _ = try visible(app.buttons.matching(identifier: "КУШАТЬ. Строка 1, столбец 1"))
+        try tap(named("Назад с сохранённым черновиком", in: app))
+        try openOwnedBoard(in: app)
+        try assertCards(in: app)
+        stage = "electron-editor-published-board-unchanged"
+        screenshot(app)
+    }
+
     func testElectronVisualAtlasExistingLibrary() throws {
         continueAfterFailure = false
         let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
@@ -380,7 +423,7 @@ final class FilledBoardImportTests: XCTestCase {
             try tap(named("Пробел", in: app))
             try tap(app.buttons.matching(identifier: "Готово"))
             _ = try visible(app.buttons.matching(identifier: "Пробел. Строка 1, столбец 1"))
-            try tap(app.buttons.matching(identifier: "Сохранить доску"))
+            try tap(app.buttons.matching(identifier: "Сохранить и выйти"))
             _ = try visible(app.buttons.matching(identifier: "Действия с набором «Новая доска»"))
             stage = "recovery-probe-sentinel-published"
             screenshot(app)

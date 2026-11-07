@@ -392,9 +392,9 @@ final class DevelopmentLibraryTests: XCTestCase {
 
         editorStage = "editor-card-is-draft-only"
         _ = try editorVisible(app.buttons.matching(identifier: "\(label). Строка 1, столбец 1"))
-        _ = try editorVisible(app.buttons.matching(identifier: "Сохранить доску"))
+        _ = try editorVisible(app.buttons.matching(identifier: "Сохранить и выйти"))
         attachScreenshot(of: app, stage: editorStage)
-        try editorTap(app.buttons.matching(identifier: "Сохранить доску"))
+        try editorTap(app.buttons.matching(identifier: "Сохранить и выйти"))
         editorStage = "editor-published"
         _ = try editorVisible(app.buttons.matching(identifier: "Действия с набором «\(name)»"), timeout: 30)
         attachScreenshot(of: app, stage: editorStage)
