@@ -1,0 +1,74 @@
+{
+  "scope": "Real iPad17 maximum system accessibility text size: caption scroll without message/audio mutation, then original system size and cold app reopen",
+  "device": "D46F4A13-2815-41C6-B093-0548B56AFD9E",
+  "cases": [
+    {
+      "name": "system-text-scroll-ipad-maximum",
+      "category": "accessibility-extra-extra-extra-large",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 28.262,
+      "attachments": [
+        {
+          "file": "system-text-scroll-ipad-maximum-26F2C031-C47A-4131-AD38-88C249125081.png",
+          "sha256": "f249ea233b221a8b9fd3c498723909c9adb07c640091feb920f881cd6c8d34ec",
+          "stage": "system-text-caption-after-scroll"
+        },
+        {
+          "file": "system-text-scroll-ipad-maximum-5DF9A1A7-DB6A-4AB2-B105-49D2F62A373E.png",
+          "sha256": "d85d60261cbec25909e2559b429658117aaa0551723b444e05a832a1bb28344f",
+          "stage": "system-text-all-nine-cards-reachable"
+        },
+        {
+          "file": "system-text-scroll-ipad-maximum-4ABADDBD-5C5D-42D4-9D4C-0C56C8B78328.png",
+          "sha256": "d85d60261cbec25909e2559b429658117aaa0551723b444e05a832a1bb28344f",
+          "stage": "system-text-existing-board-initial"
+        },
+        {
+          "file": "system-text-scroll-ipad-maximum-F1AE6AE7-0621-4242-B677-254F9B975D9B.txt",
+          "sha256": "da91dc213020cdfe78e98cfeb67d83a7674c166dbb81c07aeee2f7cc9800aa25",
+          "stage": "system-text-public-geometry",
+          "public_geometry": "runnerPreferredCategory=UICTContentSizeCategoryAccessibilityXXXL; runnerBodyPointSize=53.0; appFrame=(0.0, 0.0, 834.0, 1194.0); firstCardFrame=(20.0, 366.0, 259.5, 259.5)"
+        }
+      ]
+    },
+    {
+      "name": "system-text-scroll-ipad-restored",
+      "category": "large",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 20.705,
+      "attachments": [
+        {
+          "file": "system-text-scroll-ipad-restored-A4EA32A4-387F-40E2-96E1-671D3B564446.png",
+          "sha256": "ac225c84af2fecf05d3958be9873e8091e46d420b56af4b127f8cea74a5fdd22",
+          "stage": "system-text-all-nine-cards-reachable"
+        },
+        {
+          "file": "system-text-scroll-ipad-restored-32EF5ABB-0877-442C-9DC0-9A8AFC91CF45.png",
+          "sha256": "dbfd4bb566bbd22b48ba831cbdd830058030148bff0334aa2c9ebebe1d8a78c5",
+          "stage": "system-text-existing-board-initial"
+        },
+        {
+          "file": "system-text-scroll-ipad-restored-9331CE9F-50A7-4F5E-9E9F-F9EE2F0A2F14.txt",
+          "sha256": "50c3946606370166c48244392eefa300585ca458d086c08c7bf5c34fdca88425",
+          "stage": "system-text-public-geometry",
+          "public_geometry": "runnerPreferredCategory=UICTContentSizeCategoryL; runnerBodyPointSize=17.0; appFrame=(0.0, 0.0, 834.0, 1194.0); firstCardFrame=(20.0, 325.0, 259.5, 273.5)"
+        }
+      ]
+    }
+  ],
+  "maximum_category": "accessibility-extra-extra-extra-large",
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "primary_reviewed_caption_end": true,
+  "caption_endpoint": "КАКАТЬ visible across wrapped lines; image remains present",
+  "all_nine_cards_reachable": true,
+  "global_message_unchanged": "ХОЧУ КУШАТЬ",
+  "audio_control_state_unchanged": true,
+  "original_category_restored": "large",
+  "app_portable_scale_changed": false,
+  "portable2_times_system_maximum_tested": false,
+  "iphone_system_maximum_tested": false,
+  "whole_font_matrix_accepted": false,
+  "physical_aac_accepted": false
+}

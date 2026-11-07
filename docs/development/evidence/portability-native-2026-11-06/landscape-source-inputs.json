@@ -1,0 +1,30 @@
+{
+  "scope": "Source identity for current short-landscape candidate; not a claim of clean tree or release approval",
+  "base_commit": "05de1db9b853abfa020b835bafef4e2c00bcfcfb",
+  "dirty": true,
+  "files": {
+    "app/src/androidTest/java/su/linka/pictures/activity/DevelopmentParityTest.kt": "dc5888152fa54994b1d63279dae8eed9a799c7b719b99b7a8168ef79155c96c0",
+    "iosUiTests/LinkaStartupUITests/DevelopmentLibraryTests.swift": "446a1ca65088db0ebe28ba55eed482e979fd113542d69986b8a10ec4d678169a",
+    "iosUiTests/LinkaStartupUITests/FilledBoardImportTests.swift": "d576ea70144ac364fedf00894e7873ee52e6960e591ab3ebc8019535a61509ef",
+    "shared/build.gradle": "2e6253ac9395a523e2e7b2e25bb7678ea720c271f3726b17e1f4f8cf82ece274",
+    "shared/src/androidInstrumentedTest/kotlin/su/linka/pictures/bootstrap/AndroidGifAlphaProbeTest.kt": "33c0c193098067251e0f1b71fb7b999e896ecf715aa381b883e5b2198f6cf2d2",
+    "shared/src/androidInstrumentedTest/kotlin/su/linka/pictures/bootstrap/AndroidThumbnailDecoderTest.kt": "b0813f4db135af71892c641864d854b219728c1b3442e0589737f04a4435192c",
+    "shared/src/androidMain/kotlin/su/linka/pictures/bootstrap/AndroidThumbnailDecoder.kt": "d341f0d0128aee1b1ed5dbd9c677a446f0b1df0d658608a94edf77119ab7039b",
+    "shared/src/androidMain/kotlin/su/linka/pictures/platform/capabilities/AndroidGifDecoder.kt": "289422b4034b0776775bc2276e37b72d495487185190125bbe8558c038a8d824",
+    "shared/src/androidMain/kotlin/su/linka/pictures/platform/capabilities/AndroidMediaInspectionPort.kt": "c238f67eddcd3537c8d1522cc624b58959462c62e3cc338adca953595b7a997d",
+    "shared/src/commonMain/kotlin/su/linka/pictures/media/GifThumbnailBounds.kt": "3c5517c28c2d474b139cf77fac1ff2ff7058dd271adba4e6110b5632b7056472",
+    "shared/src/commonMain/kotlin/su/linka/pictures/ui/communication/CommunicationLayout.kt": "a411e1f63383ab83bf2b07903f31fd2072f85053d99e1a1e45e44d3ee1e6cf43",
+    "shared/src/commonMain/kotlin/su/linka/pictures/ui/editor/AuthoringPresentation.kt": "35964eca7639f9a5191ab0a39e7d8b9ec75e30b578e57d2258d58a319c8dde26",
+    "shared/src/commonTest/kotlin/su/linka/pictures/media/GifThumbnailBoundsTest.kt": "e322226726e5d0fd0d5b6dc68d94ca0b3fad6b25cc2db67ab8be1e79b6bb268a",
+    "shared/src/commonTest/kotlin/su/linka/pictures/ui/communication/CommunicationLayoutTest.kt": "9577ae9927c1a6f898de7066149e4c225c78e83646560bd183f989e1f3059823",
+    "shared/src/iosAppHostTest/kotlin/su/linka/pictures/audio/AudioAppHostChecks.kt": "05a208adaaec97d1861aad78f5dbf4c52fbebf73313c9fe6d730c4d5e852f0ac",
+    "shared/src/iosMain/kotlin/su/linka/pictures/bootstrap/IosProductRoot.kt": "250a87e9904596586ffd942eed18801cb0628fee9887c40c363634906ba150e8",
+    "shared/src/iosMain/kotlin/su/linka/pictures/bootstrap/UIKitIdentity.kt": "c051951ead51a9533635b25b8c68cd1cf921adb8e7469ba3139697ed8e08fd34",
+    "shared/src/iosTest/kotlin/su/linka/pictures/bootstrap/UIKitIdentityTest.kt": "f00a58e8d3d6f2c7b147f3213912c8cb81e9b442d325582417a93fc78d7a03de"
+  },
+  "fixture_sha256": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+  "full_quality_gate_status": "RUNNING; use landscape-phrase-current-quality-gate.log and landscape-phrase-full-native17.log, not prior 504/628 as current result",
+  "user_visual_approval": false,
+  "production_signing_performed": false,
+  "physical_acceptance": false
+}

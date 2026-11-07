@@ -1,6 +1,7 @@
 package su.linka.pictures.activity
 
 import android.content.Intent
+import android.net.Uri
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -8,11 +9,10 @@ import android.graphics.Rect
 import android.os.Bundle
 import android.os.Process
 import android.os.SystemClock
-import android.view.InputDevice
 import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.content.FileProvider
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -84,14 +84,15 @@ class DevelopmentParityTest {
                         .setAction(Intent.ACTION_VIEW).setDataAndType(uri, "application/octet-stream")
                     // Actual same-UID native delivery; no external URI grant or substituted reader.
                     stage("before-native-content-intent")
-                    scenario.onActivity { instrumentation.callActivityOnNewIntent(it, intent) }
-                    await("owned incoming notice without auto-import") { root -> find(root) { node ->
-                        node.text?.toString()?.startsWith("Получен файл.") == true
-                    } && emptyLibrary(root) }
-                    prepareNamedImport()
-                    // Every following wait permits only target package: unexpected DocumentsUI fails.
-                    confirmImportAndCompose()
-                    evidenceReady("owned-incoming-content; SAF-picker/OS-grant NOT evaluated")
+                    withIncomingIntent(scenario, intent) {
+                        await("owned incoming notice without auto-import") { root -> find(root) { node ->
+                            node.text?.toString()?.startsWith("Получен файл.") == true
+                        } && emptyLibrary(root) }
+                        prepareNamedImport()
+                        // Every following wait permits only target package: unexpected DocumentsUI fails.
+                        confirmImportAndCompose()
+                        evidenceReady("owned-incoming-content; SAF-picker/OS-grant NOT evaluated")
+                    }
                 } catch (failure: Throwable) {
                     // Revoke/close the activity owner before deleting its own source on a failed import.
                     try { scenario.close() }
@@ -102,6 +103,42 @@ class DevelopmentParityTest {
                 }
             }
         }
+    }
+
+    @Test fun warmRejectedIntentStillClosesTheScenarioWithoutWritingLibraryData() {
+        val scenario = ActivityScenario.launch(DevelopmentActivity::class.java)
+        scenario.use {
+            awaitLibrary()
+            val rejected = Intent(target, DevelopmentActivity::class.java).setAction(Intent.ACTION_VIEW)
+                .setDataAndType(Uri.parse("file:///u14-rejected-input.linka"), "application/octet-stream")
+            withIncomingIntent(scenario, rejected) {
+                await("unsupported URI rejected without reading") { root -> find(root) { node ->
+                    node.text?.toString()?.startsWith("Файл не открыт: UNSAFE_ARCHIVE") == true
+                } }
+            }
+        }
+        assertEquals(androidx.lifecycle.Lifecycle.State.DESTROYED, scenario.state)
+    }
+
+    private fun withIncomingIntent(scenario: ActivityScenario<DevelopmentActivity>, intent: Intent, block: () -> Unit) {
+        var original: Intent? = null
+        var failure: Throwable? = null
+        try {
+            scenario.onActivity {
+                original = Intent(it.intent)
+                instrumentation.callActivityOnNewIntent(it, intent)
+            }
+            block()
+        } catch (primary: Throwable) { failure = primary }
+        // ActivityScenario matches lifecycle events by the original Intent's action/data/type.
+        original?.let { launch ->
+            try { scenario.onActivity { it.intent = launch } }
+            catch (cleanup: Throwable) {
+                val primary = failure
+                if (primary == null) failure = cleanup else if (cleanup !== primary) primary.addSuppressed(cleanup)
+            }
+        }
+        failure?.let { throw it }
     }
 
     @Test fun reopenFilledBoardWithoutImportOrMessageEdits() {
@@ -119,6 +156,98 @@ class DevelopmentParityTest {
             awaitFilledMessage()
             evidenceReady("reopen-native-back-regression")
         }
+    }
+
+    @Test fun existingPhrasePlaybackStopAndReplayWithoutMessageEdits() {
+        assertFixtureIdentity()
+        assertTrue("No existing owned library to play", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
+        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+            awaitLibrary()
+            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            awaitNineCards()
+            awaitFilledMessage()
+            clickNamed(listOf("Произнести"))
+            awaitAudio("Произнести", "Воспроизведение завершено.")
+            clickNamed(listOf("Произнести"))
+            awaitAudio("Остановить", "Сообщение звучит.")
+            clickNamed(listOf("Остановить"))
+            awaitAudio("Произнести", "Воспроизведение остановлено.")
+            clickNamed(listOf("Произнести"))
+            awaitAudio("Произнести", "Воспроизведение завершено.")
+            awaitFilledMessage()
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            awaitLibrary()
+            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            awaitFilledMessage()
+            stage("recordings-completed-stop-replay-reopened; physical-audio-quality-not-evaluated")
+        }
+    }
+
+    @Test fun existingBoardLandscapeWithoutMessageEdits() {
+        assertFixtureIdentity()
+        ActivityScenario.launch(DevelopmentActivity::class.java).use { scenario ->
+            awaitLibrary()
+            var original = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            scenario.onActivity { original = it.requestedOrientation }
+            try {
+                scenario.onActivity { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                await("native landscape window") { root ->
+                    Rect().also(root::getBoundsInScreen).let { it.width() > it.height() }
+                }
+                awaitLibrary()
+                clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+                awaitNineCards()
+                awaitFilledMessage()
+                val image = stableIdleScreenshot()
+                try {
+                    assertTrue("Native screenshot must be landscape", image.width > image.height)
+                    val file = File.createTempFile("u14-landscape-", ".png", target.cacheDir)
+                    file.outputStream().use { check(image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
+                    instrumentation.sendStatus(0, Bundle().apply { putString("u14LandscapeScreenshot", file.name) })
+                } finally { image.recycle() }
+                instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                awaitLibrary()
+            } finally { scenario.onActivity { it.requestedOrientation = original } }
+        }
+    }
+
+    private fun awaitAudio(label: String, status: String) {
+        var lastState: String? = null
+        try {
+            await("$label: $status") { root ->
+                withNamedAction(root, listOf(label), false, null) { node, _ ->
+                    val state = AccessibilityNodeInfoCompat.wrap(node).stateDescription?.toString()
+                    if (state != lastState) {
+                        lastState = state
+                        instrumentation.sendStatus(0, Bundle().apply { putString("u14AudioState", state?.take(256)) })
+                    }
+                    state == status
+                }
+            }
+        } catch (failure: Throwable) {
+            instrumentation.sendStatus(0, Bundle().apply { putString("u14LastAudioState", lastState?.take(256)) })
+            throw failure
+        }
+    }
+
+    private fun stableIdleScreenshot(): android.graphics.Bitmap {
+        val deadline = SystemClock.uptimeMillis() + 20_000
+        var previous: android.graphics.Bitmap? = null
+        var unchangedSince = SystemClock.uptimeMillis()
+        try {
+            while (SystemClock.uptimeMillis() < deadline) {
+                val next = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+                val same = previous?.sameAs(next) == true
+                previous?.recycle()
+                previous = next
+                if (!same) unchangedSince = SystemClock.uptimeMillis()
+                if (same && SystemClock.uptimeMillis() - unchangedSince >= 250) {
+                    previous = null
+                    return next
+                }
+            }
+            error("Static owned fixture did not produce a stable native screenshot")
+        } finally { previous?.recycle() }
     }
 
     @Test fun inspectOwnedFixtureGridSemantics() {
@@ -389,10 +518,23 @@ class DevelopmentParityTest {
                 if (predicate(root)) return
                 if (scrollAction != null && scrolls < 12 && find(root) { node ->
                     node.isScrollable && node.performAction(scrollAction)
-                }) scrolls++
+                }) {
+                    scrolls++
+                    // Compose scroll is asynchronous: do not exhaust attempts before the viewport settles.
+                    instrumentation.uiAutomation.waitForIdle(100, 2000)
+                }
             } finally { root.recycle() }
         }
-        fail("Timed out at $state; activePackage=$lastPackage (no text/password dump)")
+        val failure = AssertionError("Timed out at $state; activePackage=$lastPackage (no text/password dump)")
+        try {
+            val image = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+            try {
+                val file = File.createTempFile("u14-timeout-", ".png", target.cacheDir)
+                file.outputStream().use { check(image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
+                instrumentation.sendStatus(0, Bundle().apply { putString("u14FailureScreenshot", file.name) })
+            } finally { image.recycle() }
+        } catch (captureFailure: Throwable) { failure.addSuppressed(captureFailure) }
+        throw failure
     }
 
     private fun matches(node: AccessibilityNodeInfo, labels: List<String>) =
@@ -452,6 +594,12 @@ class DevelopmentParityTest {
     private fun namedHitBounds(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean = false,
         requiredViewId: String? = null): Rect? {
         var bounds: Rect? = null
+        withNamedAction(root, labels, cardOnly, requiredViewId) { _, rect -> bounds = rect; true }
+        return bounds
+    }
+
+    private fun withNamedAction(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean,
+        requiredViewId: String?, action: (AccessibilityNodeInfo, Rect) -> Boolean): Boolean =
         find(root) { node ->
             if (!isNamedClickCandidate(matches(node, labels), node.isEnabled, node.isEditable, node.viewIdResourceName, requiredViewId)) false else {
                 var candidate: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
@@ -470,33 +618,34 @@ class DevelopmentParityTest {
                     }
                     val position = titles.indexOfFirst { matches(node, listOf(it)) }
                     candidate?.takeIf { it.isEnabled && it.isVisibleToUser && (!cardOnly || matchesFixtureCell(position, row, column)) }?.let {
-                        // A wide SAF row's center can hit metadata; stay on the actual named label/icon.
-                        bounds = visibleNamedBounds(Rect().also(node::getBoundsInScreen),
+                        // Keep the named hotspot for inspection; activate the actual clickable ancestor.
+                        visibleNamedBounds(Rect().also(node::getBoundsInScreen),
                             Rect().also(it::getBoundsInScreen), Rect().also(root::getBoundsInScreen))
-                    }
-                    bounds != null
+                            ?.let { rect -> action(it, rect) }
+                    } ?: false
                 } finally { candidate?.recycle() }
             }
         }
-        return bounds
-    }
 
     private fun clickNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName),
         scroll: Boolean = false, backwards: Boolean = false, cardOnly: Boolean = false, requiredViewId: String? = null) {
-        var bounds: Rect? = null
+        var lastReportedTarget: String? = null
         val direction = if (backwards) AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
         await("click ${labels.joinToString(" / ")}", packages, if (scroll) direction else null) { root ->
-            bounds = namedHitBounds(root, labels, cardOnly, requiredViewId)
-            bounds != null
-        }
-        val rect = bounds ?: error("Missing visible named hit rectangle inside clickable ancestor")
-        val down = SystemClock.uptimeMillis()
-        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
-            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
-                rect.exactCenterX(), rect.exactCenterY(), 0)
-            event.source = InputDevice.SOURCE_TOUCHSCREEN
-            try { assertTrue("Named UI touch injection failed", instrumentation.uiAutomation.injectInputEvent(event, true)) }
-            finally { event.recycle() }
+            withNamedAction(root, labels, cardOnly, requiredViewId) { node, rect ->
+                val target = "${node.className}|${node.actionList.map { it.id }}|${rect.toShortString()}"
+                if (target != lastReportedTarget) {
+                    lastReportedTarget = target
+                    instrumentation.sendStatus(0, Bundle().apply {
+                        putString("u14Tap", labels.first())
+                        putString("u14TapBounds", rect.toShortString())
+                        putString("u14NodeClass", node.className?.toString())
+                        putBoolean("u14ClickSupported", node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK })
+                        putString("u14InputMethod", "native-accessibility-click")
+                    })
+                }
+                node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
         }
     }
 

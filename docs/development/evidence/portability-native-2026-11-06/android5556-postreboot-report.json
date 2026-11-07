@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-06",
+  "scope": "Bounded native export/backup retry after parent-authorized ordinary reboot; evidence only",
+  "device": {"serial": "emulator-5556", "avdObserved": "linka_audit_tablet", "sdk": "35, parent verified after reboot and this lane verified before reboot"},
+  "apk": {"sha256ParentIndependentlyVerifiedBeforeReboot": "d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558", "reinstalledByThisLane": false},
+  "outcome": "STOPPED_AT_NATIVE_FILENAME_INPUT_TIMEOUT_BEFORE_SAVE",
+  "preflight": {
+    "appLaunchedUsingMcp": "su.linka.pictures.development",
+    "boardsObserved": ["ХОЧУ", "LINKa-EDITOR-6F9C-SAVED"],
+    "messageObservedReadOnly": "Общее сообщение: ХОЧУ КУШАТЬ",
+    "dataMismatchObserved": false,
+    "evidence": ["android5556-postreboot-initial-library.png", "android5556-postreboot-initial-message.png"]
+  },
+  "export": {
+    "board": "LINKa-EDITOR-6F9C-SAVED",
+    "stagesCompleted": ["Own board context menu Экспортировать", "Foreground Разрешить команды в этом экране", "Подготовить экспорт выбранной доски .linka", "Real com.google.android.documentsui Downloads picker with default board.linka"],
+    "intendedNewFilename": "LINKa-native-5556-postmime-export-20261106-c94a7f31.linka",
+    "lastSuccessfulInputActions": ["Focused filename field", "Ctrl+A through MCP execute_shell_command input keycombination 113 29"],
+    "failedCall": "adb MCP type_text with intendedNewFilename: Request timed out",
+    "postFailureScreenshotObserved": "Real Downloads Save picker remains open with keyboard; filename field visibly contains only L. Screenshot succeeded. No global UI freeze is inferred from this input timeout.",
+    "savePressed": false,
+    "freshAuthorizationAfterPicker": "NOT_REACHED",
+    "explicitWriteConfirmation": "NOT_REACHED",
+    "terminal": "NOT_REACHED",
+    "strictFinalExtensionAcceptance": "NOT_VERIFIED",
+    "newPublicFile": null,
+    "sha256": null,
+    "evidence": ["android5556-postreboot-export-picker-open.png", "android5556-postreboot-timeout.png"]
+  },
+  "backup": {"outcome": "NOT_STARTED_DUE_TO_STOP_ON_TIMEOUT_CONSTRAINT", "strictFinalExtensionAcceptance": "NOT_VERIFIED"},
+  "existingPublicOutputs": {
+    "observedInRealPicker": ["LINKa-native-5556-backup-20261106-b82e40d6.linkabackup.zip", "LINKa-native-5556-export-20261106-a73f91e2.linka.zip"],
+    "mutationsAttempted": false,
+    "rehashingPerformed": false
+  },
+  "preservation": {
+    "boardsAndMessage": "Directly observed before export preparation; no edits, communication-card selection, clearing, import, restore or recovery performed",
+    "drafts": "No draft action performed; not reobserved in this bounded retry",
+    "newPublicFilesCreated": [],
+    "archivePulls": [],
+    "finalForegroundObserved": "com.google.android.documentsui Downloads create-document picker, unsaved filename field L, keyboard open",
+    "reasonNotReturnedToLibrary": "Stopped further UI actions upon timeout as explicitly instructed; no cancellation/navigation retry attempted"
+  },
+  "safety": {"rebootByThisLane": false, "install": false, "settingsOrPermissionsChanges": false, "backendOrDatabaseCalls": false, "deletionOrRename": false, "sourceChanges": false, "historicalReportsOrPngChanges": false},
+  "remainingGaps": ["Exact output extension remains unverified on corrected APK", "No new terminal-success, ZIP, CRC or asset SHA evidence", "Final library return not performed because stop-on-timeout constraint took precedence", "No full-release claim"],
+  "deviceLease": "FREED; picker left as documented"
+}

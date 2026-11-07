@@ -2,7 +2,302 @@
 
 Дата начала: 4 ноября 2026 года. Основание: `/Users/aacidov/.opencode/plan/linka-pokazhi-implementation.md` и три соседних приложения contracts/work-packages/verification. Этот журнал отражает выполненное, не заменяет нормативный план.
 
-## Актуально: возобновление с visual slice — 6 ноября 2026
+## Актуально: адаптивная фраза, редактор и перенос — 6–7 ноября 2026
+
+**К выпуску не готово.** Пользователь поручил довести весь согласованный продукт,
+но разрешил пока только симуляторы. Production-подпись, push/PR, store upload и
+сама публикация не выполнялись и требуют отдельного разрешения.
+
+### Последний технический gate и принятые визуальные решения
+
+- **509/509 shared JVM и633/633 Native iOS17 PASS**, Native70.134s, SHA
+  `a24283840da90cbb4a7404c31f27758d70b58ba0b34df644900fb9c48177d1f9`.
+  Android APK/tests, оба iOS frameworks и app-host framework собраны;
+  lint0errors/46app+9shared warnings. Логи `large-font-current-quality-gate.log`
+  и `large-font-full-native17.log`.
+- Дополнительно **70/70 Android debug-unit и70/70 release-unit PASS**,
+  `verifyReleasePrivacy` PASS. Первоначальный полный debug-unit был69/3 RED:
+  legacy privacy fixtures не задавали свой Application после намеренной изоляции
+  development manifest. Исправлены только fixtures, добавлены emission assertions
+  и проверка отсутствия Firebase initializer/5 legacy writers в debug. Production
+  privacy-код, signing и APK release assembly не менялись. [История и логи](evidence/privacy-unit-2026-11-07/).
+- Пользователь принял обычный portrait/landscape срез (`6ae5a47`) и затем выбрал
+  **«Прокрутка (Recommended)»** для крупного текста (`5830be2`, `2cceba7`).
+  Полная подпись доступна в карточке, картинка остаётся; шрифт не уменьшается,
+  структура сетки и принятая1.0 геометрия сохранены. Это не whole-U1.4 approval.
+- Native portable2.0/contrast/save/read/scroll/restore: **iPhone17 1/1,152.591s;
+  iPad17 1/1,122.404s; Android21 ручной bounded roundtrip PASS**. На iPhone
+  реальные жесты раскрыли конец заголовка и КАКАТЬ, без изменения фразы/audio state;
+  на Android suffix/неподвижная картинка/доступность9 карточек просмотрены. Исходные
+  1.0/contrastOff восстановлены через UI и cold reopen. [PNG и полные ограничения](evidence/settings-native-2026-11-06/).
+- Штатный iOS17 accessibility audit без issue filter: **iPhone1/1,17.530s;
+  iPad1/1,15.757s**. Contrast/elementDetection/hitRegion/description/textClipped/
+  trait проверены на обычной доске. Dynamic Type не запускался, системные настройки
+  не менялись; это не actual VoiceOver/TalkBack или physical/AAC acceptance.
+- **API35 точные `board.linka` и `library.linkabackup` теперь подтверждены**:
+  уже открытый picker → Save → fresh access → отдельный confirm → terminal success.
+  Export SHA `e382a3190165fabf7dc4dcf54bb42770a3c76bd2cd375dd0d5828f36c4d6d722`,
+  backup SHA `a87a9c98d3555179d3e9e8c11b8ce7f8d43ada6aae170091ad656d56cac7a523`;
+  CRC/размеры/SHA media проверены. Архивы совпадают с прежними ZIP-байтами, но
+  больше не получают `.zip`. Исторические BLOCKED/custom-name attempts сохранены,
+  причина старых input timeouts не объявлена доказанной. Финальное UI-сообщение/
+  черновики после backup не засчитаны из-за отдельного hierarchy timeout.
+  [Native default-name proofs](evidence/portability-native-2026-11-06/).
+- iOS17 изолированный **restore → ReturnToRecovery → DeleteRecovery → cold launch:
+  1/1 PASS,226.584s**. Sentinel создан через UI, backup выбран настоящим Files;
+  возвращён sentinel, тестовая recovery удалена. Десять оригинальных PNG и guard
+  сохранены, исходный/скопированный backup SHA неизменны. Это не настоящий upgrade
+  или Android restore. [Native recovery proof](evidence/recovery-native-2026-11-07/).
+- Dark theme → штатный6-type audit → light restore: **iPhone1/1,58.446s;
+  iPad1/1,55.305s**, кадры просмотрены; persisted settings не менялись.
+- Настоящий system Dynamic Type на iPad17: `large` → максимальный
+  `accessibility-extra-extra-extra-large` → исходный `large`, **3/3 native PASS**.
+  Текст реально увеличился на кадрах; значения body17→53→17pt относятся к test
+  runner, не измерению шрифта продукта. Отдельно максимальный размер + чтение
+  окончания КАКАТЬ жестами: **1/1 PASS,28.262s**, без изменения фразы/audio state;
+  восстановленный system size + cold app: **1/1 PASS,20.705s**. Portable scale
+  оставлен1.0, сочетание system maximum × portable2.0 и iPhone system maximum
+  **не засчитаны**. [System-size evidence](evidence/settings-native-2026-11-06/system-text-ipad-scroll-evidence.json).
+- Existing-card Cancel: resume того же изменённого черновика → Cancel → SAVED →
+  опубликованная исходная карточка/фраза: **1/1 PASS,30.349s**. Отдельный
+  whole-text replacement остаётся **RED**: `NANCEL-CHECK-17ATIVE-CARD-17` вместо
+  `CANCEL-CHECK-17`. Два probes выделения0/2, с ошибочными guards/assertions;
+  три shortcut-команды исполнены, но ранние кадры не установили диапазон.
+  Позднее double tap → публичное Select All дали видимое полное выделение;
+  `app.typeText` всё равно воспроизвёл дефект. Дифференциальная проверка с настоящей
+  клавишей экранной клавиатуры **ф** корректно заменила всё название, затем
+  Cancel/SAVED/исходная опубликованная карточка/фраза: **1/1 PASS,42.857s**.
+  Отдельная последовательность настоящих клавиш **ф → фы → фыв** с проверкой
+  каждого промежуточного значения и тем же Cancel: **1/1 PASS,45.529s**.
+  Product-код не менялся; отказ специфичен для injected-input пути в этой паре,
+  его точный внутренний механизм и external keyboard остаются OPEN. Исправленные
+  assertions ранних probes не объявляются native PASS.
+  [История редактора](evidence/editor-native-2026-11-06/).
+
+**Ещё OPEN:** полный font/system-scale/landscape/keyboard/screen-reader atlas,
+весь U1.4 approval, Android native restore/recovery, Electron runtime exchange, codecs/
+mixed/offline/mic/routes, production startup/migration/старые writers/privacy/G4,
+ARMv7 runtime, Play signing/max versionCode/реальный upgrade, legal/store/physical/AAC.
+Положительный iOS Files export/backup1/1 (102.570s) тоже сохранён ниже.
+Production пока остаётся legacy startup, не новым runtime.
+
+### История крупного текста: исходный дефект и первые проверки
+
+Native iPhone Settings: read-only1/1 (23.115s), первоначальный save macro RED
+(60.837s) на неверном ожидании дополнительного prompt, затем resume-only
+save/read/cold-open/restore1.0: **1/1 PASS,102.725s**. Фактические2.0/contrastOn
+перечитаны, исходные1.0/contrastOff возвращены через UI и подтверждены cold reopen.
+Общая фраза и9 карточек сохранены. Системный fontScale не менялся.
+
+При этом реальные2.0 PNG выявили **visual RED**: обрезание заголовка и длинных
+подписей, исчезновение картинки при слишком длинной подписи. Common caption
+исправлен стандартной прокруткой с сохранённым image viewport; toolbar height/
+full-title исправлены сразу во всех5 callers, без уменьшения пользовательского
+fontScale. Caption commit `5830be2` прошёл42 focused JVM после2 RED; интегрированный
+focused срез **76/76 JVM PASS**, Simulator framework и Android APK собраны.
+Новый native save2.0/scroll/restore1.0 сценарий подтверждён выше. Полные505/629 ниже относятся к состоянию
+**до этих новых font-layout изменений**, не к новому текущему full gate.
+[Оригинальные Settings PASS/RED/PASS и кадры](evidence/settings-native-2026-11-06/).
+
+### История технического gate: короткий landscape505/629
+
+- **505/505 JVM и629/629 Native iOS17 PASS**, без failures/errors/skips;
+  Native71.181s, SHA `7fed165ca3877afac26f49e12a8becfeb7b0211527762d61818202893f6b472a`.
+  Android APK/tests, оба iOS frameworks и app-host framework собраны, lint0errors/
+  46app+9shared warnings. Логи `landscape-phrase-current-quality-gate.log` и
+  `landscape-phrase-full-native17.log`. Это заменяет более ранние504/628 ниже.
+- Native portrait/landscape: **iPhone1/1,35.866s; iPad1/1,33.346s;
+  API21 landscape1/1,2.485s**. Девять карточек и прежняя фраза фактически проверены;
+  миниатюры не обрезают подписи, minimum12sp/fontScale сохранены. Предпочитаемая
+  ширина96dp и min-height64dp действуют только в ограниченном пространстве;
+  обычная пропорция1:4 и half-viewport cap первых двух элементов сохранены.
+- Первоначальный API21 screenshot захватил анимацию поворота и **не принят по
+  пикселям**. Тестовый захват ждёт неизменный native raster не менее250ms при
+  deadline20s, без fixed sleep или отключения анимаций. Отдельный стабильный PNG
+  просмотрен; данные, AVD и настройки анимаций не менялись. После полного gate
+  менялся только этот Android test harness, его сборка и focused native повторены.
+- Product APK `6e8dfe3edb1eba434210b78e0d9461cb8f6dbe3d475d9793c4b96f3a113b4cdd`;
+  iOS executable `619d34467cfef18fc91e4f4af2a8de41e0260d956aaaccea1563c05b4aff2307`.
+  [Оригинальные кадры и manifest](../progress-screenshots/2026-11-06-caption-gif/atlas-orientation/height64-native-manifest.json).
+  После просмотра пользователь отдельно ответил **«Принимаю срез»**: одобрены
+  доска/фраза portrait/landscape commit `6ae5a47`. Весь U1.4, полная large-font/
+  contrast/keyboard/screen-reader матрица и physical/AAC этим не закрыты.
+
+- После явного выбора **адаптивности**, а не исключения маленьких устройств,
+  первые две миниатюры фразы помещаются целиком. Поддержка Android21+/iOS17+,
+  минимум12sp, пользовательский fontScale и прокрутка длинной фразы сохранены.
+  iPhone native existing-board/reopen: **1/1 PASS,32.108s**; API21 после обычного
+  запуска существующего AVD: **1/1 PASS,1.544s**. Оригинальные просмотренные PNG:
+  [Android21](../progress-screenshots/2026-11-06-caption-gif/android21-adaptive.png),
+  [iPhone17](../progress-screenshots/2026-11-06-caption-gif/iphone17-adaptive.png).
+  Это проверка данного среза, не одобрение полного U1.4 пользователем.
+- Исправлены GIF alpha на API21 и одинокая последняя буква подписи. Bounded
+  first-frame decode использует уже имеющийся Glide, а не Movie; native tests
+  **5/5 API21 и5/5 API35** сохраняют исходные байты. Полная font/contrast/physical
+  матрица не выводится из этих результатов.
+- Исправлен воспроизводимый native-input дефект редактора: синхронный локальный
+  whole-payload buffer, token ACK и RAM editVersion. ACK означает обработку или
+  отказ, **не durability**. Тот же сохранённый API35-черновик прошёл 2×2 → карточка
+  `NATIVE-CARD-35`/NONE → «Из текста» → SaveCard → SaveBoard → rename → cold reopen;
+  итог `LINKa-EDITOR-6F9C-SAVED`. ХОЧУ, её старые черновики v6/v3 и общая фраза
+  сохранены. [RED и последующие native proofs](evidence/editor-native-2026-11-06/).
+- iPhone: карточка `NATIVE-CARD-17`/NONE и доска опубликованы; отдельный
+  rename/cold-reopen **1/1 PASS,30.400s**, итог
+  `LINKa-EDITOR-iOS17-20261106-RENAMED`. Старые macro failures на очистке/выделении
+  и прокрутке остаются RED; продолжения использовали существующий draft/card/board,
+  не повторный fresh-create. Выделение — публичные Cmd+Down/Cmd+Shift+Up.
+- Новый выделенный iPad17 прошёл настоящий Files → preview1/9/9/9 → явные
+  unlock/ImportNew → compose/reopen: **1/1 PASS,85.940s**. Fixture уже опубликована;
+  дальнейшие проверки только existing/reopen, без повторного fresh-import.
+- На owned iOS26.5 настоящий clip и непустой TTS callback: **2/2 PASS,2.480s**,
+  без установки голосов или изменения сети/громкости. iOS17 Simulator TTS остаётся
+  environment RED; минимум physical/offline/Russian AAC этим не принят.
+- Официальный publisher AAB1.4 найден, SHA/JAR signature проверены, все7 bundled
+  `.linka` совпадают с tag blobs. Это **не Play-delivered APK**; Play certificate,
+  max versionCode по трекам и настоящий store upgrade по-прежнему OPEN.
+- Реальные API35 export/backup завершились через DocumentsUI, fresh authorization
+  и отдельное подтверждение. CRC/размеры/SHA проверены, но provider дописал `.zip`.
+  Исправлен общий destination MIME на `application/octet-stream`: **2 JVM RED →
+  57 focused PASS**. Последующие попытки были BLOCKED на system UI/input timeout;
+  точные новые `.linka`/`.linkabackup` пока не засчитаны.
+  [Все исходные отчёты, включая BLOCKED](evidence/portability-native-2026-11-06/).
+- Последующий **iPad17 export+backup:1/1 PASS,102.570s**, настоящий Files folder
+  picker → fresh authorization → отдельные confirmations → terminal success.
+  Точные `board.linka`/`library.linkabackup` созданы,19/21 ZIP entries, CRC/размеры/
+  SHA всех18 media проверены. Доска и фраза наблюдались после записи. Это positive
+  iOS proof, не закрытие Android provider failures или restore/recovery.
+- После отдельного разрешения пользователя API35 штатно перезагружен и существующий
+  API21 AVD запущен без wipe/удаления данных или snapshots. Повторное зависание
+  API35 не объявлено доказанным app bug. Последний Back отменил незавершённый picker:
+  это отдельно подтверждено foreground и надписью «Операция отменена.».
+
+**Предыдущая граница quality gate до short-landscape коррекции:** полный **504/504 JVM PASS**, Android APK/tests,
+оба iOS frameworks, app-host framework и lint0errors/46app+9shared warnings.
+Лог `adaptive-mime-current-quality-gate.log`,7m42s; APK по-прежнему
+`d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558`.
+На этом же исходном срезе полный новый Native runtime: **628/628 PASS,72.463s**;
+binary SHA `bafe174b79e805a692ad58ef5ff6cb41eefc755b97c40a2a35f7db8831acd6c4`.
+MIME-исправление и его regression expectation сохранены commit `0c3036e`;
+runtime native-записи остаются отдельным OPEN, не заменены compile/JVM PASS.
+
+Предыдущие полные **501 JVM /625 Native iOS17 PASS**
+(79.216s, Native SHA `3b372001d0b29c0d98c576879890ee79d79d82fbf26cb83f751f4db1ff83733b`)
+предшествуют adaptive-preview/MIME изменениям. Android APK/tests, оба frameworks,
+app-host framework и lint тогда прошли; lint0errors/46app+9shared warnings.
+После изменений сначала прошли57 focused JVM, затем описанный выше полный JVM/build/
+lint/628 Native gate. Прежние625 не обозначают этот новый Native runtime PASS.
+
+Дополнение native-проверок: API21 показал исходное правильное имя `board.linka`
+без `.zip`, но системный Downloads ответил `Failed to save document` до возврата
+и app confirmation. При read-only диагностике `/sdcard/Download` и
+`/storage/emulated/0` отсутствовали; mount/permissions/AVD не исправлялись ради PASS.
+Частичный файл не удалён, фактическое создание не подтверждено. Первый orientation
+сценарий iPhone/iPad дал AX1/1 на каждом, но landscape app captures содержат чёрные
+области/обрезание: **визуально не принят**, проверяется полным native screen capture.
+
+Полный XCUIScreen capture отделил ошибку app-scoped XCTest crop от настоящего UI.
+Чёрная область iPhone была capture-дефектом; реальные landscape подписи миниатюр
+обрезались из-за слишком узкого квадрата. Новая предпочитаемая ширина96dp с cap
+на половине viewport дала3 JVM RED →40 focused PASS и iPhone orientation1/1 PASS,
+35.052s; подписи просмотрены, но картинкам над ними не хватало высоты. Минимум
+области фразы поднят с48 до64dp только там, где1/5 окна меньше минимума; обычная
+пропорция и min12sp/fontScale сохранены. Эта последующая небольшая UI-коррекция
+проверена отдельным полным505/629 gate и native кадрами9 карточек, описанными в
+самом начале журнала. Более ранние504/628 и screenshots с обрезанием сохранены.
+
+**Оставшиеся release-блокеры:** полный UI atlas/landscape/large-font/contrast/IME/
+keyboard/TalkBack/VoiceOver и пользовательское U1.4 approval; production startup
+всё ещё legacy `LinkaPicturesApp`/`MainActivity`/`SetsManager`, без native migration
+admission; G4/fresh OS verification, старые writers/privacy SDK, безопасный настоящий
+upgrade, ARMv7 runtime, restore/recovery/Electron runtime exchange, codecs/mixed TTS/
+offline/mic/routes/interruptions, physical/AAC, legal/store gates. Только synthetic
+или copied data до G4, никакой production установки на настоящую библиотеку.
+
+## История: возобновление с visual slice — 6 ноября 2026
+
+Ниже сохранены прежние срезы и их результаты. Старые слова «текущий» относятся к
+моменту соответствующей записи; authoritative status и границы gate — выше.
+
+### Актуальный срез: настоящие записи, Stop и повторное воспроизведение
+
+- Полные suites после caption и media-lease исправлений: **479/479 JVM** и
+  **603/603 Native iOS17,62.103s**, без failures/errors/skips. Android APK/test APK,
+  Simulator/device frameworks и app-host framework собраны офлайн.
+- Реальные UI-проверки существующей фразы: **API21 1/1 PASS,5.046s**,
+  **API35 1/1 PASS,28.809s**, **iOS17 1/1 PASS,45.232s**. Последовательность:
+  recording-only фраза завершилась → повторный запуск → Stop из PLAYING →
+  остановлено → повторный запуск завершился → library/Back и повторное открытие
+  с прежней фразой. Нет переимпорта/clear/reset, микрофон и голоса не менялись.
+- Исправлен настоящий product defect: составной MessageLease удерживал корректные
+  pins, но StoragePins отвергал wrapper как чужой proof. Внутреннее разрешение до
+  подлинного leaf сохраняет owner/closed/asset проверки, GC counters и lock order.
+  Регрессия actual SQLite/media: **2 RED до исправления**, затем focused212 PASS;
+  закрытые wrappers после cleanup failure также отклоняются.
+  [Контракт и причина](media-lease-read-proofs.md).
+- Отдельный hosted clip callback: **1/1 PASS,0.672s** после явного CInterop input
+  для custom compilation; до исправления `tone: IrLinkageError,0.242s`. Это
+  отдельная причина первого host failure, не дефект AVAudioPlayer.
+- **TTS остаётся OPEN/RED**, как и physical audio quality/mic/routes/offline proof,
+  GIF21, остаточные caption/UI1.4, migration/G4/ARMv7/AAC/legal/release. UI Stop
+  проверен по настоящему product state, не является измерением физического
+  output latency/тишины на аудиовыходе.
+
+Это текущий срез; записи ниже — история и не заменяют актуальные verdicts.
+
+### Текущий результат: реальная заполненная iOS-доска
+
+- После UIKit native-identity fix полный Native gate: **595/595 PASS,52.545s**;
+  device ARM64 framework тоже собран. JVM471 относится к неизменённому common
+  product code; последующие новые audio app-host checks — отдельный compartment.
+- iOS: настоящий UIDocumentPicker → локальный host Documents → preview1/9/9/9 →
+  явные unlock/ImportNew → публикация. Для отделения picker от text-input проблем
+  оставлено штатное имя «Импортированная доска». Это не финальная title parity.
+- Первый полный import macro остался RED уже после публикации при закрытии меню;
+  он не перезапускался ради дубля/очистки. Отдельный **existing board compose/reopen
+  1/1 PASS,37.200s** подтвердил9 card buttons, ХОЧУ→КУШАТЬ и сохранение после возврата.
+  [Actual iOS PNG и xcresult summary](../progress-screenshots/2026-11-06-ios-filled/).
+- API21: опубликованная доска и сообщение сохранены. Отдельные warm-intent cleanup
+  и native Back/reopen **2/2 PASS,2.408s**, без повторного импорта.
+  [Actual phone кадры](../progress-screenshots/2026-11-06-ui14-phone/).
+- GIF transparency measured: реальный API21 thumbnail decoder теряет alpha,
+  API35 сохраняет; стандартный Movie на21 сохраняет. Storage bytes не менялись.
+  Production fallback пока не принят: bounds/memory требуют проверки.
+- Положительные audio app-host checks созданы без fake Main/foreground/AV delegates.
+  Первый runtime **2 failures/0 PASS**: clip дал диагностируемую ошибку, TTS —
+  INTERRUPTED с OS voice/audio-unit errors. Ни skip, ни установка голосов/микрофон,
+  ни изменение системной громкости не использовались. Звук/Stop ещё не закрыты.
+
+Полный U1.4/G4/release по-прежнему OPEN. В частности, на portrait видны разрывы
+подписей; соответствующее исправление проверяется отдельно от test automation.
+
+### Последняя проверенная вертикаль: обе платформы живые, не release PASS
+
+**Полные shared suites:471 JVM /593 Native iOS17 PASS**, без failures/skips;
+оба Native frameworks собраны. Отдельно **2/2 настоящий hosted Keychain XCTest**
+и **1/1 XCUI startup/relaunch**: iOS development app теперь открывает библиотеку
+«Ваши наборы», Keychain−34018 не блокирует startup. Проверены exact own Simulator
+group, min17, strict signatures/actual payload и installed hashes. Пользователь
+отдельно разрешил development UI; production/physical signing не затрагивается.
+[Кадры и XCUI attachments](../progress-screenshots/2026-11-06-ios-development/).
+
+Android calibrated Back/reopen **1/1 PASS,39.949s**,10 actual PNG; после отдельных
+permission/manifest поправок последний APK ещё раз **1/1 PASS,30.448s**,9 AX карточек
+и ХОЧУ КУШАТЬ сохранены. [Кадры](../progress-screenshots/2026-11-06-ui14-calibrated/device-resume/).
+Toolbar64dp совпал; остаётся измеренное6dp отличие границы фразы/сетки и другие
+незакрытые phone/font/IME/pixel acceptance. Пользователь не принимал эти кадры
+как полный U1.4; наличие выделения/focus не удалялось ради копии1.4.
+
+Lint запущен с намеренной загрузкой уже закреплённого lint-gradle31.10.1 после
+отсутствия офлайн-кэша. Исправлены RECORD_AUDIO ownership/recheck и неработавшие
+pathPattern без authority старого content filter, без baseline/suppression.
+Native negative permission tests **3/3 PASS** (микрофон не разрешался/не записывал),
+resolution-only legacy filter test **1/1 PASS** (writer disabled/не запущен).
+Теперь lint **0 errors**,7 shared+46 app warnings явно остаются.
+[Полная проверенная сводка/границы](verification-2026-11-06.md).
+
+Ни filled iOS board/import, ни API21 unlock/phone matrix, ни positive mic/TTS/
+provider/ARMv7/physical/AAC/migration/legal/store gates этим не закрыты. Full release
+и переключение production roots по-прежнему только после соответствующей приёмки.
 
 ### Новый срез: настоящий Keychain host и объединённые UI-коррекции
 

@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-07",
+  "device": "emulator-5556",
+  "installed_product_apk_sha256": "d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558",
+  "scope": "Finish already-open owned-board export picker, no prepare/typing/reboot/reset repeated",
+  "preflight": "board.linka and library.linkabackup absent in selected local Downloads",
+  "native_steps": [
+    "Observed focused/resumed DocumentsUI plus stable actual screenshot with board.linka proposal",
+    "Save once; waited for DevelopmentActivity to resume before querying hierarchy",
+    "Read own LINKa-EDITOR-6F9C-SAVED preview and explicit revoked-access warning",
+    "Fresh unprotected access through foreground UI",
+    "Separate explicit write confirmation",
+    "Observed Операция завершена; pulled only the newly created exact local file"
+  ],
+  "output": {
+    "path": "/sdcard/Download/board.linka",
+    "name": "board.linka",
+    "bytes": 11576,
+    "sha256": "e382a3190165fabf7dc4dcf54bb42770a3c76bd2cd375dd0d5828f36c4d6d722",
+    "same_zip_bytes_as_historical_appended_zip_export": true,
+    "version": "3.0",
+    "pages": 1,
+    "rows": 2,
+    "columns": 2,
+    "cards": 1,
+    "image_bytes": 10857,
+    "image_sha256": "b01e42872cd92225f46e07e61330a992e854929177da5a3ccde94bb0faf714a8",
+    "recordings": 0,
+    "zip_entries": 2,
+    "crc_and_lengths_verified": true
+  },
+  "screenshots": [
+    {
+      "file": "android35-resumed-default-picker.png",
+      "sha256": "24b9893c7b0b6ca1d04d4538de339998e77c856f9bb74e6272a96a0399db913d"
+    },
+    {
+      "file": "android35-resumed-default-preview.png",
+      "sha256": "a76dcd6f38882cb82bf1a4e4e83bc4e7045fc713cae0f69f7a579b4afc2b957a"
+    },
+    {
+      "file": "android35-resumed-default-fresh-access.png",
+      "sha256": "2abc3741eeab0eb1b550a943b348685fe5fdaad6b7f5378a07fffc64bbd0fbc0"
+    },
+    {
+      "file": "android35-resumed-default-confirm.png",
+      "sha256": "a1538f4ecab9a99e0b44e0105f0979a48ad620589cba3b1d620945d7de479831"
+    },
+    {
+      "file": "android35-resumed-default-success.png",
+      "sha256": "5cd64c90187ecfec0dae02dc7c64f2d266ce70bd2be34faa6e571bb18e1b5d9c"
+    }
+  ],
+  "old_blocked_reports_preserved": true,
+  "custom_filename_typing_verified": false,
+  "cause_of_previous_input_timeouts_confirmed": false,
+  "full_release_ready": false,
+  "production_or_physical_acceptance": false
+}

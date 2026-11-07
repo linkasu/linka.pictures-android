@@ -1,0 +1,100 @@
+{
+  "date": "2026-11-07",
+  "scope": "Archival of android5556-backup-resumed-* only; native API 35 backup evidence, not independent device verification",
+  "originatingReport": "android5556-backup-resumed-report.json",
+  "originatingManifest": "android5556-backup-resumed-artifact-manifest.json",
+  "copiedFiles": [
+    {
+      "path": "android5556-backup-resumed-artifact-manifest.json",
+      "bytes": 9279,
+      "sha256": "c81cd873aa8a441bfdf6f5d9cc0daa65299df12560986447348e6bae7045718a"
+    },
+    {
+      "path": "android5556-backup-resumed-confirm.png",
+      "bytes": 177668,
+      "sha256": "0526929d398ac140f4b821e816ef953c634db2ebdd12f5f7f97c732f389b04fc"
+    },
+    {
+      "path": "android5556-backup-resumed-fresh-preview.png",
+      "bytes": 183751,
+      "sha256": "313687bb100c95a01c5619e0d476ef6aa9ead0ea88a654e5ca042e4768c4f2b2"
+    },
+    {
+      "path": "android5556-backup-resumed-provider.png",
+      "bytes": 77836,
+      "sha256": "87b3026b17bfc93a55a2c2fe907b962079921f7cda18d0b704c57c7dd6aad1a6"
+    },
+    {
+      "path": "android5556-backup-resumed-report.json",
+      "bytes": 6837,
+      "sha256": "691938e3bc5535f14e02aed99f72978b9ed24495a5b1d8d83b865c3c22c2b9bd"
+    },
+    {
+      "path": "android5556-backup-resumed-terminal.png",
+      "bytes": 178221,
+      "sha256": "ce6644c743968baf95ec428e353b7f15c7d7838d2b12f14f1ba2fd31817e47b2"
+    },
+    {
+      "path": "android5556-backup-resumed-warning-grant.png",
+      "bytes": 152797,
+      "sha256": "5e6a24a3ab7e0f3e289a43a65c3eec20bbec87113a8a1565909f0c6e4cbf3f8b"
+    }
+  ],
+  "copyVerification": {
+    "sourceDestinationSha256Matches": 7,
+    "conflicts": 0,
+    "pngCount": 5,
+    "pngReferencesPresentInReport": 5,
+    "pngHashesRecordedInOriginatingReport": 0,
+    "pngHashProvenance": "Computed from local source PNG bytes during archival and matched against destination; originating report lists filenames but no PNG hashes",
+    "sourceFilesPreserved": true
+  },
+  "originatingLaneEvidence": {
+    "outcome": "TERMINAL_SUCCESS_STRICT_DEFAULT_FILENAME_AND_ARCHIVE_VERIFIED",
+    "filename": "library.linkabackup",
+    "devicePath": "/sdcard/Download/library.linkabackup",
+    "exactExtension": ".linkabackup; no .zip or .bin suffix",
+    "flow": [
+      "Actual native SAF DocumentsUI Save",
+      "Fresh authorization after picker return",
+      "Explicit full-library write confirmation",
+      "Terminal success observed"
+    ],
+    "boards": 2,
+    "drafts": 2,
+    "assets": 19,
+    "zipEntries": 25,
+    "assetBytes": 3170713,
+    "uncompressedEntryBytes": 3191417,
+    "archiveBytes": 3196647,
+    "archiveSha256": "a87a9c98d3555179d3e9e8c11b8ce7f8d43ada6aae170091ad656d56cac7a523",
+    "crcError": null,
+    "verificationAttribution": "CRC, archive size, device-before-pull and host-after-inspection SHA256, asset SHA256 and metadata byte counts were verified by the originating lane as stated in its JSON; not independently reverified against device or archive bytes during archival"
+  },
+  "jsonOnlyConsistencyVerification": {
+    "reportManifestArchivePathSha256AndSizeAgree": true,
+    "uniqueZipEntryCount": 25,
+    "assetEntryCount": 19,
+    "assetPathSuffixesMatchRecordedSha256": true,
+    "assetByteSumMatchesManifest": true,
+    "entryByteSumMatchesReportedPreview": true,
+    "boardDraftCountsMatchManifestArrays": true,
+    "allEntrySha256ValuesHaveValidHexFormat": true,
+    "encryptedEntryCount": 0,
+    "crcNullAssertionsAgree": true,
+    "limitation": "JSON consistency only; no raw archive, asset contents or assets.jsonl metadata bytes inspected"
+  },
+  "finalUiCaveats": {
+    "boardsObservedByOriginatingLane": ["ХОЧУ", "LINKa-EDITOR-6F9C-SAVED"],
+    "draftDialogHierarchy": "Timed out after saved-drafts menu action; final draft dialog and versions not confirmed through UI",
+    "messageFinalUi": "Not confirmed in this resumed lane",
+    "finalForeground": "Unconfirmed after timeout; no claim of final library return or closed dialog"
+  },
+  "claimLimits": [
+    "Historical BLOCKED reports are preserved, not rewritten as PASS",
+    "No production, full-release, physical-device or restore-round-trip claim",
+    "No export verification added by this archival index",
+    "No post-timeout device rehash",
+    "No raw ZIP, backup or APK copied"
+  ]
+}

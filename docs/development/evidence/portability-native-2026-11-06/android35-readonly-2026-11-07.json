@@ -1,0 +1,20 @@
+{
+  "scope": "Bounded read-only runtime snapshot; emulator-5556 only. No implementation investigation or device-state writes.",
+  "device_time_utc": "2026-11-06T21:41:49Z",
+  "commands": [
+    {"tool": "adb.list_devices", "result": "emulator-5554 and emulator-5556 online; only emulator-5556 targeted thereafter"},
+    {"tool": "adb.execute_shell_command", "serial": "emulator-5556", "command": "getprop sys.boot_completed; getprop ro.build.version.sdk; getprop ro.boot.qemu.avd_name; getprop ro.kernel.qemu.avd_name", "result": {"boot_completed": "1", "api": "35", "avd_name": "linka_audit_tablet", "other_avd_property": "empty; output does not disambiguate which AVD property returned the name"}},
+    {"tool": "adb.execute_shell_command", "serial": "emulator-5556", "command": "ps -A -o PID,NAME | grep -E 'linka|system_server|documentsui'; dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity|ResumedActivity'; dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'; cat /proc/loadavg; dumpsys cpuinfo | head -n 18", "result": {"pids": {"system_server": 549, "su.linka.pictures.development": 3182, "com.google.android.documentsui": 3455}, "top_resumed_activity": "com.google.android.documentsui/com.android.documentsui.picker.PickActivity", "resumed_activity": "com.google.android.documentsui/com.android.documentsui.picker.PickActivity", "window_windows_focus_matches": 0, "proc_loadavg": "1.50 0.66 0.41 2/1880 5726", "cpuinfo": {"load": "0.43 / 0.31 / 0.29", "sample_age_ms": {"from": 551483, "to": 251421}, "system_server_percent": 0.7, "note": "Historical CPU sample, not current CPU measurement. Unrelated process rows omitted."}}},
+    {"tool": "adb.get_logcat", "serial": "emulator-5556", "limit": 40, "filterSpec": "ActivityManager:E ActivityTaskManager:E AndroidRuntime:E WindowManager:E *:S", "result": "Logcat output is empty."},
+    {"tool": "adb.execute_shell_command", "serial": "emulator-5556", "command": "date -u '+%Y-%m-%dT%H:%M:%SZ'; dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'; top -b -n 1 | head -n 6", "result": {"current_focus": "com.google.android.documentsui/com.android.documentsui.picker.PickActivity", "focused_app": "com.google.android.documentsui/com.android.documentsui.picker.PickActivity", "tasks": {"total": 289, "running": 1, "sleeping": 288, "stopped": 0, "zombie": 0}, "cpu_summary": "200%cpu 5%user 0%nice 3%sys 192%idle 0%iow 0%irq 0%sirq 0%host", "note": "Single top snapshot, CPU percentages use a 200% aggregate capacity. Not evidence of app responsiveness."}}
+  ],
+  "timeouts": [],
+  "foreground": {
+    "previously_reported_not_reobserved": "Own TransferScreen preparing export, followed by null hierarchy; no Save pressed.",
+    "observed_now": "DocumentsUI PickActivity is both resumed and focused.",
+    "unknown": ["Picker contents and interactivity", "Export progress or completion", "Whether any Save action occurred outside this snapshot", "Installed APK identity; expected d7a0eed... was supplied by parent, not verified here"]
+  },
+  "privacy": "Only bounded public activity/window summary fields retained; no screenshots, UI hierarchy, private files, accounts, or raw large logs collected.",
+  "interpretation_limits": "PID presence and CPU/load alone cannot establish an environment or app bug. Empty filtered logcat does not exclude earlier or differently tagged errors.",
+  "device_lease": "Released on return; no further device actions planned."
+}

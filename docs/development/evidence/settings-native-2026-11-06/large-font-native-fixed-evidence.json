@@ -1,0 +1,106 @@
+{
+  "scope": "Owned iPhone17 portable scale2.0 + high contrast: actual UI gestures, no message/audio change, UI restore original1.0/contrastOff and cold reopen",
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "cases": [
+    {
+      "name": "large-font-fixed-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 148.136,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/large-font-fixed-phone.xcresult",
+      "caption_suffix_and_title_end_visually_confirmed": false,
+      "note": "Initial gestures targeted app-sized ancestor and bottom padding; procedural PASS alone not sufficient",
+      "screenshots": [
+        {
+          "file": "large-font-fixed-phone-settings-original-restored-cold-board.png",
+          "sha256": "9b911a1bc86755d9cca2e8eb49784b7c65eb8f2a6ed46465128802a03c525f6f",
+          "native_attachment": "3AB541FD-51C3-4AE2-84A6-C64A72D0137D.png"
+        },
+        {
+          "file": "large-font-fixed-phone-settings-restore-original-through-ui.png",
+          "sha256": "f7a62c7eb67562c144fe4bc0bc4cca693ce67cebcad05e3b8101d291e0c433dd",
+          "native_attachment": "01391CD8-3E74-43C2-9003-EFF5820F1EA0.png"
+        },
+        {
+          "file": "large-font-fixed-phone-settings-large-text-caption-scroll.png",
+          "sha256": "70fc5c964052fb3d7000aff3cbe9f4951d164a343194ed6c824ccc442821e082",
+          "native_attachment": "E3442A19-0ADE-4FA4-BE28-C4911A133BE1.png"
+        },
+        {
+          "file": "large-font-fixed-phone-settings-large-text-contrast-cold-board.png",
+          "sha256": "7aa53351544d9f6c274c95dc780f6563e9cc8195104e5e94474d24f1619130b0",
+          "native_attachment": "EBC5FB2D-987D-4302-A68C-123E625F4A25.png"
+        },
+        {
+          "file": "large-font-fixed-phone-settings-save-scale2-contrast-on.png",
+          "sha256": "38cba38d44e7ec79965bcc5dd6d8e1c570fb8fdc9e6dbe113858be08a1158615",
+          "native_attachment": "C0BDA4D9-DB9D-4FA0-A847-9BC8EDB5499C.png"
+        }
+      ]
+    },
+    {
+      "name": "large-font-precise-gestures-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 152.591,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/large-font-precise-gestures-phone.xcresult",
+      "caption_suffix_and_title_end_visually_confirmed": true,
+      "note": "Actual title control bounds and inside-caption drags expose доска and КАКАТЬ; image remains present",
+      "screenshots": [
+        {
+          "file": "large-font-precise-gestures-phone-settings-original-restored-cold-board.png",
+          "sha256": "9f6ba1020bb54aa6cc3e3db521c570c49b188e6ae72bcf213589f7d87d4bab44",
+          "native_attachment": "37E88DB4-2541-4053-BB91-8A8311432B90.png"
+        },
+        {
+          "file": "large-font-precise-gestures-phone-settings-restore-original-through-ui.png",
+          "sha256": "1f5cfc07f26a205f37159dc97bfd5f01bb653fb3b1239cbe5a02fc83218d2320",
+          "native_attachment": "91FBA185-4CE9-409C-AB79-F3664419F150.png"
+        },
+        {
+          "file": "large-font-precise-gestures-phone-settings-large-text-caption-scroll.png",
+          "sha256": "992098163ec4e425302f986a85a9ab57237286e0f615c362337afdac089fa978",
+          "native_attachment": "A9611335-90A2-4361-AE47-E2497466E828.png"
+        },
+        {
+          "file": "large-font-precise-gestures-phone-settings-large-text-contrast-cold-board.png",
+          "sha256": "fb0d7c3c8885c29fd1eb238580ec8b7a2c710600639b111157835b20dae0b0b6",
+          "native_attachment": "1FD895EC-7667-4D0C-BC49-3C2508AB91DF.png"
+        },
+        {
+          "file": "large-font-precise-gestures-phone-settings-save-scale2-contrast-on.png",
+          "sha256": "6be2d762a277a2ed51ed06a5369ad0027a63679aaab0ef34b56d39ee279214fb",
+          "native_attachment": "4D21BFD2-A9EF-4A12-85EC-836BC3E3402D.png"
+        }
+      ]
+    }
+  ],
+  "full_jvm": {
+    "passed": 509,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "full_native_ios17": {
+    "passed": 633,
+    "seconds": 70.134,
+    "binary_sha256": "a24283840da90cbb4a7404c31f27758d70b58ba0b34df644900fb9c48177d1f9"
+  },
+  "lint": {
+    "errors": 0,
+    "app_warnings": 46,
+    "shared_warnings": 9
+  },
+  "android_candidate_sha256": "bf4c969ec1e91be059753d6f4f670cbb75a9b972db62a88c7dcae6aae76bc45c",
+  "system_font_scale_changed": false,
+  "original_settings_restored": true,
+  "message_after_gestures": "ХОЧУ КУШАТЬ",
+  "audio_control_state_unchanged": true,
+  "whole_font_matrix_accepted": false,
+  "voiceover_talkback_accepted": false,
+  "user_visual_approval": false,
+  "physical_aac_accepted": false,
+  "full_release_ready": false
+}

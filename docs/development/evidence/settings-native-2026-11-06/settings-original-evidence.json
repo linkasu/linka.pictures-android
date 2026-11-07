@@ -1,0 +1,84 @@
+{
+  "scope": "Native settings save/cold-read/restore on owned iPhone17 only; original1.0/contrastOff restored through UI",
+  "product_executable_sha256": "619d34467cfef18fc91e4f4af2a8de41e0260d956aaaccea1563c05b4aff2307",
+  "cases": [
+    {
+      "name": "settings-native-inspection-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 23.115,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/settings-native-inspection-phone.xcresult",
+      "attachments": [
+        {
+          "file": "settings-native-inspection-phone-settings-scale-dialog-read-only.png",
+          "sha256": "3f49b31f2f9abe4782a35860fd3064b7ce24bd0be5735c53b0ca07eee30f1711",
+          "native_attachment": "EA08C36D-D900-4976-8F12-BFB9C133163C.png"
+        },
+        {
+          "file": "settings-native-inspection-phone-settings-public-toggle-semantics.txt",
+          "sha256": "89fe5f1b4270333f7d1215f9d8e0f0f81367da34ac15fd21a09f2c0539768fd5",
+          "native_attachment": "F1D249C1-1292-4CBB-B142-2D77515EA4A5.txt"
+        },
+        {
+          "file": "settings-native-inspection-phone-settings-native-controls.png",
+          "sha256": "731ff5d6411788871871392fdef89ae8f9437d8bb10f474e6512107e4eb1e535",
+          "native_attachment": "D63C79FD-633E-4A86-91F8-25C1BA7201DD.png"
+        }
+      ]
+    },
+    {
+      "name": "settings-large-contrast-phone",
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "seconds": 60.837,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/settings-large-contrast-phone.xcresult",
+      "attachments": [
+        {
+          "file": "settings-large-contrast-phone-settings-save-scale2-contrast-on.png",
+          "sha256": "e97184bf2b685042a392ce53ce7b3d23672566b7ad52bf79f1bd3e5f2f652b38",
+          "native_attachment": "A13D00E9-23A7-47A1-A9C0-34A6DA4887C9.png"
+        }
+      ]
+    },
+    {
+      "name": "settings-resume-saved-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 102.725,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/settings-resume-saved-phone.xcresult",
+      "attachments": [
+        {
+          "file": "settings-resume-saved-phone-settings-original-restored-cold-board.png",
+          "sha256": "42feeb7a270ef0f01899d9d56800afc5c07e1090d4b4e57be15375fc017aee20",
+          "native_attachment": "7A79B074-5CAD-411E-9128-A680ADDAEEFA.png"
+        },
+        {
+          "file": "settings-resume-saved-phone-settings-restore-original-through-ui.png",
+          "sha256": "19a8a8db31898661f5a7a10df215da26576b4ab23c3180788bb227b86bf605d8",
+          "native_attachment": "FA676F65-5D10-4700-8C69-8ECE694EFE42.png"
+        },
+        {
+          "file": "settings-resume-saved-phone-settings-large-text-contrast-cold-board.png",
+          "sha256": "8e7f9803fc97e4b5f3827b4e3bc29e17c988a48273ef9b6d15c4ccea70acfc24",
+          "native_attachment": "20AECB97-4426-4312-B7F6-A92352BE39B7.png"
+        },
+        {
+          "file": "settings-resume-saved-phone-settings-resume-saved-scale2-contrast-on.png",
+          "sha256": "37acd01f58fa157d08a5717b72e32a681eef2f73912691120f6b3f3949eef87b",
+          "native_attachment": "9F475BFC-3362-4B37-95C5-4AD8A9FB1E55.png"
+        }
+      ]
+    }
+  ],
+  "persistence_verdict": "Resume-only native flow confirmed saved2.0/contrastOn and restored1.0/contrastOff across cold launch",
+  "visual_verdict": "RED: large text clips board title and several captions; native AX PASS is not visual approval",
+  "original_settings_restored": true,
+  "library_and_message": "Existing nine-card board and ХОЧУ КУШАТЬ observed after restoration; no board/message editing/import/reset",
+  "system_font_scale_changed": false,
+  "physical_acceptance": false,
+  "whole_u14_approved": false,
+  "publication_authorized": false
+}

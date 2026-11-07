@@ -1,0 +1,87 @@
+{
+  "scope": "Owned iPhone17/iPad17 normal-scale native accessibility audit and iPad portable2.0/contrast/save/scroll/restore",
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "cases": [
+    {
+      "name": "accessibility-audit-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 17.53,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/accessibility-audit-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "accessibility-audit-phone-accessibility-audit-existing-board.png",
+          "sha256": "1a5dc4e41e396fd80c6b662aa9151ca59a79d118f42eb2882325a57acb7fd4e3",
+          "native_attachment": "BC1D0ECC-5C0E-4B54-BF80-6AF4A7233973.png"
+        }
+      ]
+    },
+    {
+      "name": "large-font-precise-gestures-ipad",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 122.404,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/large-font-precise-gestures-ipad.xcresult",
+      "screenshots": [
+        {
+          "file": "large-font-precise-gestures-ipad-settings-original-restored-cold-board.png",
+          "sha256": "cd39e60fc8d00327be3ad20a38a32bdd6994e974d2c5bbd1a1243b9b59bdc237",
+          "native_attachment": "BC25FA2F-CEAB-471B-BDF8-A900D61B2167.png"
+        },
+        {
+          "file": "large-font-precise-gestures-ipad-settings-restore-original-through-ui.png",
+          "sha256": "3d93fd7b05274e1bbbfaf9d9ba03d6ee14758069a91fb9ee6451eca041a6953f",
+          "native_attachment": "20D8536A-8911-4B0C-B126-BCC90D62D4EF.png"
+        },
+        {
+          "file": "large-font-precise-gestures-ipad-settings-large-text-caption-scroll.png",
+          "sha256": "fd10f340dd2ad2931ed5cef6d98a4fa4fa0039609f60be00db73f3ac8929afb2",
+          "native_attachment": "3C7F2908-979C-4357-878C-469813990E9F.png"
+        },
+        {
+          "file": "large-font-precise-gestures-ipad-settings-large-text-contrast-cold-board.png",
+          "sha256": "9b46f8f3fd6b2b3549dfc4141a9a3a48101bcad256ac8ea3644feef8877ac114",
+          "native_attachment": "CA3DDFAF-B25E-4E97-8371-9A16E2E59D91.png"
+        },
+        {
+          "file": "large-font-precise-gestures-ipad-settings-save-scale2-contrast-on.png",
+          "sha256": "6b8c82932b892d52d512968704415adc2ff0508789a6849aecc0dabc87336473",
+          "native_attachment": "0086A886-40F7-4356-A0A8-F0D5D6C7935D.png"
+        }
+      ]
+    },
+    {
+      "name": "accessibility-audit-ipad",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 15.757,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/accessibility-audit-ipad.xcresult",
+      "screenshots": [
+        {
+          "file": "accessibility-audit-ipad-accessibility-audit-existing-board.png",
+          "sha256": "46eb1a9fd12ca825d1ac656bfc7e6b499007054abbe60ba173c5b0fdf49ff90e",
+          "native_attachment": "73DED602-67FF-4EFD-A7A1-574B23B86B35.png"
+        }
+      ]
+    }
+  ],
+  "native_audit_types": [
+    "contrast",
+    "elementDetection",
+    "hitRegion",
+    "sufficientElementDescription",
+    "textClipped",
+    "trait"
+  ],
+  "audit_issue_filters_used": false,
+  "dynamic_type_audit_run": false,
+  "system_font_scale_changed": false,
+  "ipad_original_settings_restored": true,
+  "voiceover_talkback_runtime_accepted": false,
+  "whole_font_matrix_accepted": false,
+  "physical_aac_accepted": false,
+  "publication_authorized": false
+}

@@ -1,0 +1,59 @@
+{
+  "scope": "Android app legacy privacy fixtures vs intentionally isolated development manifest; production privacy unchanged",
+  "original_red": {
+    "variant": "testDebugUnitTest",
+    "tests": 69,
+    "failed": 3,
+    "failing_cases": [
+      "MainActivityPrivacyNoticeTest.unknownNoticeCanBeDismissedWithoutBlockingCoreUi",
+      "MainActivityPrivacyNoticeTest.pendingChoiceSurvivesRecreationAndNoticeIsRedisplayed",
+      "SettingsActivityTelemetryRestoreTest.directSettingsLaunchPersistsAndRestoresAnalyticsChoice"
+    ]
+  },
+  "cause": "Legacy tests implicitly used the development manifest Application instead of the legacy LinkaPicturesApp startup they assert; release baseline3 passed before fixture changes",
+  "fix": "Explicit legacy Application only in legacy Robolectric fixtures, with assertions for unknown/pending opt-in and build-dependent effective collection; real debug manifest unchanged",
+  "new_debug_manifest_test": "Default Application, Firebase initializer absent/deactivated, old five Activity writers disabled",
+  "final_results": [
+    {
+      "variant": "testDebugUnitTest",
+      "counts": {
+        "tests": 70,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "variant": "testReleaseUnitTest",
+      "counts": {
+        "tests": 70,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "verify_release_privacy_passed": true,
+  "logs": [
+    {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/android-app-full-unit.log",
+      "sha256": "24e66f52e3577cb6d87d3c05c49aeab25e416a8d0b126e7a2c30c596a699eb71"
+    },
+    {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/legacy-privacy-release-baseline.log",
+      "sha256": "b985a9bde1ef298c11079ed81a19e9c99760b6d17865ada8bb9317466abcb03e"
+    },
+    {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/android-app-debug-release-unit.log",
+      "sha256": "4a02a06dc2cda2ae5b04413fa0d991f1112486ef0e4e97e6cfdafbdd01c6c8b4"
+    },
+    {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/android-debug-isolation-and-release-privacy.log",
+      "sha256": "1791c33cca05d13806767f442edbb32cc24e7311647906af99b842caaa18f891"
+    }
+  ],
+  "runtime_collection_policy_changed": false,
+  "production_manifest_changed": false,
+  "signing_or_release_apk_assembly_performed": false,
+  "native_platform_or_store_acceptance_inferred": false
+}

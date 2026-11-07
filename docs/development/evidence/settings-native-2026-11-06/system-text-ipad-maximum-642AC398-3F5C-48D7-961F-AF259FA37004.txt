@@ -1,0 +1,1 @@
+runnerPreferredCategory=UICTContentSizeCategoryAccessibilityXXXL; runnerBodyPointSize=53.0; appFrame=(0.0, 0.0, 834.0, 1194.0); firstCardFrame=(20.0, 366.0, 259.5, 259.5)
