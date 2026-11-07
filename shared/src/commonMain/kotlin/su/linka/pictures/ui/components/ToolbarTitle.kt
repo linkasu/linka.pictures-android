@@ -1,15 +1,13 @@
 package su.linka.pictures.ui.components
 
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 
-/** Keep the full label reachable when large text needs more lines than the toolbar viewport. */
+/** The toolbar grows with its title; it is never a partially scrolled text viewport. */
 @Composable
 internal fun ToolbarTitle(text: String, modifier: Modifier = Modifier) {
-    val scroll = key(text) { rememberScrollState() }
-    Text(text, modifier.verticalScroll(scroll))
+    Text(text, modifier.semantics { heading() })
 }

@@ -56,7 +56,7 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         }
     }
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(), topBar = {
-        ProductTopBar("Настройки", modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+        ProductTopBar("Настройки", modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
             navigationIcon = {
             IconButton(onClick = onBack) { Icon(LibraryIcons.Back, "Назад") }
         }, actions = { Box {

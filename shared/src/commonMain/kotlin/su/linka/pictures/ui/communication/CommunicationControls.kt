@@ -44,7 +44,7 @@ internal fun CommunicationControls(
     var enteringText by rememberSaveable { mutableStateOf(false) }
     fun id() = CommandId(ids.next())
     ProductTopBar(
-        modifier = Modifier.height(toolbarHeight),
+        modifier = Modifier.heightIn(min = toolbarHeight),
         title = title,
         navigationIcon = { CommunicationIconButton(CommunicationIcon.Back, "Открыть библиотеку", presentation.commandsEnabled, onOpenLibrary,
             Modifier.padding(start = 8.dp)) },

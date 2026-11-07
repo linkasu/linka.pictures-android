@@ -65,7 +65,7 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     VisibleImageDemand(shownListing.epoch, onAssets) {
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
       topBar = { ProductTopBar("Ваши наборы",
-          modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp), actions = {
+          modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp), actions = {
           IconButton(onClick = onCreate, enabled = enabled && !busy) { Icon(LibraryIcons.Add, "Создать набор") }
           Box {
               IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню библиотеки") }

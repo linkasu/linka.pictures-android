@@ -23,7 +23,7 @@ internal fun ProductScaffold(title: String, onBack: () -> Unit, scrollContent: B
     Surface(color = palette.background, contentColor = palette.text) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ProductTopBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+            ProductTopBar(modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
                 title = title,
                 navigationIcon = { IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Назад" }) {
                     Text("‹", style = MaterialTheme.typography.h4)

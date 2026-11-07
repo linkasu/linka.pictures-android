@@ -21,6 +21,7 @@ import su.linka.pictures.ui.app.editorUsesInspector
 import su.linka.pictures.ui.components.LabeledActionButton
 import su.linka.pictures.ui.images.VisibleImageDemand
 import su.linka.pictures.ui.components.ToolbarTitle
+import su.linka.pictures.ui.app.ProductTopBar
 import su.linka.pictures.ui.components.toolbarHeightForFontScale
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
@@ -67,11 +68,9 @@ fun EditorScreen(
              // IME resizes the form, not its host; moving a focused field between hosts dismisses the keyboard.
              val inspector = editorUsesInspector(maxWidth.value, maxHeight.value, fontScale)
              Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-                TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
-                    backgroundColor = palette.surface, contentColor = palette.text, elevation = 0.dp,
-                    title = { ToolbarTitle(document?.name ?: "Редактор доски", modifier = Modifier.semantics {
-                        heading(); stateDescription = draftSaveLabel(state.savePhase)
-                    }) },
+                ProductTopBar(modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp)
+                    .semantics { stateDescription = draftSaveLabel(state.savePhase) },
+                    title = document?.name ?: "Редактор доски",
                     navigationIcon = {
                         IconButton({ dispatch(AuthoringAction.Close) }, enabled = state.phase != AuthoringPhase.UNCONFIRMED,
                             modifier = Modifier.semantics { contentDescription = "Назад с сохранённым черновиком" }) { EditorIcon(EditorSymbol.BACK) }

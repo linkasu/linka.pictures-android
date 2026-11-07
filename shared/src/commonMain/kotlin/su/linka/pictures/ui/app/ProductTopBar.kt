@@ -1,7 +1,11 @@
 package su.linka.pictures.ui.app
 
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.material.TopAppBar
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.ProvideTextStyle
+import androidx.compose.material.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -17,9 +21,20 @@ internal fun ProductTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val palette = LocalLinkaPalette.current
-    TopAppBar(
-        title = { ToolbarTitle(title) }, modifier = modifier,
-        navigationIcon = navigationIcon, actions = actions,
-        backgroundColor = palette.surface, contentColor = palette.text, elevation = 0.dp,
-    )
+    Surface(modifier, color = palette.surface, contentColor = palette.text) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val stacked = maxWidth < 600.dp && LocalDensity.current.fontScale > 1f
+            ProvideTextStyle(MaterialTheme.typography.h6) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+                        navigationIcon?.invoke()
+                        if (stacked) Spacer(Modifier.weight(1f))
+                        else Box(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) { ToolbarTitle(title) }
+                        actions()
+                    }
+                    if (stacked) Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) { ToolbarTitle(title) }
+                }
+            }
+        }
+    }
 }
