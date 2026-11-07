@@ -1,9 +1,11 @@
 package su.linka.pictures.application.communication
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.*
 import kotlin.test.*
@@ -273,6 +275,157 @@ class CommunicationSessionTest {
         f.open("direct")
         assertEquals(InteractionMode.COMPOSE, f.session.state.value.message.mode)
         f.close()
+    }
+
+    @Test fun rejectedRevisionDoesNotChooseModeAndMatchingRevisionOpensWithBoardDefault() = runTest {
+        val f = Fixture(this)
+        val board = f.board("direct", "Хочу", mode = InteractionMode.DIRECT)
+        f.start()
+        val before = f.session.state.value
+        val leases = f.media.openLeases
+        f.send(CommunicationCommand.OpenBoard(f.id(), board.document.id, expectedRevision = 2))
+        assertEquals(before.copy(problem = Problem(ProblemCode.CONFLICT, "direct", 2, 1)), f.session.state.value)
+        assertTrue(f.messages.attempts.isEmpty())
+        assertEquals(leases, f.media.openLeases)
+        f.send(CommunicationCommand.OpenBoard(f.id(), board.document.id, expectedRevision = board.revision))
+        assertEquals(board, f.session.state.value.board)
+        assertEquals(BoardCursor(board.document.id, PageId("direct")), f.session.state.value.message.cursor)
+        assertEquals(InteractionMode.DIRECT, f.session.state.value.message.mode)
+        assertNull(f.session.state.value.problem)
+        f.close()
+        assertEquals(0, f.media.openLeases)
+    }
+
+    @Test fun boardRevisionChangedDuringLoadPreservesPreviousStateAndLease() = runTest {
+        val f = Fixture(this)
+        val previousAsset = AssetId("a".repeat(64))
+        val nextAsset = AssetId("b".repeat(64))
+        f.board("previous", "Хочу", speech = SpeechSource.Recording(previousAsset))
+        val next = f.board("next", "кашу", speech = SpeechSource.Recording(nextAsset))
+        f.messages.stored = StoredMessage(0, 7, MessageDraft(
+            parts = listOf(MessagePart.Text(MessagePartId("text"), "фраза")),
+            mode = InteractionMode.DIRECT,
+            cursor = BoardCursor(BoardId("previous"), PageId("previous"), 1),
+        ))
+        f.start()
+        val before = f.session.state.value
+        val stored = f.messages.stored
+        val attempts = f.messages.attempts.size
+        val leases = f.media.openLeases
+        val delay = CompletableDeferred<Unit>()
+        f.library.delayed[next.document.id] = delay
+        f.send(CommunicationCommand.OpenBoard(f.id(), next.document.id, expectedRevision = next.revision))
+        f.library.boards[next.document.id] = next.copy(revision = 2)
+        delay.complete(Unit); runCurrent()
+        assertEquals(before.copy(problem = Problem(ProblemCode.CONFLICT, "next", 1, 2)), f.session.state.value)
+        assertEquals(stored, f.messages.stored)
+        assertEquals(attempts, f.messages.attempts.size)
+        assertEquals(leases, f.media.openLeases)
+        assertEquals(1, f.media.refs.getValue(previousAsset))
+        assertEquals(0, f.media.refs.getValue(nextAsset))
+        f.select("previous")
+        assertEquals("Хочу", f.audio.played.single().plan.renderedText)
+        f.close()
+        assertEquals(0, f.media.openLeases)
+    }
+
+    @Test fun awaitedSameBoardReloadCompletesOnlyAfterLoadAndFailureKeepsPreviousState() = runTest {
+        val f = Fixture(this)
+        val board = f.board("a", "Хочу")
+        f.start(); f.open("a")
+        val before = f.session.state.value
+        val leases = f.media.openLeases
+        val delay = CompletableDeferred<Unit>()
+        f.library.delayed[board.document.id] = delay
+        val reload = async { f.session.openBoard(board.document.id, expectedRevision = board.revision) }
+        runCurrent()
+        assertFalse(reload.isCompleted)
+        assertEquals(before, f.session.state.value)
+        delay.complete(Unit); runCurrent()
+        assertEquals(OperationResult.Completed(board), reload.await())
+        assertEquals(board, f.session.state.value.board)
+        assertEquals(leases, f.media.openLeases)
+
+        val loaded = f.session.state.value
+        val stored = f.messages.stored
+        val attempts = f.messages.attempts.size
+        f.library.boards.remove(board.document.id)
+        val failed = async { f.session.openBoard(board.document.id, expectedRevision = board.revision) }
+        runCurrent()
+        assertEquals(OperationResult.Failed(Problem(ProblemCode.NOT_FOUND)), failed.await())
+        assertEquals(loaded.copy(problem = Problem(ProblemCode.NOT_FOUND)), f.session.state.value)
+        assertEquals(stored, f.messages.stored)
+        assertEquals(attempts, f.messages.attempts.size)
+        assertEquals(leases, f.media.openLeases)
+        f.close()
+        assertEquals(0, f.media.openLeases)
+    }
+
+    @Test fun cancelledAwaiterCannotOpenQueuedOrLoadedBoard() = runTest {
+        for (cancelBeforeCommand in listOf(true, false)) {
+            val f = Fixture(this)
+            val board = f.board("a", "Хочу")
+            f.start()
+            val before = f.session.state.value
+            val leases = f.media.openLeases
+            val opened = async(start = CoroutineStart.UNDISPATCHED) { f.session.openBoard(board.document.id) }
+            if (cancelBeforeCommand) opened.cancel()
+            else f.library.beforeReadResult = { opened.cancel() }
+            runCurrent()
+            assertTrue(opened.isCancelled)
+            assertEquals(before, f.session.state.value)
+            assertTrue(f.messages.attempts.isEmpty())
+            assertEquals(leases, f.media.openLeases)
+            f.close()
+            assertEquals(0, f.media.openLeases)
+        }
+    }
+
+    @Test fun awaitedOpenSettlesWhenSessionScopeWasAlreadyCancelled() = runTest {
+        val f = Fixture(this)
+        val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        scope.cancel()
+        f.start(scope)
+        val opened = async { f.session.openBoard(BoardId("a")) }
+        runCurrent()
+        assertTrue(opened.isCompleted)
+        assertEquals(OperationResult.Cancelled, opened.await())
+        assertNull(f.session.state.value.board)
+    }
+
+    @Test fun rejectedPendingOpenSettlesWithoutWaitingForNonCancellableRead() = runTest {
+        for (rejection in listOf("superseded", "closed", "epoch", "unconfirmed")) {
+            val f = Fixture(this)
+            val board = f.board("slow", "Хочу")
+            f.board("next", "кашу")
+            val delay = CompletableDeferred<Unit>()
+            f.library.delayed[board.document.id] = delay
+            f.library.ignoresCancellation += board.document.id
+            f.start()
+            val opened = async { f.session.openBoard(board.document.id) }
+            runCurrent()
+            assertFalse(opened.isCompleted)
+            when (rejection) {
+                "superseded" -> f.open("next")
+                "closed" -> f.close()
+                "epoch" -> f.library.listing.value = LibraryListing(1, 1, emptyList())
+                else -> f.library.listing.value = f.library.listing.value.copy(
+                    refreshProblem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN),
+                )
+            }
+            runCurrent()
+            assertTrue(opened.isCompleted, rejection)
+            assertEquals(when (rejection) {
+                "epoch" -> OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
+                "unconfirmed" -> OperationResult.UnconfirmedCommit
+                else -> OperationResult.Cancelled
+            }, opened.await(), rejection)
+            val before = f.session.state.value
+            delay.complete(Unit); runCurrent()
+            assertEquals(before, f.session.state.value)
+            f.close()
+            assertEquals(0, f.media.openLeases)
+        }
     }
 
     @Test fun boundedDeliveryWindowAndEmptySpaceCells() = runTest {

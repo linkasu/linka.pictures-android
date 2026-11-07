@@ -8,7 +8,12 @@ sealed interface CommunicationCommand {
     data class Select(override val id: CommandId, val pageId: PageId, val position: Int) : CommunicationCommand {
         init { require(position >= 0) }
     }
-    data class OpenBoard(override val id: CommandId, val boardId: BoardId, val pageId: PageId? = null) : CommunicationCommand
+    data class OpenBoard(
+        override val id: CommandId,
+        val boardId: BoardId,
+        val pageId: PageId? = null,
+        val expectedRevision: Long? = null,
+    ) : CommunicationCommand
     data class ChangePage(override val id: CommandId, val pageId: PageId) : CommunicationCommand
     data class SetMode(override val id: CommandId, val mode: InteractionMode) : CommunicationCommand
     data class InsertText(override val id: CommandId, val text: String) : CommunicationCommand

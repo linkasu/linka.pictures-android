@@ -35,6 +35,7 @@ class CommunicationSession(
     private var undoLease: MediaLease? = null
     private var navigation = 0L
     private var boardJob: Job? = null
+    private var boardCompletion: CompletableDeferred<OperationResult<PublishedBoard>>? = null
     private var request: RequestId? = null
     private val owner = ids.next()
     private var ready = false
@@ -42,9 +43,10 @@ class CommunicationSession(
     private var stale = false
     private var unconfirmed = false
     private var modeChosen = false
+    private val actorJob: Job
 
     init {
-        sessionScope.launch {
+        actorJob = sessionScope.launch {
             try {
                 restore()
                 for (event in events) event()
@@ -91,6 +93,29 @@ class CommunicationSession(
         }
     }
 
+    suspend fun openBoard(
+        id: BoardId,
+        pageId: PageId? = null,
+        expectedRevision: Long? = null,
+    ): OperationResult<PublishedBoard> {
+        val completion = CompletableDeferred<OperationResult<PublishedBoard>>(currentCoroutineContext()[Job])
+        val shutdown = actorJob.invokeOnCompletion { completion.complete(OperationResult.Cancelled) }
+        try {
+            if (!events.trySend {
+                if (!completion.isCancelled) {
+                    if (ready && !closing) checkLibrary()
+                    val rejection = openRejection()
+                    if (rejection != null) completion.complete(rejection)
+                    else open(id, pageId, expectedRevision, completion)
+                }
+            }.isSuccess) completion.complete(OperationResult.Cancelled)
+            return completion.await()
+        } finally {
+            completion.cancel()
+            shutdown.dispose()
+        }
+    }
+
     fun interrupt() {
         events.trySend { if (!closing) stop() }
     }
@@ -101,7 +126,7 @@ class CommunicationSession(
                 checkLibrary()
                 closing = true
                 navigation++
-                boardJob?.cancel()
+                cancelBoardLoad()
                 stop()
                 finishClosingIfIdle()
             }
@@ -146,7 +171,7 @@ class CommunicationSession(
         stale = true
         discardPendingSave()
         navigation++
-        boardJob?.cancel()
+        cancelBoardLoad()
         stop()
         boardLease?.close()
         boardLease = null
@@ -170,7 +195,7 @@ class CommunicationSession(
         if (unconfirmed) return
         unconfirmed = true
         navigation++
-        boardJob?.cancel()
+        cancelBoardLoad()
         stop()
         discardPendingSave()
         mutableState.value = state.value.copy(
@@ -190,7 +215,7 @@ class CommunicationSession(
 
     private fun reduce(command: CommunicationCommand) {
         when (command) {
-            is CommunicationCommand.OpenBoard -> open(command.boardId, command.pageId)
+            is CommunicationCommand.OpenBoard -> open(command.boardId, command.pageId, command.expectedRevision)
             is CommunicationCommand.ChangePage -> {
                 val board = state.value.board ?: return
                 if (board.document.pages.none { it.id == command.pageId }) return
@@ -233,7 +258,7 @@ class CommunicationSession(
             is CommunicationCommand.Stop -> stop()
             is CommunicationCommand.CloseBoard -> {
                 navigation++
-                boardJob?.cancel()
+                cancelBoardLoad()
                 stop()
                 boardLease?.close()
                 boardLease = null
@@ -243,24 +268,52 @@ class CommunicationSession(
         }
     }
 
-    private fun open(id: BoardId, pageId: PageId?) {
-        val generation = ++navigation
+    private fun openRejection(): OperationResult<PublishedBoard>? = when {
+        unconfirmed -> OperationResult.UnconfirmedCommit
+        stale -> OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
+        closing -> OperationResult.Cancelled
+        !ready -> OperationResult.Failed(state.value.problem ?: Problem(ProblemCode.INTERRUPTED))
+        else -> null
+    }
+
+    private fun cancelBoardLoad() {
+        boardCompletion?.complete(openRejection() ?: OperationResult.Cancelled)
+        boardCompletion = null
         boardJob?.cancel()
+    }
+
+    private fun open(
+        id: BoardId,
+        pageId: PageId?,
+        expectedRevision: Long? = null,
+        completion: CompletableDeferred<OperationResult<PublishedBoard>>? = null,
+    ) {
+        val generation = ++navigation
+        cancelBoardLoad()
+        boardCompletion = completion
         boardJob = sessionScope.launch {
             val result = operation { library.board(id) }
             var transferred = false
             try {
                 ensureActive()
                 transferred = events.trySend {
-                    checkLibrary()
-                    if (closing || stale || unconfirmed || generation != navigation) {
+                    if (completion?.isCancelled != true) checkLibrary()
+                    val rejection = openRejection()
+                    if (completion?.isCancelled == true || rejection != null || generation != navigation) {
                         if (result is OperationResult.Completed) result.value.lease.close()
+                        completion?.complete(rejection ?: OperationResult.Cancelled)
                     } else when (result) {
                         is OperationResult.Completed -> {
                             val value = result.value
                             if (value.epoch != state.value.stamp.epoch) {
                                 value.lease.close()
                                 invalidateEpoch()
+                                completion?.complete(OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST)))
+                            } else if (expectedRevision != null && value.board.revision != expectedRevision) {
+                                value.lease.close()
+                                val problem = Problem(ProblemCode.CONFLICT, id.value, expectedRevision, value.board.revision)
+                                report(problem)
+                                completion?.complete(OperationResult.Failed(problem))
                             } else {
                                 val page = value.board.document.pages.firstOrNull { it.id == pageId }
                                     ?: value.board.document.pages.first()
@@ -274,16 +327,29 @@ class CommunicationSession(
                                     it.boardId == id && it.pageId == page.id && it.firstCell < page.capacity
                                 }?.firstCell ?: 0
                                 change(state.value.message.copy(cursor = BoardCursor(id, page.id, firstCell), mode = mode))
+                                completion?.complete(openRejection() ?: OperationResult.Completed(value.board))
                             }
                         }
-                        is OperationResult.Failed -> report(result.problem)
-                        OperationResult.Cancelled -> Unit
-                        OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
+                        is OperationResult.Failed -> {
+                            report(result.problem)
+                            completion?.complete(result)
+                        }
+                        OperationResult.Cancelled -> completion?.complete(OperationResult.Cancelled)
+                        OperationResult.UnconfirmedCommit -> {
+                            freezeUnconfirmed()
+                            completion?.complete(OperationResult.UnconfirmedCommit)
+                        }
                     }
                 }.isSuccess
             } finally {
-                if (!transferred && result is OperationResult.Completed) result.value.lease.close()
+                if (!transferred) {
+                    if (result is OperationResult.Completed) result.value.lease.close()
+                    completion?.complete(openRejection() ?: OperationResult.Cancelled)
+                }
             }
+        }
+        boardJob?.invokeOnCompletion { cause ->
+            if (cause != null) completion?.complete(OperationResult.Cancelled)
         }
     }
 
