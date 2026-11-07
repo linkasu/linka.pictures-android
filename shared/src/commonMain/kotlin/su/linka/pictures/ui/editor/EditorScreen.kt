@@ -62,10 +62,11 @@ fun EditorScreen(
     }
     VisibleImageDemand(Triple(state.epoch, ownerId, draft?.id), onImagesNeeded) {
         Surface(modifier.fillMaxSize(), color = palette.background, contentColor = palette.text) {
-            BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-            val fontScale = LocalDensity.current.fontScale
-            val inspector = editorUsesInspector(maxWidth.value, maxHeight.value, fontScale)
-            Column(Modifier.fillMaxSize()) {
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+             val fontScale = LocalDensity.current.fontScale
+             // IME resizes the form, not its host; moving a focused field between hosts dismisses the keyboard.
+             val inspector = editorUsesInspector(maxWidth.value, maxHeight.value, fontScale)
+             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
                 TopAppBar(modifier = Modifier.height(toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
                     backgroundColor = palette.surface, contentColor = palette.text, elevation = 0.dp,
                     title = { ToolbarTitle(document?.name ?: "Редактор доски", modifier = Modifier.semantics {

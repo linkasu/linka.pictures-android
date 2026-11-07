@@ -52,6 +52,9 @@ internal fun EditorPageCells(
                         var focused by remember(page.id, position) { mutableStateOf(false) }
                         DemandVisibleImages(page.id to position, setOfNotNull(cell?.card?.image))
                         Card(Modifier.size(cellWidth, cellHeight), elevation = 0.dp,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(3.dp),
+                            border = androidx.compose.foundation.BorderStroke(if (focused || selectedCell) 2.dp else 1.dp,
+                                if (focused) palette.focus else if (selectedCell) palette.primary else palette.border),
                             backgroundColor = if (selectedCell) palette.pressedSurface(palette.surface, palette.primary) else palette.surface) {
                             Box(Modifier.fillMaxSize()) {
                                 TextButton(onClick = {
@@ -60,10 +63,11 @@ internal fun EditorPageCells(
                                         onAction(AuthoringAction.MoveCell(moveSource.first, moveSource.second, page.id, position))
                                         onMoveSource(null)
                                     }
-                                }, enabled = enabled, colors = ButtonDefaults.textButtonColors(contentColor = palette.text), modifier = Modifier.fillMaxSize()
+                                }, enabled = enabled, contentPadding = PaddingValues(4.dp),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(3.dp),
+                                    colors = ButtonDefaults.textButtonColors(contentColor = palette.text), modifier = Modifier.fillMaxSize()
                                     .onFocusChanged { focused = it.isFocused }
-                                    .border(if (focused || selectedCell) 2.dp else 1.dp,
-                                        if (focused) palette.focus else if (selectedCell) palette.primary else palette.border).semantics {
+                                    .semantics {
                                     contentDescription = "$label. Строка ${row + 1}, столбец ${column + 1}"
                                     selected = selectedCell
                                 }) {
