@@ -11,6 +11,15 @@ import androidx.compose.ui.graphics.Color
 
 class CommunicationLayoutTest {
     @Test
+    fun measuredWordsAndWholeCaptionsGrowCellsInsteadOfChangingTheStoredGrid() {
+        // Two 57.6dp lines at scale2 + a 96dp image + gap6 + padding8.
+        val size = communicationCellSize(279f, 240f, 3, 3, 2f, minimumWidth = 310f, minimumHeight = 229.2f)
+        assertEquals(310f, size.width)
+        assertEquals(229.2f, size.height)
+        assertTrue(size.width * 3 > 279f)
+        assertTrue(size.height * 3 > 240f)
+    }
+    @Test
     fun compactAndLargeTextReserveASeparatePinnedActionRowWithoutOverflow() {
         val normal = communicationVerticalBudget(591f, 1f, false, stackedActions = true)
         assertEquals(64f, normal.actions)

@@ -12,6 +12,7 @@ class CommunicationCaptionStyleTest {
         assertEquals(24.sp, CommunicationCaptionStyle.fontSize)
         assertEquals(FontWeight.Bold, CommunicationCaptionStyle.fontWeight)
         assertEquals(28.8.sp, CommunicationCaptionStyle.lineHeight)
+        assertEquals(androidx.compose.ui.text.style.Hyphens.None, CommunicationCaptionStyle.hyphens)
         for (scale in listOf(0.5f, 1f, 2f, 6f)) {
             with(Density(2f, fontScale = scale)) {
                 assertEquals(48f * scale, CommunicationCaptionStyle.fontSize.toPx())

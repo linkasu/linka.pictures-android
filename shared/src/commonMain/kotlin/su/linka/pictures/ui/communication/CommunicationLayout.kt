@@ -37,12 +37,13 @@ internal fun communicationVerticalBudget(height: Float, fontScale: Float, multip
     return CommunicationVerticalBudget(phrase, height, actions)
 }
 
-internal fun communicationCellSize(width: Float, height: Float, columns: Int, rows: Int, fontScale: Float): CommunicationCellSize {
+internal fun communicationCellSize(width: Float, height: Float, columns: Int, rows: Int, fontScale: Float,
+    minimumWidth: Float = 0f, minimumHeight: Float = 0f): CommunicationCellSize {
     require(width.isFinite() && height.isFinite() && width >= 0 && height >= 0)
     require(columns > 0 && rows > 0 && fontScale.isFinite() && fontScale > 0)
     // Keep the board's dimensions and order; scroll only when readable touch targets cannot fit.
     return CommunicationCellSize(
-        maxOf(56f, width / columns),
-        maxOf(64f * maxOf(1f, fontScale), height / rows),
+        maxOf(56f, width / columns, minimumWidth),
+        maxOf(64f * maxOf(1f, fontScale), height / rows, minimumHeight),
     )
 }

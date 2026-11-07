@@ -64,7 +64,7 @@ internal fun CommunicationGrid(
     val slots = remember(page) { communicationSlots(page) }
     val focus = LocalFocusManager.current
     BoxWithConstraints(modifier) {
-        val size = communicationCellSize(maxWidth.value, maxHeight.value, page.columns, page.rows, LocalDensity.current.fontScale)
+        val size = measuredCommunicationCells(page, maxWidth.value, maxHeight.value)
         val cellWidth = size.width.dp
         val cellHeight = size.height.dp
         val cursor = firstCell.coerceIn(0, page.capacity - 1)
@@ -111,11 +111,15 @@ internal fun CommunicationGrid(
                                     accessibleName = label.ifEmpty { "Карточка без подписи, позиция ${position + 1}" },
                                     activationLabel = if (composing) "Добавить в сообщение" else "Произнести карточку",
                                     image = cell.card?.image?.let { images[it] },
+                                    hasImage = cell.card?.image != null,
                                     selected = cell.card?.id in selectedCards,
                                     enabled = enabled,
                                     onActivate = { onSelect(position) },
                                     modifier = itemModifier.semantics {
-                                        collectionItemInfo = CollectionItemInfo(row, 1, column, 1)
+                                         collectionItemInfo = CollectionItemInfo(row, 1, column, 1)
+                                         cell.card?.image?.let {
+                                             stateDescription = if (images[it] != null) "Изображение показано" else "Изображение ещё не показано"
+                                         }
                                     },
                                 )
                             }

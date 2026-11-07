@@ -24,6 +24,7 @@ fun CommunicationCard(
     enabled: Boolean,
     onActivate: () -> Unit,
     modifier: Modifier = Modifier,
+    hasImage: Boolean = image != null,
 ) {
     val palette = LocalLinkaPalette.current
     PrimitiveSurface(
@@ -32,16 +33,22 @@ fun CommunicationCard(
         kind = PrimitiveSurfaceKind.CARD,
     ) {
         BoxWithConstraints {
-            // The caption scrolls independently while the image retains its own viewport.
-            Layout(content = {
-                Box(contentAlignment = Alignment.Center) {
-                    if (image != null) Image(
-                        bitmap = image, contentDescription = null,
-                        modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit,
-                    )
+            val captionWidth = maxWidth
+            if (!hasImage) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CommunicationCaption(label, captionWidth)
                 }
-                CommunicationCaption(label, maxWidth, maxHeight)
-            }, measurePolicy = CommunicationCardMeasurePolicy)
+            } else {
+                Layout(content = {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (image != null) Image(
+                            bitmap = image, contentDescription = null,
+                            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit,
+                        )
+                    }
+                    CommunicationCaption(label, maxWidth)
+                }, measurePolicy = CommunicationCardMeasurePolicy)
+            }
         }
     }
 }

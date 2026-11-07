@@ -17,6 +17,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CommunicationCardMeasurePolicyTest {
+    @Test
+    fun captionIsMeasuredWholeRatherThanClippedIntoAPartialLineViewport() {
+        val caption = Child(180, 116)
+        with(CommunicationCardMeasurePolicy) {
+            scope.measure(listOf(Child(180, 96), caption), Constraints.fixed(180, 128))
+        }
+        assertEquals(Constraints.Infinity, caption.measured!!.maxHeight)
+    }
     private val scope = object : MeasureScope {
         override val density = 1f
         override val fontScale = 1f
@@ -71,10 +79,8 @@ class CommunicationCardMeasurePolicyTest {
                 }
                 assertEquals(width, result.width)
                 assertEquals(height, result.height)
-                val reserve = minOf(48, height / 3)
-                val captionMaxHeight = height - reserve - 6
-                assertEquals(Constraints.fixed(width, height - minOf(captionHeight, captionMaxHeight) - 6), image.measured)
-                assertEquals(captionMaxHeight, caption.measured!!.maxHeight)
+                assertEquals(Constraints.fixed(width, (height - captionHeight - 6).coerceAtLeast(0)), image.measured)
+                assertEquals(Constraints.Infinity, caption.measured!!.maxHeight)
                 assertEquals(0, caption.measured!!.minHeight)
                 assertEquals(0, caption.measured!!.minWidth)
             }
@@ -82,7 +88,7 @@ class CommunicationCardMeasurePolicyTest {
     }
 
     @Test
-    fun oversizedCaptionKeepsAnImageViewportInsideBoundedHeight() {
+    fun undersizedCallerCannotTurnTheCaptionIntoAPartialLineViewport() {
         for (pixels in listOf(0, 1000)) {
             val image = Child(pixels, pixels)
             val caption = Child(180, 500)
@@ -91,8 +97,8 @@ class CommunicationCardMeasurePolicyTest {
             }
             assertEquals(180, result.width)
             assertEquals(125, result.height)
-            assertEquals(Constraints(maxWidth = 180, maxHeight = 78), caption.measured)
-            assertEquals(Constraints.fixed(180, 41), image.measured)
+            assertEquals(Constraints(maxWidth = 180), caption.measured)
+            assertEquals(Constraints.fixed(180, 0), image.measured)
         }
     }
 
@@ -105,7 +111,7 @@ class CommunicationCardMeasurePolicyTest {
         }
         assertEquals(0, result.width)
         assertEquals(0, result.height)
-        assertEquals(Constraints.fixed(0, 0), caption.measured)
+        assertEquals(Constraints(maxWidth = 0), caption.measured)
         assertEquals(Constraints.fixed(0, 0), image.measured)
     }
 
@@ -147,7 +153,7 @@ class CommunicationCardMeasurePolicyTest {
     }
 
     @Test
-    fun tinyBoundsCapTheGapWithoutLosingTheImageReservation() {
+    fun tinyBoundsDoNotProduceNegativeImageConstraints() {
         for (height in 1..8) {
             val image = Child(1000, 1000)
             val caption = Child(48, 500)
@@ -155,8 +161,8 @@ class CommunicationCardMeasurePolicyTest {
                 scope.measure(listOf(image, caption), Constraints.fixed(48, height))
             }
             assertEquals(height, result.height)
-            assertEquals(height / 3, image.measured!!.maxHeight)
-            assertTrue(caption.measured!!.maxHeight >= 0)
+            assertEquals(0, image.measured!!.maxHeight)
+            assertEquals(Constraints.Infinity, caption.measured!!.maxHeight)
         }
     }
 }
