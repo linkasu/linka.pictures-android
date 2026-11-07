@@ -4,11 +4,12 @@
 
 Это правила целевого интерфейса, не подтверждение их реализации или AAC-приёмки. Платформенные цели — Android21 ARMv7/ARM64 и iOS17; [стек](../development/toolchain.md) закреплён отдельно.
 
-**Решение от 6 ноября 2026: UI 1.4 + согласованные функции.** Обязательный
-[контракт и атлас 1.4](../development/ui-1.4-parity.md) задаёт внешний вид,
-навигацию и визуальную приёмку на обеих платформах. Реализация на паузе; новый
-development UI визуально не принят. Реализованные tokens/primitives не являются
-одобренным редизайном.
+**Действующее решение 7 ноября 2026: Electron + адаптивный мобильный UI.**
+[Контракт Electron](../development/electron-ui-parity.md) заменяет визуальное
+требование1.4. Реализация V00–V15 разрешена, каждый шаг — отдельный commit и native
+screenshots. User approval и production admission не выводятся из реализации.
+Ниже прежние ссылки на геометрию1.4 — историческое описание: их оформление
+заменяется этим контрактом, data/accessibility инварианты сохраняются.
 
 Theme/accessibility primitives и session-driven экран общения реализованы отдельно от real bindings; pure palette/presentation tests не означают native semantics/keyboard/VoiceOver/TalkBack acceptance. Фраза и исправления не входят в secondary-controls scroll, Speak/Stop закреплён. Единственный handoff с точными четырьмя palettes и interface — [code-contracts](../development/code-contracts.md#p10-early-tokensprimitives-не-продуктовые-экраны).
 
