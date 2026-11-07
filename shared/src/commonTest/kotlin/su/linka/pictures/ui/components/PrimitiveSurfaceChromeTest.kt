@@ -1,6 +1,5 @@
 package su.linka.pictures.ui.components
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
@@ -13,41 +12,32 @@ import kotlin.test.assertTrue
 
 class PrimitiveSurfaceChromeTest {
     @Test
-    fun actualDefaultOutlinePassesAllGradientEndsIncludingPressedAndDisabled() {
-        val palette = linkaPalette(false, false)
-        for (selected in listOf(false, true)) {
-            val border = assertNotNull(PrimitiveSurfaceChrome.border(palette, selected))
-            val brush = border.brush
-            assertTrue(brush is SolidColor, "The whole outline must have the measured colour, not a lighter gradient edge")
-            val outline = brush.value
-            assertEquals(if (selected) palette.primary else Color(0xFF696969), outline)
-            assertEquals(if (selected) 3.dp else 0.5.dp, border.width)
-            for (enabled in listOf(false, true)) for (pressed in listOf(false, true)) {
-                val surfaces = if (enabled) PrimitiveSurfaceChrome.cardGradient(palette, palette.text, pressed)
-                    else listOf(palette.disabledSurface)
-                for (surface in surfaces) {
-                    val a = outline.luminance()
+    fun flatCardOutlinesKeepContrastInEveryPaletteAndState() {
+        for (dark in listOf(false, true)) for (highContrast in listOf(false, true)) {
+            val palette = linkaPalette(dark, highContrast)
+            for (selected in listOf(false, true)) {
+                val border = assertNotNull(PrimitiveSurfaceChrome.border(palette, selected))
+                val color = if (selected) palette.primary else palette.border
+                assertEquals(SolidColor(color), border.brush)
+                assertEquals(if (selected) 3.dp else 1.dp, border.width)
+                for (surface in listOf(palette.surface, palette.disabledSurface,
+                    palette.pressedSurface(palette.surface, palette.text))) {
+                    val a = color.luminance()
                     val b = surface.luminance()
-                    val contrast = (maxOf(a, b) + 0.05f) / (minOf(a, b) + 0.05f)
-                    assertEquals(1f, outline.alpha)
-                    assertEquals(1f, surface.alpha)
-                    assertTrue(contrast >= 3f, "selected=$selected enabled=$enabled pressed=$pressed: $outline / $surface = $contrast")
+                    assertTrue((maxOf(a, b) + 0.05f) / (minOf(a, b) + 0.05f) >= 3f)
                 }
             }
+            assertNull(PrimitiveSurfaceChrome.border(palette, null))
         }
     }
 
     @Test
-    fun darkHighContrastAndActionBordersKeepTheirExistingChoices() {
-        for ((dark, highContrast) in listOf(true to false, false to true, true to true)) {
-            val palette = linkaPalette(dark, highContrast)
-            for (selected in listOf(false, true)) {
-                val border = assertNotNull(PrimitiveSurfaceChrome.border(palette, selected))
-                assertEquals(if (selected) 3.dp else 1.dp, border.width)
-                assertEquals(SolidColor(if (selected) palette.primary else palette.border), border.brush)
-            }
-            assertNull(PrimitiveSurfaceChrome.border(palette, null))
-        }
-        assertNull(PrimitiveSurfaceChrome.border(linkaPalette(false, false), null))
+    fun explicitKindDoesNotInferACardFromSelectionSemantics() {
+        val palette = linkaPalette(false, false)
+        assertNotNull(PrimitiveSurfaceChrome.border(palette, null, PrimitiveSurfaceKind.CARD))
+        assertNull(PrimitiveSurfaceChrome.border(palette, false, PrimitiveSurfaceKind.ACTION))
+        assertEquals(SolidColor(palette.border), assertNotNull(
+            PrimitiveSurfaceChrome.border(palette, null, PrimitiveSurfaceKind.SECONDARY_ACTION),
+        ).brush)
     }
 }
