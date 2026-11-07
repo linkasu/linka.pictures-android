@@ -13,6 +13,9 @@ import platform.Foundation.NSThread
 import platform.UIKit.*
 import su.linka.pictures.application.Problem
 import su.linka.pictures.ui.app.LinkaApp
+import su.linka.pictures.ui.theme.LinkaTheme
+import su.linka.pictures.ui.theme.LocalLinkaPalette
+import androidx.compose.material.Surface
 
 private object ProductProcess {
     val root by lazy { IosProductRoot() }
@@ -23,7 +26,7 @@ fun MainViewController(): UIViewController {
     check(NSThread.isMainThread)
     val root = ProductProcess.root
     val failure = root.state.value as? RootState.Failed
-    return if (failure != null) ComposeUIViewController { MaterialTheme { RootError(failure.problem) } }
+    return if (failure != null) ComposeUIViewController { LinkaTheme { RootError(failure.problem) } }
     else ProductViewController(root)
 }
 
@@ -63,7 +66,8 @@ private class ProductViewController(private val root: IosProductRoot) : UIViewCo
 @Composable
 private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) {
     val state by root.state.collectAsState()
-    MaterialTheme {
+    LinkaTheme {
+      Surface(Modifier.fillMaxSize(), color = LocalLinkaPalette.current.background, contentColor = LocalLinkaPalette.current.text) {
         when (val current = state) {
             RootState.Loading -> Text("Открываем библиотеку…", Modifier.padding(24.dp))
             is RootState.Failed -> RootError(current.problem)
@@ -96,12 +100,16 @@ private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) 
                 }
             }
         }
+      }
     }
 }
 
 @Composable
-private fun RootError(problem: Problem) = Column(Modifier.padding(24.dp)) {
+private fun RootError(problem: Problem) = Surface(Modifier.fillMaxSize(),
+    color = LocalLinkaPalette.current.background, contentColor = LocalLinkaPalette.current.text) {
+  Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
     Text("Не удалось безопасно открыть библиотеку")
     Text("${problem.code}" + (problem.systemCode?.let { " (iOS: $it)" } ?: ""))
     Text("Доступ не открыт. Перезапустите приложение после устранения причины; защита не отключена.")
+  }
 }

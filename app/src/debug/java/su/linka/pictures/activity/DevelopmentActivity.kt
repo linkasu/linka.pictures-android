@@ -27,11 +27,15 @@ class DevelopmentActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // API21 has no dark status-bar icons; keep their background readable instead of white on lime.
-        window.statusBarColor = ContextCompat.getColor(this,
-            if (Build.VERSION.SDK_INT >= 23) R.color.colorPrimaryDark else R.color.colorPrimary)
+        // API21 has no dark status-bar icons; its system strip keeps the readable brand colour.
+        window.statusBarColor = if (Build.VERSION.SDK_INT >= 23) android.graphics.Color.rgb(246, 247, 244)
+            else ContextCompat.getColor(this, R.color.colorPrimary)
         if (Build.VERSION.SDK_INT >= 23)
             window.decorView.systemUiVisibility = window.decorView.systemUiVisibility or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        if (Build.VERSION.SDK_INT >= 26) {
+            window.navigationBarColor = android.graphics.Color.rgb(246, 247, 244)
+            window.decorView.systemUiVisibility = window.decorView.systemUiVisibility or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val host = windowHost
