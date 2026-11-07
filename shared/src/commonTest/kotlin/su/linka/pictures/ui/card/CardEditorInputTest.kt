@@ -39,12 +39,19 @@ class CardEditorInputTest {
             assertSame(original, input)
             assertEquals("Pending", input!!.value.label)
             assertTrue(input!!.pending)
+            wide = false
+            state = state.copy(phase = AuthoringPhase.EDITING)
+            render()
+            assertSame(original, input)
+            assertEquals("Pending", input!!.value.label)
+            assertTrue(input!!.pending)
             callback!!(state.copy(editVersion = 1, draft = state.draft!!.copy(form = form.copy(label = "Pending"))))
             runCurrent()
             assertFalse(input!!.pending)
             assertEquals("Pending", input!!.value.label)
             assertEquals(DraftSavePhase.UNSAVED, state.savePhase)
 
+            original.change(original.value.copy(label = "Old pending"))
             val oldCallback = callback!!
             state = initial.copy(draft = initial.draft!!.copy(form = form.copy(cardId = CardId("other"))))
             render()

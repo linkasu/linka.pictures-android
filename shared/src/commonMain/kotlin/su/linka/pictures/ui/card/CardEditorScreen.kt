@@ -8,7 +8,7 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.images.VisibleImageDemand
 
-/** Standalone entry point; the editor uses the dialog directly under its shared image-demand owner. */
+/** Standalone dialog entry point; the editor also hosts the shared form in its inspector. */
 @Composable
 fun CardEditorScreen(
     state: AuthoringState,

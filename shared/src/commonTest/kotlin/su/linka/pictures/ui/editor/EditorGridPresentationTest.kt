@@ -5,11 +5,12 @@ import su.linka.pictures.domain.*
 import androidx.compose.ui.graphics.vector.PathParser
 
 class EditorGridPresentationTest {
-    @Test fun inlineGridKeepsFieldsTogetherAndWrapsApplyOnNarrowOrLargeTextLayouts() {
-        assertEquals(2, editorGridGroupsPerRow(1000f, 1f))
-        assertEquals(2, editorGridGroupsPerRow(600f, 1f))
-        assertEquals(1, editorGridGroupsPerRow(360f, 1f))
-        assertEquals(1, editorGridGroupsPerRow(1000f, 2f))
+    @Test fun settingsRequireExplicitGridSaveOrCancelAndSettledInputsBeforeDismissal() {
+        assertTrue(editorSettingsCanDismiss(null, false, false))
+        assertFalse(editorSettingsCanDismiss(null, true, false))
+        assertFalse(editorSettingsCanDismiss(null, false, true))
+        assertFalse(editorSettingsCanDismiss(EditorForm.Grid(PageId("page"), "3", "4"), false, false))
+        assertFalse(editorSettingsCanDismiss(EditorForm.Card(PageId("page"), 0, CardId("card")), false, false))
     }
 
     @Test fun withoutSpaceCheckboxUsesExistingInputStyleWithoutChangingDirectMode() {
@@ -33,8 +34,8 @@ class EditorGridPresentationTest {
     @Test fun ordinaryNineCellsFitWithoutForcedNinetySixDpMinimum() {
         val width = editorCellExtent(248f, 3, 64f)
         val height = editorCellExtent(480f, 3, 80f)
-        assertEquals(248f, width * 3 + 8f)
-        assertEquals(480f, height * 3 + 8f)
+        assertEquals(248f, width * 3 + 16f)
+        assertEquals(480f, height * 3 + 16f)
         assertTrue(width < 96f)
     }
 
