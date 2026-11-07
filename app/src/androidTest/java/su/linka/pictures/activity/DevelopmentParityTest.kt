@@ -38,6 +38,44 @@ class DevelopmentParityTest {
     private val libraryTitles = listOf("Ваши наборы", "Библиотека")
     private val libraryMenu = listOf("Меню библиотеки", "Меню", "Ещё")
 
+    @Test fun electronVisualAtlasExistingLibraryWithoutWrites() {
+        assertFixtureIdentity()
+        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+            awaitLibrary()
+            electronScreenshot("library")
+            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            awaitNineCards(); awaitFilledMessage()
+            electronScreenshot("board")
+            clickNamed(listOf("Настройки доски"))
+            awaitNamed("Параметры доски")
+            electronScreenshot("board-settings")
+            clickNamed(listOf("Закрыть"))
+            clickNamed(listOf("Открыть библиотеку"))
+            awaitLibrary()
+            clickNamed(libraryMenu); clickNamed(listOf("Настройки"))
+            awaitNamed("Масштаб текста")
+            electronScreenshot("settings")
+            clickNamed(listOf("Масштаб текста"))
+            awaitNamed("Масштаб текста (0.5–3)")
+            electronScreenshot("scale-dialog")
+            clickNamed(listOf("Отмена"))
+            clickNamed(listOf("Назад")); awaitLibrary()
+            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            awaitNineCards(); awaitFilledMessage()
+            electronScreenshot("restored-board")
+        }
+    }
+
+    private fun electronScreenshot(name: String) {
+        require(name.matches(Regex("[a-z-]+")))
+        stableIdleScreenshot().recycle()
+        val path = "/data/local/tmp/linka-electron-$name.png"
+        instrumentation.uiAutomation.executeShellCommand("screencap -p $path").use { descriptor ->
+            java.io.FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
+        }
+        instrumentation.sendStatus(0, Bundle().apply { putString("electronScreenshot", path) })
+    }
+
     @Test fun filledBoardThroughRealSafImport() {
         assertFixtureIdentity()
         ActivityScenario.launch(DevelopmentActivity::class.java).use {

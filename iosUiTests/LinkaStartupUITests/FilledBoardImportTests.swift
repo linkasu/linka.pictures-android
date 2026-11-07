@@ -11,6 +11,44 @@ final class FilledBoardImportTests: XCTestCase {
     private var stage = "00-launch"
     private struct Unavailable: Error {}
 
+    func testElectronVisualAtlasExistingLibrary() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        app.launch()
+        stage = "electron-library"
+        _ = try visible(named("Ваши наборы", in: app))
+        screenshot(app)
+        try openOwnedBoard(in: app)
+        stage = "electron-board"
+        try assertCards(in: app)
+        let message = try visible(app.descendants(matching: .any).matching(NSPredicate(
+            format: "label BEGINSWITH %@ OR identifier BEGINSWITH %@", "Общее сообщение:", "Общее сообщение:")))
+        let original = message.label
+        screenshot(app)
+        try tap(named("Настройки доски", in: app))
+        stage = "electron-board-settings"
+        _ = try visible(named("Параметры доски", in: app))
+        screenshot(app)
+        try tap(app.buttons.matching(identifier: "Закрыть"))
+        try tap(named("Открыть библиотеку", in: app))
+        try tap(named("Меню библиотеки", in: app))
+        try tap(named("Настройки", in: app))
+        stage = "electron-settings"
+        _ = try visible(named("Масштаб текста", in: app))
+        screenshot(app)
+        try tap(named("Масштаб текста", in: app))
+        stage = "electron-scale-dialog"
+        _ = try visible(app.textViews)
+        screenshot(app)
+        try tap(app.buttons.matching(identifier: "Отмена"))
+        try tap(named("Назад", in: app))
+        try openOwnedBoard(in: app)
+        stage = "electron-restored-board"
+        try assertCards(in: app)
+        _ = try visible(named(original, in: app))
+        screenshot(app)
+    }
+
     func testImportOwnedFixtureThroughFilesAndCompose() throws {
         continueAfterFailure = false
         let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
