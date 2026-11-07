@@ -37,7 +37,7 @@ internal fun CommunicationActionButton(
                 CommunicationIcon.Undo -> "Вернуть"
                 CommunicationIcon.Stop -> "Стоп"
                 else -> label
-            }, modifier = Modifier.clearAndSetSemantics {}, fontSize = 12.sp,
+            }, modifier = Modifier.clearAndSetSemantics {}, fontSize = 12.sp, lineHeight = 14.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
