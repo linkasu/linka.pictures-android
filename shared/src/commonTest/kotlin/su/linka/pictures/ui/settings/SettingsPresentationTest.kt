@@ -4,6 +4,12 @@ import kotlin.test.*
 import su.linka.pictures.application.ports.VoiceStatus
 
 class SettingsPresentationTest {
+    @Test fun previewUsesDraftScaleWithoutApplyingSavedScaleTwice() {
+        assertEquals(1.5f, settingsPreviewFontScale(current = 2f, saved = 2f, draft = 1.5f))
+        assertEquals(1.8f, settingsPreviewFontScale(current = 2.4f, saved = 2f, draft = 1.5f), 0.0001f)
+        assertEquals(0.5f, settingsPreviewFontScale(current = 3f, saved = 3f, draft = 0.5f))
+    }
+
     @Test fun portableScaleKeepsExistingRangeAndRejectsNonFiniteInput() {
         assertTrue(settingsInputValid(0.5f, "ru-RU"))
         assertTrue(settingsInputValid(3f, "ru-RU"))
