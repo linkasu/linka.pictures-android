@@ -19,6 +19,8 @@ data class LinkaPalette(
     val disabledSurface: Color,
     val disabledText: Color,
     val highContrast: Boolean,
+    val navigationSurface: Color = surface,
+    val divider: Color = border,
 ) {
     // Keep pressed feedback opaque after compositing, including high-contrast mode.
     fun pressedSurface(surface: Color, content: Color): Color =
@@ -31,23 +33,27 @@ fun linkaPalette(darkTheme: Boolean, highContrast: Boolean): LinkaPalette = when
         Color.White, Color(0xFFE6E6E6), Color.White,
         Color(0xFFFFCAC4), Color.Black, Color(0xFFFFE082),
         Color.Black, Color(0xFFE6E6E6), true,
+        navigationSurface = Color.Black, divider = Color.White,
     )
     highContrast -> LinkaPalette(
         Color(0xFF004747), Color.White, Color.White, Color.White,
         Color.Black, Color(0xFF1A1A1A), Color.Black,
         Color(0xFF8F120A), Color.White, Color(0xFF002F6C),
         Color.White, Color(0xFF1A1A1A), true,
+        navigationSurface = Color.White, divider = Color.Black,
     )
     darkTheme -> LinkaPalette(
         Color(0xFF66D9D9), Color(0xFF003737), Color(0xFF0E1919), Color(0xFF172424),
         Color(0xFFE3F1F1), Color(0xFFB2C8C8), Color(0xFF8DAAAA),
         Color(0xFFFFB4AB), Color(0xFF690005), Color(0xFFFFD666),
         Color(0xFF243737), Color(0xFFB2C8C8), false,
+        navigationSurface = Color(0xFF243737), divider = Color(0xFF3D5350),
     )
     else -> LinkaPalette(
-        Linka14.primary, Color.White, Color.White, Color.White,
-        Color.Black, Color(0xFF757575), Color(0xFF777777),
-        Color(0xFFB42318), Color.White, Color(0xFF002F6C),
-        Color(0xFFE0E0E0), Color(0xFF435B5B), false,
+        Color(0xFF197377), Color.White, Color(0xFFF6F7F4), Color.White,
+        Color(0xFF243431), Color(0xFF536761), Color(0xFF778C84),
+        Color(0xFFA33838), Color.White, Color(0xFF002F6C),
+        Color(0xFFF2F4F1), Color(0xFF536761), false,
+        navigationSurface = Color(0xFFE2EEEA), divider = Color(0xFFD6E1DB),
     )
 }

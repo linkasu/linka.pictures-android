@@ -18,7 +18,7 @@ class LinkaThemeTest {
             assertEquals(palette.onPrimary, colors.onSecondary)
             assertEquals(palette.primary, colors.primary)
             assertEquals(palette.onPrimary, colors.onPrimary)
-            assertEquals(if (!dark && !highContrast) Linka14.primaryDark else palette.primary, colors.primaryVariant)
+            assertEquals(palette.primary, colors.primaryVariant)
             assertEquals(palette.surface, colors.surface)
             assertEquals(palette.background, colors.background)
             assertEquals(palette.text, colors.onSurface)
@@ -59,7 +59,7 @@ class LinkaThemeTest {
                 assertEquals(1f, background.alpha)
                 assertTrue(ratio >= minimum, "dark=$dark highContrast=$highContrast: $foreground / $background = $ratio < $minimum")
             }
-            for (background in listOf(p.surface, p.background)) {
+            for (background in listOf(p.surface, p.background, p.navigationSurface)) {
                 check(p.text, background, textMinimum)
                 check(p.secondaryText, background, textMinimum)
                 check(p.border, background, 3f)
@@ -104,22 +104,27 @@ class LinkaThemeTest {
     }
 
     @Test
-    fun defaultPaletteUses14ResourcesAndBlackCardCaptions() {
+    fun defaultPaletteMatchesElectronSemanticColors() {
         val p = linkaPalette(false, false)
         assertEquals(Color(0xFF197377), p.primary)
-        assertEquals(Color(0xFFBED64F), Linka14.primaryDark)
-        assertEquals(Color(0xFFFBCC30), Linka14.accent)
-        assertEquals(Color.White, p.background)
+        assertEquals(Color(0xFFF6F7F4), p.background)
         assertEquals(Color.White, p.surface)
-        assertEquals(Color.Black, p.text)
-        assertEquals(Color(0xFFE0E0E0), p.disabledSurface)
-        for (surface in listOf(Linka14.cardTop, Linka14.cardBottom)) {
-            assertTrue((surface.luminance() + 0.05f) / 0.05f >= 4.5f)
-            val pressed = p.pressedSurface(surface, p.text)
-            assertEquals(1f, pressed.alpha)
-            assertTrue(pressed.luminance() < surface.luminance())
-            assertTrue((pressed.luminance() + 0.05f) / 0.05f >= 4.5f)
-        }
+        assertEquals(Color(0xFF243431), p.text)
+        assertEquals(Color(0xFF536761), p.secondaryText)
+        assertEquals(Color(0xFFE2EEEA), p.navigationSurface)
+        assertEquals(Color(0xFF778C84), p.border)
+        assertEquals(Color(0xFFD6E1DB), p.divider)
+        assertEquals(Color(0xFFA33838), p.danger)
+    }
+
+    @Test
+    fun electronMetricsKeepAccessibleTargetsAndCompactSpacing() {
+        assertEquals(48f, LinkaMetrics.touchTarget.value)
+        assertEquals(3f, LinkaMetrics.focusRing.value)
+        assertEquals(3f, LinkaMetrics.cardRadius.value)
+        assertEquals(16f, LinkaMetrics.panelPadding.value)
+        assertEquals(8f, LinkaMetrics.editorGap.value)
+        assertEquals(6f, LinkaMetrics.imageCaptionGap.value)
     }
 
     private fun contrastRatio(foreground: Color, background: Color): Float {

@@ -10,14 +10,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
 
 val LocalLinkaPalette = staticCompositionLocalOf { linkaPalette(false, false) }
 
 object LinkaTargets {
-    val communicationCard = 48.dp
-    val actionButton = 48.dp
-    val focusRing = 3.dp
+    val communicationCard = LinkaMetrics.touchTarget
+    val actionButton = LinkaMetrics.touchTarget
+    val focusRing = LinkaMetrics.focusRing
 }
 
 fun linkaFontScale(systemFontScale: Float, textScale: Float): Float {
@@ -48,9 +47,8 @@ fun LinkaTheme(
 
 internal fun linkaMaterialColors(darkTheme: Boolean, palette: LinkaPalette): Colors {
     val colors = if (darkTheme) darkColors() else lightColors()
-    val baseline = !darkTheme && !palette.highContrast
     return colors.copy(
-        primary = palette.primary, primaryVariant = if (baseline) Linka14.primaryDark else palette.primary,
+        primary = palette.primary, primaryVariant = palette.primary,
         // Brand yellow cannot identify selected controls against a white surface.
         secondary = palette.primary, secondaryVariant = palette.primary,
         onPrimary = palette.onPrimary, onSecondary = palette.onPrimary,
