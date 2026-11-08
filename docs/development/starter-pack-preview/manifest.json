@@ -1,0 +1,39 @@
+{
+  "schema": "linka-starter-preview-v1",
+  "status": "generation_failed",
+  "shipping": false,
+  "visualApproval": "pending",
+  "file": null,
+  "size": null,
+  "sha256": null,
+  "source": "Single authorized image generation attempt; no image produced",
+  "license": null,
+  "provenance": {
+    "date": "2026-11-08",
+    "tool": "experimental_image_generate",
+    "jobId": "image_1bb7c3903001c72adGUEEK2IuY",
+    "modelReportedByTool": "openai/gpt-image-2.5-sunburst",
+    "errorCategory": "API authentication failure",
+    "attempts": 1,
+    "imageRead": false,
+    "imageReadUnavailableReason": "Generation failed; no image returned",
+    "externalArtworkUsed": false,
+    "requestedOutputStem": "core-page-1"
+  },
+  "seedKey": "ru.core.v1",
+  "page": 1,
+  "rows": 3,
+  "columns": 3,
+  "style": "White background, thin light-gray cell dividers, high-contrast dark navy outlines, restrained colors, large simple friendly flat AAC-like symbols, consistent scale, no text/letters/numbers inside image, no small details. Labels below are metadata only. Not clinically validated.",
+  "cells": [
+    {"position":1,"row":1,"column":1,"label":"Да","recordingKey":"ru.yes","requestedSymbol":"Large green checkmark in circle"},
+    {"position":2,"row":1,"column":2,"label":"Нет","recordingKey":"ru.no","requestedSymbol":"Large red X in circle"},
+    {"position":3,"row":1,"column":3,"label":"Хочу","recordingKey":"ru.want","requestedSymbol":"Friendly child extending open hand toward toy ball to request it"},
+    {"position":4,"row":2,"column":1,"label":"Не хочу","recordingKey":"ru.not_want","requestedSymbol":"Child turning away from toy ball with palm raised in refusal"},
+    {"position":5,"row":2,"column":2,"label":"Помоги","recordingKey":"ru.help","requestedSymbol":"Larger hand gently supporting smaller reaching hand"},
+    {"position":6,"row":2,"column":3,"label":"Больно","recordingKey":"ru.hurts","requestedSymbol":"Child touching upper arm with red pain star, concerned not frightening"},
+    {"position":7,"row":3,"column":1,"label":"Пить","recordingKey":"ru.drink","requestedSymbol":"Cup of water tilted toward child's mouth"},
+    {"position":8,"row":3,"column":2,"label":"Туалет","recordingKey":"ru.toilet","requestedSymbol":"Simple side-view western toilet, no person"},
+    {"position":9,"row":3,"column":3,"label":"Хватит","recordingKey":"ru.enough","requestedSymbol":"Large raised open palm inside red outlined stop octagon, no text"}
+  ]
+}

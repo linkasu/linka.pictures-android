@@ -3,7 +3,10 @@
   "date": "2026-11-08",
   "status": "blocked",
   "shippingResources": [],
-  "blockers": ["media_redistribution_rights_unconfirmed", "core_offline_recordings_unavailable", "content_approval_pending", "codec_and_native_media_validation_pending"],
+  "contentApproval": {"status":"approved","date":"2026-11-08","userStatement":"Да, состав подходит","sets":5,"pages":10,"slots":90,"scope":"vocabulary and layout, not image style or audio validation"},
+  "audioDecision": {"source":"user_own_recordings","userStatement":"Предоставлю свои записи","received":false,"license":null,"rightsConfirmation":"pending for supplied files","template":"starter-pack-recordings.csv","uniqueRecordings":74,"silentActions":["SPACE",".","?"],"wholeMessageLetterSpeech":"unresolved; recorded letters are not arbitrary-word offline synthesis"},
+  "previewManifest": "starter-pack-preview/manifest.json",
+  "blockers": ["user_recordings_not_received", "supplied_media_rights_and_provenance_pending", "image_generation_unavailable", "visual_style_approval_pending", "codec_and_native_media_validation_pending", "whole_message_letter_speech_unresolved"],
   "proposal": [
     {"seedKey":"ru.core.v1","displayName":"Общаюсь","file":null,"size":null,"sha256":null,"rows":3,"columns":3,"optional":false,"pages":[["Да","Нет","Хочу","Не хочу","Помоги","Больно","Пить","Туалет","Хватит"],["Ещё","Есть","Отдых","Неудобно","Хорошо","Плохо","Не понимаю","Другое","Посмотри"],["Привет","Пока","Играть","Вместе","Нравится","Не нравится","Страшно","Злюсь","Обнять"]],"source":"new vocabulary proposal, not an existing archive","license":null,"provenance":"Proposed during delegated content inventory; no media produced or licensed"},
     {"seedKey":"ru.food.v1","displayName":"Еда и питьё","file":null,"size":null,"sha256":null,"rows":3,"columns":3,"optional":false,"pages":[["Хочу","Не хочу","Ещё","Вода","Сок","Чай","Каша","Суп","Хватит"]],"source":"new vocabulary proposal","license":null,"provenance":"No media produced or licensed"},
