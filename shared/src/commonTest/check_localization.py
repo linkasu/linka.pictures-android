@@ -40,6 +40,18 @@ class LocalizationResourcesTest(unittest.TestCase):
         self.assertEqual({key for key in english if not key.startswith(("startup_", "bootstrap_", "ios_"))}, used)
         self.assertEqual("New board", english["new_board"])
         self.assertEqual("Новая доска", russian["new_board"])
+        native_used = set()
+        for platform, filenames in (
+            ("androidMain", ("AndroidProductRuntime.kt", "AndroidStartupScreen.kt")),
+            ("iosMain", ("IosProductRoot.kt", "MainViewController.kt")),
+        ):
+            for filename in filenames:
+                source = main.parent / platform / "kotlin/su/linka/pictures/bootstrap" / filename
+                text = source.read_text()
+                self.assertIsNone(re.search("[А-Яа-яЁё]", text), str(source))
+                native_used.update(re.findall(r"Res\.string\.(\w+)", text))
+        self.assertTrue(native_used <= set(english))
+        self.assertEqual({key for key in english if key.startswith(("startup_", "bootstrap_", "ios_"))}, native_used)
 
 
 if __name__ == "__main__":

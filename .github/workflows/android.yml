@@ -72,16 +72,20 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run lint, all unit variants, and release privacy checks
-        run: ./gradlew lint test verifyReleasePrivacy
+        run: ./gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety
+
+      - name: Check both UI translations
+        run: python3 -B shared/src/commonTest/check_localization.py
 
       - name: Assemble app and androidTest APKs
-        run: ./gradlew assembleDebug assembleDebugAndroidTest
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :shared:assembleDebugAndroidTest
 
       - name: Prepare artifacts for upload
         run: |
-          mkdir -p artifacts/debug artifacts/androidTest/debug
+          mkdir -p artifacts/debug artifacts/androidTest/debug artifacts/shared
           cp app/build/outputs/apk/debug/app-debug.apk artifacts/debug/
           cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk artifacts/androidTest/debug/
+          cp shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk artifacts/shared/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -129,14 +133,23 @@ jobs:
             --type instrumentation \
             --app artifacts/debug/app-debug.apk \
             --test artifacts/androidTest/debug/app-debug-androidTest.apk \
+            --test-targets "class su.linka.pictures.activity.DevelopmentStartupTest" \
             --device model=redfin,version=30,locale=en,orientation=portrait
 
-      - name: Run Firebase Robo scripted UI test
+      - name: Run real isolated migration integration tests
+        run: |
+          gcloud firebase test android run \
+            --type instrumentation \
+            --app artifacts/shared/shared-debug-androidTest.apk \
+            --test artifacts/shared/shared-debug-androidTest.apk \
+            --test-targets "class su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest" \
+            --device model=redfin,version=30,locale=en,orientation=portrait
+
+      - name: Run Firebase Robo exploration of the shared UI
         run: |
           gcloud firebase test android run \
             --type robo \
             --app artifacts/debug/app-debug.apk \
-            --robo-script MainActivity_robo_script.json \
             --device model=redfin,version=30,locale=en,orientation=portrait \
             --timeout 5m
   bundle-release:
@@ -185,7 +198,7 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - name: Verify privacy gate and build signed release bundle
-        run: ./gradlew verifyReleasePrivacy bundleRelease
+        run: ./gradlew :app:verifyReleaseSafety :app:bundleRelease
         env:
           ANDROID_KEYSTORE_PATH: ${{ format('{0}/ci-release.jks', github.workspace) }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

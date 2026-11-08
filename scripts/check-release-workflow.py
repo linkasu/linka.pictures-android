@@ -24,8 +24,9 @@ def check():
     assert set(jobs) == {'build', 'firebase-test', 'bundle-release'}
     assert not re.search(r'^    (if|needs):', jobs['build'], re.M)
     for command in ('python3 -B scripts/check-release-workflow.py',
-                    './gradlew lint test verifyReleasePrivacy',
-                    './gradlew assembleDebug assembleDebugAndroidTest'):
+                     './gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety',
+                     'python3 -B shared/src/commonTest/check_localization.py',
+                     './gradlew :app:assembleDebug :app:assembleDebugAndroidTest :shared:assembleDebugAndroidTest'):
         assert command in jobs['build']
     assert '\n    needs: build\n' in jobs['firebase-test']
     assert '\n    needs: [build, firebase-test]\n' in jobs['bundle-release']
@@ -56,7 +57,10 @@ def check():
             assert actual == expected, (job, event, ref, cloud, sign, build, firebase)
         count += 1
     release = jobs['bundle-release']
-    assert 'run: ./gradlew verifyReleasePrivacy bundleRelease' in release
+    assert 'run: ./gradlew :app:verifyReleaseSafety :app:bundleRelease' in release
+    assert '--robo-script' not in workflow
+    assert '--test-targets "class su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest"' in jobs['firebase-test']
+    assert '--test-targets "class su.linka.pictures.activity.DevelopmentStartupTest"' in jobs['firebase-test']
     assert re.search(r'- name: Clean up keystore\n        if: always\(\)\n'
                      r'        run: rm -f -- "\$\{GITHUB_WORKSPACE\}/ci-release\.jks"', release)
     assert 'rm -rf' not in workflow
