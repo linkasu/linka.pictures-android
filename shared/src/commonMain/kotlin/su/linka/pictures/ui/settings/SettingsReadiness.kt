@@ -3,6 +3,8 @@ package su.linka.pictures.ui.settings
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.PortableSettings
+import su.linka.pictures.domain.BoardPresentation
+import su.linka.pictures.domain.PageNavigation
 
 internal data class SettingsSnapshot(val listing: LibraryListing, val value: PortableSettings)
 
@@ -29,3 +31,7 @@ internal suspend fun reloadSettingsAfterSave(library: LibraryStore, result: Oper
     onSaved(value)
     return readSettingsSnapshot(library)
 }
+
+internal fun boardPageButtons(options: BoardPresentation, show: Boolean): BoardPresentation = options.copy(
+    navigation = if (!show) PageNavigation.NONE else options.navigation.takeUnless { it == PageNavigation.NONE } ?: PageNavigation.BOTTOM,
+)

@@ -206,7 +206,7 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
         snapshot.listing.items.filter { it.kind == LibraryEntryKind.BOARD }.forEach { entry ->
             val show = boards[entry.id]?.showPageButtons ?: true
             SettingsSwitch(entry.name, show, editable) { selected ->
-                boards = boards + (entry.id to BoardPresentation(selected))
+                boards = boards + (entry.id to boardPageButtons(boards[entry.id] ?: BoardPresentation(), selected))
             }
         }
     }

@@ -1,10 +1,19 @@
 package su.linka.pictures.ui.settings
 
 import su.linka.pictures.resources.*
+import su.linka.pictures.domain.*
 import kotlin.test.*
 import su.linka.pictures.application.ports.VoiceStatus
 
 class SettingsPresentationTest {
+    @Test fun pageButtonTogglePreservesOtherBoardOptionsAndAnEnabledSideLayout() {
+        val side = BoardPresentation(PageNavigation.SIDE, dragToCompose = true)
+        assertEquals(side, boardPageButtons(side, true))
+        assertEquals(side.copy(navigation = PageNavigation.NONE), boardPageButtons(side, false))
+        val hidden = side.copy(navigation = PageNavigation.NONE)
+        assertEquals(side.copy(navigation = PageNavigation.BOTTOM), boardPageButtons(hidden, true))
+    }
+
     @Test fun previewUsesDraftScaleWithoutApplyingSavedScaleTwice() {
         assertEquals(1.5f, settingsPreviewFontScale(current = 2f, saved = 2f, draft = 1.5f))
         assertEquals(1.8f, settingsPreviewFontScale(current = 2.4f, saved = 2f, draft = 1.5f), 0.0001f)
