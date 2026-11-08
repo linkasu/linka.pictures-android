@@ -383,4 +383,5 @@
     <string name="confirm_saving_the_validated_settings_authorization_alone">Подтвердите сохранение проверенных настроек. Авторизация сама по себе не применяет изменения.</string>
     <string name="card_preview_no_speech_or_actions">Предпросмотр карточки — без озвучивания и действий</string>
     <string name="changes_apply_only_after_saving_settings">Изменения применятся только после сохранения настроек.</string>
+    <string name="library_folder_count">Папок: %1$s</string>
 </resources>

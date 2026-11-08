@@ -60,7 +60,7 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
                 checkActive()
             }
             checkActive()
-            return stage.sealLocked(runtime.epoch(), runtime.revision(), library.readSettings())
+            return stage.sealLocked(runtime.epoch(), runtime.revision(), library.readSettings(), library.readOrganization())
         } finally { stage.close() }
     }
 
@@ -71,6 +71,7 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
             db.number("SELECT count(*) FROM recovery_entries WHERE kind='BOARD'").toInt(),
             db.number("SELECT count(*) FROM recovery_drafts").toInt(),
             db.number("SELECT coalesce(sum(byte_count),0) FROM assets WHERE id IN (SELECT asset_id FROM asset_refs WHERE owner_kind IN ('RECOVERY_BOARD','RECOVERY_DRAFT','RECOVERY_RETAINED'))"),
+            decode<LibraryOrganization>(db.rows("SELECT organization_json FROM recovery WHERE singleton=1").single().single()!!).folders.size,
         )
     }
 
@@ -90,9 +91,9 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
         db.exec("INSERT INTO asset_refs SELECT 'RECOVERY_RETAINED',owner_id,asset_id FROM asset_refs WHERE owner_kind='RETAINED'")
     }
 
-    private fun newEpoch(settings: PortableSettings) {
+    private fun newEpoch(settings: PortableSettings, organization: LibraryOrganization) {
         val epoch = runtime.next(runtime.epoch())
-        db.exec("UPDATE library_meta SET epoch=?,settings_json=? WHERE singleton=1", epoch, encode(settings))
+        db.exec("UPDATE library_meta SET epoch=?,settings_json=?,organization_json=? WHERE singleton=1", epoch, encode(settings), encode(organization))
         db.exec("UPDATE message SET epoch=?,version=0,payload_json=? WHERE singleton=1", epoch, encode(MessageDraft()))
         db.exec("DELETE FROM asset_refs WHERE owner_kind='MESSAGE'")
     }
@@ -108,7 +109,7 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
             value.drafts().collect { runtime.writer.withLock { stage.draft(it) } }
             value.retained().collect { runtime.writer.withLock { stage.retained(it) } }
             value.assets().collect { runtime.writer.withLock { stage.asset(it) } }
-            val sealed = runtime.writer.withLock { stage.sealLocked(runtime.epoch(), value.revision, value.settings) }
+            val sealed = runtime.writer.withLock { stage.sealLocked(runtime.epoch(), value.revision, value.settings, value.organization) }
             reader = sealed
             if (sealed.counts != value.counts) fail(ProblemCode.INTEGRITY_FAILURE)
             sealed.assets().collect { runtime.mediaStore.verify(it) }
@@ -149,7 +150,7 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
                         db.exec("INSERT INTO entries SELECT * FROM replacement.entries")
                         db.exec("INSERT INTO drafts SELECT * FROM replacement.drafts")
                         db.exec("INSERT INTO asset_refs SELECT * FROM replacement.asset_refs")
-                        newEpoch(sealed.settings)
+                        newEpoch(sealed.settings, sealed.organization)
                         recoveryInfo()!!
                     }
                 } finally { if (!runtime.quarantined) runCatching { db.exec("DETACH DATABASE replacement") } }
@@ -177,6 +178,7 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
         if (recovery.id != id) fail(ProblemCode.CONFLICT)
         runtime.mediaStore.validatePersistentRoots(hashFiles = false)
         val settings = decode<PortableSettings>(db.rows("SELECT settings_json FROM recovery WHERE singleton=1").single().single()!!)
+        val organization = decode<LibraryOrganization>(db.rows("SELECT organization_json FROM recovery WHERE singleton=1").single().single()!!)
         val newId = RecoveryId(token())
         library.commit(permit) {
             // Negative order indices reserve the old rows while each pair is swapped.
@@ -190,8 +192,8 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
                 db.exec("UPDATE asset_refs SET owner_kind=? WHERE owner_kind=?", kind, "RECOVERY_$kind")
                 db.exec("UPDATE asset_refs SET owner_kind=? WHERE owner_kind=?", "RECOVERY_$kind", "SWAP_$kind")
             }
-            db.exec("UPDATE recovery SET id=?,created_at=?,library_revision=?,settings_json=(SELECT settings_json FROM library_meta WHERE singleton=1) WHERE singleton=1", newId.value, Clock.System.now().toEpochMilliseconds(), revision)
-            newEpoch(settings)
+            db.exec("UPDATE recovery SET id=?,created_at=?,library_revision=?,settings_json=(SELECT settings_json FROM library_meta WHERE singleton=1),organization_json=(SELECT organization_json FROM library_meta WHERE singleton=1) WHERE singleton=1", newId.value, Clock.System.now().toEpochMilliseconds(), revision)
+            newEpoch(settings, organization)
             recoveryInfo()!!
         }
     }

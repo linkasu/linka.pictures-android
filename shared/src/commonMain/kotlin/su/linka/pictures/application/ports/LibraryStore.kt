@@ -30,6 +30,7 @@ data class RecoveryInfo(
     val boardCount: Int,
     val draftCount: Int,
     val assetBytes: Long,
+    val folderCount: Int = 0,
 )
 
 interface LibraryStore {

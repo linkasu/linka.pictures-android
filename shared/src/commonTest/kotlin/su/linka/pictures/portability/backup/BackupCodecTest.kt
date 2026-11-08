@@ -60,7 +60,7 @@ class BackupCodecTest {
     @Test fun shippedBackup10ConvertsLegacyPageButtonsWithoutRelaxingUnknownFields() = runTest {
         val rig = CodecTestRig(); val store = BackupTestStore(rig)
         val old = header(fixture(rig, store)) { root ->
-            root.with("version", JsonPrimitive("1.0")).with("settings",
+            JsonObject(root - "organization").with("version", JsonPrimitive("1.0")).with("settings",
                 root.getValue("settings").jsonObject.with("boards", buildJsonObject {
                     put("board", buildJsonObject { put("showPageButtons", false) })
                 }))
@@ -130,6 +130,8 @@ class BackupCodecTest {
         val cases = listOf(
             header(good) { it.with("version", JsonPrimitive("2.0")) },
             header(good) { it.with("epoch", JsonPrimitive(987)) },
+            header(good) { it.with("organization", backupJson.encodeToJsonElement(LibraryOrganization.serializer(),
+                LibraryOrganization(listOf(LibraryFolder(FolderId("folder"), "Папка")), mapOf(BoardId("missing") to FolderId("folder"))))) },
             header(good) { it.with("settings", it.getValue("settings").jsonObject.with("token", JsonPrimitive("forbidden"))) },
             count(good, "boards", 1), count(good, "assetBytes", 1),
             good.filter { it.name != firstAsset.name },

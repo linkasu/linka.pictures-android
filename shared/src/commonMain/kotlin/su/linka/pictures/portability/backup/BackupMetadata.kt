@@ -33,6 +33,7 @@ internal class BackupReferences {
     val kinds = mutableMapOf<AssetId, MediaKind>()
     private val entryIds = mutableSetOf<BoardId>()
     private val draftIds = mutableSetOf<DraftId>()
+    fun organization(value: LibraryOrganization) { value.validateEntries(entryIds) }
     private fun text(value: String) { limit(value.length <= 65536) }
     private fun extensions(value: String) { text(value); passive(boundedJson(value)) }
     private fun add(id: AssetId?, kind: MediaKind) {

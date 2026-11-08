@@ -112,15 +112,17 @@ internal class SnapshotStage(private val runtime: StorageRuntime, private val di
     override suspend fun addRetained(value: RetainedArchive): OperationResult<Unit> = runtime.libraryStore.locked(mutation = true) { retained(value) }
     override suspend fun addAsset(value: MediaAsset): OperationResult<Unit> = runtime.libraryStore.locked(mutation = true, roots = { setOf(value.id) }) { asset(value) }
 
-    internal fun sealLocked(epoch: Long, revision: Long, settings: PortableSettings): SnapshotReader {
+    internal fun sealLocked(epoch: Long, revision: Long, settings: PortableSettings, organization: LibraryOrganization = LibraryOrganization()): SnapshotReader {
         requireBuilder()
         require(epoch >= 0 && revision >= 0)
+        organization.validateEntries(entryIds)
+        if (encode(organization).encodeToByteArray().size > 2 * 1024 * 1024) fail(ProblemCode.LIMIT_EXCEEDED)
         if (roots.keys != manifest) fail(ProblemCode.INTEGRITY_FAILURE)
         runtime.mediaStore.checkRoles(roots)
         manifest.forEach { runtime.mediaStore.checkFile(runtime.mediaStore.asset(it)) }
         val lease = runtime.mediaStore.pin(manifest)
         val counts = SnapshotCounts(boardCount, draftCount, retainedCount, assetCount, assetBytes)
-        val reader = Reader(epoch, revision, settings, counts, lease)
+        val reader = Reader(epoch, revision, settings, counts, lease, organization)
         while (true) {
             val old = ownership.load()
             if (old.owner != Owner.BUILDER) { lease.close(); fail(ProblemCode.STALE_REQUEST) }
@@ -131,8 +133,8 @@ internal class SnapshotStage(private val runtime: StorageRuntime, private val di
         }
     }
 
-    override suspend fun seal(revision: Long, settings: PortableSettings): OperationResult<SnapshotReader> =
-        runtime.libraryStore.locked(mutation = true, roots = { requireBuilder(); manifest.toSet() }) { sealLocked(runtime.epoch(), revision, settings) }
+    override suspend fun seal(revision: Long, settings: PortableSettings, organization: LibraryOrganization): OperationResult<SnapshotReader> =
+        runtime.libraryStore.locked(mutation = true, roots = { requireBuilder(); manifest.toSet() }) { sealLocked(runtime.epoch(), revision, settings, organization) }
 
     private fun release(owner: Owner) {
         while (true) {
@@ -161,6 +163,7 @@ internal class SnapshotStage(private val runtime: StorageRuntime, private val di
         override val settings: PortableSettings,
         override val counts: SnapshotCounts,
         override val lease: MediaLease,
+        override val organization: LibraryOrganization,
     ) : SnapshotReader {
         private inline fun <reified T> documents(kind: String, count: Int): Flow<T> = flow {
             for (index in 0 until count) {

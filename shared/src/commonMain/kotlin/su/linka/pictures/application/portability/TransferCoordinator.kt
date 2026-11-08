@@ -70,7 +70,7 @@ class TransferCoordinator(
             currentCoroutineContext().ensureActive()
             countArchive(op, input, ZipProfile.BACKUP)
             TransferPreview(op.kind, snapshot = snapshot.counts,
-                expectedLibraryRevision = op.expectedRevision, expectedMessage = op.expectedMessage)
+                expectedLibraryRevision = op.expectedRevision, expectedMessage = op.expectedMessage, folderCount = snapshot.organization.folders.size)
         }
 
     suspend fun prepareExport(ownerId: String, boardId: BoardId): OperationResult<OperationId> =
@@ -107,7 +107,7 @@ class TransferCoordinator(
             currentCoroutineContext().ensureActive()
             countArchive(op, output, ZipProfile.BACKUP)
             destination(op, "library.linkabackup")
-            TransferPreview(op.kind, snapshot = snapshot.counts)
+            TransferPreview(op.kind, snapshot = snapshot.counts, folderCount = snapshot.organization.folders.size)
         }
 
     suspend fun prepareReturnToRecovery(ownerId: String, id: RecoveryId): OperationResult<OperationId> =
@@ -122,7 +122,7 @@ class TransferCoordinator(
             val recovery = take(library.recovery()) ?: stop(ProblemCode.RECOVERY_UNAVAILABLE)
             if (recovery.id != id) stop(ProblemCode.CONFLICT)
             op.recovery = id
-            TransferPreview(kind, expectedLibraryRevision = op.expectedRevision, expectedMessage = op.expectedMessage)
+            TransferPreview(kind, expectedLibraryRevision = op.expectedRevision, expectedMessage = op.expectedMessage, folderCount = recovery.folderCount)
         }
 
     private suspend fun captureStamps(op: Pending) {

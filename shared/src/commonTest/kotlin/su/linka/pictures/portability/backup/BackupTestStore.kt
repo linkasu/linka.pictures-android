@@ -17,6 +17,7 @@ internal class TestSnapshot(
     override val settings: PortableSettings = PortableSettings(),
     override val revision: Long = 12,
     override val counts: SnapshotCounts = SnapshotCounts(boardValues.size, draftValues.size, retainedValues.size, assetValues.size, assetValues.sumOf { it.byteCount }),
+    override val organization: LibraryOrganization = LibraryOrganization(),
 ) : SnapshotReader {
     override val epoch = 987L
     override val lease = rig.Lease(assetValues.map { it.id }.toSet())
@@ -50,6 +51,7 @@ internal class BackupTestStore(val rig: CodecTestRig) : LibraryStore {
         val archives = mutableListOf<RetainedArchive>()
         val assets = mutableListOf<MediaAsset>()
         private val pins = mutableListOf<MediaLease>()
+        var organization = LibraryOrganization()
         var closed = false
         init { builders++ }
         private fun add(mutate: () -> Unit): OperationResult<Unit> {
@@ -62,9 +64,11 @@ internal class BackupTestStore(val rig: CodecTestRig) : LibraryStore {
         override suspend fun addDraft(value: StoredDraft) = add { drafts.add(value) }
         override suspend fun addRetained(value: RetainedArchive) = add { archives.add(value) }
         override suspend fun addAsset(value: MediaAsset) = add { assets.add(value); pins.add(rig.Lease(setOf(value.id))) }
-        fun reader(revision: Long, settings: PortableSettings): TestSnapshot = TestSnapshot(rig, boards.toList(), drafts.toList(), archives.toList(), assets.toList(), settings, revision).also { returned = it }
-        override suspend fun seal(revision: Long, settings: PortableSettings): OperationResult<SnapshotReader> {
+        fun reader(revision: Long, settings: PortableSettings): TestSnapshot = TestSnapshot(rig, boards.toList(), drafts.toList(), archives.toList(), assets.toList(), settings, revision, organization = organization).also { returned = it }
+        override suspend fun seal(revision: Long, settings: PortableSettings, organization: LibraryOrganization): OperationResult<SnapshotReader> {
             check(!closed)
+            this.organization = organization
+            organization.validateEntries((boards.map { it.document.id } + archives.map { it.id }).toSet())
             return sealOverride?.invoke(this, revision, settings) ?: OperationResult.Completed(reader(revision, settings))
         }
         override fun close() { if (!closed) { closed = true; pins.forEach { it.close() }; builders-- } }

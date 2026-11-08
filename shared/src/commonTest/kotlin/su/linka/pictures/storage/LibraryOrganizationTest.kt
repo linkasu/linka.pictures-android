@@ -41,6 +41,31 @@ class LibraryOrganizationTest {
         } finally { runtime.close(); fs.deleteRecursively(root) }
     }
 
+    @Test fun snapshotReplacementAndRecoverySwapKeepTheirOwnTrees() = runTest {
+        val fs = FileSystem.SYSTEM
+        val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "linka-folder-snapshot-${token()}"
+        fs.createDirectory(root, mustCreate = true)
+        val source = StorageRuntime.open(root / "source", fs, BundledSQLiteDriver()).ok()
+        val target = StorageRuntime.open(root / "target", fs, BundledSQLiteDriver()).ok()
+        try {
+            source.library.addBoard(board, permit()).ok()
+            val original = LibraryOrganization(listOf(folder, child), mapOf(board.id to child.id))
+            source.library.saveOrganization(original, 1, permit()).ok()
+            val reader = source.library.snapshot().ok()
+            try {
+                assertEquals(original, reader.organization)
+                val previous = LibraryOrganization(listOf(LibraryFolder(FolderId("previous"), "Старое")))
+                target.library.saveOrganization(previous, 0, permit()).ok()
+                val recovery = target.library.replaceLibrary(reader, 1, MessageStamp(0, 0), permit()).ok()
+                assertEquals(original, target.library.listing.value.organization)
+                assertEquals(1, recovery.folderCount)
+                target.library.returnToRecovery(recovery.id, 2, MessageStamp(1, 0), permit(1)).ok()
+                assertEquals(previous, target.library.listing.value.organization)
+                assertEquals(original, reader.organization)
+            } finally { reader.close() }
+        } finally { source.close(); target.close(); fs.deleteRecursively(root) }
+    }
+
     @Test fun cyclesUnknownParentsAndOversizedTreesAreRejected() {
         assertFailsWith<IllegalArgumentException> { LibraryOrganization(listOf(folder.copy(parentId = child.id), child)) }
         assertFailsWith<IllegalArgumentException> { LibraryOrganization(listOf(child)) }

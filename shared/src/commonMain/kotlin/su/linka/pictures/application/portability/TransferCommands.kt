@@ -13,6 +13,7 @@ data class TransferPreview(
     val snapshot: SnapshotCounts? = null,
     val expectedLibraryRevision: Long? = null,
     val expectedMessage: MessageStamp? = null,
+    val folderCount: Int? = null,
 )
 
 data class TransferOperationState(

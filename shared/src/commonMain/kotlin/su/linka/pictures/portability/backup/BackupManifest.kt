@@ -3,6 +3,7 @@ package su.linka.pictures.portability.backup
 import kotlinx.serialization.Serializable
 import su.linka.pictures.application.ports.SnapshotCounts
 import su.linka.pictures.domain.PortableSettings
+import su.linka.pictures.domain.LibraryOrganization
 
 @Serializable
 data class BackupManifest(
@@ -11,6 +12,7 @@ data class BackupManifest(
     val counts: SnapshotCounts,
     val format: String = "su.linka.pictures.backup",
     val version: String = "1.1",
+    val organization: LibraryOrganization = LibraryOrganization(),
 ) {
     init {
         require(revision >= 0)

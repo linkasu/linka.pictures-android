@@ -24,12 +24,12 @@ class CoreBackupIntegrationTest {
 
     private data class LibraryData(
         val boards: List<PublishedBoard>, val drafts: List<StoredDraft>, val retained: List<RetainedArchive>,
-        val assets: List<MediaAsset>, val settings: PortableSettings, val counts: SnapshotCounts,
+        val assets: List<MediaAsset>, val settings: PortableSettings, val counts: SnapshotCounts, val organization: LibraryOrganization,
     )
 
     private suspend fun data(reader: SnapshotReader) = LibraryData(
         reader.boards().toList(), reader.drafts().toList(), reader.retained().toList(),
-        reader.assets().toList().sortedBy { it.id.value }, reader.settings, reader.counts,
+        reader.assets().toList().sortedBy { it.id.value }, reader.settings, reader.counts, reader.organization,
     )
 
     private suspend fun data(runtime: StorageRuntime): LibraryData {
@@ -109,8 +109,10 @@ class CoreBackupIntegrationTest {
             assertEquals(2, persistedDraft.version)
             val retained = RetainedArchive(BoardId("source-retained"), "Архив cafe\u0301", 7, rawArchive.asset.id, RetainedReason.INVALID_ARCHIVE)
             source.library.retainArchive(retained, permit()).ok()
-            val settings = PortableSettings(1.25f, true, "ru-RU", mapOf(document.id to BoardPresentation(false)))
+            val settings = PortableSettings(1.25f, true, "ru-RU", mapOf(document.id to BoardPresentation(PageNavigation.SIDE, true)))
             source.library.saveSettings(settings, source.library.listing.value.revision, permit()).ok()
+            val folder = LibraryFolder(FolderId("family"), "Семья")
+            source.library.saveOrganization(LibraryOrganization(listOf(folder), mapOf(document.id to folder.id, retained.id to folder.id)), source.library.listing.value.revision, permit()).ok()
             val sourceMessage = StoredMessage(0, 1, MessageDraft(listOf(MessagePart.Card(MessagePartId("message-only"),
                 CardSelectionSnapshot(SelectionOrigin(document.id, published.revision, PageId("source-page"), CardId("source-recording")),
                     messageMarker, messageOnly.asset.id, SpeechSource.None))), mode = InteractionMode.DIRECT))

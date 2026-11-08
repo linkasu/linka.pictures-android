@@ -383,4 +383,5 @@
     <string name="confirm_saving_the_validated_settings_authorization_alone">Confirm saving the validated settings. Authorization alone does not apply changes.</string>
     <string name="card_preview_no_speech_or_actions">Card preview — no speech or actions</string>
     <string name="changes_apply_only_after_saving_settings">Changes apply only after saving settings.</string>
+    <string name="library_folder_count">Folders: %1$s</string>
 </resources>

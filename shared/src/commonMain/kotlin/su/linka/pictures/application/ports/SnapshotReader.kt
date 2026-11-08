@@ -17,6 +17,7 @@ class SnapshotReadException(val problem: Problem) : Exception(problem.code.name)
 interface SnapshotReader : AutoCloseable {
     val epoch: Long
     val revision: Long
+    val organization: LibraryOrganization
     val settings: PortableSettings
     val counts: SnapshotCounts
     val lease: MediaLease
@@ -31,5 +32,5 @@ interface SnapshotBuilder : AutoCloseable {
     suspend fun addDraft(value: StoredDraft): OperationResult<Unit>
     suspend fun addRetained(value: RetainedArchive): OperationResult<Unit>
     suspend fun addAsset(value: MediaAsset): OperationResult<Unit>
-    suspend fun seal(revision: Long, settings: PortableSettings): OperationResult<SnapshotReader>
+    suspend fun seal(revision: Long, settings: PortableSettings, organization: LibraryOrganization = LibraryOrganization()): OperationResult<SnapshotReader>
 }

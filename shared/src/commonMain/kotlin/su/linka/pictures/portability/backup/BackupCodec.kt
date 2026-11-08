@@ -21,7 +21,7 @@ class BackupCodec(
     suspend fun write(snapshot: SnapshotReader): OperationResult<TemporaryFile> = codecBoundary {
         val resources = BackupResources(files)
         try {
-            val manifest = BackupManifest(snapshot.revision, snapshot.settings, snapshot.counts)
+            val manifest = BackupManifest(snapshot.revision, snapshot.settings, snapshot.counts, organization = snapshot.organization)
             checkCounts(manifest.counts)
             var settingsSize = 0L
             for ((id, presentation) in manifest.settings.boards) {
@@ -57,6 +57,7 @@ class BackupCodec(
                     zip.add(entryName("retained", archives++), Buffer().write(encodeMetadata(value)))
                 }
                 checkData(archives == manifest.counts.retained)
+                refs.organization(snapshot.organization)
                 var count = 0
                 var bytes = 0L
                 var rowBytes = 0L
@@ -135,6 +136,7 @@ class BackupCodec(
             for (index in 0 until counts.boards) refs.board(decodeMetadata<PublishedBoard>(metadataBytes(staged[entryName("boards", index)] ?: fail(ProblemCode.INVALID_DATA))))
             for (index in 0 until counts.drafts) refs.draft(decodeMetadata<StoredDraft>(metadataBytes(staged[entryName("drafts", index)] ?: fail(ProblemCode.INVALID_DATA))))
             for (index in 0 until counts.retained) refs.retained(decodeMetadata<RetainedArchive>(metadataBytes(staged[entryName("retained", index)] ?: fail(ProblemCode.INVALID_DATA))))
+            refs.organization(manifest.organization)
             val ids = mutableSetOf<AssetId>()
             var assetBytes = 0L
             readAssetRows(files, rows.file, rows.hash) { asset ->
@@ -171,9 +173,9 @@ class BackupCodec(
                 builder.addRetained(decodeMetadata<RetainedArchive>(metadataBytes(staged.getValue(entryName("retained", index))))).value()
             }
             currentCoroutineContext().ensureActive()
-            sealed = builder.seal(manifest.revision, manifest.settings).value()
+            sealed = builder.seal(manifest.revision, manifest.settings, manifest.organization).value()
             currentCoroutineContext().ensureActive()
-            checkData(sealed.counts == counts && sealed.revision == manifest.revision && sealed.settings == manifest.settings && sealed.lease.assets == ids)
+            checkData(sealed.counts == counts && sealed.revision == manifest.revision && sealed.settings == manifest.settings && sealed.organization == manifest.organization && sealed.lease.assets == ids)
             resources.cleanup(throwOnFailure = true)
             currentCoroutineContext().ensureActive()
             val result = sealed

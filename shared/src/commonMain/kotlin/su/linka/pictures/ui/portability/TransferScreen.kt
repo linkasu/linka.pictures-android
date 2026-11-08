@@ -79,6 +79,7 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
             is OperationResult.Completed -> if (info.value == null) Text(stringResource(Res.string.no_recovery_point)) else {
                 val saved = info.value
                 Text(stringResource(Res.string.recovery_point_boards_1_s_drafts_2, saved.boardCount, saved.draftCount, saved.assetBytes, saved.createdAtEpochMillis))
+                Text(stringResource(Res.string.library_folder_count, saved.folderCount))
                 Text(stringResource(Res.string.to_restore_from_a_new_file_first))
                 Action(stringResource(Res.string.validate_return_to_recovery_point), canPrepare) {
                     prepare(ProtectedAction.RESTORE_BACKUP) { transfer.prepareReturnToRecovery(owner, saved.id) }
@@ -101,6 +102,7 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
             if (operation.transfer.phase == TransferPhase.AWAITING_CONFIRMATION && !readiness.fresh)
                 Text(stringResource(Res.string.after_selecting_a_file_sign_in_again))
             operation.preview?.let { preview ->
+                preview.folderCount?.let { Text(stringResource(Res.string.library_folder_count, it)) }
                 preview.name?.let { Text(stringResource(Res.string.board_1_s, it)) }
                 preview.board?.let {
                     Text(stringResource(Res.string.pages_1_s_cards_2_s_images, it.pages, it.cards, it.images, it.recordings, it.mediaBytes, if (it.layoutNormalized) stringResource(Res.string.grid_normalized_for_the_app) else ""))
