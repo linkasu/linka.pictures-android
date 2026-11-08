@@ -1,5 +1,8 @@
 package su.linka.pictures.ui.settings
 
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -57,27 +60,27 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         }
     }
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(), topBar = {
-        ProductTopBar("Настройки", modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+        ProductTopBar(stringResource(Res.string.settings), modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
             navigationIcon = {
-            IconButton(onClick = onBack) { Icon(LibraryIcons.Back, "Назад") }
+            IconButton(onClick = onBack) { Icon(LibraryIcons.Back, stringResource(Res.string.back)) }
         }, actions = { Box {
-            IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню настроек") }
+            IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, stringResource(Res.string.settings_menu)) }
             DropdownMenu(menu, { menu = false }) {
-                DropdownMenuItem(onClick = { menu = false; refresh++ }, enabled = enabled) { Text("Загрузить заново (отбросить ввод)") }
+                DropdownMenuItem(onClick = { menu = false; refresh++ }, enabled = enabled) { Text(stringResource(Res.string.reload_discard_input)) }
             }
         } })
     }) { padding ->
       Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
           verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        ProductSection("Родительский контроль") {
-            SettingsRow("Защита помощника", "Настроить блокировку важных действий", enabled) {
+        ProductSection(stringResource(Res.string.parental_control)) {
+            SettingsRow(stringResource(Res.string.assistant_protection), stringResource(Res.string.configure_protection_for_important_actions), enabled) {
                 if (onAccess != null) onAccess() else showAccess = true
             }
         }
-        ProductSection("Оформление сеанса") {
-            SettingsSwitch("Тёмная тема", dark, enabled, "Только для текущего сеанса") { onDark(it) }
+        ProductSection(stringResource(Res.string.session_appearance)) {
+            SettingsSwitch(stringResource(Res.string.dark_theme), dark, enabled, stringResource(Res.string.only_for_this_session)) { onDark(it) }
         }
-        if (loaded == null && result == null) Text("Загружаем настройки…")
+        if (loaded == null && result == null) Text(stringResource(Res.string.loading_settings))
         loaded?.let { snapshot -> key(snapshot) {
             SettingsForm(snapshot, controller, owner, capability, enabled, voices, gate, access, result, validateSettings) { outcome, value ->
                 result = if (outcome is OperationResult.Completed) null else outcome
@@ -90,30 +93,30 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
             }
         } }
         if (savedAwaitingReload) {
-            Text(if (result == null) "Настройки сохранены. Обновляем параметры…"
-                else "Настройки сохранены. Не удалось обновить параметры. Загрузите настройки заново через меню.",
+            Text(if (result == null) stringResource(Res.string.settings_saved_refreshing_parameters)
+                else stringResource(Res.string.settings_saved_could_not_refresh_parameters_reload),
                 Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             if (result is OperationResult.Failed) Feedback(result)
         } else if (result !is OperationResult.Completed) Feedback(result)
-        ProductSection("Данные на этом устройстве") {
-            SettingsRow("Локальные данные", "Доски, изображения и аудио остаются на устройстве. Ручной экспорт и резервное копирование доступны через меню библиотеки.")
+        ProductSection(stringResource(Res.string.data_on_this_device)) {
+            SettingsRow(stringResource(Res.string.local_data), stringResource(Res.string.boards_images_and_audio_stay_on_this))
         }
       }
     }
-    if (showAccess) ProductDialog("Защита помощника", { showAccess = false }, actions = {
-        TextButton(onClick = { showAccess = false }) { Text("Закрыть") }
+    if (showAccess) ProductDialog(stringResource(Res.string.assistant_protection), { showAccess = false }, actions = {
+        TextButton(onClick = { showAccess = false }) { Text(stringResource(Res.string.close)) }
     }) {
-        Text("Управление защитой доступно через меню библиотеки → Защита помощника.")
+        Text(stringResource(Res.string.manage_protection_using_library_menu_assistant_protection))
     }
 }
 
-internal fun voiceStatusLabel(status: VoiceStatus): String = when (status) {
-    VoiceStatus.INITIALIZING -> "проверяем локальные голоса…"
-    VoiceStatus.LOCAL_VOICE_READY -> "локальный голос готов"
-    VoiceStatus.MISSING_VOICE -> "нужна установка локального голоса средствами ОС"
-    VoiceStatus.UNSUPPORTED_LANGUAGE -> "выбранный язык не поддерживается установленными голосами"
-    VoiceStatus.INTERRUPTED -> "озвучивание прервано"
-    VoiceStatus.FAILED -> "голос недоступен"
+internal fun voiceStatusLabel(status: VoiceStatus): StringResource = when (status) {
+    VoiceStatus.INITIALIZING -> Res.string.checking_local_voices
+    VoiceStatus.LOCAL_VOICE_READY -> Res.string.local_voice_ready
+    VoiceStatus.MISSING_VOICE -> Res.string.install_a_local_voice_using_the_os
+    VoiceStatus.UNSUPPORTED_LANGUAGE -> Res.string.selected_language_is_not_supported_by_installed
+    VoiceStatus.INTERRUPTED -> Res.string.speech_interrupted
+    VoiceStatus.FAILED -> Res.string.voice_unavailable
 }
 
 @Composable
@@ -153,22 +156,22 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
             } finally { busy = false }
         }
     }
-    ProductSection("Оформление карточек") {
-        SettingsSwitch("Высокий контраст", contrast, editable) { contrast = it }
-        SettingsRow("Масштаб текста", scale, editable) { editingValue = scale; input = SettingsInput.TEXT_SCALE }
+    ProductSection(stringResource(Res.string.card_appearance)) {
+        SettingsSwitch(stringResource(Res.string.high_contrast), contrast, editable) { contrast = it }
+        SettingsRow(stringResource(Res.string.text_scale), scale, editable) { editingValue = scale; input = SettingsInput.TEXT_SCALE }
         SettingsPreview(scale.toFloatOrNull() ?: snapshot.value.textScale, snapshot.value.textScale, contrast)
     }
-    ProductSection("Озвучивание") {
-        SettingsRow("Голос на этом устройстве", voiceStatusLabel(voices.status))
-        SettingsRow("Язык", language, editable) { editingValue = language; input = SettingsInput.LANGUAGE }
-        if (voices.voices.isEmpty()) SettingsRow("Локальные голоса недоступны", "Установите голос средствами ОС; общение без озвучивания доступно.")
-        SettingsRow("Локальные голоса", "Идентификаторы голосов не записываются в резервную копию.")
+    ProductSection(stringResource(Res.string.speech)) {
+        SettingsRow(stringResource(Res.string.voice_on_this_device), stringResource(voiceStatusLabel(voices.status)))
+        SettingsRow(stringResource(Res.string.language), language, editable) { editingValue = language; input = SettingsInput.LANGUAGE }
+        if (voices.voices.isEmpty()) SettingsRow(stringResource(Res.string.local_voices_unavailable), stringResource(Res.string.install_a_voice_using_the_os_communication))
+        SettingsRow(stringResource(Res.string.local_voices), stringResource(Res.string.voice_identifiers_are_not_included_in_backups))
     }
     input?.let { shown ->
       val isScale = shown == SettingsInput.TEXT_SCALE
       val validInput = if (isScale) settingsInputValid(editingValue.toFloatOrNull(), language)
           else settingsInputValid(scale.toFloatOrNull(), editingValue)
-      ProductDialog(if (isScale) "Масштаб текста" else "Язык", { input = null }, actions = {
+      ProductDialog(if (isScale) stringResource(Res.string.text_scale) else stringResource(Res.string.language), { input = null }, actions = {
         TextButton(onClick = {
             if (!isScale) { language = editingValue; input = null }
             else {
@@ -181,13 +184,13 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
                     } finally { busy = false }
                 }
             }
-        }, enabled = editable && validInput) { Text("Применить") }
-        TextButton(onClick = { input = null }) { Text("Отмена") }
+        }, enabled = editable && validInput) { Text(stringResource(Res.string.apply)) }
+        TextButton(onClick = { input = null }) { Text(stringResource(Res.string.cancel)) }
       }) {
-        Field(editingValue, if (isScale) "Масштаб текста (0.5–3)" else "Язык (например ru-RU)", editable,
+        Field(editingValue, if (isScale) stringResource(Res.string.text_scale_0_5_3) else stringResource(Res.string.language_for_example_ru_ru), editable,
             keyboard = KeyboardOptions(keyboardType = if (isScale) KeyboardType.Decimal else KeyboardType.Text), singleLine = true) { editingValue = it }
         if (!isScale && voices.voices.isNotEmpty()) Box {
-            TextButton(onClick = { voiceMenu = true }, enabled = editable) { Text("Языки установленных голосов") }
+            TextButton(onClick = { voiceMenu = true }, enabled = editable) { Text(stringResource(Res.string.installed_voice_languages)) }
             DropdownMenu(voiceMenu, { voiceMenu = false }) {
                 voices.voices.forEach { voice ->
                     DropdownMenuItem(onClick = { editingValue = voice.languageTag; voiceMenu = false }) { Text("${voice.name} · ${voice.languageTag}") }
@@ -197,9 +200,9 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
       }
     }
     if (layoutNotice != null) ProductDialog(layoutNotice!!, { layoutNotice = null }, actions = {
-        TextButton(onClick = { layoutNotice = null }) { Text("Закрыть") }
-    }) { Text("Текущая доска не помещается целиком. Настройки и сообщение не изменены.") }
-    ProductSection("Кнопки страниц") {
+        TextButton(onClick = { layoutNotice = null }) { Text(stringResource(Res.string.close)) }
+    }) { Text(stringResource(Res.string.the_current_board_does_not_fit_entirely)) }
+    ProductSection(stringResource(Res.string.page_buttons)) {
         snapshot.listing.items.filter { it.kind == LibraryEntryKind.BOARD }.forEach { entry ->
             val show = boards[entry.id]?.showPageButtons ?: true
             SettingsSwitch(entry.name, show, editable) { selected ->
@@ -209,21 +212,21 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     }
     val parsed = scale.toFloatOrNull()
     val valid = settingsInputValid(parsed, language)
-    if (!valid) Text("Введите масштаб от 0.5 до 3 и корректный непустой код языка длиной до 128 символов.")
-    Text("Совместимость остальных наборов проверяется до открытия: все страницы должны помещаться целиком.")
+    if (!valid) Text(stringResource(Res.string.enter_a_scale_from_0_5_to))
+    Text(stringResource(Res.string.other_boards_are_checked_before_opening_all))
     Button(onClick = {
         val value = PortableSettings(parsed!!, contrast, language, boards)
         authorize = needsLibraryAuthorization(gate?.check(ProtectedAction.CHANGE_SETTINGS, capability, owner))
         if (authorize) pending = value else save(value)
-    }, enabled = editable && valid) { Text("Сохранить настройки") }
-    if (authorize) ProductDialog("Сохранение настроек", { if (!busy) { authorize = false; pending = null } }, actions = {
+    }, enabled = editable && valid) { Text(stringResource(Res.string.save_settings)) }
+    if (authorize) ProductDialog(stringResource(Res.string.saving_settings), { if (!busy) { authorize = false; pending = null } }, actions = {
         TextButton(onClick = {
             val value = pending ?: PortableSettings(parsed!!, contrast, language, boards)
             save(value)
-        }, enabled = enabled && !busy && !committed) { Text("Сохранить настройки") }
-        TextButton(onClick = { authorize = false; pending = null }, enabled = !busy) { Text("Отмена") }
+        }, enabled = enabled && !busy && !committed) { Text(stringResource(Res.string.save_settings)) }
+        TextButton(onClick = { authorize = false; pending = null }, enabled = !busy) { Text(stringResource(Res.string.cancel)) }
     }) {
-        Text("Подтвердите сохранение проверенных настроек. Авторизация сама по себе не применяет изменения.")
+        Text(stringResource(Res.string.confirm_saving_the_validated_settings_authorization_alone))
         access()
         Feedback(feedback)
     }
@@ -239,17 +242,17 @@ private fun SettingsPreview(scale: Float, savedScale: Float, contrast: Boolean) 
     val palette = linkaPalette(!MaterialTheme.colors.isLight, contrast)
     val density = LocalDensity.current
     Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Предпросмотр карточки — без озвучивания и действий", style = MaterialTheme.typography.body2)
+        Text(stringResource(Res.string.card_preview_no_speech_or_actions), style = MaterialTheme.typography.body2)
         CompositionLocalProvider(LocalDensity provides Density(density.density,
             settingsPreviewFontScale(density.fontScale, savedScale, scale))) {
             Surface(Modifier.fillMaxWidth().heightIn(min = 120.dp), color = palette.surface,
                 contentColor = palette.text, border = BorderStroke(if (contrast) 2.dp else 1.dp, palette.border)) {
                 Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) {
-                    Text("Карточка", fontSize = 16.sp, textAlign = TextAlign.Center)
+                    Text(stringResource(Res.string.card), fontSize = 16.sp, textAlign = TextAlign.Center)
                 }
             }
         }
-        Text("Изменения применятся только после сохранения настроек.", style = MaterialTheme.typography.body2)
+        Text(stringResource(Res.string.changes_apply_only_after_saving_settings), style = MaterialTheme.typography.body2)
     }
 }
 

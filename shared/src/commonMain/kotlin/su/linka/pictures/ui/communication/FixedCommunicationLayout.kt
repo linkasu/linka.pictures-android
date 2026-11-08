@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.communication
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.material.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -40,13 +42,20 @@ internal fun rememberCommunicationBoardMeasurer(): CommunicationBoardMeasurer {
     val text = rememberTextMeasurer()
     val density = LocalDensity.current
     val typography = LinkaTypography
-    return remember(text, density, typography) { CommunicationBoardMeasurer(text, density, typography) }
+    val actionLabels = listOf(stringResource(Res.string.speak), stringResource(Res.string.remove),
+        stringResource(Res.string.clear), stringResource(Res.string.undo), stringResource(Res.string.stop))
+    val pageLabel = stringResource(Res.string.page_1_s_of_2_s)
+    return remember(text, density, typography, actionLabels, pageLabel) {
+        CommunicationBoardMeasurer(text, density, typography, actionLabels, pageLabel)
+    }
 }
 
 internal class CommunicationBoardMeasurer(
     private val text: TextMeasurer,
     private val systemDensity: Density,
     private val typography: Typography,
+    private val actionLabels: List<String>,
+    private val pageLabel: String,
 ) {
     fun measure(
         document: BoardDocument,
@@ -74,7 +83,6 @@ internal class CommunicationBoardMeasurer(
             val toolbar = maxOf(communicationToolbarHeight(width, height, fontScale),
                 if (stackedTitle) 48f + titleHeight + 16f else maxOf(48f, titleHeight + 16f))
             val actionStyle = typography.button.merge(TextStyle(fontSize = 12.sp, lineHeight = 14.sp, textAlign = TextAlign.Center))
-            val actionLabels = listOf("Произнести", "Убрать", "Очистить", "Вернуть", "Стоп")
             val actionWidth = maxOf((width / 8f).coerceIn(48f, 96f), actionLabels.maxOf {
                 caption(it, actionStyle, Constraints.Infinity).width.toDp().value
             } + 8f)
@@ -83,10 +91,10 @@ internal class CommunicationBoardMeasurer(
                 textHeight(it, actionStyle, actionWidth - 8f)!!
             } + 24f + 4f + 8f
             val captionStyle = typography.body1.merge(CommunicationCaptionStyle)
-            val phraseHeight = maxOf(64f, actionHeight, caption("М", captionStyle, width.dp.roundToPx()).height.toDp().value + 8f + 6f + 24f)
+            val phraseHeight = maxOf(64f, actionHeight, caption("M", captionStyle, width.dp.roundToPx()).height.toDp().value + 8f + 6f + 24f)
             val footerHeight = if (document.pages.size == 1) 0f else maxOf(
                 if (showPageButtons) 48f else 0f,
-                textHeight("Страница ${document.pages.size} из ${document.pages.size}", typography.body1,
+                textHeight(pageLabel.replace("%1\$s", document.pages.size.toString()).replace("%2\$s", document.pages.size.toString()), typography.body1,
                     width - if (showPageButtons) 96f else 0f) ?: return null,
             )
             val gridHeight = height - toolbar - phraseHeight - footerHeight - 1f

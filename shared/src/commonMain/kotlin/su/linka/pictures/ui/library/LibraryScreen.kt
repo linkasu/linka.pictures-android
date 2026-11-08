@@ -1,5 +1,8 @@
 package su.linka.pictures.ui.library
 
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -36,7 +39,7 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     onOpen: (BoardId) -> Unit, onCreate: () -> Unit, onEdit: (BoardId) -> Unit,
     onResume: (DraftId) -> Unit, onSettings: () -> Unit, onAccess: () -> Unit,
     onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null,
-    canReturnToCommunication: Boolean = true, communicationNotices: List<String> = emptyList(),
+    canReturnToCommunication: Boolean = true, communicationNotices: List<StringResource> = emptyList(),
     canOpenBoards: Boolean = true) {
     val listing by library.listing.collectAsState()
     val shownListing = listing
@@ -66,28 +69,28 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     }
     VisibleImageDemand(shownListing.epoch, onAssets) {
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
-      topBar = { ProductTopBar("Ваши наборы",
+      topBar = { ProductTopBar(stringResource(Res.string.your_boards),
           modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp), actions = {
-          IconButton(onClick = onCreate, enabled = enabled && !busy) { Icon(LibraryIcons.Add, "Создать набор") }
+          IconButton(onClick = onCreate, enabled = enabled && !busy) { Icon(LibraryIcons.Add, stringResource(Res.string.create_board)) }
           Box {
-              IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Меню библиотеки") }
+              IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, stringResource(Res.string.library_menu)) }
               DropdownMenu(menu, { menu = false }) {
-                  DropdownMenuItem(onClick = { menu = false; onSettings() }, enabled = enabled && !busy) { Text("Настройки") }
-                  DropdownMenuItem(onClick = { menu = false; onTransfer(null) }, enabled = enabled && !busy) { Text("Импорт, резервная копия и восстановление") }
-                  DropdownMenuItem(onClick = { menu = false; showDrafts = true }) { Text("Сохранённые черновики") }
-                  DropdownMenuItem(onClick = { menu = false; onAccess() }, enabled = enabled && !busy) { Text("Защита помощника") }
-                  DropdownMenuItem(onClick = { menu = false; refresh++ }, enabled = !busy) { Text("Обновить список") }
-                   DropdownMenuItem(onClick = { menu = false; onBack() }, enabled = canReturnToCommunication && !busy) { Text("К сообщению") }
+                  DropdownMenuItem(onClick = { menu = false; onSettings() }, enabled = enabled && !busy) { Text(stringResource(Res.string.settings)) }
+                  DropdownMenuItem(onClick = { menu = false; onTransfer(null) }, enabled = enabled && !busy) { Text(stringResource(Res.string.import_backup_and_restore)) }
+                  DropdownMenuItem(onClick = { menu = false; showDrafts = true }) { Text(stringResource(Res.string.saved_drafts)) }
+                  DropdownMenuItem(onClick = { menu = false; onAccess() }, enabled = enabled && !busy) { Text(stringResource(Res.string.assistant_protection)) }
+                  DropdownMenuItem(onClick = { menu = false; refresh++ }, enabled = !busy) { Text(stringResource(Res.string.refresh_list)) }
+                   DropdownMenuItem(onClick = { menu = false; onBack() }, enabled = canReturnToCommunication && !busy) { Text(stringResource(Res.string.go_to_message)) }
               }
           }
       }) }) { padding ->
       LazyVerticalGrid(GridCells.Adaptive(libraryTileMinWidth(LocalDensity.current.fontScale).dp),
           Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(8.dp)) {
         item(span = { GridItemSpan(maxLineSpan) }) { Column {
-           communicationNotices.forEach { Text(it) }
+           communicationNotices.forEach { Text(stringResource(it)) }
           restartProblem?.let { Feedback(OperationResult.Failed(it)) }
           listing.refreshProblem?.let { Feedback(OperationResult.Failed(it)) }
-         if (listing.items.isEmpty()) Text(if (listing.refreshProblem == null) "В библиотеке пока нет досок. Создайте доску или импортируйте файл .linka." else "Не удалось прочитать библиотеку. Данные не заменены пустым списком.")
+         if (listing.items.isEmpty()) Text(if (listing.refreshProblem == null) stringResource(Res.string.no_boards_in_the_library_yet_create) else stringResource(Res.string.could_not_read_the_library_data_was))
          if (result !is OperationResult.Completed) Feedback(result)
        } }
         items(shownListing.items, key = { "board:${it.id.value}" }) { entry ->
@@ -101,20 +104,20 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
       }
     }
     }
-    if (showDrafts && draftDecision == null) ProductDialog("Сохранённые черновики", { if (!busy) showDrafts = false }, actions = {
-        TextButton(onClick = { showDrafts = false }, enabled = !busy) { Text("Закрыть") }
+    if (showDrafts && draftDecision == null) ProductDialog(stringResource(Res.string.saved_drafts), { if (!busy) showDrafts = false }, actions = {
+        TextButton(onClick = { showDrafts = false }, enabled = !busy) { Text(stringResource(Res.string.close)) }
     }) {
         when (val loaded = drafts) {
-             null -> Text("Загружаем черновики…")
+             null -> Text(stringResource(Res.string.loading_drafts))
             is OperationResult.Completed -> {
                 val loadedEpoch = draftsEpoch
-                 if (loaded.value.isEmpty()) Text("Черновиков нет.")
+                 if (loaded.value.isEmpty()) Text(stringResource(Res.string.no_drafts))
                  loaded.value.forEach { draft ->
                   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("${draft.name} · версия ${draft.version}${if (draft.hasOpenForm) " · незавершённая форма" else ""}")
-                    Action("Продолжить «${draft.name}»", enabled && !busy) { onResume(draft.id) }
+                    Text(stringResource(Res.string.draft_version, draft.name, draft.version, if (draft.hasOpenForm) stringResource(Res.string.unfinished_form) else ""))
+                    Action(stringResource(Res.string.continue_1_s, draft.name), enabled && !busy) { onResume(draft.id) }
                      TextButton(onClick = { draftDecision = DraftDecision(draft, loadedEpoch!!)
-                         result = null; requestAuthorization(ProtectedAction.DELETE_DRAFT) }, enabled = enabled && !busy && loadedEpoch != null) { Text("Удалить черновик…") }
+                         result = null; requestAuthorization(ProtectedAction.DELETE_DRAFT) }, enabled = enabled && !busy && loadedEpoch != null) { Text(stringResource(Res.string.delete_draft)) }
                   }
                 }
             }
@@ -123,8 +126,8 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
          if (result !is OperationResult.Completed) Feedback(result)
     }
     decision?.let { shown ->
-      ProductDialog(if (shown.delete) "Удаление доски" else "Название доски", { if (!busy) decision = null }, actions = {
-            Action(if (shown.delete) "Подтверждаю удаление «${shown.entry.name}»" else "Сохранить название «${shown.entry.name}»", enabled && !busy && (shown.delete || name.isNotBlank()), shown.delete) {
+      ProductDialog(if (shown.delete) stringResource(Res.string.delete_board) else stringResource(Res.string.board_name), { if (!busy) decision = null }, actions = {
+            Action(if (shown.delete) stringResource(Res.string.confirm_deletion_of_1_s, shown.entry.name) else stringResource(Res.string.save_name_for_1_s, shown.entry.name), enabled && !busy && (shown.delete || name.isNotBlank()), shown.delete) {
                 val entered = name; busy = true
                 scope.launch {
                     try {
@@ -135,18 +138,18 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
                     } finally { busy = false }
                 }
             }
-             Action("Отмена", !busy) { decision = null; name = "" }
+             Action(stringResource(Res.string.cancel), !busy) { decision = null; name = "" }
       }) {
-            Text(if (shown.delete) "Удалить доску «${shown.entry.name}» из библиотеки? Уже составленное сообщение не очищается."
-                else "Новое название для «${shown.entry.name}»")
-             if (!shown.delete) Field(name, "Название", !busy) { name = it }
+            Text(if (shown.delete) stringResource(Res.string.delete_board_1_s_from_the_library, shown.entry.name)
+                else stringResource(Res.string.new_name_for_1_s, shown.entry.name))
+             if (!shown.delete) Field(name, stringResource(Res.string.name), !busy) { name = it }
              if (authorize) access()
              Feedback(result)
       }
     }
     draftDecision?.let { shown ->
-      ProductDialog("Удаление черновика", { if (!busy) draftDecision = null }, actions = {
-            Action("Подтверждаю удаление черновика «${shown.draft.name}»", enabled && !busy, true) {
+      ProductDialog(stringResource(Res.string.delete_draft_275), { if (!busy) draftDecision = null }, actions = {
+            Action(stringResource(Res.string.confirm_deletion_of_draft_1_s, shown.draft.name), enabled && !busy, true) {
                 busy = true
                 scope.launch {
                      try {
@@ -157,9 +160,9 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
                     finally { busy = false }
                 }
             }
-             Action("Оставить черновик", !busy) { draftDecision = null }
+             Action(stringResource(Res.string.keep_draft), !busy) { draftDecision = null }
       }) {
-             Text("Удалить сохранённый черновик «${shown.draft.name}» версии ${shown.draft.version}? Опубликованная доска останется.")
+             Text(stringResource(Res.string.delete_saved_draft_1_s_version_2, shown.draft.name, shown.draft.version))
              if (authorize) access()
              Feedback(result)
       }
@@ -195,28 +198,31 @@ private fun LibraryTile(library: LibraryStore, entry: LibraryEntrySummary, epoch
     onOpen: () -> Unit, onEdit: () -> Unit, onExport: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
     var menu by remember(entry.id) { mutableStateOf(false) }
     val board = entry.kind == LibraryEntryKind.BOARD
+    val unavailable = stringResource(Res.string.cannot_open)
+    val description = stringResource(libraryEntryDescription(entry),
+        if (board) entry.cardCount?.toString() ?: "" else entry.problem?.code?.name ?: unavailable)
     val palette = LocalLinkaPalette.current
     Surface(Modifier.fillMaxWidth().padding(1.dp), color = palette.surface, contentColor = palette.text,
         border = BorderStroke(if (palette.highContrast) 2.dp else 1.dp, palette.border), elevation = 0.dp) {
       Box(Modifier.clickable(enabled = canOpen && board, role = Role.Button,
-          onClickLabel = "Открыть ${entry.name}", onClick = onOpen)
-          .semantics { stateDescription = libraryEntryDescription(entry) }) {
+          onClickLabel = stringResource(Res.string.open_1_s, entry.name), onClick = onOpen)
+          .semantics { stateDescription = description }) {
         Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.fillMaxWidth().height(88.dp).padding(horizontal = 24.dp)) {
                 LibraryCover(library, entry, epoch, images)
             }
             Text(entry.name, Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 8.dp),
                 fontSize = 16.sp, textAlign = TextAlign.Center)
-            if (!board) Text(libraryEntryDescription(entry), fontSize = 12.sp, textAlign = TextAlign.Center)
+            if (!board) Text(description, fontSize = 12.sp, textAlign = TextAlign.Center)
         }
         Box(Modifier.align(Alignment.TopEnd)) {
-            IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, "Действия с набором «${entry.name}»") }
+            IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, stringResource(Res.string.actions_for_board_1_s, entry.name)) }
             DropdownMenu(menu, { menu = false }) {
-                DropdownMenuItem(onClick = { menu = false; onOpen() }, enabled = canOpen && board) { Text("Открыть") }
-                DropdownMenuItem(onClick = { menu = false; onEdit() }, enabled = enabled && board) { Text("Редактировать") }
-                DropdownMenuItem(onClick = { menu = false; onRename() }, enabled = enabled && board) { Text("Переименовать") }
-                DropdownMenuItem(onClick = { menu = false; onExport() }, enabled = enabled && board) { Text("Экспортировать") }
-                DropdownMenuItem(onClick = { menu = false; onDelete() }, enabled = enabled) { Text("Удалить…") }
+                DropdownMenuItem(onClick = { menu = false; onOpen() }, enabled = canOpen && board) { Text(stringResource(Res.string.open)) }
+                DropdownMenuItem(onClick = { menu = false; onEdit() }, enabled = enabled && board) { Text(stringResource(Res.string.edit)) }
+                DropdownMenuItem(onClick = { menu = false; onRename() }, enabled = enabled && board) { Text(stringResource(Res.string.rename)) }
+                DropdownMenuItem(onClick = { menu = false; onExport() }, enabled = enabled && board) { Text(stringResource(Res.string.export)) }
+                DropdownMenuItem(onClick = { menu = false; onDelete() }, enabled = enabled) { Text(stringResource(Res.string.delete)) }
             }
         }
       }

@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.communication
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
@@ -51,19 +53,20 @@ internal fun CommunicationGrid(
 ) {
     val palette = LocalLinkaPalette.current
     if (page == null) {
-        Box(modifier) { Text("Выберите доску в библиотеке. Общее сообщение доступно между досками.") }
+        Box(modifier) { Text(stringResource(Res.string.choose_a_board_in_the_library_the)) }
         return
     }
     val slots = remember(page) { communicationSlots(page) }
     val focus = LocalFocusManager.current
     val cellWidth = pageLayout.cellWidth.dp
     val cellHeight = pageLayout.cellHeight.dp
+    val gridDescription = stringResource(Res.string.grid_1_s_by_2_s, page.rows, page.columns)
     Box(modifier) {
         Column(
             Modifier.requiredSize(cellWidth * page.columns, cellHeight * page.rows).focusGroup()
                 .semantics {
                     collectionInfo = CollectionInfo(page.rows, page.columns)
-                    stateDescription = "Сетка ${page.rows} на ${page.columns}."
+                    stateDescription = gridDescription
                 }
                 .onPreviewKeyEvent { event ->
                     if (!enabled || event.type != KeyEventType.KeyDown || event.isAltPressed || event.isCtrlPressed || event.isMetaPressed) false
@@ -91,11 +94,11 @@ internal fun CommunicationGrid(
                         if (cell == null || cell.kind == CellKind.EMPTY) {
                             Box(itemModifier.border(1.dp, palette.border))
                         } else {
-                            val label = if (cell.kind == CellKind.SPACE) "Пробел" else cell.card!!.label
+                            val label = if (cell.kind == CellKind.SPACE) stringResource(Res.string.space) else cell.card!!.label
                             CommunicationCard(
                                 label = if (cell.kind == CellKind.SPACE) "⎵" else label,
-                                accessibleName = label.ifEmpty { "Карточка без подписи, позиция ${position + 1}" },
-                                activationLabel = if (composing) "Добавить в сообщение" else "Произнести карточку",
+                                accessibleName = label.ifEmpty { stringResource(Res.string.unlabelled_card_position_1_s, position + 1) },
+                                activationLabel = if (composing) stringResource(Res.string.add_to_message) else stringResource(Res.string.speak_card),
                                 image = cell.card?.image?.let { images[it] },
                                 hasImage = cell.card?.image != null,
                                 imageBesideCaption = pageLayout.imageSides[position]?.dp,

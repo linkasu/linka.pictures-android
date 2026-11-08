@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.communication
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
@@ -44,24 +46,27 @@ internal fun CommunicationScreen(
     onOpenBoardSettings: (() -> Unit)? = null,
 ) {
     val presentation = remember(state, voices) { communicationPresentation(state, voices) }
+    val audioStatus = stringResource(presentation.audioStatus)
+    val previousPage = stringResource(Res.string.previous_page)
+    val nextPage = stringResource(Res.string.next_page)
     var input by rememberSaveable(state.stamp.epoch) { mutableStateOf("") }
     var inputFocused by remember { mutableStateOf(false) }
     val palette = LocalLinkaPalette.current
     val dispatch: (CommunicationCommand) -> Unit = { if (presentation.commandsEnabled) onCommand(it) }
     val speechAction: @Composable (Modifier) -> Unit = { action ->
         CommunicationActionButton(if (presentation.stopping) CommunicationIcon.Stop else CommunicationIcon.Speak,
-            if (presentation.stopping) "Остановить" else "Произнести", presentation.speechEnabled,
+            if (presentation.stopping) stringResource(Res.string.stop_speaking) else stringResource(Res.string.speak), presentation.speechEnabled,
             { dispatch(if (presentation.stopping) CommunicationCommand.Stop(CommandId(ids.next()))
                 else CommunicationCommand.Speak(CommandId(ids.next()))) },
-            action.semantics { stateDescription = presentation.audioStatus })
+            action.semantics { stateDescription = audioStatus })
     }
     val backspaceAction: @Composable (Modifier) -> Unit = { action ->
-        CommunicationActionButton(CommunicationIcon.Backspace, "Удалить последнее", presentation.editEnabled,
+        CommunicationActionButton(CommunicationIcon.Backspace, stringResource(Res.string.remove_last_item), presentation.editEnabled,
             { dispatch(CommunicationCommand.Backspace(CommandId(ids.next()))) }, action)
     }
     val clearAction: @Composable (Modifier) -> Unit = { action ->
         CommunicationActionButton(if (presentation.undoEnabled) CommunicationIcon.Undo else CommunicationIcon.Clear,
-            if (presentation.undoEnabled) "Вернуть сообщение" else "Очистить сообщение",
+            if (presentation.undoEnabled) stringResource(Res.string.restore_message) else stringResource(Res.string.clear_message),
             presentation.editEnabled || presentation.undoEnabled,
             { dispatch(if (presentation.undoEnabled) CommunicationCommand.UndoClear(CommandId(ids.next()))
                 else CommunicationCommand.Clear(CommandId(ids.next()))) }, action)
@@ -78,7 +83,7 @@ internal fun CommunicationScreen(
             CompositionLocalProvider(LocalContentAlpha provides 1f) {
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))) {
                     CommunicationControls(
-                        state.board?.document?.name ?: "Общение", presentation, ids, dispatch,
+                        state.board?.document?.name ?: stringResource(Res.string.communication), presentation, ids, dispatch,
                         onOpenLibrary, onOpenBoardSettings,
                         input, { if (presentation.commandsEnabled) input = it }, { inputFocused = it },
                         layout.toolbarHeight.dp,
@@ -112,21 +117,22 @@ internal fun CommunicationScreen(
                             val pagingVisible = showPageButtons && pages.size > 1
                             val pageAction: @Composable (Int) -> Unit = { direction ->
                                 CommunicationIconButton(if (direction < 0) CommunicationIcon.Previous else CommunicationIcon.Next,
-                                    if (direction < 0) "Предыдущая страница" else "Следующая страница",
+                                    if (direction < 0) stringResource(Res.string.previous_page) else stringResource(Res.string.next_page),
                                     pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) != null,
                                     { changePage(direction) }, Modifier.size(48.dp))
                             }
-                            if (pagingVisible) pageAction(-1)
-                            Text(
-                                "Страница ${presentation.pageIndex + 1} из ${pages.size}",
+                             if (pagingVisible) pageAction(-1)
+                            val pageDescription = stringResource(Res.string.page_1_s_of_2_s, presentation.pageIndex + 1, pages.size)
+                             Text(
+                                pageDescription,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 modifier = Modifier.weight(1f).clearAndSetSemantics {
-                                    contentDescription = "Страница ${presentation.pageIndex + 1} из ${pages.size}"
+                                    contentDescription = pageDescription
                                     customActions = listOfNotNull(
                                         if (pageTarget(presentation.pageIndex, pages.size, -1, presentation.commandsEnabled) != null)
-                                            CustomAccessibilityAction("Предыдущая страница") { changePage(-1) } else null,
+                                            CustomAccessibilityAction(previousPage) { changePage(-1) } else null,
                                         if (pageTarget(presentation.pageIndex, pages.size, 1, presentation.commandsEnabled) != null)
-                                            CustomAccessibilityAction("Следующая страница") { changePage(1) } else null,
+                                            CustomAccessibilityAction(nextPage) { changePage(1) } else null,
                                     )
                                 },
                             )

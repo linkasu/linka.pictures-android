@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.communication
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,7 +36,8 @@ internal fun CommunicationMessage(state: CommunicationState, images: Map<AssetId
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
     val style = MaterialTheme.typography.body1.merge(CommunicationCaptionStyle)
-    BoxWithConstraints(modifier.padding(2.dp).semantics { contentDescription = "Общее сообщение: ${state.renderedText.ifEmpty { "пусто" }}" }) {
+    val description = stringResource(Res.string.shared_message_1_s, state.renderedText.ifEmpty { stringResource(Res.string.empty) })
+    BoxWithConstraints(modifier.padding(2.dp).semantics { contentDescription = description }) {
         val partWidth = communicationMessagePartWidth(maxWidth.value, maxHeight.value, state.message.parts.size).dp
         LazyRow(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             items(state.message.parts, key = { it.id.value }) { part ->

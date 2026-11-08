@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.editor
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -46,7 +48,9 @@ internal fun EditorPageCells(
                     items(page.columns, key = { it }) { column ->
                         val position = row * page.columns + column
                         val cell = cells[position]
-                        val label = editorCellLabel(cell)
+                        val label = editorCellLabel(cell)?.let { stringResource(it) } ?: cell!!.card!!.label
+                        val cellDescription = stringResource(Res.string.cell_position, label, row + 1, column + 1)
+                        val actionsDescription = stringResource(Res.string.cell_actions_1_s, label)
                         val selectedCell = activePosition == position || moveSource == (page.id to position)
                         var menu by remember(page.id, position) { mutableStateOf(false) }
                         var focused by remember(page.id, position) { mutableStateOf(false) }
@@ -68,7 +72,7 @@ internal fun EditorPageCells(
                                     colors = ButtonDefaults.textButtonColors(contentColor = palette.text), modifier = Modifier.fillMaxSize()
                                     .onFocusChanged { focused = it.isFocused }
                                     .semantics {
-                                    contentDescription = "$label. Строка ${row + 1}, столбец ${column + 1}"
+                                    contentDescription = cellDescription
                                     selected = selectedCell
                                 }) {
                                     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -84,11 +88,11 @@ internal fun EditorPageCells(
                                 }
                                 Box(Modifier.align(Alignment.TopEnd)) {
                                     IconButton(onClick = { menu = true }, enabled = enabled,
-                                        modifier = Modifier.semantics { contentDescription = "Действия ячейки: $label" }) { EditorIcon(EditorSymbol.MORE) }
+                                        modifier = Modifier.semantics { contentDescription = actionsDescription }) { EditorIcon(EditorSymbol.MORE) }
                                     DropdownMenu(menu, { menu = false }) {
-                                        DropdownMenuItem(onClick = { menu = false; onMoveSource(page.id to position) }, enabled = enabled) { Text("Переместить…") }
-                                        DropdownMenuItem(onClick = { menu = false; onAction(AuthoringAction.SetCell(page.id, position, CellKind.SPACE)) }, enabled = enabled) { Text("Сделать пробелом") }
-                                        DropdownMenuItem(onClick = { menu = false; onAction(AuthoringAction.SetCell(page.id, position, CellKind.EMPTY)) }, enabled = enabled) { Text("Очистить ячейку") }
+                                        DropdownMenuItem(onClick = { menu = false; onMoveSource(page.id to position) }, enabled = enabled) { Text(stringResource(Res.string.move)) }
+                                        DropdownMenuItem(onClick = { menu = false; onAction(AuthoringAction.SetCell(page.id, position, CellKind.SPACE)) }, enabled = enabled) { Text(stringResource(Res.string.make_a_space)) }
+                                        DropdownMenuItem(onClick = { menu = false; onAction(AuthoringAction.SetCell(page.id, position, CellKind.EMPTY)) }, enabled = enabled) { Text(stringResource(Res.string.clear_cell)) }
                                     }
                                 }
                             }

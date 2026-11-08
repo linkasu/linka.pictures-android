@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.app
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -69,10 +71,10 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
     var selectedMode by remember(snapshot) { mutableStateOf<InteractionMode?>(null) }
     val writable = enabled && !busy && !stopped && !controller.requiresRestart &&
         library.listing.value.refreshProblem == null
-    ProductDialog("Параметры доски", { if (!busy) onDismiss() }, actions = {
+    ProductDialog(stringResource(Res.string.board_options), { if (!busy) onDismiss() }, actions = {
         androidx.compose.foundation.layout.Column {
             snapshot?.let { loaded ->
-                Action("Сохранить", writable) {
+                Action(stringResource(Res.string.save), writable) {
                     val admission = gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner)
                     if (admission !is OperationResult.Completed) result = admission
                     else {
@@ -98,27 +100,27 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
                     }
                 }
             }
-            Action("Закрыть", !busy, onClick = onDismiss)
+            Action(stringResource(Res.string.close), !busy, onClick = onDismiss)
         }
     }) {
         layoutNotice?.let { Text(it) }
         if (gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner) !is OperationResult.Completed) access()
-        if (snapshot == null && result == null) Text("Загружаем настройки…")
+        if (snapshot == null && result == null) Text(stringResource(Res.string.loading_settings))
         snapshot?.let {
             Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)
                 .toggleable(pager, enabled = writable, role = Role.Checkbox, onValueChange = { pager = it })) {
                 Checkbox(pager, null, enabled = writable)
-                Text("Показывать кнопки переключения страниц")
+                Text(stringResource(Res.string.show_page_navigation_buttons))
             }
-            Text("Режим общения (общий для приложения)")
+            Text(stringResource(Res.string.communication_mode_app_wide))
             InteractionMode.entries.forEach { choice -> Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)
                 .selectable((selectedMode ?: mode) == choice, enabled = writable, role = Role.RadioButton,
                     onClick = { selectedMode = choice })) {
                 RadioButton((selectedMode ?: mode) == choice, null, enabled = writable)
-                Text(if (choice == InteractionMode.COMPOSE) "Составлять сообщение" else "Говорить сразу")
+                Text(if (choice == InteractionMode.COMPOSE) stringResource(Res.string.compose_a_message) else stringResource(Res.string.speak_immediately))
             } }
         }
         Feedback(result)
-        Action("Перечитать настройки (отбросить ввод)", enabled && !busy && !stopped && !controller.requiresRestart) { refresh++ }
+        Action(stringResource(Res.string.reload_settings_discard_input), enabled && !busy && !stopped && !controller.requiresRestart) { refresh++ }
     }
 }

@@ -1,5 +1,6 @@
 package su.linka.pictures.ui.app
 
+import su.linka.pictures.resources.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.communication.CommunicationState
 import su.linka.pictures.application.portability.TransferPhase
@@ -21,15 +22,15 @@ class ProductPresentationTest {
     }
     @Test fun unknownCountsAreNotPresentedAsZeroAndRetainedArchivesAreExplicit() {
         val unknown = LibraryEntrySummary(BoardId("board"), "Доска", 1, LibraryEntryKind.BOARD, null)
-        assertTrue(libraryEntryDescription(unknown).contains("неизвестно"))
-        assertFalse(libraryEntryDescription(unknown).contains("0"))
-        assertTrue(libraryEntryDescription(unknown.copy(cardCount = 0)).contains("0"))
-        assertTrue(libraryEntryDescription(unknown.copy(kind = LibraryEntryKind.RETAINED_ARCHIVE)).contains("нечитаемый"))
+        assertEquals(Res.string.card_count_unknown, libraryEntryDescription(unknown))
+
+        assertEquals(Res.string.cards_1_s, libraryEntryDescription(unknown.copy(cardCount = 0)))
+        assertEquals(Res.string.retained_unreadable_archive_1_s, libraryEntryDescription(unknown.copy(kind = LibraryEntryKind.RETAINED_ARCHIVE)))
     }
     @Test fun cancelledFailedAndUnconfirmedHaveDistinctActionableFeedback() {
         assertNotEquals(productFeedback(OperationResult.Cancelled), productFeedback(OperationResult.UnconfirmedCommit))
-        assertTrue(productFeedback(OperationResult.UnconfirmedCommit).contains("Не повторяйте"))
-        assertTrue(productFeedback(OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))).contains("Обновите"))
+        assertEquals(Res.string.write_outcome_is_unknown_do_not_repeat, productFeedback(OperationResult.UnconfirmedCommit))
+        assertEquals(Res.string.data_has_changed_refresh_the_screen_and, productFeedback(OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))))
         assertEquals(TransferPhase.entries.size, TransferPhase.entries.map(::transferPhaseLabel).toSet().size)
     }
     @Test fun requestedThumbnailsContainImagesButNeverRecordings() {

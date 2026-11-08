@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.editor
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -16,21 +18,21 @@ import su.linka.pictures.ui.theme.LocalLinkaPalette
 internal fun AuthoringFeedback(state: AuthoringState, onAction: (AuthoringAction) -> Unit, showSaveStatus: Boolean = true) {
     val palette = LocalLinkaPalette.current
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (showSaveStatus) Text(draftSaveLabel(state.savePhase), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        if (showSaveStatus) Text(stringResource(draftSaveLabel(state.savePhase)), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         state.problem?.let {
-            Text(authoringProblemLabel(it.code), color = palette.danger,
+            Text(stringResource(authoringProblemLabel(it.code), it.code.name), color = palette.danger,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
-        if (state.cleanupProblem != null) Text("Не удалось полностью освободить ресурсы (IO_FAILURE). Основной результат операции указан выше.",
+        if (state.cleanupProblem != null) Text(stringResource(Res.string.could_not_release_all_resources_io_failure),
             color = palette.danger, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         if (state.savePhase == DraftSavePhase.FAILED && state.editable()) {
-            LabeledActionButton("Повторить сохранение черновика", true, false, { onAction(AuthoringAction.RetrySave) })
+            LabeledActionButton(stringResource(Res.string.retry_saving_draft), true, false, { onAction(AuthoringAction.RetrySave) })
         }
         if (state.phase == AuthoringPhase.PAUSED) {
-            Text("Редактор приостановлен. Незавершённая запись не восстанавливается; после входа продолжите явно.")
-            LabeledActionButton("Продолжить после входа помощника", true, false, { onAction(AuthoringAction.Resume) })
+            Text(stringResource(Res.string.editor_paused_an_unfinished_write_is_not))
+            LabeledActionButton(stringResource(Res.string.continue_after_assistant_sign_in), true, false, { onAction(AuthoringAction.Resume) })
         }
-        if (state.phase == AuthoringPhase.APPLIED) Text("Изменения применены к доске")
-        if (state.mediaBusy) Text("Подготовка медиа… Отмена не удаляет уже сохранённые файлы библиотеки.")
+        if (state.phase == AuthoringPhase.APPLIED) Text(stringResource(Res.string.changes_applied_to_the_board))
+        if (state.mediaBusy) Text(stringResource(Res.string.preparing_media_cancelling_does_not_delete_files))
     }
 }

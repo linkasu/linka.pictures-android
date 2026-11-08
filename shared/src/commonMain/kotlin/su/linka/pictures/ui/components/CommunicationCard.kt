@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.components
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,7 +36,7 @@ fun CommunicationCard(
         accessibleName, activationLabel, enabled, selected, palette.surface, palette.text,
         onActivate, modifier.sizeIn(minWidth = LinkaMetrics.touchTarget, minHeight = LinkaMetrics.touchTarget),
         kind = PrimitiveSurfaceKind.CARD,
-        description = if (!hasImage) null else if (image != null) "Изображение показано" else "Изображение ещё не показано",
+        description = if (!hasImage) null else if (image != null) stringResource(Res.string.image_displayed) else stringResource(Res.string.image_not_yet_displayed),
     ) {
         BoxWithConstraints {
             val captionWidth = maxWidth

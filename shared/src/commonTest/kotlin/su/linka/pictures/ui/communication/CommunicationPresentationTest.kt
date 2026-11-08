@@ -1,5 +1,6 @@
 package su.linka.pictures.ui.communication
 
+import su.linka.pictures.resources.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -115,9 +116,8 @@ class CommunicationPresentationTest {
             assertFalse(p.speechEnabled)
             assertFalse(p.editEnabled)
             assertFalse(p.undoEnabled)
-            assertTrue(p.saveStatus.contains("не подтверждён"))
-            assertTrue(p.saveStatus.contains("закройте приложение"))
-            assertTrue(p.saveStatus.contains("Не повторяйте"))
+            assertTrue(p.unconfirmed)
+            assertEquals(communicationProblemText(ProblemCode.COMMIT_OUTCOME_UNKNOWN), p.saveStatus)
             assertEquals(state.message, uncertain.message)
         }
         assertFalse(communicationPresentation(state.copy(problem = Problem(ProblemCode.STALE_REQUEST)), readyVoice).commandsEnabled)
@@ -134,17 +134,30 @@ class CommunicationPresentationTest {
         assertTrue(notices(state, VoiceCapability(VoiceStatus.MISSING_VOICE)).isEmpty())
         assertTrue(notices(state.copy(audio = AudioState(phase = AudioPhase.COMPLETED))).isEmpty())
         assertTrue(notices(state.copy(audio = AudioState(phase = AudioPhase.CANCELLED))).isEmpty())
-        assertTrue(notices(state.copy(savePhase = MessageSavePhase.UNCONFIRMED)).any { "не подтверждён" in it })
-        assertTrue(notices(state.copy(problem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))).any { "не подтверждён" in it })
-        assertTrue(notices(state.copy(savePhase = MessageSavePhase.FAILED)).any { "не сохранено" in it })
+        assertTrue(notices(state.copy(savePhase = MessageSavePhase.UNCONFIRMED)).contains(communicationProblemText(ProblemCode.COMMIT_OUTCOME_UNKNOWN)))
+        assertTrue(notices(state.copy(problem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))).contains(communicationProblemText(ProblemCode.COMMIT_OUTCOME_UNKNOWN)))
+        assertTrue(notices(state.copy(savePhase = MessageSavePhase.FAILED)).contains(Res.string.message_was_not_saved_it_remains_on))
         assertTrue(notices(state.copy(audio = AudioState(phase = AudioPhase.FAILED))).isNotEmpty())
         assertTrue(notices(state.copy(problem = Problem(ProblemCode.INTEGRITY_FAILURE))).isNotEmpty())
         val voiceFailure = notices(state.copy(audio = AudioState(problem = Problem(ProblemCode.VOICE_UNAVAILABLE))), VoiceCapability(VoiceStatus.MISSING_VOICE))
-        assertTrue(voiceFailure.any { "не установлен" in it })
-        assertFalse(notices(state.copy(problem = Problem(ProblemCode.VOICE_UNAVAILABLE))).any { "голос ОС доступен" in it })
+        assertTrue(voiceFailure.contains(Res.string.no_local_os_voice_is_installed_text))
+        assertFalse(notices(state.copy(problem = Problem(ProblemCode.VOICE_UNAVAILABLE))).contains(Res.string.local_os_voice_is_available))
         val stale = notices(state.copy(problem = Problem(ProblemCode.STALE_REQUEST)))
-        assertTrue(stale.any { "устарел" in it })
-        assertFalse(stale.any { "Сообщение сохранено" in it })
+        assertTrue(stale.contains(communicationProblemText(ProblemCode.STALE_REQUEST)))
+        assertFalse(stale.contains(Res.string.message_saved))
+    }
+
+    @Test
+    fun noticeVisibilityUsesDurabilityNotTheDisplayedResource() {
+        val uncertain = state.copy(problem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+        val presentation = communicationPresentation(uncertain, readyVoice)
+            .copy(saveStatus = Res.string.message_saved)
+        assertTrue(presentation.unconfirmed)
+        assertTrue(communicationNotices(uncertain, presentation, readyVoice).contains(Res.string.message_saved))
+        val saved = communicationPresentation(state, readyVoice)
+            .copy(saveStatus = communicationProblemText(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+        assertFalse(saved.unconfirmed)
+        assertTrue(communicationNotices(state, saved, readyVoice).isEmpty())
     }
 
     @Test
@@ -156,12 +169,13 @@ class CommunicationPresentationTest {
             audio = AudioState(phase = AudioPhase.FAILED, problem = Problem(ProblemCode.SPEECH_UNAVAILABLE, subjectId = subject)),
         ), readyVoice)
         assertEquals(2, p.problems.size)
-        assertTrue(p.problems.all { subject !in it && "12345" !in it })
+        assertEquals(listOf(communicationProblemText(ProblemCode.VOICE_UNAVAILABLE),
+            communicationProblemText(ProblemCode.SPEECH_UNAVAILABLE)), p.problems)
         assertNotEquals(p.problems[0], p.problems[1])
-        assertTrue(p.saveStatus.contains("не сохранено"))
+        assertEquals(Res.string.message_was_not_saved_it_remains_on, p.saveStatus)
         assertEquals(1, communicationPresentation(state.copy(
             problem = Problem(ProblemCode.IO_FAILURE), audio = AudioState(problem = Problem(ProblemCode.IO_FAILURE)),
         ), readyVoice).problems.size)
-        for (code in ProblemCode.entries) assertTrue(communicationProblemText(code).isNotBlank())
+        assertEquals(ProblemCode.entries.size, ProblemCode.entries.map(::communicationProblemText).toSet().size)
     }
 }

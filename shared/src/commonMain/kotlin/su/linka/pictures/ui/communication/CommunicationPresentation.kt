@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.communication
 
+import org.jetbrains.compose.resources.StringResource
+import su.linka.pictures.resources.*
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.communication.CommunicationState
 import su.linka.pictures.application.communication.MessageSavePhase
@@ -22,10 +24,11 @@ internal data class CommunicationPresentation(
     val speechEnabled: Boolean,
     val editEnabled: Boolean,
     val undoEnabled: Boolean,
-    val saveStatus: String,
-    val audioStatus: String,
-    val voiceStatus: String,
-    val problems: List<String>,
+    val unconfirmed: Boolean,
+    val saveStatus: StringResource,
+    val audioStatus: StringResource,
+    val voiceStatus: StringResource,
+    val problems: List<StringResource>,
 )
 
 internal fun communicationPresentation(state: CommunicationState, voices: VoiceCapability): CommunicationPresentation {
@@ -57,43 +60,44 @@ internal fun communicationPresentation(state: CommunicationState, voices: VoiceC
         speechEnabled = enabled && (stopping || (composing && state.message.parts.isNotEmpty())),
         editEnabled = enabled && composing && state.message.parts.isNotEmpty(),
         undoEnabled = enabled && composing && state.canUndoClear,
+        unconfirmed = unconfirmed,
         saveStatus = if (unconfirmed) unconfirmedMessage else when (state.savePhase) {
-            MessageSavePhase.LOADING -> "Загрузка сохранённого сообщения. Действия пока недоступны."
-            MessageSavePhase.SAVING -> "Сохранение… Сообщение ещё не подтверждено на диске."
-            MessageSavePhase.SAVED -> "Сообщение сохранено."
-            MessageSavePhase.FAILED -> "Сообщение не сохранено. Оно остаётся на экране."
+            MessageSavePhase.LOADING -> Res.string.loading_the_saved_message_actions_are_temporarily
+            MessageSavePhase.SAVING -> Res.string.saving_the_message_has_not_yet_been
+            MessageSavePhase.SAVED -> Res.string.message_saved
+            MessageSavePhase.FAILED -> Res.string.message_was_not_saved_it_remains_on
             MessageSavePhase.UNCONFIRMED -> unconfirmedMessage
         },
         audioStatus = when (state.audio.phase) {
-            AudioPhase.IDLE -> "Воспроизведение остановлено."
-            AudioPhase.PREPARING -> "Подготовка произнесения…"
-            AudioPhase.PLAYING -> "Сообщение звучит."
-            AudioPhase.REQUESTING_PERMISSION -> "Ожидание разрешения на запись."
-            AudioPhase.RECORDING -> "Идёт запись."
-            AudioPhase.FINISHING -> "Завершение записи…"
-            AudioPhase.SYNTHESIZING -> "Подготовка речи…"
-            AudioPhase.READY -> "Аудио подготовлено."
-            AudioPhase.COMPLETED -> "Воспроизведение завершено."
-            AudioPhase.CANCELLED -> "Воспроизведение отменено."
-            AudioPhase.INTERRUPTED -> "Воспроизведение прервано. Автоматического повтора нет."
-            AudioPhase.FAILED -> "Не удалось завершить воспроизведение. Сообщение осталось на экране."
+            AudioPhase.IDLE -> Res.string.playback_stopped
+            AudioPhase.PREPARING -> Res.string.preparing_playback
+            AudioPhase.PLAYING -> Res.string.speaking_message
+            AudioPhase.REQUESTING_PERMISSION -> Res.string.waiting_for_recording_permission
+            AudioPhase.RECORDING -> Res.string.recording_in_progress
+            AudioPhase.FINISHING -> Res.string.finishing_recording
+            AudioPhase.SYNTHESIZING -> Res.string.preparing_speech
+            AudioPhase.READY -> Res.string.audio_prepared
+            AudioPhase.COMPLETED -> Res.string.playback_completed
+            AudioPhase.CANCELLED -> Res.string.playback_cancelled
+            AudioPhase.INTERRUPTED -> Res.string.playback_interrupted_there_is_no_automatic_retry
+            AudioPhase.FAILED -> Res.string.could_not_finish_playback_the_message_remains
         },
         voiceStatus = when (voices.status) {
-            VoiceStatus.INITIALIZING -> "Проверка локального голоса ОС… Записи не требуют TTS."
-            VoiceStatus.LOCAL_VOICE_READY -> "Локальный голос ОС доступен."
-            VoiceStatus.MISSING_VOICE -> "Локальный голос ОС не установлен. Текст и изображения доступны; записи не требуют TTS. Настройте локальный голос в системе для чтения текста."
-            VoiceStatus.UNSUPPORTED_LANGUAGE -> "Локальный голос не поддерживает нужный язык. Записи не требуют TTS."
-            VoiceStatus.INTERRUPTED -> "Проверка локального голоса прервана. Записи не требуют TTS."
-            VoiceStatus.FAILED -> "Не удалось проверить локальный голос ОС. Записи не требуют TTS."
+            VoiceStatus.INITIALIZING -> Res.string.checking_the_local_os_voice_recordings_do
+            VoiceStatus.LOCAL_VOICE_READY -> Res.string.local_os_voice_is_available
+            VoiceStatus.MISSING_VOICE -> Res.string.no_local_os_voice_is_installed_text
+            VoiceStatus.UNSUPPORTED_LANGUAGE -> Res.string.the_local_voice_does_not_support_the
+            VoiceStatus.INTERRUPTED -> Res.string.local_voice_check_interrupted_recordings_do_not
+            VoiceStatus.FAILED -> Res.string.could_not_check_the_local_os_voice
         },
         problems = codes.filterNot { it == ProblemCode.COMMIT_OUTCOME_UNKNOWN }.map(::communicationProblemText),
     )
 }
 
-private const val unconfirmedMessage = "Результат сохранения не подтверждён. Нельзя считать операцию сохранённой или отменённой. Сообщение остаётся на экране, действия заблокированы. Полностью закройте приложение и откройте его заново для проверки данных. Не повторяйте операцию до проверки."
+private val unconfirmedMessage = Res.string.saving_has_not_been_confirmed_the_operation
 
-internal fun communicationNotices(state: CommunicationState, presentation: CommunicationPresentation, voices: VoiceCapability): List<String> = buildList {
-    if (state.savePhase != MessageSavePhase.SAVED || presentation.saveStatus == unconfirmedMessage) add(presentation.saveStatus)
+internal fun communicationNotices(state: CommunicationState, presentation: CommunicationPresentation, voices: VoiceCapability): List<StringResource> = buildList {
+    if (state.savePhase != MessageSavePhase.SAVED || presentation.unconfirmed) add(presentation.saveStatus)
     addAll(presentation.problems)
     if (state.audio.phase in setOf(AudioPhase.FAILED, AudioPhase.INTERRUPTED)) add(presentation.audioStatus)
     if (voices.status != VoiceStatus.LOCAL_VOICE_READY &&
@@ -129,29 +133,29 @@ internal fun communicationSlots(page: BoardPage): List<BoardCell?> {
     return List(page.capacity) { cells[it] }
 }
 
-internal fun communicationProblemText(code: ProblemCode): String = when (code) {
-    ProblemCode.NOT_FOUND -> "Доска не найдена. Откройте библиотеку и выберите другую доску."
-    ProblemCode.CONFLICT -> "Данные были изменены другим действием. Изменения не перезаписаны."
-    ProblemCode.INVALID_DATA -> "Не удалось прочитать данные: неверный формат."
-    ProblemCode.NEWER_SCHEMA -> "Данные созданы более новой версией приложения. Не удаляйте их; обновите приложение."
-    ProblemCode.IO_FAILURE -> "Ошибка чтения или записи. Проверьте доступное место и доступ к данным."
-    ProblemCode.UNSUPPORTED_VERSION -> "Версия набора не поддерживается."
-    ProblemCode.UNSUPPORTED_MODE -> "Режим набора не поддерживается."
-    ProblemCode.UNSUPPORTED_FEATURE -> "Набор содержит неподдерживаемую функцию."
-    ProblemCode.UNSUPPORTED_MEDIA -> "Формат изображения или аудио не поддерживается."
-    ProblemCode.UNSAFE_ARCHIVE -> "Небезопасный архив отклонён."
-    ProblemCode.LIMIT_EXCEEDED -> "Достигнут предел размера данных. Содержимое не обрезается молча; проверьте объём сообщения или набора."
-    ProblemCode.UNAUTHORIZED -> "Для этого действия нужен доступ помощника. Общение не требует разблокировки."
-    ProblemCode.OWNER_VERIFICATION_UNAVAILABLE -> "Системная проверка владельца недоступна."
-    ProblemCode.PERMISSION_DENIED -> "Нет разрешения на запрошенное действие."
-    ProblemCode.VOICE_UNAVAILABLE -> "Нужный локальный голос ОС недоступен. Сообщение остаётся на экране."
-    ProblemCode.INTERRUPTED -> "Действие прервано. Автоматического повтора нет."
-    ProblemCode.UNFINISHED_FORM -> "Сначала завершите заполнение формы."
-    ProblemCode.RECOVERY_UNAVAILABLE -> "Не удалось подготовить возврат к прежней библиотеке."
-    ProblemCode.STALE_REQUEST -> "Библиотека была заменена. Этот сеанс устарел. Полностью закройте приложение и откройте его заново для чтения актуальных данных без автоматического произнесения."
-    ProblemCode.MISSING_ASSET -> "Не найдено нужное изображение или аудио. Сообщение остаётся на экране."
-    ProblemCode.INTEGRITY_FAILURE -> "Проверка целостности данных не пройдена. Не удаляйте исходные данные."
-    ProblemCode.SPEECH_UNAVAILABLE -> "Для части сообщения нет доступного произнесения. Сообщение не будет озвучено с пропусками."
-    ProblemCode.SPEECH_MATERIALIZATION_REQUIRED -> "Перед переносом требуется подготовить аудио локальной речи."
+internal fun communicationProblemText(code: ProblemCode): StringResource = when (code) {
+    ProblemCode.NOT_FOUND -> Res.string.board_not_found_open_the_library_and
+    ProblemCode.CONFLICT -> Res.string.data_was_changed_by_another_action_changes
+    ProblemCode.INVALID_DATA -> Res.string.could_not_read_data_invalid_format
+    ProblemCode.NEWER_SCHEMA -> Res.string.data_was_created_by_a_newer_app
+    ProblemCode.IO_FAILURE -> Res.string.read_or_write_error_check_available_space
+    ProblemCode.UNSUPPORTED_VERSION -> Res.string.board_version_is_not_supported
+    ProblemCode.UNSUPPORTED_MODE -> Res.string.board_mode_is_not_supported
+    ProblemCode.UNSUPPORTED_FEATURE -> Res.string.the_board_contains_an_unsupported_feature
+    ProblemCode.UNSUPPORTED_MEDIA -> Res.string.image_or_audio_format_is_not_supported
+    ProblemCode.UNSAFE_ARCHIVE -> Res.string.unsafe_archive_rejected
+    ProblemCode.LIMIT_EXCEEDED -> Res.string.data_size_limit_reached_content_is_not
+    ProblemCode.UNAUTHORIZED -> Res.string.this_action_requires_assistant_access_communication_does
+    ProblemCode.OWNER_VERIFICATION_UNAVAILABLE -> Res.string.system_owner_verification_is_unavailable
+    ProblemCode.PERMISSION_DENIED -> Res.string.permission_for_the_requested_action_is_missing
+    ProblemCode.VOICE_UNAVAILABLE -> Res.string.the_required_local_os_voice_is_unavailable
+    ProblemCode.INTERRUPTED -> Res.string.action_interrupted_there_is_no_automatic_retry
+    ProblemCode.UNFINISHED_FORM -> Res.string.finish_the_form_first
+    ProblemCode.RECOVERY_UNAVAILABLE -> Res.string.could_not_prepare_a_return_to_the
+    ProblemCode.STALE_REQUEST -> Res.string.the_library_was_replaced_this_session_is
+    ProblemCode.MISSING_ASSET -> Res.string.required_image_or_audio_not_found_the
+    ProblemCode.INTEGRITY_FAILURE -> Res.string.data_integrity_check_failed_do_not_delete
+    ProblemCode.SPEECH_UNAVAILABLE -> Res.string.speech_is_unavailable_for_part_of_the
+    ProblemCode.SPEECH_MATERIALIZATION_REQUIRED -> Res.string.prepare_local_speech_audio_before_transferring
     ProblemCode.COMMIT_OUTCOME_UNKNOWN -> unconfirmedMessage
 }

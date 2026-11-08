@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.access
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.material.Text
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.*
@@ -31,19 +33,19 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
         is AssistantState.Unprotected -> current.verification
         else -> OwnerVerificationAvailability.UNKNOWN
     }
-    ProductSection(if (manage) "Защита важных действий" else "Подтвердите доступ") {
+    ProductSection(if (manage) stringResource(Res.string.protect_important_actions) else stringResource(Res.string.confirm_access)) {
     Text(when (val current = state) {
-        AssistantState.Initializing -> "Проверяем защиту помощника… Общение остаётся доступным."
-        is AssistantState.Unavailable -> "Защищённые команды недоступны: ${current.problem.code}. Общение доступно."
-        is AssistantState.Unprotected -> "Пароль помощника не установлен."
-        is AssistantState.Protected -> if (current.legacy) "Существующая защита сохранена (старый формат пароля)." else "Защита помощника включена."
+        AssistantState.Initializing -> stringResource(Res.string.checking_assistant_protection_communication_remains_available)
+        is AssistantState.Unavailable -> stringResource(Res.string.protected_commands_are_unavailable_1_s_communication, current.problem.code)
+        is AssistantState.Unprotected -> stringResource(Res.string.no_assistant_password_is_set)
+        is AssistantState.Protected -> if (current.legacy) stringResource(Res.string.existing_protection_is_preserved_legacy_password_format) else stringResource(Res.string.assistant_protection_is_enabled)
     })
     if (manage && verification != OwnerVerificationAvailability.AVAILABLE) Text(
-        "Системная проверка владельца ${if (verification == OwnerVerificationAvailability.UNKNOWN) "ещё не определена" else "недоступна"}. " +
-            "На Android 21/22 системная проверка не используется из-за ограничений безопасности. Новый пароль и сброс недоступны; существующая защита автоматически не отключается.")
-    if (state is AssistantState.Protected) Field(password, "Текущий пароль", ready,
+        stringResource(Res.string.system_owner_verification_is_1_s, if (verification == OwnerVerificationAvailability.UNKNOWN) stringResource(Res.string.not_yet_determined) else stringResource(Res.string.unavailable)) +
+            stringResource(Res.string.on_android_21_22_system_verification_is))
+    if (state is AssistantState.Protected) Field(password, stringResource(Res.string.current_password), ready,
         PasswordVisualTransformation(), passwordKeyboard, true) { password = it }
-    Action(if (state is AssistantState.Unprotected) "Разрешить команды в этом экране" else "Разблокировать этот экран", ready) {
+    Action(if (state is AssistantState.Unprotected) stringResource(Res.string.allow_commands_on_this_screen) else stringResource(Res.string.unlock_this_screen), ready) {
         val input = password; password = ""; newPassword = ""; repeatPassword = ""; busy = true
         scope.launch {
             try {
@@ -54,18 +56,18 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
         }
     }
     if (manage) {
-        Field(newPassword, "Новый пароль", ready, PasswordVisualTransformation(), passwordKeyboard, true) { newPassword = it }
-        Field(repeatPassword, "Повторите новый пароль", ready, PasswordVisualTransformation(), passwordKeyboard, true) { repeatPassword = it }
+        Field(newPassword, stringResource(Res.string.new_password), ready, PasswordVisualTransformation(), passwordKeyboard, true) { newPassword = it }
+        Field(repeatPassword, stringResource(Res.string.repeat_new_password), ready, PasswordVisualTransformation(), passwordKeyboard, true) { repeatPassword = it }
         val validNewPassword = newPassword.isNotEmpty() && newPassword.length <= 65_536 && newPassword == repeatPassword
-        if (newPassword.isNotEmpty() && !validNewPassword) Text("Новые пароли должны совпадать и содержать не более 65536 символов.")
-        Action("Установить / изменить пароль", ready && validNewPassword && verification == OwnerVerificationAvailability.AVAILABLE) {
+        if (newPassword.isNotEmpty() && !validNewPassword) Text(stringResource(Res.string.new_passwords_must_match_and_contain_no))
+        Action(stringResource(Res.string.set_change_password), ready && validNewPassword && verification == OwnerVerificationAvailability.AVAILABLE) {
             val input = newPassword; password = ""; newPassword = ""; repeatPassword = ""; busy = true
             scope.launch {
                 try { result = access.setPassword(input, owner, capability); onCapability(null) }
                 finally { busy = false }
             }
         }
-        Action("Заменить пароль новым через системную проверку владельца", ready && validNewPassword && verification == OwnerVerificationAvailability.AVAILABLE) {
+        Action(stringResource(Res.string.replace_password_using_system_owner_verification), ready && validNewPassword && verification == OwnerVerificationAvailability.AVAILABLE) {
             val input = newPassword; password = ""; newPassword = ""; repeatPassword = ""; busy = true
             scope.launch {
                 try { result = access.resetPasswordWithDeviceOwner(input, owner); onCapability(null) }
@@ -73,21 +75,21 @@ internal fun AssistantAccessPanel(access: AssistantAccess, owner: String, capabi
             }
         }
         if (state is AssistantState.Protected) {
-            Action("Отключить защиту помощника…", ready && capability != null) { password = ""; newPassword = ""; repeatPassword = ""; disable = true }
+            Action(stringResource(Res.string.disable_assistant_protection), ready && capability != null) { password = ""; newPassword = ""; repeatPassword = ""; disable = true }
             if (disable) {
-                Text("Отключить пароль помощника? Защищённые команды станут доступны без пароля.")
-                Action("Подтверждаю: отключить защиту помощника", ready && capability != null, true) {
+                Text(stringResource(Res.string.disable_the_assistant_password_protected_commands_will))
+                Action(stringResource(Res.string.confirm_disable_assistant_protection), ready && capability != null, true) {
                     disable = false; password = ""; newPassword = ""; repeatPassword = ""; busy = true
                     scope.launch {
                         try { capability?.let { result = access.disableLock(it, owner) }; onCapability(null) }
                         finally { busy = false }
                     }
                 }
-                Action("Сохранить защиту") { disable = false; password = ""; newPassword = ""; repeatPassword = "" }
+                Action(stringResource(Res.string.keep_protection)) { disable = false; password = ""; newPassword = ""; repeatPassword = "" }
             }
         }
     }
-    Action("Очистить ввод / закрыть доступ", foreground && !busy) {
+    Action(stringResource(Res.string.clear_input_revoke_access), foreground && !busy) {
         password = ""; newPassword = ""; repeatPassword = ""; disable = false; result = null; access.revokeOwner(owner); onCapability(null)
     }
     Feedback(result)

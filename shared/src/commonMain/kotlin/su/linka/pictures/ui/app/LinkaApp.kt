@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.app
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -41,6 +43,8 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     onOwnerOpened: (String) -> Unit, onOwnerClosed: (String) -> Unit,
     onLibraryReplaced: (Long) -> Unit,
     onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null) {
+    val textScaleIsNotSupportedLabel = stringResource(Res.string.text_scale_is_not_supported)
+    val couldNotOpenTheBoardReturnToLabel = stringResource(Res.string.could_not_open_the_board_return_to)
     val opened by rememberUpdatedState(onOwnerOpened)
     val closed by rememberUpdatedState(onOwnerClosed)
     val replaced by rememberUpdatedState(onLibraryReplaced)
@@ -140,12 +144,12 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
         openingJob?.cancel()
     }
     fun returnToCommunication() {
-        if (boardLayout == null) admissionNotice = "Масштаб не поддерживается"
+        if (boardLayout == null) admissionNotice = textScaleIsNotSupportedLabel
         else if (!presentation.commandsEnabled) return
         else navigate(ProductPage.COMMUNICATION)
     }
     suspend fun validateSettings(value: PortableSettings): String? =
-        message.board?.let { if (measureBoard(it.document, value) == null) "Масштаб не поддерживается" else null }
+        message.board?.let { if (measureBoard(it.document, value) == null) textScaleIsNotSupportedLabel else null }
     fun openBoard(board: BoardId) {
         if (openingBoard || !isForeground || !settingsLoaded) return
         val previousRoute = navigation.route.value
@@ -158,17 +162,17 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                         val supported = try { measureBoard(loaded.board.document, settings) != null }
                             finally { loaded.lease.close() }
                         currentCoroutineContext().ensureActive()
-                        if (!supported) admissionNotice = "Масштаб не поддерживается"
+                        if (!supported) admissionNotice = textScaleIsNotSupportedLabel
                         else if (navigation.route.value === previousRoute && isForeground) {
                             when (val openedBoard = communication.openBoard(board, expectedRevision = loaded.board.revision)) {
                                 is OperationResult.Completed -> if (navigation.route.value === previousRoute)
                                     navigate(ProductPage.COMMUNICATION)
-                                is OperationResult.Failed -> admissionNotice = "Не удалось открыть набор. Вернитесь к выбору набора."
+                                is OperationResult.Failed -> admissionNotice = couldNotOpenTheBoardReturnToLabel
                                 else -> Unit
                             }
                         }
                     }
-                    else -> admissionNotice = "Не удалось открыть набор. Вернитесь к выбору набора."
+                    else -> admissionNotice = couldNotOpenTheBoardReturnToLabel
                 }
             } finally { openingBoard = false }
         }
@@ -233,7 +237,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                 ProductPage.SETTINGS -> SettingsScreen(library, controller, audio, current.owner, capability, commandsEnabled,
                     dark, { dark = it }, { settings = it; settingsLoaded = true }, accessPanel, { navigate(ProductPage.LIBRARY) },
                     gate = access, onAccess = { navigate(ProductPage.ACCESS) }, validateSettings = ::validateSettings)
-                ProductPage.ACCESS -> ProductScaffold("Защита помощника", { navigate(ProductPage.LIBRARY) }) { accessPanel() }
+                ProductPage.ACCESS -> ProductScaffold(stringResource(Res.string.assistant_protection), { navigate(ProductPage.LIBRARY) }) { accessPanel() }
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
                     commandsEnabled, isForeground, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })
                 ProductPage.EDITOR -> ProductEditor(current, ids, access, capability, isForeground, commandsEnabled, images, accessPanel,
@@ -242,22 +246,22 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
             }
         }
         if (admissionNotice != null && current != null) ProductDialog(admissionNotice!!,
-            { admissionNotice = null }, actions = { Action("Закрыть") { admissionNotice = null } }) {
-            Text("Выберите другой масштаб или набор во взрослом разделе. Текущая доска и сообщение не изменены.")
+            { admissionNotice = null }, actions = { Action(stringResource(Res.string.close)) { admissionNotice = null } }) {
+            Text(stringResource(Res.string.choose_another_scale_or_board_in_the))
         }
         if (restartProblem?.code == ProblemCode.IO_FAILURE && !hideLifecycleProblem) {
-            ProductDialog("Не удалось завершить закрытие / перезагрузку", {
+            ProductDialog(stringResource(Res.string.could_not_finish_closing_reloading), {
                 hideLifecycleProblem = true
                 navigate(ProductPage.COMMUNICATION)
             }, actions = {
-                Action("К экрану общения") {
+                Action(stringResource(Res.string.go_to_communication)) {
                     hideLifecycleProblem = true
                     navigate(ProductPage.COMMUNICATION)
                 }
             }) {
-                committedEpoch?.let { androidx.compose.material.Text("Последнее подтверждённое изменение библиотеки — эпоха $it. Ошибка завершения не отменяет эту запись. Не повторяйте восстановление.") }
+                committedEpoch?.let { androidx.compose.material.Text(stringResource(Res.string.the_last_confirmed_library_change_is_epoch, it)) }
                 Feedback(restartProblem?.let { OperationResult.Failed(it) })
-                androidx.compose.material.Text("Для безопасного продолжения требуется перезапуск приложения. Новые защищённые действия запрещены; автоматического повтора нет.")
+                androidx.compose.material.Text(stringResource(Res.string.restart_the_app_to_continue_safely_new))
             }
         }
     }
@@ -305,23 +309,23 @@ private fun ProductEditor(route: ProductRoute, ids: IdSource, gate: AssistantAcc
         if (state.phase == AuthoringPhase.CLOSED || state.phase == AuthoringPhase.APPLIED) onClosed()
     }
     if (state.phase == AuthoringPhase.UNCONFIRMED || state.savePhase == DraftSavePhase.UNCONFIRMED) {
-        ProductScaffold("Исход записи черновика неизвестен", close) {
+        ProductScaffold(stringResource(Res.string.draft_write_outcome_is_unknown), close) {
             Feedback(OperationResult.UnconfirmedCommit)
             AuthoringFeedback(state, dispatch)
         }
     } else if (state.phase == AuthoringPhase.IDLE || state.phase == AuthoringPhase.PAUSED) {
-        ProductScaffold(if (state.phase == AuthoringPhase.PAUSED) "Редактор приостановлен" else "Открыть редактор", close) {
+        ProductScaffold(if (state.phase == AuthoringPhase.PAUSED) stringResource(Res.string.editor_paused) else stringResource(Res.string.open_editor), close) {
             access()
-            if (state.phase == AuthoringPhase.PAUSED) androidx.compose.material.Text("Чтобы продолжить работу, повторно откройте доступ и явно продолжите редактирование. Можно отдельно выйти, оставив только уже сохранённый черновик.")
-            if (state.phase == AuthoringPhase.IDLE) Action("Начать редактирование", commandsEnabled) {
+            if (state.phase == AuthoringPhase.PAUSED) androidx.compose.material.Text(stringResource(Res.string.to_continue_reopen_access_and_explicitly_resume))
+            if (state.phase == AuthoringPhase.IDLE) Action(stringResource(Res.string.start_editing), commandsEnabled) {
                 dispatch(route.initialAction!!)
             }
             AuthoringFeedback(state, dispatch, showSaveStatus = state.draft != null)
             if (confirmLeave) {
-                val name = state.draft?.document?.name ?: "Черновик"
-                androidx.compose.material.Text("Выйти из редактора «$name»? Сохранённая версия ${state.durableVersion ?: "ещё отсутствует"} останется в библиотеке. Только ещё не записанный ввод будет потерян. Опубликованная доска и сообщение не удаляются.")
-                Action("Подтверждаю выход из «$name» с потерей несохранённого ввода", foreground, true, onClosed)
-                Action("Остаться в редакторе", foreground) { confirmLeave = false }
+                val name = state.draft?.document?.name ?: stringResource(Res.string.draft)
+                androidx.compose.material.Text(stringResource(Res.string.leave_the_editor_for_1_s_saved, name, state.durableVersion ?: stringResource(Res.string.not_yet_available)))
+                Action(stringResource(Res.string.confirm_leaving_1_s_and_losing_unsaved, name), foreground, true, onClosed)
+                Action(stringResource(Res.string.stay_in_editor), foreground) { confirmLeave = false }
             }
         }
     } else EditorScreen(state, route.owner, capability, ids, { if (commandsEnabled) editor.send(it) else it.onHandled?.invoke(editor.state.value) }, images,

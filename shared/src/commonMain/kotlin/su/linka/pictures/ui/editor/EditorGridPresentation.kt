@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.editor
 
+import org.jetbrains.compose.resources.StringResource
+import su.linka.pictures.resources.*
 import su.linka.pictures.domain.BoardCell
 import su.linka.pictures.domain.CellKind
 import su.linka.pictures.domain.BoardPage
@@ -12,10 +14,10 @@ internal fun editorCellExtent(available: Float, count: Int, minimum: Float): Flo
 internal fun editorSettingsCanDismiss(form: EditorForm?, detailsPending: Boolean, gridPending: Boolean): Boolean =
     form == null && !detailsPending && !gridPending
 
-internal fun editorCellLabel(cell: BoardCell?): String = when (cell?.kind) {
-    CellKind.CONTENT -> cell.card!!.label.ifEmpty { "Карточка без подписи" }
-    CellKind.SPACE -> "Пробел"
-    CellKind.EMPTY, null -> "Создать карточку"
+internal fun editorCellLabel(cell: BoardCell?): StringResource? = when (cell?.kind) {
+    CellKind.CONTENT -> if (cell.card!!.label.isEmpty()) Res.string.unlabelled_card else null
+    CellKind.SPACE -> Res.string.space
+    CellKind.EMPTY, null -> Res.string.create_card
 }
 
 internal fun editorPage(draft: EditorDraft?, selectedPage: String?): BoardPage? {

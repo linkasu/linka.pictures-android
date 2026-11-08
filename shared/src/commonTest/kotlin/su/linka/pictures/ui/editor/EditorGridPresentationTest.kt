@@ -1,5 +1,6 @@
 package su.linka.pictures.ui.editor
 
+import su.linka.pictures.resources.*
 import kotlin.test.*
 import su.linka.pictures.domain.*
 import androidx.compose.ui.graphics.vector.PathParser
@@ -46,10 +47,10 @@ class EditorGridPresentationTest {
 
     @Test fun contentWithEmptyLabelIsNotAnEmptyCell() {
         val cell = BoardCell(0, CellKind.CONTENT, CardDocument(CardId("card")))
-        assertEquals("Карточка без подписи", editorCellLabel(cell))
-        assertEquals("Создать карточку", editorCellLabel(BoardCell(1, CellKind.EMPTY, extensionsJson = "{\"opaque\":true}")))
-        assertEquals("Пробел", editorCellLabel(BoardCell(2, CellKind.SPACE)))
-        assertEquals("Создать карточку", editorCellLabel(null))
+        assertEquals(Res.string.unlabelled_card, editorCellLabel(cell))
+        assertEquals(Res.string.create_card, editorCellLabel(BoardCell(1, CellKind.EMPTY, extensionsJson = "{\"opaque\":true}")))
+        assertEquals(Res.string.space, editorCellLabel(BoardCell(2, CellKind.SPACE)))
+        assertEquals(Res.string.create_card, editorCellLabel(null))
     }
 
     @Test fun resumedFormKeepsItsOwnGridVisibleEvenAfterPageReordering() {

@@ -1,5 +1,8 @@
 package su.linka.pictures.ui.portability
 
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
+import su.linka.pictures.resources.*
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -11,15 +14,15 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.ui.app.*
 
-internal fun transferPhaseLabel(phase: TransferPhase): String = when (phase) {
-    TransferPhase.VALIDATING -> "Проверяем файл…"
-    TransferPhase.PREPARING -> "Готовим предварительный просмотр…"
-    TransferPhase.AWAITING_CONFIRMATION -> "Проверьте данные и подтвердите отдельной кнопкой."
-    TransferPhase.WRITING -> "Записываем… Не повторяйте действие."
-    TransferPhase.COMPLETED -> "Операция завершена."
-    TransferPhase.CANCELLED -> "Операция отменена."
-    TransferPhase.FAILED -> "Операция не выполнена."
-    TransferPhase.UNCONFIRMED -> "Исход записи неизвестен. Повтор запрещён. Перезапустите приложение и проверьте библиотеку / файл назначения."
+internal fun transferPhaseLabel(phase: TransferPhase): StringResource = when (phase) {
+    TransferPhase.VALIDATING -> Res.string.checking_file
+    TransferPhase.PREPARING -> Res.string.preparing_preview
+    TransferPhase.AWAITING_CONFIRMATION -> Res.string.check_the_data_and_confirm_using_the
+    TransferPhase.WRITING -> Res.string.writing_do_not_repeat_the_action
+    TransferPhase.COMPLETED -> Res.string.operation_completed
+    TransferPhase.CANCELLED -> Res.string.operation_cancelled
+    TransferPhase.FAILED -> Res.string.operation_failed
+    TransferPhase.UNCONFIRMED -> Res.string.write_outcome_is_unknown_retrying_is_prohibited
 }
 
 @Composable
@@ -31,7 +34,8 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
     val current = operations.values.lastOrNull { it.ownerId == owner }
     var result by remember { mutableStateOf<OperationResult<*>?>(null) }
     var recovery by remember { mutableStateOf<OperationResult<RecoveryInfo?>?>(null) }
-    var name by remember { mutableStateOf("Импортированная доска") }
+    val importedBoardName = stringResource(Res.string.imported_board)
+    var name by remember { mutableStateOf(importedBoardName) }
     var busy by remember { mutableStateOf(false) }
     var replace by remember(current?.transfer?.id) { mutableStateOf<LibraryEntrySummary?>(null) }
     val scope = rememberCoroutineScope()
@@ -49,96 +53,96 @@ internal fun TransferScreen(library: LibraryStore, transfer: TransferCoordinator
         busy = true
         scope.launch { try { result = transfer.confirm(owner, id, capability, confirmation) } finally { busy = false } }
     }
-    ProductScaffold("Файлы и восстановление", onBack) {
-        ProductSection("Доступ помощника") { access() }
-        ProductSection("Импорт и экспорт доски") {
-        Text("Файлы .linka и резервные копии — открытые архивы, не зашифрованные. Они могут содержать личные изображения, записи голоса и текст. Выбирайте доверенный файл и место хранения.")
-        Field(name, "Название импортируемой доски", canPrepare) { name = it }
-        Action("Выбрать .linka для импорта (без записи в библиотеку)", canPrepare && name.isNotBlank()) {
+    ProductScaffold(stringResource(Res.string.files_and_restore), onBack) {
+        ProductSection(stringResource(Res.string.assistant_access)) { access() }
+        ProductSection(stringResource(Res.string.board_import_and_export)) {
+        Text(stringResource(Res.string.linka_files_and_backups_are_unencrypted_archives))
+        Field(name, stringResource(Res.string.imported_board_name), canPrepare) { name = it }
+        Action(stringResource(Res.string.choose_linka_to_import_without_writing_to), canPrepare && name.isNotBlank()) {
             val entered = name; prepare(ProtectedAction.IMPORT_BOARD) { transfer.prepareImport(owner, entered) }
         }
-        if (boardId != null) Action("Подготовить экспорт выбранной доски .linka", canPrepare) {
+        if (boardId != null) Action(stringResource(Res.string.prepare_linka_export_of_the_selected_board), canPrepare) {
             prepare(ProtectedAction.EXPORT_BOARD) { transfer.prepareExport(owner, boardId) }
         }
         }
-        ProductSection("Резервная копия и восстановление") {
-        Action("Подготовить резервную копию всей библиотеки", canPrepare) {
+        ProductSection(stringResource(Res.string.backup_and_restore)) {
+        Action(stringResource(Res.string.prepare_a_backup_of_the_whole_library), canPrepare) {
             prepare(ProtectedAction.CREATE_BACKUP) { transfer.prepareBackup(owner) }
         }
         val recoveryAbsent = (recovery as? OperationResult.Completed)?.value == null && recovery is OperationResult.Completed
-        Action("Выбрать резервную копию для проверки", canPrepare && recoveryAbsent) {
+        Action(stringResource(Res.string.choose_a_backup_to_validate), canPrepare && recoveryAbsent) {
             prepare(ProtectedAction.RESTORE_BACKUP) { transfer.prepareRestore(owner) }
         }
-        Text("Резервная копия переносит доски, черновики, медиа и переносимые настройки. Пароль и локальные голоса не переносятся.")
+        Text(stringResource(Res.string.backups_transfer_boards_drafts_media_and_portable))
         when (val info = recovery) {
-            null -> Text("Проверяем точку восстановления…")
-            is OperationResult.Completed -> if (info.value == null) Text("Точки восстановления нет.") else {
+            null -> Text(stringResource(Res.string.checking_recovery_point))
+            is OperationResult.Completed -> if (info.value == null) Text(stringResource(Res.string.no_recovery_point)) else {
                 val saved = info.value
-                Text("Точка восстановления: досок ${saved.boardCount}, черновиков ${saved.draftCount}, байт медиа ${saved.assetBytes}; время ${saved.createdAtEpochMillis}.")
-                Text("Для нового восстановления из файла сначала отдельно удалите существующую точку. Приложение не перезаписывает её молча.")
-                Action("Проверить возврат к точке восстановления", canPrepare) {
+                Text(stringResource(Res.string.recovery_point_boards_1_s_drafts_2, saved.boardCount, saved.draftCount, saved.assetBytes, saved.createdAtEpochMillis))
+                Text(stringResource(Res.string.to_restore_from_a_new_file_first))
+                Action(stringResource(Res.string.validate_return_to_recovery_point), canPrepare) {
                     prepare(ProtectedAction.RESTORE_BACKUP) { transfer.prepareReturnToRecovery(owner, saved.id) }
                 }
-                Action("Подготовить удаление точки восстановления", canPrepare, true) {
+                Action(stringResource(Res.string.prepare_recovery_point_deletion), canPrepare, true) {
                     prepare(ProtectedAction.DELETE_RECOVERY) { transfer.prepareDeleteRecovery(owner, saved.id) }
                 }
             }
             else -> Feedback(info)
         }
-        Action("Обновить сведения о точке восстановления", canPrepare) { scope.launch { recovery = library.recovery() } }
+        Action(stringResource(Res.string.refresh_recovery_point_details), canPrepare) { scope.launch { recovery = library.recovery() } }
         }
         current?.let { operation ->
-          ProductSection("Текущая операция") {
+          ProductSection(stringResource(Res.string.current_operation)) {
             val readiness = transferReadiness(operation, owner, capability, gate, enabled, foreground, busy)
-            Text(transferPhaseLabel(operation.transfer.phase), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            Text(stringResource(transferPhaseLabel(operation.transfer.phase)), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             if (operation.kind == TransferKind.EXPORT || operation.kind == TransferKind.BACKUP)
-                Text("Если запись отменена или прервана, внешний файл мог сохраниться частично. Проверьте файл назначения перед передачей другим людям.")
-            Text("Проверено записей архива: ${operation.transfer.processedEntries}; байт: ${operation.transfer.processedBytes}.")
+                Text(stringResource(Res.string.if_writing_is_cancelled_or_interrupted_the))
+            Text(stringResource(Res.string.archive_entries_checked_1_s_bytes_2, operation.transfer.processedEntries, operation.transfer.processedBytes))
             if (operation.transfer.phase == TransferPhase.AWAITING_CONFIRMATION && !readiness.fresh)
-                Text("После выбора файла войдите повторно / разрешите команды выше. Старый доступ мог быть отозван; выбор файла не предоставляет доступ.")
+                Text(stringResource(Res.string.after_selecting_a_file_sign_in_again))
             operation.preview?.let { preview ->
-                preview.name?.let { Text("Доска: «$it»") }
+                preview.name?.let { Text(stringResource(Res.string.board_1_s, it)) }
                 preview.board?.let {
-                    Text("Страниц: ${it.pages}; карточек: ${it.cards}; изображений: ${it.images}; записей: ${it.recordings}; байт медиа: ${it.mediaBytes}.${if (it.layoutNormalized) " Сетка нормализована для приложения." else ""}")
-                    if (it.ignoredInactiveMediaReferences > 0) Text("Неактивных вложений EMPTY/SPACE: ${it.ignoredInactiveMediaReferences}. Как в «Смотри», они не отображаются и не озвучиваются. Эти вложения не переносятся в рабочую доску; исходный архив не изменяется.")
+                    Text(stringResource(Res.string.pages_1_s_cards_2_s_images, it.pages, it.cards, it.images, it.recordings, it.mediaBytes, if (it.layoutNormalized) stringResource(Res.string.grid_normalized_for_the_app) else ""))
+                    if (it.ignoredInactiveMediaReferences > 0) Text(stringResource(Res.string.inactive_empty_space_attachments_1_s_as, it.ignoredInactiveMediaReferences))
                 }
-                preview.snapshot?.let { Text("Досок: ${it.boards}; черновиков: ${it.drafts}; сохранённых нечитаемых архивов: ${it.retained}; медиа: ${it.assets}; байт медиа: ${it.assetBytes}.") }
-                preview.expectedLibraryRevision?.let { Text("Подтверждение относится к версии библиотеки $it и показанному сообщению. При изменении данных операция будет отклонена.") }
+                preview.snapshot?.let { Text(stringResource(Res.string.boards_1_s_drafts_2_s_retained, it.boards, it.drafts, it.retained, it.assets, it.assetBytes)) }
+                preview.expectedLibraryRevision?.let { Text(stringResource(Res.string.confirmation_applies_to_library_version_1_s, it)) }
                 val canConfirm = readiness.canConfirm
                 when (operation.kind) {
                     TransferKind.IMPORT -> {
-                        Action("Подтверждаю импорт «${preview.name}» как новой доски", canConfirm) { confirm(TransferConfirmation.ImportNew) }
+                        Action(stringResource(Res.string.confirm_import_of_1_s_as_a, preview.name ?: ""), canConfirm) { confirm(TransferConfirmation.ImportNew) }
                         listing.items.filter { it.kind == LibraryEntryKind.BOARD }.forEach { entry ->
-                            Action("Заменить «${entry.name}» импортируемой доской…", canConfirm, true) { replace = entry }
+                            Action(stringResource(Res.string.replace_1_s_with_the_imported_board, entry.name), canConfirm, true) { replace = entry }
                         }
                         replace?.let { entry ->
-                            Text("Полностью заменить «${entry.name}» версии ${entry.revision} импортируемой доской «${preview.name}»?")
-                            Action("Подтверждаю замену «${entry.name}»", canConfirm, true) { confirm(TransferConfirmation.ImportReplace(entry.id, entry.revision)) }
-                            Action("Не заменять", !busy) { replace = null }
+                            Text(stringResource(Res.string.completely_replace_1_s_version_2_s, entry.name, entry.revision, preview.name ?: ""))
+                            Action(stringResource(Res.string.confirm_replacement_of_1_s, entry.name), canConfirm, true) { confirm(TransferConfirmation.ImportReplace(entry.id, entry.revision)) }
+                            Action(stringResource(Res.string.do_not_replace), !busy) { replace = null }
                         }
                     }
                     TransferKind.EXPORT, TransferKind.BACKUP -> {
-                        Text("Выбор места в системном диалоге ещё не разрешает запись. Файл будет открыт для получателя без пароля.")
-                        Action("Подтверждаю запись открытого ${if (operation.kind == TransferKind.EXPORT) "файла доски" else "архива всей библиотеки"}", canConfirm) { confirm(TransferConfirmation.WriteFile) }
+                        Text(stringResource(Res.string.choosing_a_location_in_the_system_dialog))
+                        Action(stringResource(Res.string.confirm_writing_an_unencrypted_1_s, if (operation.kind == TransferKind.EXPORT) stringResource(Res.string.board_file) else stringResource(Res.string.whole_library_archive)), canConfirm) { confirm(TransferConfirmation.WriteFile) }
                     }
                     TransferKind.RESTORE -> {
-                        Text("Восстановление заменит ВСЮ библиотеку, настройки и текущее сообщение. Прежняя библиотека станет точкой восстановления.")
-                        Action("Подтверждаю замену ВСЕЙ библиотеки из резервной копии", canConfirm, true) { confirm(TransferConfirmation.ReplaceWholeLibrary) }
+                        Text(stringResource(Res.string.restoration_will_replace_the_entire_library_settings))
+                        Action(stringResource(Res.string.confirm_replacement_of_the_entire_library_from), canConfirm, true) { confirm(TransferConfirmation.ReplaceWholeLibrary) }
                     }
                     TransferKind.RETURN_TO_RECOVERY -> {
-                        Text("Возврат заменит всю текущую библиотеку и сообщение. Текущая библиотека займёт место точки восстановления.")
-                        Action("Подтверждаю возврат всей библиотеки к точке восстановления", canConfirm, true) { confirm(TransferConfirmation.ReturnToRecovery) }
+                        Text(stringResource(Res.string.returning_will_replace_the_whole_current_library))
+                        Action(stringResource(Res.string.confirm_returning_the_whole_library_to_the), canConfirm, true) { confirm(TransferConfirmation.ReturnToRecovery) }
                     }
-                    TransferKind.DELETE_RECOVERY -> Action("Подтверждаю безвозвратное удаление точки восстановления", canConfirm, true) { confirm(TransferConfirmation.DeleteRecovery) }
+                    TransferKind.DELETE_RECOVERY -> Action(stringResource(Res.string.confirm_permanent_deletion_of_the_recovery_point), canConfirm, true) { confirm(TransferConfirmation.DeleteRecovery) }
                 }
             }
             operation.transfer.problem?.let { Feedback(OperationResult.Failed(it)) }
-            if (!terminal && operation.transfer.phase != TransferPhase.UNCONFIRMED) Action("Отменить текущую операцию", readiness.canCancel) {
+            if (!terminal && operation.transfer.phase != TransferPhase.UNCONFIRMED) Action(stringResource(Res.string.cancel_current_operation), readiness.canCancel) {
                 scope.launch { result = transfer.cancel(owner, operation.transfer.id, capability) }
             }
           }
         }
         Feedback(result)
-        Text("После ухода в фон операция не возобновляется автоматически: снова откройте доступ и явно выберите файл / подготовку заново.")
+        Text(stringResource(Res.string.after_moving_to_the_background_the_operation))
     }
 }

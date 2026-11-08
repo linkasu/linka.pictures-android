@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.editor
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -82,19 +84,19 @@ internal fun EditorSettingsDialog(
     val keyboard = LocalSoftwareKeyboardController.current
     val canDismiss = editorSettingsCanDismiss(draft.form, input.pending, grid?.pending == true)
     val details = input.value
-    AlertDialog(onDismissRequest = { if (canDismiss) onDismiss() }, title = { Text("Параметры доски") },
+    AlertDialog(onDismissRequest = { if (canDismiss) onDismiss() }, title = { Text(stringResource(Res.string.board_options)) },
         properties = su.linka.pictures.ui.app.productDialogProperties(),
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AuthoringFeedback(state, dispatch, showSaveStatus = state.savePhase == DraftSavePhase.FAILED || state.savePhase == DraftSavePhase.UNCONFIRMED)
                 if (grid != null) {
-                    Text("Размер сетки текущей страницы")
+                    Text(stringResource(Res.string.current_page_grid_size))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(grid.value.rowsText, { changeGrid(grid.value.copy(rowsText = it)) },
-                            label = { Text("Строки") }, modifier = Modifier.weight(1f), enabled = gridEnabled,
+                            label = { Text(stringResource(Res.string.rows)) }, modifier = Modifier.weight(1f), enabled = gridEnabled,
                             singleLine = true, colors = authoringFieldColors(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                         OutlinedTextField(grid.value.columnsText, { changeGrid(grid.value.copy(columnsText = it)) },
-                            label = { Text("Столбцы") }, modifier = Modifier.weight(1f), enabled = gridEnabled,
+                            label = { Text(stringResource(Res.string.columns)) }, modifier = Modifier.weight(1f), enabled = gridEnabled,
                             singleLine = true, colors = authoringFieldColors(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                     }
                     OutlinedButton({
@@ -102,38 +104,38 @@ internal fun EditorSettingsDialog(
                             focus.clearFocus(); keyboard?.hide()
                             dispatch(AuthoringAction.SaveGrid)
                         }
-                    }, enabled = gridEnabled && !grid.pending) { Text("Изменить размер сетки") }
+                    }, enabled = gridEnabled && !grid.pending) { Text(stringResource(Res.string.resize_grid)) }
                     if (gridForm != null) TextButton({
                         focus.clearFocus(); keyboard?.hide()
                         grid.discardPending()
                         dispatch(AuthoringAction.CancelGrid)
-                    }, enabled = gridEnabled) { Text("Отменить изменение сетки") }
+                    }, enabled = gridEnabled) { Text(stringResource(Res.string.cancel_grid_changes)) }
                     Divider()
                 }
                 OutlinedTextField(details.name,
                     { change(input.value.copy(name = it)) },
-                    label = { Text("Название доски") }, enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
+                    label = { Text(stringResource(Res.string.board_name)) }, enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(details.description.orEmpty(),
                     { change(input.value.copy(description = it)) },
-                    label = { Text("Описание") }, enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
-                Text("Режим по умолчанию")
+                    label = { Text(stringResource(Res.string.description)) }, enabled = enabled, colors = authoringFieldColors(), modifier = Modifier.fillMaxWidth())
+                Text(stringResource(Res.string.default_mode))
                 InteractionMode.entries.forEach { mode ->
                     Row(Modifier.fillMaxWidth().selectable(details.behavior.defaultMode == mode, enabled = enabled, role = Role.RadioButton,
                         onClick = { change(input.value.copy(behavior = input.value.behavior.copy(defaultMode = mode))) }),
                         verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(details.behavior.defaultMode == mode, onClick = null, enabled = enabled)
-                        Text(if (mode == InteractionMode.COMPOSE) "Составление сообщения" else "Произносить сразу")
+                        Text(if (mode == InteractionMode.COMPOSE) stringResource(Res.string.composing_a_message) else stringResource(Res.string.speak_immediately_249))
                     }
                 }
-                Text("Способ ввода")
+                Text(stringResource(Res.string.input_style))
                 InputStyle.entries.forEach { style ->
                     Row(Modifier.fillMaxWidth().selectable(details.behavior.inputStyle == style, enabled = enabled, role = Role.RadioButton,
                         onClick = { change(input.value.copy(behavior = input.value.behavior.copy(inputStyle = style))) }),
                         verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(details.behavior.inputStyle == style, onClick = null, enabled = enabled)
-                        Text(if (style == InputStyle.CARDS) "Карточки" else "Буквальный текст подписей")
+                        Text(if (style == InputStyle.CARDS) stringResource(Res.string.cards) else stringResource(Res.string.literal_label_text))
                     }
                 }
             }
-        }, confirmButton = { TextButton({ if (enabled && canDismiss) onDismiss() }, enabled = enabled && canDismiss) { Text("Готово") } })
+        }, confirmButton = { TextButton({ if (enabled && canDismiss) onDismiss() }, enabled = enabled && canDismiss) { Text(stringResource(Res.string.done)) } })
 }

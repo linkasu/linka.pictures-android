@@ -1,5 +1,6 @@
 package su.linka.pictures.ui.library
 
+import su.linka.pictures.resources.*
 import kotlin.test.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
@@ -32,11 +33,11 @@ class LibraryPresentationTest {
 
     @Test fun unreadableAndUnknownCountsNeverBecomeAnEmptyBoard() {
         val unknown = LibraryEntrySummary(BoardId("board"), "Доска", 1, LibraryEntryKind.BOARD, null)
-        assertTrue(libraryEntryDescription(unknown).contains("неизвестно"))
+        assertEquals(Res.string.card_count_unknown, libraryEntryDescription(unknown))
         val retained = unknown.copy(kind = LibraryEntryKind.RETAINED_ARCHIVE, problem = Problem(ProblemCode.NEWER_SCHEMA))
-        assertTrue(libraryEntryDescription(retained).contains("нечитаемый"))
-        assertTrue(libraryEntryDescription(retained).contains("NEWER_SCHEMA"))
-        assertFalse(libraryEntryDescription(retained).contains("Карточек: 0"))
+        assertEquals(Res.string.retained_unreadable_archive_1_s, libraryEntryDescription(retained))
+        assertEquals(Res.string.retained_unreadable_archive_1_s, libraryEntryDescription(retained))
+
     }
 
     @Test fun authorizationReadinessDoesNotTreatNullCapabilityOrUnprotectedAsLocked() {

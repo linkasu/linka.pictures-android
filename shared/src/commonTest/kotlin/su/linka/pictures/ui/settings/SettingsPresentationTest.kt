@@ -1,5 +1,6 @@
 package su.linka.pictures.ui.settings
 
+import su.linka.pictures.resources.*
 import kotlin.test.*
 import su.linka.pictures.application.ports.VoiceStatus
 
@@ -27,8 +28,8 @@ class SettingsPresentationTest {
 
     @Test fun actualVoiceReadinessRemainsDistinguishable() {
         assertEquals(VoiceStatus.entries.size, VoiceStatus.entries.map(::voiceStatusLabel).toSet().size)
-        assertTrue(voiceStatusLabel(VoiceStatus.MISSING_VOICE).contains("установка"))
-        assertTrue(voiceStatusLabel(VoiceStatus.LOCAL_VOICE_READY).contains("готов"))
+        assertEquals(Res.string.install_a_local_voice_using_the_os, voiceStatusLabel(VoiceStatus.MISSING_VOICE))
+        assertEquals(Res.string.local_voice_ready, voiceStatusLabel(VoiceStatus.LOCAL_VOICE_READY))
     }
 
     @Test fun languageRejectsNulAndIllFormedUtf16BeforeNativeTts() {

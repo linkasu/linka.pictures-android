@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.editor
 
+import org.jetbrains.compose.resources.StringResource
+import su.linka.pictures.resources.*
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.application.authoring.*
 import su.linka.pictures.domain.BoardDocument
@@ -11,27 +13,27 @@ internal fun withoutSpaceDetails(document: BoardDocument, checked: Boolean): Aut
 
 internal fun AuthoringState.editable(): Boolean = phase == AuthoringPhase.EDITING || phase == AuthoringPhase.CONFLICT
 
-internal fun draftSaveLabel(phase: DraftSavePhase): String = when (phase) {
-    DraftSavePhase.UNSAVED -> "Черновик ещё не сохранён"
-    DraftSavePhase.SAVING -> "Сохранение черновика…"
-    DraftSavePhase.SAVED -> "Черновик сохранён на устройстве"
-    DraftSavePhase.FAILED -> "Черновик не сохранён. Не закрывайте редактор без сохранения."
-    DraftSavePhase.UNCONFIRMED -> "Результат записи неизвестен. Редактирование остановлено; не повторяйте применение."
+internal fun draftSaveLabel(phase: DraftSavePhase): StringResource = when (phase) {
+    DraftSavePhase.UNSAVED -> Res.string.draft_not_yet_saved
+    DraftSavePhase.SAVING -> Res.string.saving_draft
+    DraftSavePhase.SAVED -> Res.string.draft_saved_on_this_device
+    DraftSavePhase.FAILED -> Res.string.draft_was_not_saved_do_not_close
+    DraftSavePhase.UNCONFIRMED -> Res.string.write_outcome_is_unknown_editing_is_stopped
 }
 
-internal fun authoringProblemLabel(code: ProblemCode): String = when (code) {
-    ProblemCode.CONFLICT -> "Доска или черновик изменены другим редактором. Ваш сохранённый черновик не потерян; применение остановлено."
-    ProblemCode.STALE_REQUEST -> "Библиотека была заменена. Откройте редактор заново; старый черновик не будет применён к новой библиотеке."
-    ProblemCode.UNAUTHORIZED -> "Требуется повторный вход помощника и явное продолжение."
-    ProblemCode.UNFINISHED_FORM -> "Завершите форму и дождитесь сохранения черновика."
-    ProblemCode.LIMIT_EXCEEDED -> "Превышен предел: 256 страниц, сетка 1–64 × 1–64, текст 65536 символов, изображение 16 Мп / 8192 по стороне, сложность GIF или доступная память, аудио 10 минут / 64 МиБ. Данные не обрезаны."
-    ProblemCode.MISSING_ASSET -> "Нет изображения или записи. Выберите файл заново."
-    ProblemCode.INVALID_DATA -> "Проверьте введённые данные и размер сетки."
-    ProblemCode.NOT_FOUND -> "Доска или черновик больше не существуют."
-    ProblemCode.PERMISSION_DENIED -> "Нет разрешения на выбранную операцию."
-    ProblemCode.UNSUPPORTED_MEDIA -> "Этот формат изображения или звука не поддерживается."
-    ProblemCode.VOICE_UNAVAILABLE, ProblemCode.SPEECH_UNAVAILABLE -> "Локальный голос недоступен. Выберите запись или речь без звука."
-    ProblemCode.INTERRUPTED -> "Операция прервана. Изменения формы сохранены только при наличии подтверждения выше."
-    ProblemCode.COMMIT_OUTCOME_UNKNOWN -> "Результат записи неизвестен. Не повторяйте применение; откройте библиотеку заново для проверки."
-    else -> "Не удалось выполнить операцию (${code.name}). Черновик не считается сохранённым без подтверждения."
+internal fun authoringProblemLabel(code: ProblemCode): StringResource = when (code) {
+    ProblemCode.CONFLICT -> Res.string.the_board_or_draft_was_changed_by
+    ProblemCode.STALE_REQUEST -> Res.string.the_library_was_replaced_reopen_the_editor
+    ProblemCode.UNAUTHORIZED -> Res.string.assistant_sign_in_and_explicit_continuation_are
+    ProblemCode.UNFINISHED_FORM -> Res.string.finish_the_form_and_wait_for_the
+    ProblemCode.LIMIT_EXCEEDED -> Res.string.limit_exceeded_256_pages_grid_1_64
+    ProblemCode.MISSING_ASSET -> Res.string.image_or_recording_missing_select_the_file
+    ProblemCode.INVALID_DATA -> Res.string.check_the_entered_data_and_grid_size
+    ProblemCode.NOT_FOUND -> Res.string.the_board_or_draft_no_longer_exists
+    ProblemCode.PERMISSION_DENIED -> Res.string.permission_for_the_selected_operation_is_missing
+    ProblemCode.UNSUPPORTED_MEDIA -> Res.string.this_image_or_audio_format_is_not
+    ProblemCode.VOICE_UNAVAILABLE, ProblemCode.SPEECH_UNAVAILABLE -> Res.string.local_voice_unavailable_choose_a_recording_or
+    ProblemCode.INTERRUPTED -> Res.string.operation_interrupted_form_changes_are_saved_only
+    ProblemCode.COMMIT_OUTCOME_UNKNOWN -> Res.string.write_outcome_is_unknown_do_not_apply
+    else -> Res.string.could_not_complete_the_operation_1_s
 }

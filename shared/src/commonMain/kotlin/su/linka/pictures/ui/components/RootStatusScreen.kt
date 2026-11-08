@@ -1,5 +1,7 @@
 package su.linka.pictures.ui.components
 
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,10 +21,10 @@ fun RootStatusScreen(problem: Problem?) = LinkaTheme(isSystemInDarkTheme(), fals
     Surface(Modifier.fillMaxSize(), color = palette.background, contentColor = palette.text) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
             .verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (problem == null) Text("Открываем локальную библиотеку…")
+            if (problem == null) Text(stringResource(Res.string.opening_the_local_library))
             else {
-                Text("Не удалось безопасно открыть приложение: ${problem.code}.")
-                Text("Данные не сбрасывались, защита не отключена. Закройте окно и проверьте состояние после повторного запуска.")
+                Text(stringResource(Res.string.could_not_safely_open_the_app_1, problem.code))
+                Text(stringResource(Res.string.data_was_not_reset_and_protection_was))
             }
         }
     }
