@@ -72,7 +72,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run lint, all unit variants, and release privacy checks
-        run: ./gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety
+        run: ./gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety :app:verifyUiSelectors
 
       - name: Check both UI translations
         run: python3 -B shared/src/commonTest/check_localization.py

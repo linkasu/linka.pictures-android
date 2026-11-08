@@ -42,7 +42,7 @@ class AndroidProductRuntime private constructor(private val application: Context
     private val language = MutableStateFlow("ru-RU")
     private val session = MutableStateFlow<CommunicationSession?>(null)
     private val rootProblem = MutableStateFlow<Problem?>(null)
-    private lateinit var storage: StorageRuntime
+    @Volatile private lateinit var storage: StorageRuntime
     private lateinit var files: AndroidPlatformFilesPort
     private lateinit var audio: AudioCoordinator
     private lateinit var access: LocalAssistantAccess
@@ -57,7 +57,7 @@ class AndroidProductRuntime private constructor(private val application: Context
     private var startupJob: Job? = null
     private var admission: AndroidLibraryAdmission? = null
     private var filesRoot: Path? = null
-    private var graphReady = false
+    @Volatile private var graphReady = false
     private val startupVisibility = StartupVisibility()
 
     fun windowStarted(owner: Any) { startupVisibility.start(owner) }

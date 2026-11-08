@@ -24,7 +24,7 @@ def check():
     assert set(jobs) == {'build', 'firebase-test', 'bundle-release'}
     assert not re.search(r'^    (if|needs):', jobs['build'], re.M)
     for command in ('python3 -B scripts/check-release-workflow.py',
-                     './gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety',
+                     './gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety :app:verifyUiSelectors',
                      'python3 -B shared/src/commonTest/check_localization.py',
                      './gradlew :app:assembleDebug :app:assembleDebugAndroidTest :shared:assembleDebugAndroidTest'):
         assert command in jobs['build']

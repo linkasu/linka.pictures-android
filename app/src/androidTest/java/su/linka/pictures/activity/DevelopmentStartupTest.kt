@@ -9,10 +9,10 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Run first on a fresh isolated .development sandbox, never as a production-data upgrade/reset. */
+/** Read-only launcher smoke; migration fixtures and data preservation are checked separately. */
 @RunWith(AndroidJUnit4::class)
 class DevelopmentStartupTest {
-    @Test fun freshDevelopmentStartupOpensTheRealLibraryScreen() {
+    @Test fun sharedLauncherOpensTheLibraryScreen() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         assertEquals("su.linka.pictures.development", context.packageName)
@@ -29,7 +29,7 @@ class DevelopmentStartupTest {
                     if (texts.any { text -> text == "Ваши наборы" || text == "Your boards" }) return
                 }
             }
-            fail("Fresh startup did not reach the library screen")
+            fail("Shared launcher did not reach the library screen")
         }
     }
 

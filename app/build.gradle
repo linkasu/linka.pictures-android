@@ -118,6 +118,14 @@ tasks.register('verifyReleaseSafety') {
     }
 }
 
+tasks.register('verifyUiSelectors', JavaExec) {
+    dependsOn 'compileDebugAndroidTestKotlin'
+    workingDir rootProject.projectDir
+    mainClass = 'su.linka.pictures.activity.UiTextCheckKt'
+    classpath files(tasks.named('compileDebugAndroidTestKotlin').flatMap { it.destinationDirectory })
+    classpath configurations.debugAndroidTestRuntimeClasspath.filter { it.name.endsWith('.jar') }
+}
+
 tasks.named('check').configure {
-    dependsOn 'verifyReleaseSafety'
+    dependsOn 'verifyReleaseSafety', 'verifyUiSelectors'
 }
