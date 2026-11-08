@@ -16,6 +16,30 @@ class BoardSettingsTest {
         override fun guard(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): CommitGuard = { check(action, capability, ownerId) }
     }
 
+    @Test fun openingRequiresCurrentOwnerAccessBeforeSettingsAreRendered() {
+        val capability = AssistantCapability("test-only", "owner")
+        var revoked = false
+        var unavailable = false
+        val guarded = object : AssistantGate {
+            override fun check(action: ProtectedAction, token: AssistantCapability?, ownerId: String): OperationResult<Unit> {
+                assertEquals(ProtectedAction.CHANGE_SETTINGS, action)
+                return if (unavailable) OperationResult.Failed(Problem(ProblemCode.IO_FAILURE))
+                else if (!revoked && token === capability && ownerId == "owner") OperationResult.Completed(Unit)
+                else OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED))
+            }
+            override fun guard(action: ProtectedAction, capability: AssistantCapability?, ownerId: String): CommitGuard = { check(action, capability, ownerId) }
+        }
+        assertFalse(canOpenBoardSettings(guarded, null, "owner", true))
+        assertFalse(canOpenBoardSettings(guarded, capability, "foreign", true))
+        assertTrue(canOpenBoardSettings(guarded, capability, "owner", true))
+        assertFalse(canOpenBoardSettings(guarded, capability, "owner", false))
+        revoked = true
+        assertFalse(canOpenBoardSettings(guarded, capability, "owner", true))
+        revoked = false; unavailable = true
+        assertFalse(canOpenBoardSettings(guarded, capability, "owner", true))
+        assertTrue(canOpenBoardSettings(gate, null, "owner", true)) // Canonical Unprotected admission.
+    }
+
     @Test fun settingsCommitPreservesOtherPreferencesAndAppliesOnlyExplicitModeAfterCompleted() = runTest {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "u14-board-settings-${kotlin.random.Random.nextLong()}"

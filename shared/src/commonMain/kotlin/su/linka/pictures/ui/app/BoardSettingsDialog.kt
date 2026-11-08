@@ -36,20 +36,29 @@ internal suspend fun saveBoardSettings(controller: LibraryController, owner: Str
     return result
 }
 
+internal fun canOpenBoardSettings(gate: AssistantGate, capability: AssistantCapability?, owner: String, enabled: Boolean): Boolean =
+    enabled && gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner) is OperationResult.Completed
+
 @Composable
 internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryController, gate: AssistantGate,
     owner: String, capability: AssistantCapability?, board: BoardId, mode: InteractionMode, enabled: Boolean,
     access: @Composable () -> Unit, onSaved: (PortableSettings) -> Unit,
     onSetMode: (InteractionMode) -> Unit, onDismiss: () -> Unit,
     validateSettings: suspend (PortableSettings) -> String? = { null }) {
+    val currentEnabled by rememberUpdatedState(enabled)
+    val currentCapability by rememberUpdatedState(capability)
+    if (!canOpenBoardSettings(gate, capability, owner, enabled)) {
+        ProductDialog(stringResource(Res.string.assistant_protection), onDismiss, actions = {
+            Action(stringResource(Res.string.close), onClick = onDismiss)
+        }) { access() }
+        return
+    }
     var snapshot by remember(owner, board) { mutableStateOf<BoardSettingsSnapshot?>(null) }
     var result by remember(owner, board) { mutableStateOf<OperationResult<*>?>(null) }
     var refresh by remember(owner, board) { mutableStateOf(0) }
     var busy by remember(owner, board) { mutableStateOf(false) }
     var stopped by remember(owner, board) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val currentEnabled by rememberUpdatedState(enabled)
-    val currentCapability by rememberUpdatedState(capability)
     val currentOnSaved by rememberUpdatedState(onSaved)
     val currentOnSetMode by rememberUpdatedState(onSetMode)
     val currentValidation by rememberUpdatedState(validateSettings)
@@ -105,7 +114,6 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
         }
     }) {
         layoutNotice?.let { Text(it) }
-        if (gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner) !is OperationResult.Completed) access()
         if (snapshot == null && result == null) Text(stringResource(Res.string.loading_settings))
         snapshot?.let {
             Text(stringResource(Res.string.show_page_navigation_buttons))

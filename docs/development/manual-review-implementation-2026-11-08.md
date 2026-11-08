@@ -10,7 +10,7 @@
 | S2 | Папки и guarded операции | PASS: storage/controller focused; UI и backup в S3/S4 |
 | S3 | Snapshot, backup/recovery | PASS: storage/backup/integration/transfer focused; native cross-platform pending |
 | S4 | UI папок и меню по удержанию | PASS: JVM presentation/back; native gestures pending |
-| S5 | Пароль до открытия настроек набора | TODO |
+| S5 | Пароль до открытия настроек набора | PASS: admission/access JVM; native background verification pending |
 | S6 | Фраза 32% с адаптацией, боковые стрелки | Focused JVM/Android compile PASS; integrated/native acceptance pending |
 | S7 | Безопасное переключение карточек с автосохранением | TODO |
 | S8 | Перетаскивание: обмен ячеек текущей страницы | TODO |
