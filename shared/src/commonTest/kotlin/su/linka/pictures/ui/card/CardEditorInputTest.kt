@@ -5,10 +5,38 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.*
 import su.linka.pictures.application.authoring.*
 import su.linka.pictures.domain.*
+import su.linka.pictures.ui.editor.BufferedAuthoringInput
 import kotlin.test.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class CardEditorInputTest {
+    @Test fun switchWaitsForLatestInputAdmissionAndDoesNotQueueTargets() {
+        val old = AuthoringAction.ChangeCard("A", "", SpeechChoice.NONE, true)
+        val buffer = BufferedAuthoringInput(old, 0)
+        val switched = mutableListOf<AuthoringAction.SwitchCard>()
+        val input = CardEditorInput(buffer, {}, { switched += it })
+        val first = buffer.edit(old.copy(label = "AB"))
+        val last = buffer.edit(old.copy(label = "ABC"))
+        val target = AuthoringAction.SwitchCard(PageId("page"), 1, 0)
+        input.switchCard(target)
+        input.switchCard(target.copy(position = 2))
+        assertTrue(input.requestingSwitch)
+        buffer.handled(first, old.copy(label = "AB"), 1)
+        assertTrue(switched.isEmpty())
+        buffer.handled(last, old.copy(label = "ABC"), 2)
+        assertEquals(listOf(target), switched)
+        assertFalse(input.requestingSwitch)
+        val rejected = buffer.edit(old.copy(label = "Rejected"))
+        input.switchCard(target)
+        buffer.handled(rejected, old, 2)
+        assertEquals(listOf(target), switched)
+        val cancelled = buffer.edit(old)
+        input.switchCard(target)
+        input.discardPending()
+        buffer.handled(cancelled, old, 3)
+        assertEquals(listOf(target), switched)
+    }
+
     private val form = EditorForm.Card(PageId("page"), 0, CardId("card"), label = "Initial")
     private val initial = AuthoringState(ownerId = "owner", epoch = 1, phase = AuthoringPhase.EDITING,
         draft = EditorDraft(DraftId("draft"), null, null,

@@ -120,6 +120,167 @@ class AuthoringSessionTest {
         try { block(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
     }
 
+    @Test fun switchWaitsForExactCandidateNotAdmissionOrPreviousSaveAndIgnoresRapidTargets() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        val page = f.session.state.value.draft!!.document.pages.first().id
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeCard("Последний символ Ъ", "", SpeechChoice.NONE, true))
+        val previous = f.nextSave()
+        val admitted = CompletableDeferred<AuthoringState>()
+        f.session.send(AuthoringCommand(CommandId("switch"), "owner", null, AuthoringAction.SwitchCard(page, 1)) { admitted.complete(it) })
+        val accepted = withContext(Dispatchers.Default) { withTimeout(10_000) { admitted.await() } }
+        assertEquals(0, (accepted.draft!!.form as EditorForm.Card).slotIndex)
+        assertEquals("Последний символ Ъ", accepted.draft.document.pages.first().cells.single().card!!.label)
+        f.send(AuthoringAction.SwitchCard(page, 2))
+        previous.reply.complete(OperationResult.Completed(Unit))
+        val candidate = f.nextSave()
+        assertEquals(0, (f.session.state.value.draft!!.form as EditorForm.Card).slotIndex)
+        assertEquals("Последний символ Ъ", candidate.draft.document.pages.first().cells.single().card!!.label)
+        assertEquals(previous.expected!! + 1, candidate.expected)
+        candidate.reply.complete(OperationResult.Completed(Unit))
+        f.await { (it.draft?.form as? EditorForm.Card)?.slotIndex == 1 }
+        val targetSave = f.nextSave()
+        val durable = assertIs<OperationResult.Completed<LeasedDraft>>(f.runtime.library.draft(candidate.draft.id)).value
+        try { assertEquals(candidate.draft, durable.draft.draft) } finally { durable.lease.close() }
+        targetSave.reply.complete(OperationResult.Completed(Unit))
+        f.saved()
+        assertNull(f.session.state.value.published)
+    } }
+
+    @Test fun stampedSwitchCannotSaveADifferentSourceOrANewerInputRevision() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        val old = f.session.state.value
+        val page = old.draft!!.document.pages.first().id
+        f.send(AuthoringAction.CancelCard)
+        f.await { it.draft?.form == null }
+        f.open(1); f.saved()
+        suspend fun reject(stamp: AuthoringStamp, id: String) {
+            val before = f.session.state.value
+            val barrier = CompletableDeferred<AuthoringState>()
+            f.session.send(AuthoringCommand(CommandId(id), "owner", null,
+                AuthoringAction.SwitchCard(page, 2, expected = stamp)) { barrier.complete(it) })
+            val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
+            assertEquals(before.draft, after.draft)
+            assertFalse(after.switchingCard)
+        }
+        reject(old.stamp()!!, "old-source")
+        val beforeInput = f.session.state.value.stamp()!!
+        f.send(AuthoringAction.ChangeCard("Новый ввод", "", SpeechChoice.NONE, true))
+        f.await { it.editVersion > beforeInput.editVersion && it.savePhase == DraftSavePhase.SAVED }
+        reject(beforeInput, "old-input")
+    } }
+
+    @Test fun earlierSaveFailureCancelsPendingSwitchInsteadOfRetryingIt() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        val page = f.session.state.value.draft!!.document.pages.first().id
+        f.library.delayed = true
+        f.send(AuthoringAction.ChangeCard("Ввод A", "", SpeechChoice.NONE, true))
+        val previous = f.nextSave()
+        val admitted = CompletableDeferred<AuthoringState>()
+        f.session.send(AuthoringCommand(CommandId("pending-switch"), "owner", null,
+            AuthoringAction.SwitchCard(page, 1)) { admitted.complete(it) })
+        withContext(Dispatchers.Default) { withTimeout(10_000) { admitted.await() } }
+        previous.reply.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)))
+        val failed = f.await { it.savePhase == DraftSavePhase.FAILED && !it.switchingCard }
+        assertEquals("Ввод A", (failed.draft!!.form as EditorForm.Card).label)
+        assertEquals(0, (failed.draft.form as EditorForm.Card).slotIndex)
+        assertTrue(f.library.saves.tryReceive().isFailure)
+    } }
+
+    @Test fun switchFailureRetainsSourceAndResumeNeverReplaysTarget() = runTest {
+        for (outcome in listOf(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)),
+            OperationResult.Failed(Problem(ProblemCode.CONFLICT)), OperationResult.UnconfirmedCommit, OperationResult.Cancelled)) fresh { f ->
+            f.start(); f.open(); f.saved()
+            val sourceDraft = f.session.state.value.draft!!
+            val source = sourceDraft.form as EditorForm.Card
+            f.library.delayed = true
+            f.send(AuthoringAction.SwitchCard(source.pageId, 1))
+            val save = f.nextSave()
+            save.reply.complete(outcome)
+            f.await { !it.switchingCard && (it.savePhase == DraftSavePhase.FAILED || it.phase == AuthoringPhase.UNCONFIRMED) }
+            assertEquals(sourceDraft, f.session.state.value.draft)
+            assertEquals(source, f.session.state.value.draft!!.form)
+            f.library.delayed = false
+            f.send(AuthoringAction.Background)
+            f.send(AuthoringAction.Resume)
+            val barrier = CompletableDeferred<AuthoringState>()
+            f.session.send(AuthoringCommand(CommandId("barrier"), "owner", null, AuthoringAction.StopPreview) { barrier.complete(it) })
+            val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
+            assertEquals(source, after.draft!!.form)
+            assertNull(after.published)
+        }
+    }
+
+    @Test fun failedSwitchRestoresSourceSnapshotSoCancelStillDiscardsEditsAndReleasesMedia() = runTest { fresh { f ->
+        f.start(); f.open()
+        f.send(AuthoringAction.PickImage)
+        f.await { (it.draft?.form as? EditorForm.Card)?.image != null && it.savePhase == DraftSavePhase.SAVED }
+        f.send(AuthoringAction.ChangeCard("Отменяемый ввод", "", SpeechChoice.NONE, true))
+        val before = f.await { (it.draft?.form as? EditorForm.Card)?.label == "Отменяемый ввод" && it.savePhase == DraftSavePhase.SAVED }
+        val source = before.draft!!.form as EditorForm.Card
+        f.library.delayed = true
+        f.send(AuthoringAction.SwitchCard(source.pageId, 1))
+        val save = f.nextSave()
+        save.reply.complete(OperationResult.Failed(Problem(ProblemCode.IO_FAILURE)))
+        val failed = f.await { !it.switchingCard && it.savePhase == DraftSavePhase.FAILED }
+        assertEquals(before.draft, failed.draft)
+        assertTrue(f.leases.active.value > 0)
+        f.library.delayed = false
+        f.send(AuthoringAction.CancelCard)
+        val cancelled = f.await { it.draft?.form == null && it.savePhase == DraftSavePhase.SAVED }
+        assertTrue(cancelled.draft!!.document.pages.first().cells.isEmpty())
+        f.finish()
+        assertEquals(0, f.leases.active.value)
+        assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
+    } }
+
+    @Test fun backgroundDuringSwitchRetainsSourceAndDoesNotReplayAfterResume() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        val before = f.session.state.value
+        val source = before.draft!!.form as EditorForm.Card
+        f.library.delayed = true
+        f.send(AuthoringAction.SwitchCard(source.pageId, 1, before.lifecycleVersion))
+        val save = f.nextSave()
+        f.send(AuthoringAction.Background)
+        f.await { it.phase == AuthoringPhase.PAUSED }
+        f.library.delayed = false
+        save.reply.complete(OperationResult.Completed(Unit))
+        f.send(AuthoringAction.Resume)
+        f.await { it.phase == AuthoringPhase.EDITING && it.savePhase == DraftSavePhase.SAVED }
+        val barrier = CompletableDeferred<AuthoringState>()
+        f.session.send(AuthoringCommand(CommandId("old-switch"), "owner", null,
+            AuthoringAction.SwitchCard(source.pageId, 2, before.lifecycleVersion)) { barrier.complete(it) })
+        val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
+        assertEquals(source, after.draft!!.form)
+        assertFalse(after.switchingCard)
+        assertNull(after.published)
+    } }
+
+    @Test fun switchWhileMediaBusyDoesNotCancelMediaOrCloseSource() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        val source = f.session.state.value.draft!!.form as EditorForm.Card
+        f.native.recording = CompletableDeferred()
+        f.send(AuthoringAction.Record)
+        f.await { it.mediaBusy && it.audio.phase == AudioPhase.RECORDING }
+        f.send(AuthoringAction.SwitchCard(source.pageId, 1))
+        val rejected = f.await { it.problem?.code == ProblemCode.UNFINISHED_FORM }
+        assertTrue(rejected.mediaBusy)
+        assertEquals(source, rejected.draft!!.form)
+        assertFalse(rejected.switchingCard)
+    } }
+
+    @Test fun switchRejectsInvalidAudioAndTargetWithoutClosingSource() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        val page = f.session.state.value.draft!!.document.pages.first().id
+        f.send(AuthoringAction.ChangeCard("Звук", "", SpeechChoice.RECORDING, true))
+        f.send(AuthoringAction.SwitchCard(page, 1))
+        val invalid = f.await { it.problem?.code == ProblemCode.MISSING_ASSET }
+        assertEquals(0, (invalid.draft!!.form as EditorForm.Card).slotIndex)
+        f.send(AuthoringAction.SwitchCard(page, 999))
+        f.await { it.problem?.code == ProblemCode.INVALID_DATA }
+        assertEquals(invalid.draft, f.session.state.value.draft)
+    } }
+
     @Test fun inputAcknowledgementDoesNotClaimDurabilityAndCannotBypassTheGuard() = runTest {
         fresh { f ->
             f.start()

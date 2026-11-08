@@ -11,7 +11,7 @@ internal fun withoutSpaceDetails(document: BoardDocument, checked: Boolean): Aut
     AuthoringAction.Details(document.name, document.description,
         document.behavior.copy(inputStyle = if (checked) InputStyle.LITERAL else InputStyle.CARDS))
 
-internal fun AuthoringState.editable(): Boolean = phase == AuthoringPhase.EDITING || phase == AuthoringPhase.CONFLICT
+internal fun AuthoringState.editable(): Boolean = !switchingCard && (phase == AuthoringPhase.EDITING || phase == AuthoringPhase.CONFLICT)
 
 internal fun draftSaveLabel(phase: DraftSavePhase): StringResource = when (phase) {
     DraftSavePhase.UNSAVED -> Res.string.draft_not_yet_saved

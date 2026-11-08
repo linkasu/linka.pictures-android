@@ -35,6 +35,8 @@ internal fun EditorPageCells(
     images: Map<AssetId, ImageBitmap>,
     modifier: Modifier = Modifier,
     activePosition: Int? = null,
+    selectionEnabled: Boolean = enabled,
+    onSelect: (Int) -> Unit = { onAction(AuthoringAction.OpenCard(page.id, it)) },
 ) {
     val palette = LocalLinkaPalette.current
     val fontScale = LocalDensity.current.fontScale
@@ -62,12 +64,12 @@ internal fun EditorPageCells(
                             backgroundColor = if (selectedCell) palette.pressedSurface(palette.surface, palette.primary) else palette.surface) {
                             Box(Modifier.fillMaxSize()) {
                                 TextButton(onClick = {
-                                    if (moveSource == null) onAction(AuthoringAction.OpenCard(page.id, position))
+                                    if (moveSource == null) onSelect(position)
                                     else {
                                         onAction(AuthoringAction.MoveCell(moveSource.first, moveSource.second, page.id, position))
                                         onMoveSource(null)
                                     }
-                                }, enabled = enabled, contentPadding = PaddingValues(4.dp),
+                                }, enabled = selectionEnabled, contentPadding = PaddingValues(4.dp),
                                     shape = androidx.compose.foundation.shape.RoundedCornerShape(3.dp),
                                     colors = ButtonDefaults.textButtonColors(contentColor = palette.text), modifier = Modifier.fillMaxSize()
                                     .onFocusChanged { focused = it.isFocused }

@@ -103,7 +103,8 @@ fun EditorScreen(
                         }
                     })
                 val urgentSave = state.savePhase == DraftSavePhase.FAILED || state.savePhase == DraftSavePhase.UNCONFIRMED
-                AuthoringFeedback(state, dispatch, showSaveStatus = urgentSave)
+                 AuthoringFeedback(state, dispatch, showSaveStatus = urgentSave)
+                 if (state.switchingCard || cardInput?.requestingSwitch == true) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (document == null) {
                     Text(if (state.phase == AuthoringPhase.LOADING) stringResource(Res.string.loading_draft) else stringResource(Res.string.create_a_board_or_open_a_draft), Modifier.padding(8.dp))
                     LabeledActionButton(newBoardName, state.phase == AuthoringPhase.IDLE, false, { dispatch(AuthoringAction.NewBoard(newBoardName)) })
@@ -119,7 +120,13 @@ fun EditorScreen(
                                  }
                                  key(page.id) {
                                      EditorPageCells(page, structural, moveSource, { moveSource = it }, dispatch, images,
-                                         Modifier.weight(1f).fillMaxWidth(), activePosition = (draft.form as? EditorForm.Card)?.slotIndex)
+                                          Modifier.weight(1f).fillMaxWidth(), activePosition = (draft.form as? EditorForm.Card)?.slotIndex,
+                                          selectionEnabled = structural || (inspector && cardInput != null && enabled &&
+                                              state.phase == AuthoringPhase.EDITING && !state.mediaBusy && state.problem == null && !cardInput.requestingSwitch),
+                                          onSelect = { position ->
+                                              if (cardInput == null) dispatch(AuthoringAction.OpenCard(page.id, position))
+                                              else cardInput.switchCard(AuthoringAction.SwitchCard(page.id, position, state.lifecycleVersion))
+                                          })
                                  }
                                  Divider(color = palette.border)
                                  FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),

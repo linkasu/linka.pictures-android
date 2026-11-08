@@ -15,10 +15,19 @@ data class AuthoringState(
     val durableVersion: Long? = null,
     val savePhase: DraftSavePhase = DraftSavePhase.UNSAVED,
     val mediaBusy: Boolean = false,
+    val switchingCard: Boolean = false,
     val audio: AudioState = AudioState(),
     val published: PublishedBoard? = null,
     val problem: Problem? = null,
     val cleanupProblem: Problem? = null,
     /** In-memory edit order within this draft; unrelated to the durable draft version. */
     val editVersion: Long = 0,
+    /** Invalidates ephemeral UI intents, including buffered admission across explicit Resume. */
+    val lifecycleVersion: Long = 0,
 )
+
+data class AuthoringStamp(val ownerId: String, val draftId: DraftId, val epoch: Long, val editVersion: Long, val lifecycleVersion: Long)
+
+fun AuthoringState.stamp(): AuthoringStamp? = draft?.let {
+    AuthoringStamp(ownerId ?: return null, it.id, epoch ?: return null, editVersion, lifecycleVersion)
+}

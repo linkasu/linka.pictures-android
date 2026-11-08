@@ -27,8 +27,11 @@ sealed interface AuthoringAction {
     data object SaveGrid : AuthoringAction
     data object CancelGrid : AuthoringAction
     data class SetCell(val pageId: PageId, val position: Int, val kind: CellKind) : AuthoringAction
-    data class MoveCell(val fromPage: PageId, val from: Int, val toPage: PageId, val to: Int) : AuthoringAction
+    data class MoveCell(val fromPage: PageId, val from: Int, val toPage: PageId, val to: Int,
+        val expected: AuthoringStamp? = null) : AuthoringAction
     data class OpenCard(val pageId: PageId, val position: Int) : AuthoringAction
+    data class SwitchCard(val pageId: PageId, val position: Int, val expectedLifecycle: Long? = null,
+        val expected: AuthoringStamp? = null) : AuthoringAction
     data class ChangeCardKind(val kind: CellKind) : AuthoringAction
     data class ChangeCard(
         val label: String,

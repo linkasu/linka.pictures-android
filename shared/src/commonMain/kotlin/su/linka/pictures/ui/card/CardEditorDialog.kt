@@ -46,7 +46,7 @@ internal fun CardEditorDialog(
     input: CardEditorInput? = rememberCardEditorInput(state, ownerId, dispatchEdited),
 ) {
     input ?: return
-    val enabled = state.editable()
+    val enabled = state.editable() && input?.requestingSwitch != true
     val palette = LocalLinkaPalette.current
     val cancel = { input.discardPending(); dispatch(AuthoringAction.CancelCard) }
     Dialog(onDismissRequest = { if (enabled) cancel() },
@@ -72,7 +72,7 @@ internal fun CardEditorContent(
     fillHeight: Boolean = false,
 ) {
     val form = state.draft?.form as? EditorForm.Card ?: return
-    val enabled = state.editable()
+    val enabled = state.editable() && !input.requestingSwitch
     val showContent = cardContentVisible(form)
     val palette = LocalLinkaPalette.current
     val focus = LocalFocusManager.current

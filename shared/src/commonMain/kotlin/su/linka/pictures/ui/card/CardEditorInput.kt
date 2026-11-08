@@ -25,9 +25,20 @@ internal data class CardInputIdentity(
 internal class CardEditorInput(
     private val buffer: BufferedAuthoringInput<AuthoringAction.ChangeCard>,
     val change: (AuthoringAction.ChangeCard) -> Unit,
+    private val dispatchSwitch: (AuthoringAction.SwitchCard) -> Unit,
 ) {
     val value get() = buffer.value
     val pending get() = buffer.pending
+    var requestingSwitch by mutableStateOf(false)
+        private set
+    fun switchCard(action: AuthoringAction.SwitchCard) {
+        if (requestingSwitch) return
+        requestingSwitch = true
+        buffer.afterAdmission { admitted ->
+            if (admitted) dispatchSwitch(action)
+            requestingSwitch = false
+        }
+    }
     fun discardPending() = buffer.discardPending()
 }
 
@@ -42,10 +53,11 @@ internal fun rememberCardEditorInput(
     val identity = CardInputIdentity(ownerId, state.epoch, state.draft.id, form.pageId, form.cardId)
     val scope = rememberCoroutineScope()
     val dispatch by rememberUpdatedState(dispatchEdited)
+    val currentState by rememberUpdatedState(state)
     val buffer = remember(identity) { BufferedAuthoringInput(form.payload(), state.editVersion) }
     SideEffect { buffer.acceptExternal(form.payload(), state.editVersion) }
     return remember(identity) {
-        CardEditorInput(buffer) { next ->
+        CardEditorInput(buffer, change = { next ->
             val token = buffer.edit(next)
             dispatch(next) { accepted ->
                 if (identity.matches(accepted)) {
@@ -55,7 +67,13 @@ internal fun rememberCardEditorInput(
                     }
                 }
             }
-        }
+        }, dispatchSwitch = { action ->
+            val current = currentState
+            if (identity.matches(current) && current.phase == AuthoringPhase.EDITING &&
+                !current.mediaBusy && !current.switchingCard && current.problem == null) {
+                dispatch(action.copy(expected = current.stamp()?.copy(editVersion = buffer.admittedEditVersion))) {}
+            }
+        })
     }
 }
 

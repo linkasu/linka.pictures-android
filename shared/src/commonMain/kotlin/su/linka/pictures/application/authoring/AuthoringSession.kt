@@ -43,6 +43,9 @@ class AuthoringSession(
     private var durable: StoredDraft? = null
     private var activeSave = false
     private var pendingSave: Save? = null
+    private data class CardSwitch(val target: AuthoringAction.SwitchCard, val revision: Long, val generation: Long,
+        val source: EditorDraft, val sourceLease: MediaLease)
+    private var cardSwitch: CardSwitch? = null
     private var applyRequested = false
     private var loading = 0L
     private var mediaGeneration = 0L
@@ -74,6 +77,7 @@ class AuthoringSession(
                 events.cancel()
                 cleanup { lease.close() }
                 cleanup { pendingSave?.lease?.close() }
+                cleanup { cardSwitch?.sourceLease?.close() }
                 dropPendingAdoption()
                 cleanup { mediaWork.value?.cancel() }
                 cleanup { owner?.let { audio.stop(it) } }
@@ -148,6 +152,8 @@ class AuthoringSession(
         if (action == AuthoringAction.Background || action == AuthoringAction.Revoke) {
             pause(); return
         }
+        // A switch owns its candidate until its exact save completes; never queue more edits/targets.
+        if (cardSwitch != null) return
         val protected = when (action) {
             is AuthoringAction.NewBoard -> ProtectedAction.CREATE_BOARD
             AuthoringAction.Apply -> ProtectedAction.APPLY_DRAFT
@@ -275,6 +281,7 @@ class AuthoringSession(
                     is AuthoringAction.SetCell -> setCell(action)
                     is AuthoringAction.MoveCell -> moveCell(action)
                     is AuthoringAction.OpenCard -> openCard(action)
+                    is AuthoringAction.SwitchCard -> switchCard(action)
                     is AuthoringAction.ChangeCardKind -> {
                         val form = draft.form as? EditorForm.Card ?: return
                         cancelMedia()
@@ -468,6 +475,21 @@ class AuthoringSession(
             OperationResult.UnconfirmedCommit -> { freeze(); return }
         }
         if (state.value.epoch != library.listing.value.epoch) conflict(ProblemCode.STALE_REQUEST)
+        if (result !is OperationResult.Completed) cancelCardSwitch()
+        val switching = cardSwitch
+        if (switching != null && switching.revision == save.revision) {
+            val access = gate.check(ProtectedAction.EDIT_BOARD, capability, owner!!)
+            if (access !is OperationResult.Completed) {
+                pause(); failure(access)
+            }
+            if (state.value.phase == AuthoringPhase.EDITING && switching.generation == lifecycle.value &&
+                revision == save.revision && state.value.problem == null) {
+                cancelCardSwitch(restoreSource = false)
+                val draft = state.value.draft!!
+                val form = cardForm(draft, switching.target.pageId, switching.target.position) ?: return
+                change(draft.copy(form = form))
+            } else cancelCardSwitch()
+        }
         val next = pendingSave
         pendingSave = null
         if (next != null) {
@@ -541,8 +563,9 @@ class AuthoringSession(
         cancelMedia()
         loading++
         applyRequested = false
+        cancelCardSwitch()
         pendingSave?.lease?.close(); pendingSave = null
-        mutableState.value = state.value.copy(phase = AuthoringPhase.PAUSED)
+        mutableState.value = state.value.copy(phase = AuthoringPhase.PAUSED, lifecycleVersion = lifecycle.value)
         return true
     }
 
@@ -562,12 +585,14 @@ class AuthoringSession(
         cancelMedia()
         pendingSave?.lease?.close(); pendingSave = null
         applyRequested = false
+        cancelCardSwitch()
         mutableState.value = state.value.copy(phase = AuthoringPhase.UNCONFIRMED,
             savePhase = DraftSavePhase.UNCONFIRMED, problem = Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
     }
 
     private fun conflict(code: ProblemCode) {
         dropPendingAdoption()
+        cancelCardSwitch()
         applyRequested = false
         mutableState.value = state.value.copy(phase = AuthoringPhase.CONFLICT, problem = Problem(code))
     }
@@ -660,13 +685,18 @@ class AuthoringSession(
     private fun openCard(action: AuthoringAction.OpenCard, preferredKind: CellKind? = null) {
         val draft = state.value.draft!!
         if (draft.form != null) { report(ProblemCode.UNFINISHED_FORM); return }
-        val page = draft.document.pages.firstOrNull { it.id == action.pageId } ?: return
-        if (action.position !in 0 until page.capacity) { report(ProblemCode.INVALID_DATA); return }
+        val form = cardForm(draft, action.pageId, action.position, preferredKind) ?: return
         cancelMedia()
-        val cell = page.cells.firstOrNull { it.position == action.position }
+        change(draft.copy(form = form))
+    }
+
+    private fun cardForm(draft: EditorDraft, pageId: PageId, position: Int, preferredKind: CellKind? = null): EditorForm.Card? {
+        val page = draft.document.pages.firstOrNull { it.id == pageId } ?: run { report(ProblemCode.INVALID_DATA); return null }
+        if (position !in 0 until page.capacity) { report(ProblemCode.INVALID_DATA); return null }
+        val cell = page.cells.firstOrNull { it.position == position }
         val card = cell?.card
         val speech = card?.speech
-        val form = EditorForm.Card(page.id, action.position, card?.id ?: CardId(ids.next()),
+        return EditorForm.Card(page.id, position, card?.id ?: CardId(ids.next()),
             label = card?.label.orEmpty(), speechText = (speech as? SpeechSource.Tts)?.text.orEmpty(),
             speechChoice = when (speech) {
                 is SpeechSource.Recording -> SpeechChoice.RECORDING
@@ -677,7 +707,6 @@ class AuthoringSession(
             audioText = (speech as? SpeechSource.Recording)?.audioText,
             audioVoice = (speech as? SpeechSource.Recording)?.audioVoice,
             extensionsJson = card?.extensionsJson ?: "{}", kind = preferredKind ?: cell?.kind ?: CellKind.CONTENT)
-        change(draft.copy(form = form))
     }
 
     private fun sourceLanguage(form: EditorForm.Card): String? =
@@ -685,29 +714,81 @@ class AuthoringSession(
             ?.card?.speech as? SpeechSource.Tts)?.languageTag
 
     private fun saveCard() {
+        val candidate = savedCardDraft() ?: return
+        cancelMedia()
+        change(candidate.copy(form = null))
+    }
+
+    private fun switchCard(action: AuthoringAction.SwitchCard) {
+        if (action.expectedLifecycle != null && action.expectedLifecycle != lifecycle.value) return
+        if (action.expected != null && action.expected != state.value.stamp()) return
         val draft = state.value.draft!!
-        val form = draft.form as? EditorForm.Card ?: return
-        if (state.value.mediaBusy) { report(ProblemCode.UNFINISHED_FORM); return }
-        val page = draft.document.pages.firstOrNull { it.id == form.pageId } ?: run { report(ProblemCode.CONFLICT); return }
+        val source = draft.form as? EditorForm.Card ?: return
+        if (source.pageId == action.pageId && source.slotIndex == action.position) return
+        val page = draft.document.pages.firstOrNull { it.id == action.pageId }
+        if (page == null || action.position !in 0 until page.capacity) { report(ProblemCode.INVALID_DATA); return }
+        if (state.value.phase != AuthoringPhase.EDITING || state.value.problem != null ||
+            state.value.savePhase == DraftSavePhase.FAILED) return
+        val candidate = savedCardDraft() ?: return
+        val sourceLease = when (val retained = lease.retain(draft.assetIds())) {
+            is OperationResult.Completed -> retained.value
+            else -> { failure(retained); return }
+        }
+        cancelMedia()
+        val nextRevision = revision + 1
+        // Keep the source form (and its hidden media leases) even in the durable candidate.
+        cardSwitch = CardSwitch(action, nextRevision, lifecycle.value, snapshot(draft), sourceLease)
+        mutableState.value = state.value.copy(switchingCard = true)
+        change(candidate)
+        if (revision != nextRevision || state.value.savePhase == DraftSavePhase.FAILED) cancelCardSwitch()
+    }
+
+    private fun cancelCardSwitch(restoreSource: Boolean = true) {
+        val switching = cardSwitch ?: return
+        cardSwitch = null
+        if (pendingSave?.revision == switching.revision) {
+            cleanup { pendingSave?.lease?.close() }; pendingSave = null
+        }
+        if (restoreSource && state.value.draft != switching.source) {
+            val previous = lease
+            lease = switching.sourceLease
+            cleanup { previous.close() }
+            revision++
+            val sourceIsDurable = durable?.draft == switching.source
+            if (sourceIsDurable) durableRevision = revision
+            val savePhase = when (state.value.savePhase) {
+                DraftSavePhase.FAILED, DraftSavePhase.UNCONFIRMED -> state.value.savePhase
+                else -> if (sourceIsDurable) DraftSavePhase.SAVED else DraftSavePhase.UNSAVED
+            }
+            mutableState.value = state.value.copy(draft = switching.source, editVersion = revision, savePhase = savePhase)
+        } else cleanup { switching.sourceLease.close() }
+        mutableState.value = state.value.copy(switchingCard = false)
+    }
+
+    /** Shared Save/Switch validation; retains the form until the caller chooses to close it. */
+    private fun savedCardDraft(): EditorDraft? {
+        val draft = state.value.draft!!
+        val form = draft.form as? EditorForm.Card ?: return null
+        if (state.value.mediaBusy) { report(ProblemCode.UNFINISHED_FORM); return null }
+        val page = draft.document.pages.firstOrNull { it.id == form.pageId } ?: run { report(ProblemCode.CONFLICT); return null }
         val original = page.cells.firstOrNull { it.position == form.slotIndex }
         val card = if (form.kind == CellKind.CONTENT) {
             if (original?.card == null && draft.document.pages.sumOf { p -> p.cells.count { it.kind == CellKind.CONTENT } } >= 100000) {
-                report(ProblemCode.LIMIT_EXCEEDED); return
+                report(ProblemCode.LIMIT_EXCEEDED); return null
             }
             val speech = when (form.speechChoice) {
                 SpeechChoice.TTS -> SpeechSource.Tts(if (form.useLabelForSpeech) form.label else form.speechText, sourceLanguage(form))
                 SpeechChoice.RECORDING -> SpeechSource.Recording(form.recording ?: run {
-                    report(ProblemCode.MISSING_ASSET); return
+                    report(ProblemCode.MISSING_ASSET); return null
                 }, form.audioText, form.audioVoice)
                 SpeechChoice.NONE -> SpeechSource.None
             }
             CardDocument(form.cardId, form.label, form.image, speech, form.extensionsJson)
         } else null
         val cell = BoardCell(form.slotIndex, form.kind, card, original?.extensionsJson ?: "{}")
-        cancelMedia()
-        change(draft.copy(form = null, document = draft.document.copy(pages = draft.document.pages.map {
+        return draft.copy(document = draft.document.copy(pages = draft.document.pages.map {
             if (it.id == page.id) it.copy(cells = it.cells.filter { it.position != cell.position } + cell) else it
-        })))
+        }))
     }
 
     private fun stopAudio() {

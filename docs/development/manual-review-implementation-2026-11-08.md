@@ -12,7 +12,7 @@
 | S4 | UI папок и меню по удержанию | PASS: JVM presentation/back; native gestures pending |
 | S5 | Пароль до открытия настроек набора | PASS: admission/access JVM; native background verification pending |
 | S6 | Фраза 32% с адаптацией, боковые стрелки | Focused JVM/Android compile PASS; integrated/native acceptance pending |
-| S7 | Безопасное переключение карточек с автосохранением | TODO |
+| S7 | Безопасное переключение карточек с автосохранением | PASS: 94 focused JVM; compact selector gated, native IME pending |
 | S8 | Перетаскивание: обмен ячеек текущей страницы | TODO |
 | S9 | Опциональный drag в COMPOSE, append во фразу | TODO |
 | S10 | Новый единый стартовый комплект Android/iOS | BLOCKED: содержание и права не утверждены |
