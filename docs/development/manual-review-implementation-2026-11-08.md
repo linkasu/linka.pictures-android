@@ -14,7 +14,7 @@
 | S6 | Фраза 32% с адаптацией, боковые стрелки | Focused JVM/Android compile PASS; integrated/native acceptance pending |
 | S7 | Безопасное переключение карточек с автосохранением | PASS: 94 focused JVM; compact selector gated, native IME pending |
 | S8 | Перетаскивание: обмен ячеек текущей страницы | PASS: focused actor/gesture JVM; native gestures pending |
-| S9 | Опциональный drag в COMPOSE, append во фразу | TODO |
+| S9 | Опциональный drag в COMPOSE, append во фразу | PASS: focused actor/gesture JVM; native gestures pending |
 | S10 | Новый единый стартовый комплект Android/iOS | BLOCKED: содержание и права не утверждены |
 
 Опции листания/drag сохраняются для каждого набора. DIRECT остаётся tap-only.

@@ -9,6 +9,7 @@ import androidx.compose.material.LocalContentAlpha
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.Alignment
@@ -44,6 +53,8 @@ internal fun CommunicationScreen(
     modifier: Modifier = Modifier,
     showPageButtons: Boolean = true,
     navigation: PageNavigation = if (showPageButtons) PageNavigation.BOTTOM else PageNavigation.NONE,
+    dragToCompose: Boolean = false,
+    inputActive: Boolean = true,
     onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
     onOpenBoardSettings: (() -> Unit)? = null,
 ) {
@@ -55,6 +66,21 @@ internal fun CommunicationScreen(
     var inputFocused by remember { mutableStateOf(false) }
     val palette = LocalLinkaPalette.current
     val dispatch: (CommunicationCommand) -> Unit = { if (presentation.commandsEnabled) onCommand(it) }
+    var messageBounds by remember { mutableStateOf(Rect.Zero) }
+    var gridBounds by remember { mutableStateOf(Rect.Zero) }
+    var screenBounds by remember { mutableStateOf(Rect.Zero) }
+    var dragLabel by remember { mutableStateOf<String?>(null) }
+    var dragPointer by remember { mutableStateOf(Offset.Zero) }
+    val density = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    val drag = remember(state.stamp, state.board?.document?.id, state.board?.revision,
+        state.message.cursor, state.message.mode, layout, messageBounds, gridBounds, screenBounds,
+        navigation, density, imeBottom, dragToCompose, inputActive, presentation.commandsEnabled) {
+        communicationDragGesture(state, inputActive && presentation.commandsEnabled, dragToCompose)
+    }
+    DisposableEffect(drag) {
+        onDispose { drag?.source?.cancel(); drag?.cancel(); dragLabel = null }
+    }
     val speechAction: @Composable (Modifier) -> Unit = { action ->
         CommunicationActionButton(if (presentation.stopping) CommunicationIcon.Stop else CommunicationIcon.Speak,
             if (presentation.stopping) stringResource(Res.string.stop_speaking) else stringResource(Res.string.speak), presentation.speechEnabled,
@@ -89,6 +115,7 @@ internal fun CommunicationScreen(
         }
         Surface(modifier.fillMaxSize().then(paging), color = palette.background, contentColor = palette.text) {
             CompositionLocalProvider(LocalContentAlpha provides 1f) {
+                Box(Modifier.fillMaxSize().onGloballyPositioned { screenBounds = it.boundsInRoot() }) {
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))) {
                     CommunicationControls(
                         state.board?.document?.name ?: stringResource(Res.string.communication), presentation, ids, dispatch,
@@ -99,13 +126,16 @@ internal fun CommunicationScreen(
                     Row(Modifier.fillMaxWidth().height(layout.phraseHeight.dp)) {
                         val action = Modifier.width(layout.actionWidth.dp).fillMaxHeight()
                         speechAction(action)
-                        CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight())
+                        CommunicationMessage(state, images, Modifier.weight(1f).fillMaxHeight()
+                            .onGloballyPositioned { messageBounds = it.boundsInRoot() }
+                            .then(if (dragLabel != null) Modifier.border(2.dp, palette.focus) else Modifier))
                         backspaceAction(action)
                         clearAction(action)
                     }
                     Divider(color = palette.divider, thickness = 1.dp)
                     val page = presentation.page
-                    Row(Modifier.fillMaxWidth().height(layout.gridHeight.dp)) {
+                    Row(Modifier.fillMaxWidth().height(layout.gridHeight.dp)
+                        .onGloballyPositioned { gridBounds = it.boundsInRoot() }) {
                     val sideButtons = navigation == PageNavigation.SIDE && pages.size > 1
                     if (sideButtons) pageAction(-1, Modifier.width(48.dp).fillMaxHeight())
                     val gridModifier = Modifier.weight(1f).fillMaxHeight()
@@ -121,6 +151,13 @@ internal fun CommunicationScreen(
                             },
                             pageLayout = layout.pages.getValue(page.id),
                             modifier = gridModifier,
+                            dragGesture = drag,
+                            onDragPreview = { label, pointer -> dragLabel = label; dragPointer = pointer },
+                            onDrop = {
+                                drag?.drop(messageBounds)?.let { position ->
+                                    dispatch(CommunicationCommand.Select(CommandId(ids.next()), page.id, position, drag.source))
+                                }
+                            },
                         )
                     }
                     if (sideButtons) pageAction(1, Modifier.width(48.dp).fillMaxHeight())
@@ -146,6 +183,12 @@ internal fun CommunicationScreen(
                             if (pagingVisible) pageAction(1, Modifier.size(48.dp))
                         }
                     }
+                }
+                dragLabel?.let { label ->
+                    Text(label, Modifier.offset {
+                        IntOffset((dragPointer.x - screenBounds.left).toInt(), (dragPointer.y - screenBounds.top).toInt())
+                    }.background(palette.surface).padding(8.dp).clearAndSetSemantics {})
+                }
                 }
             }
         }

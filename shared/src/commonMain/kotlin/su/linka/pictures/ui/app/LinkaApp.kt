@@ -142,7 +142,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     fun measureBoard(document: BoardDocument, value: PortableSettings) = measurer.measure(document,
         boardWidth, boardHeight, value.textScale,
         navigation = value.boards[document.id]?.navigation ?: PageNavigation.BOTTOM, viewportHeight = maxHeight.value)
-    val boardLayout = remember(message.board, measurer, boardWidth, boardHeight, settings) {
+    val boardLayout = remember(message.board, measurer, boardWidth, boardHeight, maxHeight.value, settings) {
         message.board?.let { measureBoard(it.document, settings) }
     }
     val presentation = remember(message, voices) { communicationPresentation(message, voices) }
@@ -215,6 +215,8 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
             CommunicationScreen(message, ids, voices, { if (isForeground && current == null) communication.dispatch(it) },
                 { navigate(ProductPage.LIBRARY) }, boardLayout, images,
                 navigation = settings.boards[currentBoard]?.navigation ?: PageNavigation.BOTTOM,
+                dragToCompose = settings.boards[currentBoard]?.dragToCompose ?: false,
+                inputActive = isForeground && current == null,
                 onImagesNeeded = { communicationAssets = it },
                 onOpenBoardSettings = currentBoard?.let { board -> {
                     if (commandsEnabled && current == null) navigate(ProductPage.SETTINGS, board = board)

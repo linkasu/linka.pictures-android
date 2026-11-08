@@ -52,6 +52,97 @@ class CommunicationSessionTest {
         }
     }
 
+    @Test fun guardedDropUsesSelectSemanticsExactlyOnceWithoutSpeechOrSourceModification() = runTest {
+        for (style in InputStyle.entries) for (position in 0..2) {
+            val f = Fixture(this)
+            val board = f.board("drop", "Hello", style)
+            f.start()
+            f.open("drop")
+            val source = assertNotNull(CommunicationSelectionSource.capture(f.session.state.value))
+            val command = CommunicationCommand.Select(f.id(), PageId("drop"), position, source)
+            f.session.dispatch(command)
+            f.session.dispatch(command)
+            runCurrent()
+            val expected = when (position) { 0 -> "Hello"; 1 -> " "; else -> "" }
+            assertEquals(expected, f.session.state.value.renderedText)
+            assertEquals(if (position == 2) 0 else 1, f.session.state.value.message.parts.size)
+            assertEquals(board, f.library.boards[board.document.id])
+            assertTrue(f.audio.played.isEmpty())
+            if (position == 0 && style == InputStyle.CARDS)
+                assertIs<MessagePart.Card>(f.session.state.value.message.parts.single())
+            else if (position != 2) assertIs<MessagePart.Text>(f.session.state.value.message.parts.single())
+            val repeatSource = assertNotNull(CommunicationSelectionSource.capture(f.session.state.value))
+            f.send(CommunicationCommand.Select(f.id(), PageId("drop"), position, repeatSource))
+            val repeated = f.session.state.value.message.parts
+            if (position == 0 && style == InputStyle.CARDS) assertEquals(2, repeated.size)
+            else if (position != 2) assertEquals(expected + expected, assertIs<MessagePart.Text>(repeated.single()).text)
+            f.send(CommunicationCommand.Clear(f.id()))
+            assertTrue(f.session.state.value.message.parts.isEmpty())
+            f.send(CommunicationCommand.UndoClear(f.id()))
+            assertEquals(repeated, f.session.state.value.message.parts)
+            assertTrue(f.audio.played.isEmpty())
+            f.close()
+        }
+    }
+
+    @Test fun staleDropIsRejectedByActorAfterPageModeBoardRevisionEpochOrLayoutChanges() = runTest {
+        for (reason in listOf("page", "mode", "board", "revision", "epoch", "layout")) {
+            val f = Fixture(this)
+            val board = f.board("drop", "Hello")
+            val secondPage = BoardPage(PageId("second"), 1, 1, listOf(BoardCell(0, CellKind.SPACE)))
+            f.library.boards[board.document.id] = board.copy(document = board.document.copy(pages = board.document.pages + secondPage))
+            f.board("other", "Other")
+            f.start()
+            f.open("drop")
+            val source = assertNotNull(CommunicationSelectionSource.capture(f.session.state.value))
+            when (reason) {
+                "page" -> {
+                    f.send(CommunicationCommand.ChangePage(f.id(), secondPage.id))
+                    f.send(CommunicationCommand.ChangePage(f.id(), PageId("drop")))
+                }
+                "mode" -> {
+                    f.send(CommunicationCommand.SetMode(f.id(), InteractionMode.DIRECT))
+                    f.send(CommunicationCommand.SetMode(f.id(), InteractionMode.COMPOSE))
+                }
+                "board" -> f.open("other")
+                "revision" -> {
+                    f.library.boards[board.document.id] = board.copy(revision = 2)
+                    f.open("drop")
+                }
+                "epoch" -> { f.library.listing.value = f.library.listing.value.copy(epoch = 1); runCurrent() }
+            }
+            val before = f.session.state.value
+            val saves = f.messages.attempts.size
+            val stops = f.audio.stopped.size
+            f.session.dispatch(CommunicationCommand.Select(f.id(), PageId("drop"), 0, source))
+            // Layout/lifecycle cancellation must also invalidate an already queued drop.
+            if (reason == "layout") source.cancel()
+            runCurrent()
+            assertEquals(before, f.session.state.value, reason)
+            assertEquals(saves, f.messages.attempts.size, reason)
+            if (reason != "epoch") assertEquals(stops, f.audio.stopped.size, reason)
+            assertTrue(f.audio.played.isEmpty(), reason)
+            f.close()
+        }
+    }
+
+    @Test fun queuedModeChangePreventsDropFromSpeakingInDirectModeButOrdinaryTapStillWorks() = runTest {
+        val f = Fixture(this)
+        f.board("drop", "Hello")
+        f.start(); f.open("drop")
+        val source = assertNotNull(CommunicationSelectionSource.capture(f.session.state.value))
+        f.session.dispatch(CommunicationCommand.SetMode(f.id(), InteractionMode.DIRECT))
+        f.session.dispatch(CommunicationCommand.Select(f.id(), PageId("drop"), 0, source))
+        runCurrent()
+        assertTrue(f.audio.played.isEmpty())
+        assertTrue(f.session.state.value.message.parts.isEmpty())
+        assertNull(CommunicationSelectionSource.capture(f.session.state.value))
+        f.select("drop")
+        assertEquals("Hello", f.audio.played.single().plan.renderedText)
+        assertTrue(f.session.state.value.message.parts.isEmpty())
+        f.close()
+    }
+
     @Test fun crossBoardSnapshotAndConsciousRepeatAreIndependentOfSources() = runTest {
         val f = Fixture(this)
         f.board("want", "Хочу")

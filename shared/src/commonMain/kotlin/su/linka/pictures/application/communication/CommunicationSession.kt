@@ -355,6 +355,7 @@ class CommunicationSession(
 
     private fun select(command: CommunicationCommand.Select) {
         val current = state.value
+        if (command.expectedSource?.let { !it.matches(current) || it.pageId != command.pageId } == true) return
         val board = current.board ?: return
         if (current.message.cursor?.pageId != command.pageId) return
         val page = board.document.pages.firstOrNull { it.id == command.pageId } ?: return

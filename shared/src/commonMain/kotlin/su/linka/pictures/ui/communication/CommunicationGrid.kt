@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
@@ -50,6 +51,9 @@ internal fun CommunicationGrid(
     onSelect: (Int) -> Unit,
     pageLayout: FixedCommunicationPageLayout,
     modifier: Modifier,
+    dragGesture: CommunicationDragGesture? = null,
+    onDragPreview: (String?, Offset) -> Unit = { _, _ -> },
+    onDrop: () -> Unit = {},
 ) {
     val palette = LocalLinkaPalette.current
     if (page == null) {
@@ -105,7 +109,8 @@ internal fun CommunicationGrid(
                                 selected = cell.card?.id in selectedCards,
                                 enabled = enabled,
                                 onActivate = { onSelect(position) },
-                                modifier = itemModifier,
+                                modifier = itemModifier.then(communicationDragModifier(
+                                    dragGesture, position, label, onDragPreview, onDrop)),
                             )
                         }
                     }

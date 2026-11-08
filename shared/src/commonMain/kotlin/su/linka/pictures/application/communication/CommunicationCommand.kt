@@ -5,7 +5,8 @@ import su.linka.pictures.domain.*
 sealed interface CommunicationCommand {
     val id: CommandId
 
-    data class Select(override val id: CommandId, val pageId: PageId, val position: Int) : CommunicationCommand {
+    data class Select(override val id: CommandId, val pageId: PageId, val position: Int,
+        val expectedSource: CommunicationSelectionSource? = null) : CommunicationCommand {
         init { require(position >= 0) }
     }
     data class OpenBoard(
