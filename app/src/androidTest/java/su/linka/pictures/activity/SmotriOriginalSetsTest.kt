@@ -19,34 +19,6 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SmotriOriginalSetsTest {
-    @Test fun inspectRepairedSoundsMediaWithoutPublishing() = kotlinx.coroutines.runBlocking {
-        val original = java.io.File(target.cacheDir, "smotri-sounds-validated-v2.linka")
-        assertEquals(fixtures.single { it.slug == "sounds2" }.sha,
-            MessageDigest.getInstance("SHA-256").digest(original.readBytes()).joinToString("") { "%02x".format(it) })
-        val inspection = Class.forName("su.linka.pictures.platform.capabilities.AndroidMediaInspectionPort")
-            .getDeclaredConstructor().newInstance() as su.linka.pictures.application.ports.MediaInspectionPort
-        java.util.zip.ZipFile(original).use { zip ->
-            val config = org.json.JSONObject(zip.getInputStream(zip.getEntry("config.json")).bufferedReader().readText())
-            val cards = config.getJSONArray("cards")
-            val references = linkedMapOf<String, Boolean>()
-            for (i in 0 until cards.length()) for (key in listOf("imagePath", "audioPath")) {
-                val path = cards.getJSONObject(i).optString(key)
-                if (path.isNotEmpty()) references[path] = key == "imagePath"
-            }
-            for ((name, image) in references) {
-                val temporary = java.io.File.createTempFile("smotri-inspection-", ".media", target.cacheDir)
-                try {
-                    zip.getInputStream(zip.getEntry(name)).use { input -> temporary.outputStream().use { input.copyTo(it) } }
-                    val file = su.linka.pictures.application.ports.LocalFile::class.java
-                        .getDeclaredConstructor(String::class.java, String::class.java, String::class.java)
-                        .newInstance(temporary.path, null, null)
-                    val result = if (image) inspection.image(file) else inspection.audio(file)
-                    instrumentation.sendStatus(0, Bundle().apply { putString("smotriMediaInspection", "$name|$result") })
-                    assertTrue("Repaired fixture media $name: $result", result is su.linka.pictures.application.OperationResult.Completed)
-                } finally { check(temporary.delete()) }
-            }
-        }
-    }
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val automation = instrumentation.uiAutomation.apply {
         serviceInfo = serviceInfo.apply {

@@ -88,6 +88,10 @@ Process startup переживает пересоздание Activity и учи
   системной локали. Финальные launcher+content-MIME alias tests: **2/2 PASS,1.186s**.
 - Отдельный native regression на появление legacy-работы между interrupted bundled
   seed и resume: PASS. Такая работа блокирует активацию, исходные байты сохраняются.
+- Удалена разовая cache-dependent reflection-проба внутреннего inspector из app
+  tests. Реальный import/fixture SHA-контракт сохранён; типизированный shared native
+  inspector corpus на API21: **9/9 PASS,0.339s**. Это общая проверка media, не
+  побайтовая замена отдельного диагностического отчёта по repaired sounds-архиву.
 - RU/EN native-test selectors: 50 mappings PASS; пользовательский текст и разные
   исходы не нормализуются в одинаковый результат. iOS Russian-сценарии получают
   process-local locale; добавлен read-only EN→RU smoke. Их unsigned build-for-testing
