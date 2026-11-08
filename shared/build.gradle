@@ -180,6 +180,7 @@ kotlin {
                 implementation 'androidx.annotation:annotation:1.8.1'
                 implementation 'androidx.core:core-ktx:1.15.0'
                 implementation 'com.github.bumptech.glide:gifdecoder:4.16.0'
+                implementation 'org.bouncycastle:bcprov-jdk15to18:1.86'
             }
         }
         jvmMain {
