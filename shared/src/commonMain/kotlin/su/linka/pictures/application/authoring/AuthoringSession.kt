@@ -20,6 +20,7 @@ class AuthoringSession(
     private val gate: AssistantGate,
     private val ids: IdSource,
     scope: CoroutineScope,
+    private val onPublication: (created: Boolean, cardCount: Int, completed: Boolean) -> Unit = { _, _, _ -> },
 ) {
     private val mutableState = MutableStateFlow(AuthoringState())
     val state: StateFlow<AuthoringState> = mutableState.asStateFlow()
@@ -518,6 +519,10 @@ class AuthoringSession(
             val result = operation { library.publishDraft(draft.id, stored.version, draft.baseRevision, permit) }
             post {
                 activeMutation = false
+                if (result is OperationResult.Completed || result is OperationResult.Failed) {
+                    onPublication(draft.baseRevision == null, draft.document.pages.sumOf { page -> page.cells.count { it.card != null } },
+                        result is OperationResult.Completed)
+                }
                 if (state.value.phase != AuthoringPhase.CLOSED) when (result) {
                     is OperationResult.Completed -> {
                         if (state.value.epoch != library.listing.value.epoch) conflict(ProblemCode.STALE_REQUEST)

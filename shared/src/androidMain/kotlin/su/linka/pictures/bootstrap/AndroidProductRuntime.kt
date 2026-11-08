@@ -31,11 +31,13 @@ import su.linka.pictures.migration.MigrationReport
 import su.linka.pictures.ui.app.LinkaApp
 import su.linka.pictures.ui.images.ThumbnailLoader
 import su.linka.pictures.resources.*
+import su.linka.pictures.identity.*
 
 /** One process-wide graph for both Android packages; startup alone selects/adopts existing storage. */
 class AndroidProductRuntime private constructor(private val application: Context) {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
+    private val identity = IdentitySession(AndroidIdentityDevice(application), scope)
     private val ids = IdSource { UUID.randomUUID().toString() }
     private val windows = MutableStateFlow<Map<String, Window>>(emptyMap())
     private val owners = MutableStateFlow<Map<String, String>>(emptyMap())
@@ -60,9 +62,10 @@ class AndroidProductRuntime private constructor(private val application: Context
     @Volatile private var graphReady = false
     private val startupVisibility = StartupVisibility()
 
-    fun windowStarted(owner: Any) { startupVisibility.start(owner) }
+    fun windowStarted(owner: Any) { startupVisibility.start(owner); identity.telemetry.foreground("activity:${System.identityHashCode(owner)}", true) }
 
     fun windowStopped(owner: Any, changingConfiguration: Boolean) {
+        identity.telemetry.foreground("activity:${System.identityHashCode(owner)}", false, changingConfiguration)
         if (startupVisibility.stop(owner, changingConfiguration)) backgroundStartup()
     }
 
@@ -218,7 +221,7 @@ class AndroidProductRuntime private constructor(private val application: Context
                     { requestedImages = it; if (visible.value) thumbnails.request(id, it) },
                     { owner -> if (!closed.value) owners.update { it + (owner to id) } },
                     { owner -> access.revokeOwner(owner); owners.update { it - owner } },
-                    ::libraryReplaced, onBackHandlerChanged = ::setBackHandler) } }
+                    ::libraryReplaced, onBackHandlerChanged = ::setBackHandler, identity = identity) } }
             }
         }
 
@@ -284,7 +287,7 @@ class AndroidProductRuntime private constructor(private val application: Context
         images = AndroidImagePreparationPort(files, inspection)
         thumbnails = ThumbnailLoader(storage.media, AndroidThumbnailDecoder(inspection)::decode, scope)
         admittedEpoch = storage.library.listing.value.epoch
-        session.value = CommunicationSession(storage.library, storage.messages, storage.media, audio, ids, scope)
+        session.value = CommunicationSession(storage.library, storage.messages, storage.media, audio, ids, scope, identity.telemetry::communication)
         scope.launch {
             storage.library.listing.collectLatest { stamp ->
                 when (val settings = storage.library.settings()) {
@@ -307,7 +310,7 @@ class AndroidProductRuntime private constructor(private val application: Context
         audio.interrupt()
         session.value?.close()
         try {
-            session.value = CommunicationSession(storage.library, storage.messages, storage.media, audio, ids, scope)
+            session.value = CommunicationSession(storage.library, storage.messages, storage.media, audio, ids, scope, identity.telemetry::communication)
             admittedEpoch = epoch
         } catch (_: Exception) { failRoot(Problem(ProblemCode.IO_FAILURE)) }
     }

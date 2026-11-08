@@ -14,6 +14,8 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
 import su.linka.pictures.portability.backup.BackupCodec
 import su.linka.pictures.portability.linka.LinkaCodec
+import su.linka.pictures.identity.ProductTelemetry
+import su.linka.pictures.application.portability.TransferKind
 
 internal enum class ProductPage { COMMUNICATION, LIBRARY, EDITOR, SETTINGS, ACCESS, TRANSFER }
 
@@ -38,7 +40,7 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
     private val rootScope: CoroutineScope, private val communication: CommunicationSession,
     private val controller: LibraryController,
     private val onOwnerOpened: (String) -> Unit, private val onOwnerClosed: (String) -> Unit,
-    private val onLibraryReplaced: (Long) -> Unit) {
+    private val onLibraryReplaced: (Long) -> Unit, private val telemetry: ProductTelemetry? = null) {
     private val transition = Mutex()
     private val committedNotifications = Mutex()
     private val mutableRoute = MutableStateFlow<ProductRoute?>(null)
@@ -83,7 +85,8 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
                 return@withLock
             }
             val next = try { ProductRoute(page, owner, child,
-                editor = if (page == ProductPage.EDITOR) AuthoringSession(library, media, audio, files, images, inspection, access, ids, child) else null,
+                editor = if (page == ProductPage.EDITOR) AuthoringSession(library, media, audio, files, images, inspection, access, ids, child,
+                    { created, count, completed -> telemetry?.setSaved(created, count, completed) }) else null,
                 transfer = if (page == ProductPage.TRANSFER) TransferCoordinator(library, messages,
                     LinkaCodec(media, files, inspection, ids), BackupCodec(media, files, inspection, library),
                     files, access, ids, child) else null,
@@ -99,15 +102,30 @@ internal class ProductNavigation(private val library: LibraryStore, private val 
                 return@withLock
             }
             mutableRoute.value = next
+            when (page) {
+                ProductPage.LIBRARY -> telemetry?.product("set_list_open")
+                ProductPage.SETTINGS -> telemetry?.product("open_settings")
+                else -> Unit
+            }
             next.transfer?.let { coordinator ->
+                val reported = mutableSetOf<OperationId>()
                 child.launch { coordinator.state.collect { states ->
                     if (states.values.any { it.transfer.phase == TransferPhase.UNCONFIRMED }) controller.markCommitUnconfirmed()
+                    states.values.filter { it.transfer.phase in setOf(TransferPhase.COMPLETED, TransferPhase.FAILED) && reported.add(it.transfer.id) }.forEach {
+                        when (it.kind) {
+                            TransferKind.IMPORT, TransferKind.RESTORE -> telemetry?.transfer(import = true, completed = it.transfer.phase == TransferPhase.COMPLETED)
+                            TransferKind.EXPORT, TransferKind.BACKUP -> telemetry?.transfer(import = false, completed = it.transfer.phase == TransferPhase.COMPLETED)
+                            else -> Unit
+                        }
+                    }
                     notifyCommitted(next)
                 } }
             }
             next.editor?.let { editor ->
+                var opened = false
                 child.launch { editor.state.collect {
                     if (it.phase == AuthoringPhase.UNCONFIRMED || it.savePhase == DraftSavePhase.UNCONFIRMED) controller.markCommitUnconfirmed()
+                    if (!opened && it.phase == AuthoringPhase.EDITING) { opened = true; telemetry?.product("editor_open") }
                 } }
             }
         } finally { mutableTransitioning.value = false }

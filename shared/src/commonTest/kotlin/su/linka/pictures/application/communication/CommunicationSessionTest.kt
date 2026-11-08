@@ -26,8 +26,8 @@ class CommunicationSessionTest {
         init {
             media.roots = { messages.stored.draft.assetIds() + library.boards.values.flatMap { it.document.assetIds() } }
         }
-        fun start(scope: CoroutineScope = test.backgroundScope) {
-            session = CommunicationSession(library, messages, media, audio, IdSource { "id-${serial++}" }, scope)
+        fun start(scope: CoroutineScope = test.backgroundScope, onEvent: (CommunicationEvent) -> Unit = {}) {
+            session = CommunicationSession(library, messages, media, audio, IdSource { "id-${serial++}" }, scope, onEvent)
             test.runCurrent()
         }
         fun send(command: CommunicationCommand) {
@@ -50,6 +50,34 @@ class CommunicationSessionTest {
             session.close()
             test.runCurrent()
         }
+    }
+
+    @Test fun operationalEventsAreAcceptedActionsAndTerminalPlaybackNotButtonSuccess() = runTest {
+        val f = Fixture(this)
+        f.board("safe", "private text")
+        val events = mutableListOf<CommunicationEvent>()
+        f.start(onEvent = events::add)
+        f.open("safe")
+        assertEquals(listOf<CommunicationEvent>(CommunicationEvent.BoardOpened), events)
+        f.select("safe", 2)
+        assertEquals(1, events.size)
+        val command = f.id()
+        f.select("safe", command = command)
+        f.select("safe", command = command)
+        assertEquals(1, events.count { it == CommunicationEvent.CardSelected })
+        f.send(CommunicationCommand.Speak(f.id()))
+        assertTrue(events.none { it is CommunicationEvent.UtteranceFinished })
+        val old = f.audio.played.last()
+        f.send(CommunicationCommand.Stop(f.id()))
+        f.audio.callback(old, AudioPhase.COMPLETED); runCurrent()
+        assertEquals(listOf(AudioPhase.CANCELLED), events.filterIsInstance<CommunicationEvent.UtteranceFinished>().map { it.phase })
+        f.send(CommunicationCommand.Speak(f.id()))
+        val current = f.audio.played.last()
+        f.audio.callback(current, AudioPhase.COMPLETED); runCurrent()
+        f.audio.callback(current, AudioPhase.COMPLETED); runCurrent()
+        assertEquals(listOf(AudioPhase.CANCELLED, AudioPhase.COMPLETED), events.filterIsInstance<CommunicationEvent.UtteranceFinished>().map { it.phase })
+        assertFalse(events.joinToString().contains("private text"))
+        f.close()
     }
 
     @Test fun guardedDropUsesSelectSemanticsExactlyOnceWithoutSpeechOrSourceModification() = runTest {

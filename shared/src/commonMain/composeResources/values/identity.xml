@@ -1,0 +1,36 @@
+<resources>
+    <string name="identity_title">Verify your email</string>
+    <string name="identity_explanation">Email verification is required once to use this app. Your existing boards and drafts stay on this device. After verification, communication works offline indefinitely. Analytics is optional and separate.</string>
+    <string name="identity_email">Email</string>
+    <string name="identity_representative">I register as a representative (otherwise, for myself)</string>
+    <string name="identity_send">Request code</string>
+    <string name="identity_resend">Explicitly request a new code for the same email</string>
+    <string name="identity_wait">New request available in %1$d seconds.</string>
+    <string name="identity_retry_deadline">Server retry deadline: %1$s</string>
+    <string name="identity_code">Six-digit code</string>
+    <string name="identity_verify">Verify</string>
+    <string name="identity_verified">Email verified. Online session securely saved.</string>
+    <string name="identity_queued">Request queued. This does not mean an email has been delivered. Check status; do not request another email while delivery is uncertain.</string>
+    <string name="identity_pending">Enter the code if you received the email. Delivery is not guaranteed.</string>
+    <string name="identity_new_code">This request cannot open the app. If already verified but the response was lost, request a new code explicitly.</string>
+    <string name="identity_check_status">Check request status</string>
+    <string name="identity_deadline">Server deadline: %1$s</string>
+    <string name="identity_resend_after">New request no earlier than: %1$s</string>
+    <string name="identity_restore_proof">Retry saving received verification</string>
+    <string name="identity_change_email">Start a new request / change email</string>
+    <string name="identity_recovery">Secure registration storage could not be opened or verified. Your boards have not been deleted. Retry opening secure storage; do not clear app data. If this continues, contact support.</string>
+    <string name="identity_retry">Retry</string>
+    <string name="identity_online_title">Online session</string>
+    <string name="identity_online_explanation">Your local registration works offline indefinitely. If an online session expires or its refresh result is uncertain, verify your email again to restore the online session. This does not delete boards or change analytics consent.</string>
+    <string name="identity_online_restore">Verify email again</string>
+    <string name="identity_problem">Request not confirmed. Check your connection and retry the same request. No additional email is sent by a status check. If verification was consumed without a saved response, request a new code.</string>
+    <string name="telemetry_title">Optional usage analytics</string>
+    <string name="telemetry_explanation">Off by default. With permission, send safe action types and completion results to metrics.nkolinka.ru. Never send email, speech text, board names, cards, images or recordings. Turning this off immediately stops collection and clears the local queue; an offline withdrawal is sent when connected.</string>
+    <string name="telemetry_on">Analytics enabled</string>
+    <string name="telemetry_off">Analytics disabled</string>
+    <string name="telemetry_unconfirmed">The chosen permission or withdrawal is not confirmed by the server. Local collection is stopped.</string>
+    <string name="telemetry_resolve_off">Send a new explicit withdrawal</string>
+    <string name="telemetry_resolve_on">Send new explicit permission</string>
+    <string name="telemetry_pending">Waiting for server confirmation. No collection until permission is confirmed and delivered.</string>
+    <string name="telemetry_conflict">A newer server preference was found. Collection is stopped. Choose your preference again explicitly to resolve the conflict.</string>
+</resources>

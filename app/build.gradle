@@ -105,13 +105,15 @@ tasks.register('verifyReleaseSafety') {
             def manifests = fileTree("${layout.buildDirectory.get()}/intermediates/merged_manifests/${variant}") { include '**/AndroidManifest.xml' }.files
             if (manifests.size() != 1) throw new GradleException("Expected one ${variant} manifest")
             def text = manifests.first().getText('UTF-8')
-            if (text.toLowerCase().contains('firebase') || text.toLowerCase().contains('crashlytics')) throw new GradleException('Telemetry must not be packaged')
+            if (text.toLowerCase().contains('firebase') || text.toLowerCase().contains('crashlytics')) throw new GradleException('Third-party telemetry SDK must not be packaged')
             if (!text.contains('android:name="su.linka.pictures.activity.MainActivity"')) throw new GradleException('Shared product launcher is missing')
             ['GridActivity', 'SetEditActivity', 'SettingsActivity'].each { name ->
                 if (text.contains("su.linka.pictures.activity.${name}")) throw new GradleException("Legacy activity remains: ${name}")
             }
             if (variant == 'release' && text.contains('parity-fixtures')) throw new GradleException('Test provider leaked into release')
-            ['INTERNET', 'ACCESS_NETWORK_STATE', 'POST_NOTIFICATIONS', 'WAKE_LOCK'].each { permission ->
+            if (!text.contains('android.permission.INTERNET')) throw new GradleException('Identity HTTPS permission is missing')
+            if (text.contains('android:usesCleartextTraffic="true"')) throw new GradleException('Cleartext transport is forbidden')
+            ['ACCESS_NETWORK_STATE', 'POST_NOTIFICATIONS', 'WAKE_LOCK'].each { permission ->
                 if (text.contains("android.permission.${permission}")) throw new GradleException("Unused permission remains: ${permission}")
             }
         }

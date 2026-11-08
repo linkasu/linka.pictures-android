@@ -29,6 +29,7 @@ import su.linka.pictures.ui.images.ThumbnailLoader
 import org.jetbrains.compose.resources.getString
 import su.linka.pictures.resources.Res
 import su.linka.pictures.resources.ios_owner_verification_reason
+import su.linka.pictures.identity.*
 
 internal sealed interface RootState {
     data object Loading : RootState
@@ -45,6 +46,7 @@ internal class IosProductRoot {
         if (NSThread.isMainThread) report() else NSOperationQueue.mainQueue.addOperationWithBlock(report)
     }
     val scope = CoroutineScope(job + Dispatchers.Main.immediate + failures)
+    internal val identity = IdentitySession(IosIdentityDevice(), scope)
     private val mutableState = MutableStateFlow<RootState>(RootState.Loading)
     val state = mutableState.asStateFlow()
     private val owners = OwnerWindows()
@@ -201,7 +203,7 @@ internal class IosProductRoot {
                     var candidate: CommunicationSession? = null
                     try {
                         val next = CommunicationSession(store.library, store.messages, store.media, checkNotNull(audio), ids,
-                            CoroutineScope(scope.coroutineContext + parent))
+                             CoroutineScope(scope.coroutineContext + parent), identity.telemetry::communication)
                         candidate = next
                         val loaded = next.state.first { it.savePhase != MessageSavePhase.LOADING }
                         if (loaded.problem != null) throw RootFailure(loaded.problem)
@@ -302,7 +304,7 @@ internal class IosProductRoot {
         val parent = SupervisorJob(job)
         sessionJob = parent
         session.value = CommunicationSession(store.library, store.messages, store.media, port, ids,
-            CoroutineScope(scope.coroutineContext + parent))
+             CoroutineScope(scope.coroutineContext + parent), identity.telemetry::communication)
     }
 
     private suspend fun closeSession(): Problem? {

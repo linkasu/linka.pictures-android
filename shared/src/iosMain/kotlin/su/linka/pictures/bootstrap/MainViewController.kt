@@ -18,6 +18,8 @@ import su.linka.pictures.ui.theme.LocalLinkaPalette
 import androidx.compose.material.Surface
 import org.jetbrains.compose.resources.stringResource
 import su.linka.pictures.resources.*
+import su.linka.pictures.identity.*
+import su.linka.pictures.ui.identity.RegistrationScreen
 
 private object ProductProcess {
     val root by lazy { IosProductRoot() }
@@ -68,6 +70,14 @@ private class ProductViewController(private val root: IosProductRoot) : UIViewCo
 @Composable
 private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) {
     val state by root.state.collectAsState()
+    val registration by root.identity.view.collectAsState()
+    val active by window.foreground.collectAsState()
+    LaunchedEffect(active) { root.identity.telemetry.foreground(window.id, active) }
+    DisposableEffect(window) { onDispose { root.identity.telemetry.foreground(window.id, false) } }
+    if (registration.phase != RegistrationPhase.REGISTERED) {
+        RegistrationScreen(root.identity)
+        return
+    }
     LinkaTheme {
       Surface(Modifier.fillMaxSize(), color = LocalLinkaPalette.current.background, contentColor = LocalLinkaPalette.current.text) {
         when (val current = state) {
@@ -96,7 +106,7 @@ private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) 
                                 graph.access, graph.audio, graph.files, graph.preparation, graph.inspection,
                                 graph.ids, window.scope, communication, foreground, images,
                                 { graph.thumbnails.request(window.id, it) },
-                                { root.openOwner(it, window) }, root::closeOwner, root::libraryReplaced)
+                                 { root.openOwner(it, window) }, root::closeOwner, root::libraryReplaced, identity = root.identity)
                         }
                     }
                 }

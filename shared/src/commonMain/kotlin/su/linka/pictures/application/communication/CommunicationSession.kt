@@ -20,6 +20,7 @@ class CommunicationSession(
     private val audio: AudioPort,
     private val ids: IdSource,
     scope: CoroutineScope,
+    private val onProductEvent: (CommunicationEvent) -> Unit = {},
 ) {
     private val sessionScope = CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]))
     private val events = Channel<() -> Unit>(Channel.UNLIMITED)
@@ -37,6 +38,8 @@ class CommunicationSession(
     private var boardJob: Job? = null
     private var boardCompletion: CompletableDeferred<OperationResult<PublishedBoard>>? = null
     private var request: RequestId? = null
+    private var playbackMode = InteractionMode.COMPOSE
+    private var playbackStyle = InputStyle.LITERAL
     private val owner = ids.next()
     private var ready = false
     private var closing = false
@@ -68,7 +71,10 @@ class CommunicationSession(
                 events.trySend {
                     if (!closing && value.owner?.id == owner && value.requestId == request && request != null) {
                         mutableState.value = state.value.copy(audio = value)
-                        if (value.phase in terminalPhases) request = null
+                        if (value.phase in terminalPhases) {
+                            request = null
+                            finishUtterance(value.phase)
+                        }
                     }
                 }
             }
@@ -326,8 +332,9 @@ class CommunicationSession(
                                 val firstCell = previous?.takeIf {
                                     it.boardId == id && it.pageId == page.id && it.firstCell < page.capacity
                                 }?.firstCell ?: 0
-                                change(state.value.message.copy(cursor = BoardCursor(id, page.id, firstCell), mode = mode))
+                                val changed = change(state.value.message.copy(cursor = BoardCursor(id, page.id, firstCell), mode = mode))
                                 completion?.complete(openRejection() ?: OperationResult.Completed(value.board))
+                                if (changed && openRejection() == null) onProductEvent(CommunicationEvent.BoardOpened)
                             }
                         }
                         is OperationResult.Failed -> {
@@ -361,6 +368,7 @@ class CommunicationSession(
         val page = board.document.pages.firstOrNull { it.id == command.pageId } ?: return
         val cell = page.cells.firstOrNull { it.position == command.position } ?: return
         if (cell.kind == CellKind.EMPTY) return
+        val previousRequest = request
         val card = cell.card
         val part = if (cell.kind == CellKind.SPACE || board.document.behavior.inputStyle == InputStyle.LITERAL) {
             MessagePart.Text(MessagePartId(ids.next()), if (cell.kind == CellKind.SPACE) " " else card!!.label)
@@ -379,6 +387,8 @@ class CommunicationSession(
                 change(current.message.copy(parts = current.message.parts + part))
             }
         }
+        if (card != null && (state.value.stamp != current.stamp || request != null && request != previousRequest))
+            onProductEvent(CommunicationEvent.CardSelected)
     }
 
     private fun appendText(text: String) {
@@ -494,6 +504,8 @@ class CommunicationSession(
 
     private fun play(message: MessageDraft, lease: MediaLease, purpose: AudioPurpose) {
         if (message.parts.isEmpty()) return
+        playbackMode = state.value.message.mode
+        playbackStyle = state.value.board?.document?.behavior?.inputStyle ?: InputStyle.LITERAL
         when (val planned = speechPlan(message)) {
             is OperationResult.Completed -> when (val retained = lease.retain(message.assetIds())) {
                 is OperationResult.Completed -> {
@@ -503,12 +515,12 @@ class CommunicationSession(
                     mutableState.value = state.value.copy(audio = AudioState(id, audioOwner, AudioPhase.PREPARING), problem = null)
                     audio.play(PlaybackRequest(id, audioOwner, planned.value, retained.value))
                 }
-                is OperationResult.Failed -> report(retained.problem)
-                OperationResult.Cancelled -> Unit
+                is OperationResult.Failed -> { report(retained.problem); finishUtterance(AudioPhase.FAILED) }
+                OperationResult.Cancelled -> finishUtterance(AudioPhase.CANCELLED)
                 OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
             }
-            is OperationResult.Failed -> report(planned.problem)
-            OperationResult.Cancelled -> Unit
+            is OperationResult.Failed -> { report(planned.problem); finishUtterance(AudioPhase.FAILED) }
+            OperationResult.Cancelled -> finishUtterance(AudioPhase.CANCELLED)
             OperationResult.UnconfirmedCommit -> freezeUnconfirmed()
         }
     }
@@ -516,6 +528,7 @@ class CommunicationSession(
     private fun stop() {
         val previous = request
         request = null
+        if (previous != null) finishUtterance(AudioPhase.CANCELLED)
         audio.stop(owner, previous)
         mutableState.value = state.value.copy(audio = AudioState(phase = AudioPhase.IDLE))
     }
@@ -523,6 +536,9 @@ class CommunicationSession(
     private fun report(problem: Problem) {
         mutableState.value = state.value.copy(problem = problem)
     }
+
+    private fun finishUtterance(phase: AudioPhase) =
+        onProductEvent(CommunicationEvent.UtteranceFinished(phase, playbackMode, playbackStyle))
 
     private suspend fun <T> operation(block: suspend () -> OperationResult<T>): OperationResult<T> = try {
         block()

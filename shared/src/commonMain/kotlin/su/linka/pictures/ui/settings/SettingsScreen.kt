@@ -40,7 +40,7 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
     owner: String, capability: AssistantCapability?, enabled: Boolean, dark: Boolean, onDark: (Boolean) -> Unit,
     onSaved: (PortableSettings) -> Unit, access: @Composable () -> Unit, onBack: () -> Unit,
     gate: AssistantGate? = null, onAccess: (() -> Unit)? = null,
-    validateSettings: suspend (PortableSettings) -> String? = { null }) {
+    validateSettings: suspend (PortableSettings) -> String? = { null }, telemetry: @Composable () -> Unit = {}) {
     var loaded by remember { mutableStateOf<SettingsSnapshot?>(null) }
     var result by remember { mutableStateOf<OperationResult<*>?>(null) }
     var refresh by remember { mutableStateOf(0) }
@@ -80,6 +80,7 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         ProductSection(stringResource(Res.string.session_appearance)) {
             SettingsSwitch(stringResource(Res.string.dark_theme), dark, enabled, stringResource(Res.string.only_for_this_session)) { onDark(it) }
         }
+        telemetry()
         if (loaded == null && result == null) Text(stringResource(Res.string.loading_settings))
         loaded?.let { snapshot -> key(snapshot) {
             SettingsForm(snapshot, controller, owner, capability, enabled, voices, gate, access, result, validateSettings) { outcome, value ->

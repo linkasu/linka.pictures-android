@@ -33,6 +33,8 @@ import su.linka.pictures.ui.portability.transferProtectedAction
 import su.linka.pictures.application.portability.TransferPhase
 import su.linka.pictures.ui.settings.SettingsScreen
 import su.linka.pictures.ui.theme.LinkaTheme
+import su.linka.pictures.identity.*
+import su.linka.pictures.ui.identity.*
 
 /** All ports and the process-wide communication session are borrowed from the platform root. */
 @Composable
@@ -43,7 +45,12 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     images: Map<AssetId, ImageBitmap>, onAssetsNeeded: (Set<AssetId>) -> Unit,
     onOwnerOpened: (String) -> Unit, onOwnerClosed: (String) -> Unit,
     onLibraryReplaced: (Long) -> Unit,
-    onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null) {
+    onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null, identity: IdentitySession) {
+    val registration by identity.view.collectAsState()
+    if (registration.phase != RegistrationPhase.REGISTERED) {
+        RegistrationScreen(identity)
+        return
+    }
     val newBoardName = stringResource(Res.string.new_board)
     val textScaleIsNotSupportedLabel = stringResource(Res.string.text_scale_is_not_supported)
     val couldNotOpenTheBoardReturnToLabel = stringResource(Res.string.could_not_open_the_board_return_to)
@@ -54,7 +61,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     val controller = remember(library, access) { LibraryController(library, access) }
     val navigation = remember(library, media, messages, access, audio, files, imagePreparation, inspection, ids, scope, communication) {
         ProductNavigation(library, media, messages, access, audio, files, imagePreparation, inspection, ids, scope,
-            communication, controller, { opened(it) }, { closed(it) }, { replaced(it) })
+            communication, controller, { opened(it) }, { closed(it) }, { replaced(it) }, identity.telemetry)
     }
     val route by navigation.route.collectAsState()
     var started by remember(navigation) { mutableStateOf(false) }
@@ -187,6 +194,10 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
         if (started && route == null && boardLayout == null) navigation.open(ProductPage.LIBRARY)
     }
     LinkaTheme(dark, settings.highContrast, settings.textScale) {
+        if (registration.consent == "unknown") ProductDialog(stringResource(Res.string.telemetry_title), {}, actions = {
+            Action(stringResource(Res.string.telemetry_off)) { identity.telemetry.setConsent(false) }
+            Action(stringResource(Res.string.telemetry_on)) { identity.telemetry.setConsent(true) }
+        }) { Text(stringResource(Res.string.telemetry_explanation)) }
         val current = route
         val boardSettings = current?.page == ProductPage.SETTINGS && current.boardId != null
         val communicationVisible = current == null || boardSettings
@@ -245,7 +256,8 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                     communicationNotices = communicationNotices(message, presentation, voices))
                 ProductPage.SETTINGS -> SettingsScreen(library, controller, audio, current.owner, capability, commandsEnabled,
                     dark, { dark = it }, { settings = it; settingsLoaded = true }, accessPanel, { navigate(ProductPage.LIBRARY) },
-                    gate = access, onAccess = { navigate(ProductPage.ACCESS) }, validateSettings = ::validateSettings)
+                    gate = access, onAccess = { navigate(ProductPage.ACCESS) }, validateSettings = ::validateSettings,
+                    telemetry = { TelemetrySettings(identity) })
                 ProductPage.ACCESS -> ProductScaffold(stringResource(Res.string.assistant_protection), { navigate(ProductPage.LIBRARY) }) { accessPanel() }
                 ProductPage.TRANSFER -> TransferScreen(library, current.transfer!!, access, current.owner, capability,
                     commandsEnabled, isForeground, current.boardId, accessPanel, { navigate(ProductPage.LIBRARY) })
