@@ -397,4 +397,6 @@
     <string name="communication_navigation_bottom">Arrows below cards</string>
     <string name="communication_navigation_side">Arrows beside cards</string>
     <string name="communication_drag_to_message">Long press and drag cards into the message</string>
+    <string name="editor_choose_card">Card %1$s — choose another</string>
+    <string name="editor_select_card">Choose a card</string>
 </resources>

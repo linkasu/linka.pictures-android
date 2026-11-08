@@ -12,14 +12,16 @@
 | S4 | UI папок и меню по удержанию | PASS: JVM presentation/back; native gestures pending |
 | S5 | Пароль до открытия настроек набора | PASS: admission/access JVM; native background verification pending |
 | S6 | Фраза 32% с адаптацией, боковые стрелки | Focused JVM/Android compile PASS; integrated/native acceptance pending |
-| S7 | Безопасное переключение карточек с автосохранением | PASS: 94 focused JVM; compact selector gated, native IME pending |
+| S7 | Безопасное переключение карточек с автосохранением | PASS: actor/card JVM, compact selector approved/implemented; Android lint and both iOS framework links PASS; native IME pending |
 | S8 | Перетаскивание: обмен ячеек текущей страницы | PASS: focused actor/gesture JVM; native gestures pending |
 | S9 | Опциональный drag в COMPOSE, append во фразу | PASS: focused actor/gesture JVM; native gestures pending |
 | S10 | Новый единый стартовый комплект Android/iOS | BLOCKED: содержание и права не утверждены |
 
 Опции листания/drag сохраняются для каждого набора. DIRECT остаётся tap-only.
 Папки удаляются только пустыми. Пользовательские данные при обновлении сохраняются.
-Компактный селектор карточки требует отдельного визуального утверждения.
+Пользователь выбрал компактный селектор ячейки в форме; он реализован.
+Стартовый словарь 5 наборов / 10 страниц / 90 позиций утверждён; пользователь
+предоставит собственные записи. До их получения S10 не включён в поставку.
 
 План: /Users/aacidov/.opencode/plan/linka-manual-review-2026-11-08-coding-plan.md.
 Нативные/визуальные PASS не предполагаются по результатам JVM-тестов.

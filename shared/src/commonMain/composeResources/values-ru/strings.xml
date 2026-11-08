@@ -397,4 +397,6 @@
     <string name="communication_navigation_bottom">Стрелки под карточками</string>
     <string name="communication_navigation_side">Стрелки по бокам карточек</string>
     <string name="communication_drag_to_message">Добавлять карточки в фразу удержанием и перетаскиванием</string>
+    <string name="editor_choose_card">Карточка %1$s — выбрать другую</string>
+    <string name="editor_select_card">Выбрать карточку</string>
 </resources>

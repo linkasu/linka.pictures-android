@@ -54,7 +54,7 @@ internal fun CardEditorDialog(
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(16.dp), contentAlignment = Alignment.Center) {
             Surface(modifier.widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight.coerceAtMost(640.dp)),
                 color = palette.surface, contentColor = palette.text, shape = MaterialTheme.shapes.medium) {
-                CardEditorContent(state, input, dispatch, images, Modifier.padding(16.dp))
+                CardEditorContent(state, input, dispatch, images, Modifier.padding(16.dp), showCellSelector = true)
             }
         }
     }
@@ -70,6 +70,7 @@ internal fun CardEditorContent(
     images: Map<AssetId, ImageBitmap>,
     modifier: Modifier = Modifier,
     fillHeight: Boolean = false,
+    showCellSelector: Boolean = false,
 ) {
     val form = state.draft?.form as? EditorForm.Card ?: return
     val enabled = state.editable() && !input.requestingSwitch
@@ -83,8 +84,9 @@ internal fun CardEditorContent(
     val cancel = { input.discardPending(); dispatch(AuthoringAction.CancelCard) }
     DemandVisibleImages(form.cardId, cardImageDemand(form))
     Column(modifier) {
+        if (showCellSelector) CardCellSelector(state, input)
         Column(Modifier.weight(1f, fill = fillHeight).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(Res.string.card_1_s, form.slotIndex + 1), style = MaterialTheme.typography.h6, modifier = Modifier.semantics { heading() })
+            if (!showCellSelector) Text(stringResource(Res.string.card_1_s, form.slotIndex + 1), style = MaterialTheme.typography.h6, modifier = Modifier.semantics { heading() })
             Text(stringResource(Res.string.card_type))
             FlowRow(Modifier.selectableGroup()) {
                 CellKind.entries.forEach { kind ->
