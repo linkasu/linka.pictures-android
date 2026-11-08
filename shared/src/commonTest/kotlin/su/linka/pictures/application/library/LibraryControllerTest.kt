@@ -142,4 +142,24 @@ class LibraryControllerTest {
         assertIs<OperationResult.Completed<Unit>>(controller.delete("owner", gate.capability, current.items.single(), current.epoch))
         assertTrue(library.listing.value.items.isEmpty())
     } }
+    @Test fun organizationUsesFreshGuardAndCapturedRevision() = runTest { fresh { runtime, gate ->
+        val real = runtime.library
+        val value = LibraryOrganization(listOf(LibraryFolder(FolderId("folder"), "Общение")))
+        val shown = real.listing.value
+        val controller = LibraryController(real, gate)
+        controller.organization("owner", null, value, shown.revision, shown.epoch).hasProblem(ProblemCode.UNAUTHORIZED)
+        val revoked = object : LibraryStore by real {
+            override suspend fun saveOrganization(value: LibraryOrganization, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long> {
+                gate.generation++
+                return real.saveOrganization(value, expectedLibraryRevision, permit)
+            }
+        }
+        LibraryController(revoked, gate).organization("owner", gate.capability, value, shown.revision, shown.epoch).hasProblem(ProblemCode.UNAUTHORIZED)
+        assertEquals(shown, real.listing.value)
+        assertIs<OperationResult.Completed<Long>>(controller.organization("owner", gate.capability, value, shown.revision, shown.epoch))
+        controller.organization("owner", gate.capability, LibraryOrganization(), shown.revision, shown.epoch).hasProblem(ProblemCode.CONFLICT)
+        controller.organization("owner", gate.capability, value, shown.revision + 1, shown.epoch + 1).hasProblem(ProblemCode.STALE_REQUEST)
+        assertTrue(gate.actions.all { it == ProtectedAction.ORGANIZE_LIBRARY })
+    } }
+
 }

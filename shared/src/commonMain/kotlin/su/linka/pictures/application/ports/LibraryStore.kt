@@ -16,7 +16,7 @@ data class LibraryEntrySummary(
     val problem: Problem? = null,
 )
 
-data class LibraryListing(val epoch: Long, val revision: Long, val items: List<LibraryEntrySummary>, val refreshProblem: Problem? = null)
+data class LibraryListing(val epoch: Long, val revision: Long, val items: List<LibraryEntrySummary>, val refreshProblem: Problem? = null, val organization: LibraryOrganization = LibraryOrganization())
 data class LeasedBoard(val epoch: Long, val board: PublishedBoard, val lease: MediaLease)
 data class LeasedDraft(val epoch: Long, val draft: StoredDraft, val lease: MediaLease)
 data class DraftSummary(val id: DraftId, val boardId: BoardId?, val name: String, val version: Long, val baseRevision: Long?, val hasOpenForm: Boolean)
@@ -47,6 +47,7 @@ interface LibraryStore {
     suspend fun retainArchive(value: RetainedArchive, permit: WritePermit): OperationResult<Unit>
     suspend fun settings(): OperationResult<PortableSettings>
     suspend fun saveSettings(value: PortableSettings, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long>
+    suspend fun saveOrganization(value: LibraryOrganization, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long>
     suspend fun snapshot(): OperationResult<SnapshotReader>
     suspend fun createSnapshotBuilder(): OperationResult<SnapshotBuilder>
     suspend fun replaceLibrary(value: SnapshotReader, expectedLibraryRevision: Long, expectedMessage: MessageStamp, permit: WritePermit): OperationResult<RecoveryInfo>

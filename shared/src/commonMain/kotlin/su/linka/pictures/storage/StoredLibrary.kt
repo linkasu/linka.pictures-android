@@ -27,7 +27,7 @@ internal class StoredLibrary(internal val runtime: StorageRuntime) : LibraryStor
                 add(LibraryEntrySummary(BoardId(row[0]!!), row[1]!!, row[3]!!.toLong(), kind, count))
             }
         }
-        mutableListing.value = LibraryListing(epoch, revision, items)
+        mutableListing.value = LibraryListing(epoch, revision, items, organization = readOrganization().also { it.validateEntries(items.map { item -> item.id }.toSet()) })
     }
 
     private fun refreshAfterCommit(epoch: Long, revision: Long) {
@@ -189,6 +189,8 @@ internal class StoredLibrary(internal val runtime: StorageRuntime) : LibraryStor
         if (row[0]!!.toLong() != expectedRevision) fail(ProblemCode.CONFLICT)
         commit(permit) {
             db.exec("DELETE FROM entries WHERE id=?", id.value)
+            val organization = readOrganization()
+            if (id in organization.placements) writeOrganization(organization.copy(placements = organization.placements - id))
             refs(if (row[1] == "BOARD") "BOARD" else "RETAINED", id.value, emptySet())
         }
     }
@@ -210,6 +212,33 @@ internal class StoredLibrary(internal val runtime: StorageRuntime) : LibraryStor
         if (runtime.revision() != expectedLibraryRevision) fail(ProblemCode.CONFLICT)
         commit(permit) {
             db.exec("UPDATE library_meta SET settings_json=? WHERE singleton=1", encode(value))
+            runtime.next(expectedLibraryRevision)
+        }
+    }
+
+    internal fun readOrganization(): LibraryOrganization {
+        val json = db.rows("SELECT organization_json FROM library_meta WHERE singleton=1").single().single()!!
+        if (json.encodeToByteArray().size > 2 * 1024 * 1024) fail(ProblemCode.LIMIT_EXCEEDED)
+        return decode(json)
+    }
+
+    private fun writeOrganization(value: LibraryOrganization) {
+        val json = encode(value)
+        if (json.encodeToByteArray().size > 2 * 1024 * 1024) fail(ProblemCode.LIMIT_EXCEEDED)
+        db.exec("UPDATE library_meta SET organization_json=? WHERE singleton=1", json)
+    }
+
+    override suspend fun saveOrganization(value: LibraryOrganization, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long> = locked(mutation = true) {
+        epoch(permit)
+        if (runtime.revision() != expectedLibraryRevision) fail(ProblemCode.CONFLICT)
+        value.validateEntries(db.rows("SELECT id FROM entries").map { BoardId(it.single()!!) }.toSet())
+        val old = readOrganization()
+        val remaining = value.folders.map { it.id }.toSet()
+        for (removed in old.folders.filter { it.id !in remaining }) {
+            if (old.folders.any { it.parentId == removed.id } || removed.id in old.placements.values) fail(ProblemCode.CONFLICT)
+        }
+        commit(permit) {
+            writeOrganization(value)
             runtime.next(expectedLibraryRevision)
         }
     }

@@ -7,7 +7,7 @@ import su.linka.pictures.application.Problem
 enum class ProtectedAction {
     CREATE_BOARD, EDIT_BOARD, APPLY_DRAFT, RENAME_BOARD, DELETE_BOARD, DELETE_DRAFT,
     IMPORT_BOARD, EXPORT_BOARD, CREATE_BACKUP, RESTORE_BACKUP, DELETE_RECOVERY,
-    CHANGE_SETTINGS, CONFIGURE_LOCK, RESET_LOCK,
+    ORGANIZE_LIBRARY, CHANGE_SETTINGS, CONFIGURE_LOCK, RESET_LOCK,
 }
 
 class AssistantCapability internal constructor(internal val token: String, val owner: String)

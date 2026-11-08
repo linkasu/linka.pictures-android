@@ -139,6 +139,7 @@ internal class FakeLibrary(private val media: FakeMedia) : LibraryStore {
     override suspend fun retainArchive(value: RetainedArchive, permit: WritePermit): OperationResult<Unit> = unexpected()
     override suspend fun settings(): OperationResult<PortableSettings> = unexpected()
     override suspend fun saveSettings(value: PortableSettings, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long> = unexpected()
+    override suspend fun saveOrganization(value: LibraryOrganization, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long> = unexpected()
     override suspend fun snapshot(): OperationResult<SnapshotReader> = unexpected()
     override suspend fun createSnapshotBuilder(): OperationResult<SnapshotBuilder> = unexpected()
     override suspend fun replaceLibrary(value: SnapshotReader, expectedLibraryRevision: Long, expectedMessage: MessageStamp, permit: WritePermit): OperationResult<RecoveryInfo> = unexpected()

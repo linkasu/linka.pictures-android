@@ -35,6 +35,12 @@ class LibraryController(private val library: LibraryStore, private val gate: Ass
             library.saveSettings(value, revision, it)
         }
 
+    suspend fun organization(owner: String, capability: AssistantCapability?, value: LibraryOrganization,
+        revision: Long, epoch: Long): OperationResult<Long> =
+        write(ProtectedAction.ORGANIZE_LIBRARY, owner, capability, epoch) {
+            library.saveOrganization(value, revision, it)
+        }
+
     private suspend fun <T> write(action: ProtectedAction, owner: String, capability: AssistantCapability?,
         epoch: Long, operation: suspend (WritePermit) -> OperationResult<T>): OperationResult<T> {
         stopped()?.let { return it }

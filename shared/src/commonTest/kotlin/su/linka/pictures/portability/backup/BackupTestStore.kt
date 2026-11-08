@@ -87,6 +87,7 @@ internal class BackupTestStore(val rig: CodecTestRig) : LibraryStore {
     override suspend fun retainArchive(value: RetainedArchive, permit: WritePermit): OperationResult<Unit> = error("live")
     override suspend fun settings(): OperationResult<PortableSettings> = error("live")
     override suspend fun saveSettings(value: PortableSettings, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long> = error("live")
+    override suspend fun saveOrganization(value: LibraryOrganization, expectedLibraryRevision: Long, permit: WritePermit): OperationResult<Long> = error("live")
     override suspend fun snapshot(): OperationResult<SnapshotReader> = error("live")
     override suspend fun replaceLibrary(value: SnapshotReader, expectedLibraryRevision: Long, expectedMessage: MessageStamp, permit: WritePermit): OperationResult<RecoveryInfo> = error("live mutation forbidden")
     override suspend fun recovery(): OperationResult<RecoveryInfo?> = error("live")
