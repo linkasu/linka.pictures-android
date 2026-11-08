@@ -1,5 +1,7 @@
 {
-  "schema": "linka-starter-pack-proposal-v1",
+  "schema": "linka-starter-pack-authoring-v2",
+  "authoringCsv": "docs/development/starter-pack-recordings.csv",
+  "authoringRule": "CSV is the sole card/label/placement/speech source; proposal holds board metadata/pageCount only, acquisition JSON binds actual media bytes",
   "date": "2026-11-08",
   "status": "blocked",
   "shippingResources": [],
@@ -12,13 +14,15 @@
   "audioDecision": {"source":"user_directed_linka_tts","sourceUrl":"https://tts.linka.su/tts","voice":"anton","method":"POST","contentType":"application/json","recordsManifest":"assets/starter-pack/audio/manifest.json","license":null,"provenance":"User-directed synthesis LINKa TTS anton; no legacy copyrighted media transferred; no external license inferred","template":"starter-pack-recordings.csv","uniqueRecordings":74,"silentActions":["SPACE",".","?"],"coreCapabilities":{"sets":["ru.core.v1","ru.food.v1","ru.activities.v1","ru.feelings.v1"],"speech":"prerecorded offline per-card clips; no runtime network or native TTS required for these four sets"},"optionalLettersCapability":{"seedKey":"ru.letters.v1","runtimeCells":"existing LITERAL semantics","wholeMessageSpeech":"existing native TTS; requires an available suitable Russian voice","recordedLetters":"33 named-letter reference recordings; not arbitrary-word speech; must not replace LITERAL cells with audio cards","blocksCoreSets":false}},
   "previewManifest": "starter-pack-preview/manifest.json",
   "audioReadiness": {"status":"source_audio_complete_not_shipping","records":74,"totalBytes":567426,"postJsonRequests":73,"reusedGetPilots":1,"coreUniqueRecords":41,"coreSpeakingSlots":54,"coreBytes":340533,"optionalLetterReferenceRecords":33,"validation":"All 74 pass ffprobe MP3 and strict ffmpeg decode/non-silent checks; offline hash/receipt reuse verified","format":{"codec":"mp3","sampleRate":48000,"channels":1,"minDurationSeconds":0.624,"maxDurationSeconds":1.44},"recordsManifestSize":72376,"recordsManifestSha256":"2e8b6a4dfa9613edc6fa0553ae7008957027fe8b82d0b855d7071ed2a7a0e885","listeningReview":"pending","nativeMediaInspection":"pending"},
-  "blockers": ["image_generation_unavailable", "visual_style_approval_pending", "listening_review_pending", "archive_codec_and_native_media_validation_pending"],
+  "imageReadiness": {"status":"technical_sources_ready","source":"codex.generate_image / Codex CLI builtin image_gen via ChatGPT subscription","modelId":null,"sheetsCsv":"assets/starter-pack/sheets.csv","acquisitionReceipt":"assets/starter-pack/source-manifest.json","sourceSheets":5,"crops":41,"rescaled":false,"approvalActor":"primary_assistant","humanVisualApproval":false,"approvalScope":"technical asset review for archive construction only","license":null},
+  "archiveCandidates": {"pathRelativeToOutputDir":"files/starter/catalog.json","workDir":"sibling <output-dir>-work/images","shipping":false,"nativeCodecReview":"pending","note":"Offline build outputs only; generated crops/archives are not source-controlled or release approval"},
+  "blockers": ["human_visual_and_usability_approval_pending", "listening_review_pending", "archive_codec_and_native_media_validation_pending"],
   "proposal": [
-    {"seedKey":"ru.core.v1","displayName":"Общаюсь","file":null,"size":null,"sha256":null,"rows":3,"columns":3,"optional":false,"pages":[["Да","Нет","Хочу","Не хочу","Помоги","Больно","Пить","Туалет","Хватит"],["Ещё","Есть","Отдых","Неудобно","Хорошо","Плохо","Не понимаю","Другое","Посмотри"],["Привет","Пока","Играть","Вместе","Нравится","Не нравится","Страшно","Злюсь","Обнять"]],"source":"user-approved new vocabulary; archive not yet produced","license":null,"provenance":"Audio: user-directed LINKa TTS anton, see recordsManifest; images pending; no legacy media reused"},
-    {"seedKey":"ru.food.v1","displayName":"Еда и питьё","file":null,"size":null,"sha256":null,"rows":3,"columns":3,"optional":false,"pages":[["Хочу","Не хочу","Ещё","Вода","Сок","Чай","Каша","Суп","Хватит"]],"source":"user-approved new vocabulary","license":null,"provenance":"Audio: user-directed LINKa TTS anton, see recordsManifest; images pending"},
-    {"seedKey":"ru.activities.v1","displayName":"Занятия","file":null,"size":null,"sha256":null,"rows":3,"columns":3,"optional":false,"pages":[["Хочу","Не хочу","Вместе","Играть","Читать","Гулять","Музыка","Мультфильм","Другое"]],"source":"user-approved new vocabulary","license":null,"provenance":"Audio: user-directed LINKa TTS anton, see recordsManifest; images pending"},
-    {"seedKey":"ru.feelings.v1","displayName":"Самочувствие","file":null,"size":null,"sha256":null,"rows":3,"columns":3,"optional":false,"pages":[["Больно","Неудобно","Помоги","Голова","Живот","Спина","Рука","Нога","Отдых"]],"source":"user-approved new vocabulary","license":null,"provenance":"Audio: user-directed LINKa TTS anton, see recordsManifest; images pending"},
-    {"seedKey":"ru.letters.v1","displayName":"Буквы","file":null,"size":null,"sha256":null,"rows":3,"columns":3,"optional":true,"pages":[["А","Б","В","Г","Д","Е","Ё","Ж","З"],["И","Й","К","Л","М","Н","О","П","Р"],["С","Т","У","Ф","Х","Ц","Ч","Ш","Щ"],["Ъ","Ы","Ь","Э","Ю","Я","SPACE",".","?"]],"source":"user-approved full Russian alphabet layout; not a copy of legacy 3x3","license":null,"provenance":"33 named-letter reference clips from LINKa TTS anton; preserve LITERAL runtime cells; native TTS voice required for whole words; no core-set dependency"}
+    {"seedKey":"ru.core.v1","displayName":"Общаюсь","pageCount":3,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.food.v1","displayName":"Еда и питьё","pageCount":1,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.activities.v1","displayName":"Занятия","pageCount":1,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.feelings.v1","displayName":"Самочувствие","pageCount":1,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.letters.v1","displayName":"Буквы","pageCount":4,"rows":3,"columns":3,"optional":true}
   ],
   "inventory": {
     "electronRoot": "/Volumes/data/linka/linka.looks-electron/extraResources/defaultSets",

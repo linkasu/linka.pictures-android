@@ -7,10 +7,12 @@ import io
 import json
 from pathlib import Path
 import re
-import struct
 import tempfile
 import zipfile
-import zlib
+import sys
+
+sys.dont_write_bytecode = True
+from starter_png import dimensions as png_dimensions
 
 spec = importlib.util.spec_from_file_location("starter_audio", Path(__file__).with_name("prepare-starter-audio.py"))
 audio = importlib.util.module_from_spec(spec)
@@ -32,7 +34,7 @@ def load_json(path):
                 raise ValueError("Duplicate JSON key")
             result[key] = value
         return result
-    if path.stat().st_size > 8 * 1024 * 1024:
+    if path.is_symlink() or path.stat().st_size > 8 * 1024 * 1024:
         raise ValueError("Manifest too large")
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique)
 
@@ -56,56 +58,33 @@ def checked_file(directory, record, suffix):
     return path, data
 
 
-def png_dimensions(data):
-    """Bounded 8-bit RGB/RGBA, non-interlaced PNG subset, with CRC/raster checks."""
-    if data[:8] != b"\x89PNG\r\n\x1a\n":
-        raise ValueError("Not PNG")
-    offset, image, ended, idat_closed = 8, bytearray(), False, False
-    dimensions = None
-    while offset < len(data):
-        if offset + 12 > len(data):
-            raise ValueError("Truncated PNG chunk")
-        length, kind = struct.unpack_from(">I4s", data, offset)
-        end = offset + 12 + length
-        if (end > len(data) or not re.fullmatch(rb"[A-Za-z]{4}", kind)
-                or kind[2] & 32 or kind in {b"acTL", b"fcTL", b"fdAT"}):
-            raise ValueError("Invalid PNG chunk")
-        payload = data[offset + 8:end - 4]
-        if zlib.crc32(kind + payload) & 0xffffffff != struct.unpack_from(">I", data, end - 4)[0]:
-            raise ValueError("PNG CRC mismatch")
-        if dimensions is None:
-            if kind != b"IHDR" or length != 13:
-                raise ValueError("PNG must start with IHDR")
-            width, height, depth, color, compression, filtering, interlace = struct.unpack(">IIBBBBB", payload)
-            if (not 0 < width <= 8192 or not 0 < height <= 8192 or width * height > 16000000
-                    or depth != 8 or color not in (2, 6) or compression or filtering or interlace):
-                raise ValueError("PNG bounds/encoding unsupported")
-            dimensions = width, height, 3 if color == 2 else 4
-        elif kind == b"IDAT":
-            if idat_closed:
-                raise ValueError("Noncontiguous PNG image data")
-            image.extend(payload)
-        elif kind == b"IEND":
-            if length or not image or end != len(data):
-                raise ValueError("Invalid PNG ending/trailing bytes")
-            ended = True
-            break
-        else:
-            if kind == b"IHDR" or kind[0] & 32 == 0:
-                raise ValueError("Unsupported critical PNG chunk")
-            idat_closed = bool(image)
-        offset = end
-    if not ended:
-        raise ValueError("Missing PNG IEND")
-    width, height, channels = dimensions
-    stride = width * channels + 1
-    expected = stride * height
-    decoder = zlib.decompressobj()
-    raw = decoder.decompress(image, expected + 1)
-    if (len(raw) != expected or not decoder.eof or decoder.unused_data or decoder.unconsumed_tail
-            or any(raw[row * stride] > 4 for row in range(height))):
-        raise ValueError("Invalid PNG raster")
-    return width, height
+def check_output(output, root):
+    if output.is_symlink():
+        raise ValueError("Symlink output directory")
+    resolved = output.resolve()
+    root = root.resolve()
+    if resolved.is_relative_to(root) and "build" not in resolved.relative_to(root).parts:
+        raise ValueError("Generated output inside project must be under build/, never source assets")
+    # Check output components, not trusted system aliases such as macOS /var -> /private/var.
+    anchor = root if resolved.is_relative_to(root) else Path(tempfile.gettempdir()).resolve()
+    current = output.absolute()
+    while current.resolve() != anchor and current != current.parent:
+        if current.is_symlink():
+            raise ValueError("Symlink output ancestor")
+        current = current.parent
+
+
+def validate_recording(recording, key):
+    evidence = recording.get("validation", {})
+    duration = evidence.get("durationSeconds", 0)
+    peak = evidence.get("maxVolumeDb", float("-inf"))
+    if (type(duration) not in (float, int) or type(peak) not in (float, int)
+            or recording.get("voice") != "anton" or evidence.get("format") != "mp3"
+            or evidence.get("codec") != "mp3" or evidence.get("strictDecode") != "passed"
+            or evidence.get("nonSilent") is not True or not 0 < duration <= 30
+            or not -50 <= peak <= 0 or evidence.get("channels") not in (1, 2)
+            or type(evidence.get("sampleRate")) is not int or evidence["sampleRate"] <= 0):
+        raise ValueError(f"Missing verified MP3 acquisition evidence: {key}")
 
 
 def zip_bytes(config, media):
@@ -125,14 +104,18 @@ def zip_bytes(config, media):
     return result
 
 
-def build(root, image_manifest_path, *, synthetic_test=False):
+def build(root, image_manifest_path, output_dir, *, synthetic_test=False):
     root = root.resolve()
     if synthetic_test and (root == ROOT.resolve() or not root.is_relative_to(Path(tempfile.gettempdir()).resolve())):
         raise ValueError("Synthetic build allowed only in separate temporary test root")
     source = root / "assets/starter-pack"
-    output = source / "archives"
-    for directory in [source / "images", source / "audio", output]:
-        if directory.is_symlink() or not directory.resolve().is_relative_to(root):
+    if not source.resolve().is_relative_to(root) or not (source / "audio").resolve().is_relative_to(root):
+        raise ValueError("Unsafe source audio directory")
+    output = Path(output_dir)
+    check_output(output, root)
+    images_directory = image_manifest_path.parent
+    for directory in [source / "audio", images_directory]:
+        if directory.is_symlink():
             raise ValueError("Unsafe media/output directory")
     manifest_path = root / "docs/development/starter-pack-manifest.json"
     manifest = load_json(manifest_path)
@@ -143,6 +126,15 @@ def build(root, image_manifest_path, *, synthetic_test=False):
         raise ValueError("Unexpected approved board matrix")
     index = load_json(source / "audio/manifest.json")
     audio.validate_index(index, rows)
+    if set(index["records"]) != {row["key"] for row in rows}:
+        raise ValueError("Missing acquisition records")
+    acquired_audio = {}
+    for row in rows:
+        key = row["key"]
+        record = index["records"][key]
+        validate_recording(record, key)
+        _, acquired_audio[key] = checked_file(source / "audio", {
+            "file": record["expected_filename"], "size": record["size"], "sha256": record["sha256"]}, ".mp3")
     images = load_json(image_manifest_path)
     core = {row["key"]: row for row in rows if not row["key"].startswith("ru.letter.")}
     purpose = "synthetic-test-only" if synthetic_test else "production"
@@ -156,17 +148,11 @@ def build(root, image_manifest_path, *, synthetic_test=False):
         if (not isinstance(record.get("provenance"), str) or not record["provenance"].strip()
                 or record.get("visualApproval") != "approved"):
             raise ValueError("Missing image provenance/visual approval")
-        _, image_data = checked_file(source / "images", record, ".png")
+        _, image_data = checked_file(images_directory, record, ".png")
         dimensions = png_dimensions(image_data)
         if not synthetic_test and min(dimensions) < 2:
             raise ValueError("One-pixel placeholders forbidden in production")
-        recording = index["records"].get(key)
-        if not recording or recording.get("voice") != "anton":
-            raise ValueError("Missing anton recording provenance")
-        path, audio_data = checked_file(source / "audio", {
-            "file": recording["expected_filename"], "size": recording["size"], "sha256": recording["sha256"]}, ".mp3")
-        if recording.get("validation") != audio.inspect(path):
-            raise ValueError("MP3 validation differs from receipt")
+        audio_data = acquired_audio[key]
         pair = []
         for data in [image_data, audio_data]:
             name = "media/" + hashlib.sha256(data).hexdigest()
@@ -180,8 +166,13 @@ def build(root, image_manifest_path, *, synthetic_test=False):
     locations = {loc: row for row in rows for loc in row["used_in"].split(";")}
     inputs = {"vocabulary": manifest_path, "recordingsCsv": manifest_path.with_name("starter-pack-recordings.csv"),
               "audioManifest": source / "audio/manifest.json", "imageManifest": image_manifest_path}
+    if not synthetic_test:
+        inputs.update(sheetsCsv=source / "sheets.csv", sourceReceipt=source / "source-manifest.json")
     outputs, catalog = {}, {"schema": "linka-starter-archives-v1", "archiveVersion": "3.0",
         "shipping": False, "purpose": purpose, "nativeCodecReview": "pending",
+        "audioBuildValidation": "SHA256/size/HTTP receipt and prior strictDecode/nonSilent evidence; no decode during app build",
+        "assetReview": {"actor": images.get("approvalActor"), "scope": images.get("approvalScope"),
+                        "humanVisualApproval": images.get("humanVisualApproval", False)},
         "inputSha256": {key: hashlib.sha256(path.read_bytes()).hexdigest() for key, path in inputs.items()}, "sets": []}
     for board in boards:
         seed = board["seedKey"]
@@ -213,16 +204,16 @@ def build(root, image_manifest_path, *, synthetic_test=False):
             "slots": sum(len(p["cards"]) for p in config["pages"]), "optional": letters,
             "speechCapability": "native TTS Russian voice required for whole words" if letters else "prerecorded offline"})
     outputs["catalog.json"] = json_bytes(catalog)
-    # Validate every input first; never overwrite a different artifact.
+    # Validate every input first; only replace explicit build-owned generated targets.
     for name, data in outputs.items():
         path = output / name
-        if path.is_symlink() or (path.exists() and path.read_bytes() != data):
-            raise ValueError("Existing artifact differs; review/remove owned old output explicitly")
+        if path.is_symlink():
+            raise ValueError("Symlink artifact")
     output.mkdir(parents=True, exist_ok=True)
     for name, data in outputs.items():
         path = output / name
-        if not path.exists():
-            with path.open("xb") as f:
+        if not path.exists() or path.read_bytes() != data:
+            with path.open("wb") as f:
                 f.write(data)
     return catalog
 
@@ -230,6 +221,7 @@ def build(root, image_manifest_path, *, synthetic_test=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--images-manifest", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
-    result = build(ROOT, args.images_manifest)
+    result = build(ROOT, args.images_manifest, args.output_dir)
     print(f"Built {len(result['sets'])} canonical 3.0 archives; native codec/media review still required")

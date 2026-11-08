@@ -1,0 +1,20 @@
+{
+  "schema": "linka-starter-sources-v1",
+  "technicalReview": "approved",
+  "approvalActor": "primary_assistant",
+  "approvalScope": "technical source-sheet review for archive construction only",
+  "humanVisualApproval": false,
+  "clinicalApproval": false,
+  "usabilityApproval": false,
+  "source": "User-authorized codex.generate_image / Codex CLI builtin image_gen via ChatGPT subscription",
+  "promptEvidence": "Exact historical strings and reference mappings supplied by primary from tools.codex.generate_image calls; hashes cover UTF-8 text without trailing newline",
+  "modelId": null,
+  "license": null,
+  "sheets": [
+    {"file":"core-page-1.png","size":1481135,"sha256":"4b9b78f2ca345821a28e0193ff2812fd018e1b5fbd5c1d20423c966c84f293cc","width":1254,"height":1254,"promptSha256":"63e47ec4739e4ff23fa1d83466325c7343077f936757999f7c9d40ed2b54b1d9","layoutSha256":"c5b4c0a741c1375ad7d89d6b478353fca66b94eae4c5968e594b4ea7759cc099","referenceSha256":{}},
+    {"file":"core-page-2.png","size":1666879,"sha256":"dd4c92481bc6d32fa372c49ee215a894b3c2ba1b57315b49893dc7e7beb2d2dd","width":1254,"height":1254,"promptSha256":"6e2651291ac30c897365125433eeba7b501cee81710ec2478d725cfb1b7b26b7","layoutSha256":"22d01011c5d0a99b291d126628ad76c92c4ae640517f57f5152094ff05aa376b","referenceSha256":{"previews/core-page-1.png":"4b9b78f2ca345821a28e0193ff2812fd018e1b5fbd5c1d20423c966c84f293cc"}},
+    {"file":"core-page-3.png","size":1725918,"sha256":"e6b25b69a3e0f544d08f5d88b076038c986e889007063ca808d7809415f9361a","width":1254,"height":1254,"promptSha256":"8dbf46ac1a9b75e5025dc1f266c311d63f448eccc64ab0cd98f09ab33ba638a3","layoutSha256":"89e9fc19d195708d37002beea7a7963201109ca9d749fe7547bbc85316a0c075","referenceSha256":{"previews/core-page-1.png":"4b9b78f2ca345821a28e0193ff2812fd018e1b5fbd5c1d20423c966c84f293cc"}},
+    {"file":"extra-food-activities.png","size":1533492,"sha256":"5cb7ae2b1e1d7c633a9ff7e3f76013598b49c8094c8376fbda84cf306486d51b","width":1254,"height":1254,"promptSha256":"73ff82723c24de1284adb254f899e9780afb5e475823ed9d8ccd6252609a6a4b","layoutSha256":"00fb12982cb1f5f82a903f7341ea993e9d6fa8e868ed05c5285e6ec70711bedb","referenceSha256":{"previews/core-page-1.png":"4b9b78f2ca345821a28e0193ff2812fd018e1b5fbd5c1d20423c966c84f293cc"}},
+    {"file":"extra-body-parts.png","size":1255716,"sha256":"8cfc166a1800bc5ab7a6b6f407f9d3ccfc57d1afc5000c5106ce550c0c96af4b","width":1536,"height":1024,"promptSha256":"e4ea42a38c990630c4abaf4e9e77f676064354e2984511f726022f368ce4a4a2","layoutSha256":"b0dc37de7011dba05529794321f90c224c09b8e544d02975f47482d8590d494f","referenceSha256":{"previews/core-page-1.png":"4b9b78f2ca345821a28e0193ff2812fd018e1b5fbd5c1d20423c966c84f293cc"}}
+  ]
+}

@@ -20,11 +20,6 @@ SOURCE = "https://tts.linka.su/tts"
 VOICE = "anton"
 LIMIT = 2 * 1024 * 1024
 PILOT_SHA = "c7f5df90c02687060b9fab6e4d3ae0199e67bb26c11e5388a5c9af7930e0749d"
-LETTER_NAMES = dict(zip(
-    "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ",
-    ["А", "Бэ", "Вэ", "Гэ", "Дэ", "Е", "Ё", "Жэ", "Зэ", "И", "И краткое",
-     "Ка", "Эль", "Эм", "Эн", "О", "Пэ", "Эр", "Эс", "Тэ", "У", "Эф", "Ха",
-     "Цэ", "Че", "Ша", "Ща", "Твёрдый знак", "Ы", "Мягкий знак", "Э", "Ю", "Я"], strict=True))
 
 
 def target(directory, filename):
@@ -37,46 +32,62 @@ def target(directory, filename):
 
 
 def requests(csv_path, manifest, directory):
+    if csv_path.is_symlink() or csv_path.stat().st_size > 1024 * 1024:
+        raise ValueError("Unsafe/oversized authoring CSV")
     if manifest.get("contentApproval", {}).get("status") != "approved":
         raise ValueError("Vocabulary not approved")
-    expected = {}
-    seeds = set()
+    expected, boards = {}, {}
     for board in manifest["proposal"]:
         seed = board["seedKey"]
-        if seed in seeds or board["rows"] != 3 or board["columns"] != 3:
+        count = board.get("pageCount")
+        if seed in boards or board["rows"] != 3 or board["columns"] != 3 or type(count) is not int or not 0 < count <= 256:
             raise ValueError("Duplicate seed or invalid grid")
-        seeds.add(seed)
-        for pi, page in enumerate(board["pages"], 1):
-            if len(page) != 9:
-                raise ValueError("Invalid page")
-            for ci, text in enumerate(page, 1):
-                if not isinstance(text, str) or not text:
-                    raise ValueError("Invalid label")
-                if text not in {"SPACE", ".", "?"}:
-                    expected[f"{seed}:p{pi}:c{ci}"] = text
+        boards[seed] = board
+        board["pages"] = [[None] * 9 for _ in range(count)]
+        for pi in range(1, count + 1):
+            for ci in range(1, 10):
+                expected[f"{seed}:p{pi}:c{ci}"] = (board, pi - 1, ci - 1)
     with csv_path.open(newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    if len(rows) != 74 or len({r["key"] for r in rows}) != 74:
-        raise ValueError("Expected 74 unique recording keys")
-    actual, filenames, labels = {}, set(), set()
+        reader = csv.DictReader(f)
+        if reader.fieldnames != ["key", "exact_phrase", "cell_kind", "speech_text", "voice", "expected_filename", "used_in"]:
+            raise ValueError("Unexpected authoring CSV header")
+        rows = list(reader)
+    if len(rows) != 77 or len({r["key"] for r in rows}) != 77:
+        raise ValueError("Expected 77 unique authoring keys (74 recordings + 3 silent actions)")
+    actual, filenames, labels, recordings = set(), set(), set(), []
     for row in rows:
-        target(directory, row["expected_filename"])
-        if not re.fullmatch(r"ru\.[a-z_.]+", row["key"]):
-            raise ValueError("Invalid recording key")
-        if row["expected_filename"] in filenames or row["exact_phrase"] in labels:
-            raise ValueError("Repeated filename or phrase")
-        filenames.add(row["expected_filename"])
+        if (not re.fullmatch(r"ru\.[a-z_.]+", row["key"]) or not row["exact_phrase"]
+                or row["cell_kind"] not in {"CONTENT", "LITERAL", "SPACE"} or None in row):
+            raise ValueError("Invalid authoring row")
+        if row["exact_phrase"] in labels:
+            raise ValueError("Repeated phrase")
         labels.add(row["exact_phrase"])
         for loc in row["used_in"].split(";"):
-            if loc in actual:
-                raise ValueError("Repeated location")
-            actual[loc] = row["exact_phrase"]
-        row["speechText"] = (LETTER_NAMES[row["exact_phrase"]]
-                             if row["key"].startswith("ru.letter.") else row["exact_phrase"])
+            if loc in actual or loc not in expected:
+                raise ValueError("Repeated/invalid location")
+            board, pi, ci = expected[loc]
+            if (board["optional"] and row["cell_kind"] == "CONTENT"
+                    or not board["optional"] and row["cell_kind"] != "CONTENT"):
+                raise ValueError("Cell kind does not match board capability")
+            board["pages"][pi][ci] = row["exact_phrase"]
+            actual.add(loc)
+        if row["exact_phrase"] in {"SPACE", ".", "?"}:
+            if (any(row[k] for k in ["speech_text", "voice", "expected_filename"])
+                    or row["cell_kind"] != ("SPACE" if row["exact_phrase"] == "SPACE" else "LITERAL")):
+                raise ValueError("Silent action must not have recording metadata")
+            continue
+        if row["cell_kind"] == "SPACE" or not row["speech_text"] or row["voice"] != VOICE:
+            raise ValueError("Missing speech text/anton voice")
+        target(directory, row["expected_filename"])
+        if row["expected_filename"] in filenames:
+            raise ValueError("Repeated audio filename")
+        filenames.add(row["expected_filename"])
+        row["speechText"] = row["speech_text"]
         row["sourceUrl"] = SOURCE
-    if actual != expected or len(actual) != 87:
-        raise ValueError("CSV does not cover approved speaking slots")
-    return rows
+        recordings.append(row)
+    if actual != set(expected) or len(actual) != 90 or len(recordings) != 74:
+        raise ValueError("CSV does not cover approved 90 slots/74 recordings")
+    return recordings
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -148,7 +159,8 @@ def validate_index(index, rows):
     by_key = {row["key"]: row for row in rows}
     for key, record in index["records"].items():
         if (any(record.get(field) != by_key[key][field]
-                for field in ["key", "exact_phrase", "used_in", "speechText", "sourceUrl", "expected_filename"])
+                for field in ["key", "exact_phrase", "speechText", "sourceUrl", "expected_filename"])
+                or record.get("voice") != by_key[key]["voice"]
                 or not isinstance(record.get("size"), int) or not 0 < record["size"] <= LIMIT
                 or not re.fullmatch(r"[0-9a-f]{64}", str(record.get("sha256")))
                 or record.get("acquisition") not in {"https_post_json_once", "reused_primary_pilot"}

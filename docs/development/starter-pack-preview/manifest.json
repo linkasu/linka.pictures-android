@@ -1,14 +1,28 @@
 {
   "schema": "linka-starter-preview-v1",
-  "status": "generation_failed",
+  "status": "generated_via_codex_technical_review_only",
   "shipping": false,
-  "visualApproval": "pending",
-  "file": null,
-  "size": null,
-  "sha256": null,
-  "source": "Single authorized image generation attempt; no image produced",
+  "visualApproval": "approved",
+  "approvalScope": "technical asset review for archive construction only",
+  "approvalActor": "primary_assistant",
+  "humanVisualApproval": false,
+  "clinicalApproval": false,
+  "usabilityApproval": false,
+  "pathBase": "project root",
+  "file": "assets/starter-pack/previews/core-page-1.png",
+  "size": 1481135,
+  "sha256": "4b9b78f2ca345821a28e0193ff2812fd018e1b5fbd5c1d20423c966c84f293cc",
+  "source": "User-authorized codex.generate_image / Codex CLI builtin image_gen via ChatGPT subscription",
+  "modelId": null,
+  "imagesManifestRelativeToBuildWorkDir": "images/manifest.json",
+  "authoringSheetsCsv": "assets/starter-pack/sheets.csv",
+  "sourceReceipt": "assets/starter-pack/source-manifest.json",
+  "sourceSheetCount": 5,
+  "cropCount": 41,
+  "successfulPathReview": "Primary assistant read each of the five source PNGs; content worker read the 41-crop contact sheet. No human/clinical/usability approval claimed.",
+  "contactSheet": {"file":"docs/development/starter-pack-preview/crops-contact-sheet.png","size":859962,"sha256":"efeaac15168f3e559d255bde06b33d77f6cc95a93834a77278602251ac34b999","readBy":"content_assistant","layout":"7 columns x 6 rows; 41 crops sorted by image filename; final cell blank; only contact thumbnails scaled"},
   "license": null,
-  "provenance": {
+  "failedExperimentalImageApi": {
     "date": "2026-11-08",
     "tool": "experimental_image_generate",
     "jobId": "image_1bb7c3903001c72adGUEEK2IuY",
@@ -25,15 +39,6 @@
   "rows": 3,
   "columns": 3,
   "style": "White background, thin light-gray cell dividers, high-contrast dark navy outlines, restrained colors, large simple friendly flat AAC-like symbols, consistent scale, no text/letters/numbers inside image, no small details. Labels below are metadata only. Not clinically validated.",
-  "cells": [
-    {"position":1,"row":1,"column":1,"label":"Да","recordingKey":"ru.yes","requestedSymbol":"Large green checkmark in circle"},
-    {"position":2,"row":1,"column":2,"label":"Нет","recordingKey":"ru.no","requestedSymbol":"Large red X in circle"},
-    {"position":3,"row":1,"column":3,"label":"Хочу","recordingKey":"ru.want","requestedSymbol":"Friendly child extending open hand toward toy ball to request it"},
-    {"position":4,"row":2,"column":1,"label":"Не хочу","recordingKey":"ru.not_want","requestedSymbol":"Child turning away from toy ball with palm raised in refusal"},
-    {"position":5,"row":2,"column":2,"label":"Помоги","recordingKey":"ru.help","requestedSymbol":"Larger hand gently supporting smaller reaching hand"},
-    {"position":6,"row":2,"column":3,"label":"Больно","recordingKey":"ru.hurts","requestedSymbol":"Child touching upper arm with red pain star, concerned not frightening"},
-    {"position":7,"row":3,"column":1,"label":"Пить","recordingKey":"ru.drink","requestedSymbol":"Cup of water tilted toward child's mouth"},
-    {"position":8,"row":3,"column":2,"label":"Туалет","recordingKey":"ru.toilet","requestedSymbol":"Simple side-view western toilet, no person"},
-    {"position":9,"row":3,"column":3,"label":"Хватит","recordingKey":"ru.enough","requestedSymbol":"Large raised open palm inside red outlined stop octagon, no text"}
-  ]
+  "cardLabelsAndKeysSource": "docs/development/starter-pack-recordings.csv",
+  "historicalPromptSource": "assets/starter-pack/sheets.csv; original hashes in source-manifest.json"
 }

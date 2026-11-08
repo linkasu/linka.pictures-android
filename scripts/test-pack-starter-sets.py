@@ -28,6 +28,7 @@ class PackerTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.source = self.root / "assets/starter-pack"
+        self.output = self.root / "build/starter/files/starter"
         self.images_dir = self.source / "images"
         self.images_dir.mkdir(parents=True)
         self.docs = self.root / "docs/development"
@@ -50,10 +51,10 @@ class PackerTest(unittest.TestCase):
         self.images_path.write_bytes(packer.json_bytes(self.images))
 
     def test_canonical_wire_namespace_slots_and_determinism(self):
-        first = packer.build(self.root, self.images_path, synthetic_test=True)
-        output = self.source / "archives"
+        first = packer.build(self.root, self.images_path, self.output, synthetic_test=True)
+        output = self.output
         before = {p.name: p.read_bytes() for p in output.iterdir()}
-        self.assertEqual(first, packer.build(self.root, self.images_path, synthetic_test=True))
+        self.assertEqual(first, packer.build(self.root, self.images_path, self.output, synthetic_test=True))
         self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
         self.assertEqual(sum(s["slots"] for s in first["sets"]), 90)
         self.assertEqual(sum(s["pages"] for s in first["sets"]), 10)
@@ -125,8 +126,8 @@ class PackerTest(unittest.TestCase):
                 record["visualApproval"] = "pending"
             self.save_images()
             with self.subTest(failure=failure), self.assertRaises(ValueError):
-                packer.build(self.root, self.images_path, synthetic_test=True)
-            self.assertFalse((self.source / "archives").exists())
+                packer.build(self.root, self.images_path, self.output, synthetic_test=True)
+            self.assertFalse(self.output.exists())
 
     def test_png_bounds_crc_raster_and_trailing_data(self):
         self.assertEqual(packer.png_dimensions(pixel()), (1, 1))
@@ -145,37 +146,37 @@ class PackerTest(unittest.TestCase):
         index["records"]["ru.help"]["request"]["method"] = "POST"
         index_path.write_bytes(packer.json_bytes(index))
         with self.assertRaisesRegex(ValueError, "pilot receipt"):
-            packer.build(self.root, self.images_path, synthetic_test=True)
-        self.assertFalse((self.source / "archives").exists())
+            packer.build(self.root, self.images_path, self.output, synthetic_test=True)
+        self.assertFalse(self.output.exists())
         shutil.copyfile(packer.ROOT / "assets/starter-pack/audio/manifest.json", index_path)
         index = packer.load_json(index_path)
         index["records"]["ru.yes"]["voice"] = "unknown"
         index_path.write_bytes(packer.json_bytes(index))
-        with self.assertRaisesRegex(ValueError, "anton recording provenance"):
-            packer.build(self.root, self.images_path, synthetic_test=True)
+        with self.assertRaisesRegex(ValueError, "acquisition receipt"):
+            packer.build(self.root, self.images_path, self.output, synthetic_test=True)
         shutil.copyfile(packer.ROOT / "assets/starter-pack/audio/manifest.json", index_path)
         mp3 = self.source / "audio/ru-yes.mp3"
         original = mp3.read_bytes()
         mp3.write_bytes(b"x" + original[1:])
         with self.assertRaisesRegex(ValueError, "hash mismatch"):
-            packer.build(self.root, self.images_path, synthetic_test=True)
+            packer.build(self.root, self.images_path, self.output, synthetic_test=True)
         mp3.write_bytes(original)
         self.images["purpose"] = "production"
         self.save_images()
         with self.assertRaisesRegex(ValueError, "One-pixel"):
-            packer.build(self.root, self.images_path)
-        self.assertFalse((self.source / "archives").exists())
+            packer.build(self.root, self.images_path, self.output)
+        self.assertFalse(self.output.exists())
         with self.assertRaisesRegex(ValueError, "temporary test root"):
-            packer.build(packer.ROOT, self.images_path, synthetic_test=True)
+            packer.build(packer.ROOT, self.images_path, self.output, synthetic_test=True)
 
     def test_no_images_no_output_and_duplicate_json_rejected(self):
         self.images_path.unlink()
         with self.assertRaises(FileNotFoundError):
-            packer.build(self.root, self.images_path)
-        self.assertFalse((self.source / "archives").exists())
+            packer.build(self.root, self.images_path, self.output)
+        self.assertFalse(self.output.exists())
         self.images_path.write_text('{"images":{},"images":{}}')
         with self.assertRaisesRegex(ValueError, "Duplicate JSON"):
-            packer.build(self.root, self.images_path)
+            packer.build(self.root, self.images_path, self.output)
 
 
 if __name__ == "__main__":

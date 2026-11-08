@@ -41,7 +41,7 @@ class AudioProducerTest(unittest.TestCase):
             if change == "unapproved":
                 invalid["contentApproval"]["status"] = "pending"
             elif change == "bad_page":
-                invalid["proposal"][0]["pages"][0].pop()
+                invalid["proposal"][0]["pageCount"] = 2
             else:
                 invalid["proposal"].append(invalid["proposal"][0])
             with self.subTest(change=change), self.assertRaises(ValueError):

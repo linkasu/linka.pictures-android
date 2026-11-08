@@ -156,21 +156,36 @@ GET pilot «Помоги». Для четырёх основных наборо�
 длительность 0.624–1.44s, строгий decode и non-silent PASS. HTTP/codec ошибок при
 batch не было. Отдельный audio manifest: 72376 bytes, SHA256
 `2e8b6a4dfa9613edc6fa0553ae7008957027fe8b82d0b855d7071ed2a7a0e885`.
-Состояние — **source audio complete, не shipping pack**: прослушивание, изображения,
-архивы и native media validation ещё не завершены.
+Состояние — **source audio complete, не shipping pack**: прослушивание и native
+media validation ещё не завершены. Изображения и archive candidates подготовлены
+отдельным этапом ниже.
 
 ## Preview первой страницы
 
 Выполнен ровно один запрос генерации листа 3×3, job
 `image_1bb7c3903001c72adGUEEK2IuY`, модель, сообщённая инструментом:
 `openai/gpt-image-2.5-sunburst`. Сервис вернул ошибку аутентификации API-ключа.
-**Изображение не создано**, прочитать его невозможно; повторов и подмены чужими
-картинками нет. `starter-pack-preview/manifest.json` сохраняет замысел всех девяти
-ячеек, ограничения стиля и provenance неудачной попытки. Это не shipping icons.
-Для повторного запуска требуется исправное окружение генерации и новое разрешение
-на попытку; остальные позиции до утверждения стиля не генерируются.
+**В той попытке изображение не создано.** История неудачи сохранена отдельно как
+`failedExperimentalImageApi` в `starter-pack-preview/manifest.json`.
 
-## Подтверждённые blockers — остановка упаковки
+Позднее пользователь явно выбрал `codex.generate_image`: primary получил и прочитал
+пять настоящих PNG через Codex CLI builtin image_gen по ChatGPT subscription.
+Это другой успешный путь, **не ремонт прежнего experimental image API**.
+Model ID не сообщён (`null`), чужие/старые изображения не переносились.
+Пять листов скопированы побайтно с проверкой pinned SHA в
+`assets/starter-pack/previews/`. `scripts/prepare-starter-images.py` подготовил
+41 RGB8 PNG с inset6px, без rescale; теперь они генерируются только в sibling
+`<output-dir>-work/images/`, а не хранятся в source assets. Их hashes/bytes,
+cropRect, ключи, source SHA и provenance находятся в images manifest.
+Worker прочитал весь контакт-лист `starter-pack-preview/crops-contact-sheet.png`.
+
+`visualApproval=approved` в image manifest означает **technical asset review для
+сборки**, actor `primary_assistant`, `humanVisualApproval=false`. Это не
+human/clinical/usability approval. Packer производит пять canonical3.0 candidates
+и `<output-dir>/files/starter/catalog.json`, `shipping=false`,
+`nativeCodecReview=pending`. Дальнейшие gate остаются у primary.
+
+## Исторические ограничения и текущие blockers shipping
 
 1. **Права старых медиа, перенос не выполняется:** `linka.looks-electron/README.md:96–102` прямо исключает изображения,
    звуки и учебные материалы из GPL-декларации кода. `THIRD_PARTY_NOTICES.md` не
@@ -188,15 +203,16 @@ batch не было. Отдельный audio manifest: 72376 bytes, SHA256
    `audioVoice=alena` — лишь метаданные части файлов, не подтверждённый диктор,
    происхождение TTS или разрешение перераспространения. SpeechSource.None и
    требующий установки системный голос не выполняют требование офлайн-речи.
-3. **Состав утверждён**, но изображения/стиль и звучание ещё не утверждены.
+3. **Состав утверждён**, изображения прошли technical review primary; human visual,
+   clinical/usability approval и listening review ещё не выполнены.
    «Есть» означает еду; отказ/помощь/боль находятся на первой странице.
    Для необязательных букв штатный native TTS требует доступного голоса;
-   четыре основных набора используют записи без этой зависимости. Preview заблокирован
-   ошибкой аутентификации сервиса, не отсутствием пользовательского разрешения.
+   четыре основных набора используют записи без этой зависимости. Image assets
+   больше не заблокированы: использован новый Codex путь с явным provenance.
 4. **Медиа gate после прав:** выбранные .linka прочитать штатным codec и native
-   media inspection обеих платформ без ослабления правил. Здесь выполнены только
-   чтение JSON, сверка существования references, SHA/размер и ZIP CRC кандидатов;
-   это не media PASS. У повреждённого звуки2 CRC также проходит — CRC недостаточно.
+   media inspection обеих платформ без ослабления правил. Новые материалы прошли
+   PNG structure/raster/hash/bounds и strict MP3 decode, ZIP/wire проверены тестами;
+   это не native media PASS. У повреждённого звуки2 CRC также проходит — CRC недостаточно.
 
 Разрешённая исправленная копия звуки2 описана в
 `smotri-originals-visual-verification.md:100–114`: SHA256
@@ -206,9 +222,9 @@ batch не было. Отдельный audio manifest: 72376 bytes, SHA256
 не использовать. Исправление декодирования не решает вопрос прав.
 
 **Следующее действие primary:** проверить звучание синтезированных реплик;
-восстановить доступ к генерации и получить визуальное утверждение preview,
-затем упаковать архивы и выполнить штатную codec/native проверку. Состав повторно утверждать
-не требуется. До готовности медиа `shippingResources=[]`: новых .linka нет намеренно.
+получить human visual/usability approval и выполнить штатную codec/native проверку
+пяти archive candidates. Состав повторно утверждать не требуется.
+`shippingResources=[]`: новый runtime комплект не подключается этой веткой.
 Нет новых зависимостей или интеграции S10,
 изменений bootstrap/storage/Gradle/CI/catalogue, очистки или замены пользовательских
 данных. На обновлении библиотека остаётся прежней; seed только для новой установки
