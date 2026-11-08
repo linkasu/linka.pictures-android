@@ -24,9 +24,10 @@ internal data class BoardSettingsSnapshot(val listing: LibraryListing, val setti
 
 /** Mode is a separate explicit communication command, never a board default override. */
 internal suspend fun saveBoardSettings(controller: LibraryController, owner: String,
-    capability: AssistantCapability?, snapshot: BoardSettingsSnapshot, board: BoardId, showPageButtons: Boolean,
-    selectedMode: InteractionMode?, onSaved: (PortableSettings) -> Unit, onSetMode: (InteractionMode) -> Unit): OperationResult<Long> {
-    val value = snapshot.settings.copy(boards = snapshot.settings.boards + (board to BoardPresentation(showPageButtons)))
+    capability: AssistantCapability?, snapshot: BoardSettingsSnapshot, board: BoardId, presentation: BoardPresentation,
+    selectedMode: InteractionMode?, onSaved: (PortableSettings) -> Unit, onSetMode: (InteractionMode) -> Unit,
+): OperationResult<Long> {
+    val value = snapshot.settings.copy(boards = snapshot.settings.boards + (board to presentation))
     val result = controller.settings(owner, capability, value, snapshot.listing.revision, snapshot.listing.epoch)
     if (result is OperationResult.Completed) {
         onSaved(value)
@@ -67,7 +68,7 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
             else -> result = read
         }
     }
-    var pager by remember(snapshot) { mutableStateOf(snapshot?.settings?.boards?.get(board)?.showPageButtons ?: true) }
+    var options by remember(snapshot) { mutableStateOf(snapshot?.settings?.boards?.get(board) ?: BoardPresentation()) }
     var selectedMode by remember(snapshot) { mutableStateOf<InteractionMode?>(null) }
     val writable = enabled && !busy && !stopped && !controller.requiresRestart &&
         library.listing.value.refreshProblem == null
@@ -83,10 +84,10 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
                         scope.launch {
                              try {
                                 val proposed = loaded.settings.copy(boards = loaded.settings.boards +
-                                    (board to BoardPresentation(pager)))
+                                    (board to options))
                                 layoutNotice = currentValidation(proposed)
                                 if (layoutNotice != null) return@launch
-                                val saved = saveBoardSettings(controller, owner, capability, loaded, board, pager, selectedMode,
+                                val saved = saveBoardSettings(controller, owner, capability, loaded, board, options, selectedMode,
                                     { currentOnSaved(it) }, { chosen ->
                                         if (currentEnabled && modeGuard() is OperationResult.Completed &&
                                             gate.check(ProtectedAction.CHANGE_SETTINGS, currentCapability, owner) is OperationResult.Completed)
@@ -107,10 +108,24 @@ internal fun BoardSettingsDialog(library: LibraryStore, controller: LibraryContr
         if (gate.check(ProtectedAction.CHANGE_SETTINGS, capability, owner) !is OperationResult.Completed) access()
         if (snapshot == null && result == null) Text(stringResource(Res.string.loading_settings))
         snapshot?.let {
+            Text(stringResource(Res.string.show_page_navigation_buttons))
+            PageNavigation.entries.forEach { choice ->
+                Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)
+                    .selectable(options.navigation == choice, enabled = writable, role = Role.RadioButton,
+                        onClick = { options = options.copy(navigation = choice) })) {
+                    RadioButton(options.navigation == choice, null, enabled = writable)
+                    Text(stringResource(when (choice) {
+                        PageNavigation.NONE -> Res.string.communication_navigation_none
+                        PageNavigation.BOTTOM -> Res.string.communication_navigation_bottom
+                        PageNavigation.SIDE -> Res.string.communication_navigation_side
+                    }))
+                }
+            }
             Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)
-                .toggleable(pager, enabled = writable, role = Role.Checkbox, onValueChange = { pager = it })) {
-                Checkbox(pager, null, enabled = writable)
-                Text(stringResource(Res.string.show_page_navigation_buttons))
+                .toggleable(options.dragToCompose, enabled = writable, role = Role.Checkbox,
+                    onValueChange = { options = options.copy(dragToCompose = it) })) {
+                Checkbox(options.dragToCompose, null, enabled = writable)
+                Text(stringResource(Res.string.communication_drag_to_message))
             }
             Text(stringResource(Res.string.communication_mode_app_wide))
             InteractionMode.entries.forEach { choice -> Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp)

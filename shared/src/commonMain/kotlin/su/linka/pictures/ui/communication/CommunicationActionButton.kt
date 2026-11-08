@@ -31,8 +31,10 @@ internal fun CommunicationActionButton(
         colors = ButtonDefaults.outlinedButtonColors(backgroundColor = palette.navigationSurface,
             contentColor = palette.text, disabledContentColor = palette.disabledText),
     ) {
+        BoxWithConstraints {
+        val iconSize = minOf(maxWidth, maxHeight * .35f).coerceAtLeast(24.dp)
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(icon.vector, null, Modifier.size(24.dp))
+            Icon(icon.vector, null, Modifier.size(iconSize))
             Text(when (icon) {
                 CommunicationIcon.Backspace -> stringResource(Res.string.remove)
                 CommunicationIcon.Clear -> stringResource(Res.string.clear)
@@ -41,6 +43,7 @@ internal fun CommunicationActionButton(
                 else -> label
             }, modifier = Modifier.clearAndSetSemantics {}, fontSize = 12.sp, lineHeight = 14.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
         }
     }
 }

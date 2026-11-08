@@ -8,6 +8,14 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class FixedCommunicationLayoutTest {
+    @Test fun phraseTargetsCurrentWindowAndShrinksOnlyToKeepWholeGrid() {
+        assertEquals(512f, fitCommunicationPhrase(80f, 1600f) { it <= 600f })
+        val compact = assertNotNull(fitCommunicationPhrase(80f, 800f) { it <= 150f })
+        assertTrue(compact <= 150f && compact > 149.99f)
+        assertNull(fitCommunicationPhrase(120f, 800f) { it <= 119f })
+        assertNull(fitCommunicationPhrase(160f, 400f) { true })
+        assertNull(fitCommunicationPhrase(80f, Float.NaN) { true })
+    }
     @Test
     fun keepsWholeCaptionsAndPicturesWithinFixedTouchTargets() {
         // A deterministic monospace font: 8px characters and 20px lines, wrapping at spaces.

@@ -393,4 +393,8 @@
     <string name="library_folder">Папка</string>
     <string name="library_context_menu">Открыть меню действий</string>
     <string name="library_destination">Назначение: %1$s</string>
+    <string name="communication_navigation_none">Без стрелок</string>
+    <string name="communication_navigation_bottom">Стрелки под карточками</string>
+    <string name="communication_navigation_side">Стрелки по бокам карточек</string>
+    <string name="communication_drag_to_message">Добавлять карточки в фразу удержанием и перетаскиванием</string>
 </resources>

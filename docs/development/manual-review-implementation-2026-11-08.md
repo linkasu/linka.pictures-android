@@ -11,7 +11,7 @@
 | S3 | Snapshot, backup/recovery | PASS: storage/backup/integration/transfer focused; native cross-platform pending |
 | S4 | UI папок и меню по удержанию | PASS: JVM presentation/back; native gestures pending |
 | S5 | Пароль до открытия настроек набора | TODO |
-| S6 | Фраза 32% с адаптацией, боковые стрелки | TODO |
+| S6 | Фраза 32% с адаптацией, боковые стрелки | Focused JVM/Android compile PASS; integrated/native acceptance pending |
 | S7 | Безопасное переключение карточек с автосохранением | TODO |
 | S8 | Перетаскивание: обмен ячеек текущей страницы | TODO |
 | S9 | Опциональный drag в COMPOSE, append во фразу | TODO |

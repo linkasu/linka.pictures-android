@@ -22,20 +22,24 @@ class BoardSettingsTest {
         fs.createDirectory(root, mustCreate = true)
         val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
         try {
-            val original = PortableSettings(1.5f, true, "ru-RU", mapOf(BoardId("other") to BoardPresentation(false)))
+            val original = PortableSettings(1.5f, true, "ru-RU", mapOf(
+                BoardId("other") to BoardPresentation(false),
+                BoardId("board") to BoardPresentation(PageNavigation.SIDE, dragToCompose = true)))
             val snapshot = BoardSettingsSnapshot(runtime.library.listing.value, original)
             val controller = LibraryController(runtime.library, gate)
             val modes = mutableListOf<InteractionMode>()
             var saved: PortableSettings? = null
             assertIs<OperationResult.Completed<Long>>(saveBoardSettings(controller, "owner", null, snapshot,
-                BoardId("board"), false, InteractionMode.DIRECT, { saved = it }, { modes += it }))
-            assertEquals(original.copy(boards = original.boards + (BoardId("board") to BoardPresentation(false))), saved)
+                BoardId("board"), original.boards.getValue(BoardId("board")).copy(navigation = PageNavigation.NONE),
+                InteractionMode.DIRECT, { saved = it }, { modes += it }))
+            assertEquals(original.copy(boards = original.boards +
+                (BoardId("board") to BoardPresentation(PageNavigation.NONE, dragToCompose = true))), saved)
             assertEquals(listOf(InteractionMode.DIRECT), modes)
             assertEquals(saved, assertIs<OperationResult.Completed<PortableSettings>>(runtime.library.settings()).value)
 
             // Reusing the captured revision conflicts: neither the snapshot nor mode is silently replayed.
             saved = null
-            val stale = saveBoardSettings(controller, "owner", null, snapshot, BoardId("board"), true,
+            val stale = saveBoardSettings(controller, "owner", null, snapshot, BoardId("board"), BoardPresentation(),
                 InteractionMode.COMPOSE, { saved = it }, { modes += it })
             assertEquals(ProblemCode.CONFLICT, assertIs<OperationResult.Failed>(stale).problem.code)
             assertNull(saved)
@@ -44,7 +48,9 @@ class BoardSettingsTest {
             val current = BoardSettingsSnapshot(runtime.library.listing.value,
                 assertIs<OperationResult.Completed<PortableSettings>>(runtime.library.settings()).value)
             assertIs<OperationResult.Completed<Long>>(saveBoardSettings(controller, "owner", null, current,
-                BoardId("board"), true, null, {}, { modes += it }))
+                BoardId("board"), current.settings.boards.getValue(BoardId("board")).copy(navigation = PageNavigation.SIDE),
+                null, { saved = it }, { modes += it }))
+            assertEquals(BoardPresentation(PageNavigation.SIDE, dragToCompose = true), saved?.boards?.get(BoardId("board")))
             assertEquals(listOf(InteractionMode.DIRECT), modes)
 
             val unknownStore = object : LibraryStore by runtime.library {
@@ -54,7 +60,8 @@ class BoardSettingsTest {
             val unknownController = LibraryController(unknownStore, gate)
             val fresh = current.copy(listing = runtime.library.listing.value)
             assertEquals(OperationResult.UnconfirmedCommit, saveBoardSettings(unknownController, "owner", null, fresh,
-                BoardId("board"), false, InteractionMode.COMPOSE, { fail("Unknown must not apply settings") }, { fail("Unknown must not set mode") }))
+                BoardId("board"), BoardPresentation(false), InteractionMode.COMPOSE,
+                { fail("Unknown must not apply settings") }, { fail("Unknown must not set mode") }))
             assertTrue(unknownController.requiresRestart)
         } finally { runtime.close(); fs.deleteRecursively(root) }
     }

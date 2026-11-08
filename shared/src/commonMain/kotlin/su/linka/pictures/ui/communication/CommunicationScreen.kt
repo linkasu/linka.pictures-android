@@ -28,6 +28,7 @@ import su.linka.pictures.application.ports.IdSource
 import su.linka.pictures.application.ports.VoiceCapability
 import su.linka.pictures.domain.AssetId
 import su.linka.pictures.domain.CommandId
+import su.linka.pictures.domain.PageNavigation
 import su.linka.pictures.ui.images.VisibleImageDemand
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 
@@ -42,6 +43,7 @@ internal fun CommunicationScreen(
     images: Map<AssetId, ImageBitmap> = emptyMap(),
     modifier: Modifier = Modifier,
     showPageButtons: Boolean = true,
+    navigation: PageNavigation = if (showPageButtons) PageNavigation.BOTTOM else PageNavigation.NONE,
     onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
     onOpenBoardSettings: (() -> Unit)? = null,
 ) {
@@ -79,6 +81,12 @@ internal fun CommunicationScreen(
             return true
         }
         val paging = Modifier.communicationPaging(inputFocused, presentation.commandsEnabled) { changePage(it) }
+        val pageAction: @Composable (Int, Modifier) -> Unit = { direction, actionModifier ->
+            CommunicationIconButton(if (direction < 0) CommunicationIcon.Previous else CommunicationIcon.Next,
+                if (direction < 0) previousPage else nextPage,
+                pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) != null,
+                { changePage(direction) }, actionModifier)
+        }
         Surface(modifier.fillMaxSize().then(paging), color = palette.background, contentColor = palette.text) {
             CompositionLocalProvider(LocalContentAlpha provides 1f) {
                 Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))) {
@@ -97,7 +105,10 @@ internal fun CommunicationScreen(
                     }
                     Divider(color = palette.divider, thickness = 1.dp)
                     val page = presentation.page
-                    val gridModifier = Modifier.fillMaxWidth().height(layout.gridHeight.dp)
+                    Row(Modifier.fillMaxWidth().height(layout.gridHeight.dp)) {
+                    val sideButtons = navigation == PageNavigation.SIDE && pages.size > 1
+                    if (sideButtons) pageAction(-1, Modifier.width(48.dp).fillMaxHeight())
+                    val gridModifier = Modifier.weight(1f).fillMaxHeight()
                     key(state.message.cursor?.boardId, page?.id, state.message.cursor?.firstCell) {
                         if (page == null) Box(gridModifier) else CommunicationGrid(
                             page, state.message.cursor?.firstCell ?: 0,
@@ -112,16 +123,12 @@ internal fun CommunicationScreen(
                             modifier = gridModifier,
                         )
                     }
+                    if (sideButtons) pageAction(1, Modifier.width(48.dp).fillMaxHeight())
+                    }
                     Row(Modifier.fillMaxWidth().height(layout.footerHeight.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (page != null && pages.size > 1) {
-                            val pagingVisible = showPageButtons && pages.size > 1
-                            val pageAction: @Composable (Int) -> Unit = { direction ->
-                                CommunicationIconButton(if (direction < 0) CommunicationIcon.Previous else CommunicationIcon.Next,
-                                    if (direction < 0) stringResource(Res.string.previous_page) else stringResource(Res.string.next_page),
-                                    pageTarget(presentation.pageIndex, pages.size, direction, presentation.commandsEnabled) != null,
-                                    { changePage(direction) }, Modifier.size(48.dp))
-                            }
-                             if (pagingVisible) pageAction(-1)
+                            val pagingVisible = navigation == PageNavigation.BOTTOM
+                             if (pagingVisible) pageAction(-1, Modifier.size(48.dp))
                             val pageDescription = stringResource(Res.string.page_1_s_of_2_s, presentation.pageIndex + 1, pages.size)
                              Text(
                                 pageDescription,
@@ -136,7 +143,7 @@ internal fun CommunicationScreen(
                                     )
                                 },
                             )
-                            if (pagingVisible) pageAction(1)
+                            if (pagingVisible) pageAction(1, Modifier.size(48.dp))
                         }
                     }
                 }

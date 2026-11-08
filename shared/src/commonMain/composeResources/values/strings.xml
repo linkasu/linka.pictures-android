@@ -393,4 +393,8 @@
     <string name="library_folder">Folder</string>
     <string name="library_context_menu">Open actions menu</string>
     <string name="library_destination">Destination: %1$s</string>
+    <string name="communication_navigation_none">No arrows</string>
+    <string name="communication_navigation_bottom">Arrows below cards</string>
+    <string name="communication_navigation_side">Arrows beside cards</string>
+    <string name="communication_drag_to_message">Long press and drag cards into the message</string>
 </resources>

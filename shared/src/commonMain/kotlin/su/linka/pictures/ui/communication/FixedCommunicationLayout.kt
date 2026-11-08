@@ -19,6 +19,7 @@ import kotlin.math.floor
 import su.linka.pictures.domain.BoardDocument
 import su.linka.pictures.domain.CellKind
 import su.linka.pictures.domain.PageId
+import su.linka.pictures.domain.PageNavigation
 import su.linka.pictures.ui.components.CommunicationCaptionStyle
 import su.linka.pictures.ui.theme.LinkaTypography
 
@@ -63,6 +64,8 @@ internal class CommunicationBoardMeasurer(
         height: Float,
         textScale: Float,
         showPageButtons: Boolean = true,
+        navigation: PageNavigation = if (showPageButtons) PageNavigation.BOTTOM else PageNavigation.NONE,
+        viewportHeight: Float = height,
     ): FixedCommunicationBoardLayout? {
         if (!width.isFinite() || !height.isFinite() || width <= 0 || height <= 0 ||
             !textScale.isFinite() || textScale <= 0) return null
@@ -91,17 +94,20 @@ internal class CommunicationBoardMeasurer(
                 textHeight(it, actionStyle, actionWidth - 8f)!!
             } + 24f + 4f + 8f
             val captionStyle = typography.body1.merge(CommunicationCaptionStyle)
-            val phraseHeight = maxOf(64f, actionHeight, caption("M", captionStyle, width.dp.roundToPx()).height.toDp().value + 8f + 6f + 24f)
+            val minimumPhrase = maxOf(64f, actionHeight, caption("M", captionStyle, width.dp.roundToPx()).height.toDp().value + 8f + 6f + 24f)
+            val bottomButtons = navigation == PageNavigation.BOTTOM
             val footerHeight = if (document.pages.size == 1) 0f else maxOf(
-                if (showPageButtons) 48f else 0f,
+                if (bottomButtons) 48f else 0f,
                 textHeight(pageLabel.replace("%1\$s", document.pages.size.toString()).replace("%2\$s", document.pages.size.toString()), typography.body1,
-                    width - if (showPageButtons) 96f else 0f) ?: return null,
+                    width - if (bottomButtons) 96f else 0f) ?: return null,
             )
-            val gridHeight = height - toolbar - phraseHeight - footerHeight - 1f
-            if (gridHeight <= 0) return null
-            val pages = document.pages.associate { page ->
+            val gridWidth = width - if (document.pages.size > 1 && navigation == PageNavigation.SIDE) 96f else 0f
+            fun pagesFor(phraseHeight: Float): Map<PageId, FixedCommunicationPageLayout>? {
+              val gridHeight = height - toolbar - phraseHeight - footerHeight - 1f
+              if (gridHeight <= 0) return null
+              return document.pages.associate { page ->
                 // Round down once so independently rounded cells never overflow the viewport.
-                val cellSize = fixedCommunicationCellSize(width.dp.toPx(), gridHeight.dp.toPx(),
+                val cellSize = fixedCommunicationCellSize(gridWidth.dp.toPx(), gridHeight.dp.toPx(),
                     page.rows, page.columns, 48.dp.roundToPx()) ?: return null
                 val cellWidthPx = cellSize.width
                 val cellHeightPx = cellSize.height
@@ -122,10 +128,29 @@ internal class CommunicationBoardMeasurer(
                     packing.imageSide?.let { sides[cell.position] = it.toDp().value }
                 }
                 page.id to FixedCommunicationPageLayout(cellWidthPx.toDp().value, cellHeightPx.toDp().value, sides)
+              }
             }
+            val phraseHeight = fitCommunicationPhrase(minimumPhrase, viewportHeight) { pagesFor(it) != null } ?: return null
+            val pages = pagesFor(phraseHeight) ?: return null
+            val gridHeight = height - toolbar - phraseHeight - footerHeight - 1f
             return FixedCommunicationBoardLayout(toolbar, phraseHeight, footerHeight, actionWidth, gridHeight, pages)
         }
     }
+}
+
+/** Keep the target when possible; otherwise give the grid back only the space it needs. */
+internal fun fitCommunicationPhrase(minimum: Float, viewportHeight: Float, fits: (Float) -> Boolean): Float? {
+    if (!viewportHeight.isFinite() || viewportHeight <= 0 || !fits(minimum)) return null
+    val target = viewportHeight * .32f
+    if (minimum > target) return null
+    if (fits(target)) return target
+    var low = minimum
+    var high = target
+    repeat(16) {
+        val middle = (low + high) / 2
+        if (fits(middle)) low = middle else high = middle
+    }
+    return low
 }
 
 internal data class CommunicationCellPacking(val imageSide: Int? = null)
