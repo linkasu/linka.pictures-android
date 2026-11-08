@@ -60,6 +60,33 @@ kotlin {
                 compilation = appHostTests
                 baseName = 'AppHostTests'
             }
+            tasks.named('copyTestComposeResourcesForIosSimulatorArm64', Copy).configure {
+                // Compose 1.9.3 reuses one task for both executables, repeating main inputs and overwriting its destination.
+                duplicatesStrategy = DuplicatesStrategy.FAIL
+                def copied = [:]
+                doFirst { copied.clear() }
+                eachFile { entry ->
+                    def previous = copied.putIfAbsent(entry.path, entry.file)
+                    if (previous != null) {
+                        if (!java.util.Arrays.equals(previous.bytes, entry.file.bytes)) {
+                            throw new GradleException("Conflicting iOS test resource: ${entry.path}")
+                        }
+                        entry.exclude()
+                    }
+                }
+                def destinations = providers.provider {
+                    target.binaries.withType(org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable).collect {
+                        new File(it.outputDirectory, 'compose-resources')
+                    }.unique()
+                }
+                outputs.dirs(destinations)
+                doLast {
+                    def assembled = destinationDir
+                    destinations.get().findAll { it != assembled }.each { destination ->
+                        project.copy { from assembled; into destination }
+                    }
+                }
+            }
             // Native link inputs are frozen at construction, before a later compilation assignment.
             def appHostFramework = new org.jetbrains.kotlin.gradle.plugin.mpp.Framework(
                 'appHostDebugFramework', 'SharedAppHostTests',
