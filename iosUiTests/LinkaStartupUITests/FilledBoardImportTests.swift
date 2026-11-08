@@ -13,7 +13,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testElectronEditorAtlasWithoutPublishing() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         if UIDevice.current.userInterfaceIdiom == .pad {
             XCUIDevice.shared.orientation = .landscapeLeft
@@ -56,7 +56,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testElectronVisualAtlasExistingLibrary() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         stage = "electron-library"
         _ = try visible(named("Ваши наборы", in: app))
@@ -94,7 +94,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testImportOwnedFixtureThroughFilesAndCompose() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             _ = try visible(named("Ваши наборы", in: app))
@@ -181,7 +181,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testComposeExistingOwnedBoardAndReopen() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "existing-owned-board"
@@ -195,7 +195,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testExistingOwnedBoardPortraitAndLandscapeWithoutMessageEdits() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         defer { XCUIDevice.shared.orientation = .portrait }
         do {
@@ -235,7 +235,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testExportAndBackupExistingOwnedBoardThroughLocalFiles() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "export-existing-owned-board"
@@ -278,7 +278,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testInspectOwnedSettingsWithoutChangingThem() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "settings-existing-library"
@@ -312,7 +312,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testExistingOwnedBoardAccessibilityAudit() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         stage = "accessibility-audit-existing-board"
         try openOwnedBoard(in: app)
@@ -327,7 +327,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testExistingOwnedBoardAtSystemTextSize() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "system-text-existing-board-initial"
@@ -370,7 +370,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testOwnedDarkThemeAndRestoreSession() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "dark-theme-original-light"
@@ -412,7 +412,7 @@ final class FilledBoardImportTests: XCTestCase {
               let actual = environment["SIMULATOR_UDID"], expected == actual,
               !["DD0F9A3F-DC32-4373-BA08-400FECE3A1CC", "D46F4A13-2815-41C6-B093-0548B56AFD9E"].contains(actual)
         else { throw Unavailable() }
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "recovery-probe-empty-library"
@@ -511,7 +511,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testOwnedLargeTextAndContrastRestoreOriginalSettings() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "settings-original-scale1-contrast-off"
@@ -533,7 +533,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testResumeSavedLargeTextContrastAndRestoreOriginal() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "settings-resume-saved-scale2-contrast-on"
@@ -647,7 +647,7 @@ final class FilledBoardImportTests: XCTestCase {
 
     func testExistingPhrasePlaybackStopAndReplay() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             stage = "audio-existing-phrase"

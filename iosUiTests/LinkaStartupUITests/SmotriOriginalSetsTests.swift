@@ -32,7 +32,7 @@ final class SmotriOriginalSetsTests: XCTestCase {
     }
 
     func testLandscapePolicyAcrossLibrarySettingsAndBoard() throws {
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         try requireLandscape(app)
         _ = try visible(named("Ваши наборы", app))
@@ -72,7 +72,7 @@ final class SmotriOriginalSetsTests: XCTestCase {
     }
 
     func testInspectOriginalLibraryWithoutWrites() throws {
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         applicationFrame = app.frame
         _ = try visible(named("Ваши наборы", app))
@@ -86,7 +86,7 @@ final class SmotriOriginalSetsTests: XCTestCase {
 
     func testImportOrReuseOriginalsAndCaptureEveryPageWithoutSelection() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         applicationFrame = app.frame
         do {
@@ -112,7 +112,7 @@ final class SmotriOriginalSetsTests: XCTestCase {
 
     func testFixedPagesAndAdultRejection() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         applicationFrame = app.frame
         _ = try visible(named("Ваши наборы", app))
@@ -121,7 +121,7 @@ final class SmotriOriginalSetsTests: XCTestCase {
 
     func testRestoreBaselineCaptureSettingsAndComposeMode() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         applicationFrame = app.frame
         _ = try visible(named("Ваши наборы", app))
@@ -143,7 +143,7 @@ final class SmotriOriginalSetsTests: XCTestCase {
 
     func testRejectedBoardPreservesWorkingBoardAndMessage() throws {
         try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "Keyboard admission on iPad is viewport-dependent; covered by fixed-page capture")
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         applicationFrame = app.frame
         _ = try visible(named("Ваши наборы", app))
@@ -175,7 +175,7 @@ final class SmotriOriginalSetsTests: XCTestCase {
 
     func testUnsupportedScaleDoesNotChangeWorkingBoard() throws {
         try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "Scale rejection requires the iPhone viewport")
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         applicationFrame = app.frame
         _ = try visible(named("Ваши наборы", app))

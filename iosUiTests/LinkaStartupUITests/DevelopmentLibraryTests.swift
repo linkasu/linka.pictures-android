@@ -3,8 +3,33 @@ import XCTest
 final class DevelopmentLibraryTests: XCTestCase {
     private var editorStage = "editor-launch"
 
+    func testEnglishLibraryThenRussianRelaunchWithoutWrites() {
+        continueAfterFailure = false
+        for (language, locale, title, menu) in [
+            ("en", "en_US", "Your boards", "Library menu"),
+            ("ru", "ru_RU", "Ваши наборы", "Меню библиотеки"),
+        ] {
+            let app = productApplication(language: language)
+            XCTAssertEqual(app.launchArguments, ["-AppleLanguages", "(\(language))", "-AppleLocale", locale])
+            app.launch()
+            defer { app.terminate() }
+
+            let heading = app.staticTexts.matching(identifier: title).firstMatch
+            XCTAssertTrue(heading.waitForExistence(timeout: 15), "\(language): library must open without migration/recovery actions")
+            XCTAssertTrue(heading.isHittable, "\(language): library title must be visible")
+            XCTAssertTrue(app.buttons.matching(identifier: menu).firstMatch.exists)
+            let startupFailure = app.staticTexts.matching(NSPredicate(
+                format: "label BEGINSWITH %@ OR label BEGINSWITH %@ OR label BEGINSWITH %@",
+                "The application could not be opened safely", "Could not safely open the app:",
+                "Не удалось безопасно открыть приложение"
+            ))
+            XCTAssertEqual(startupFailure.count, 0, "\(language): startup failure must not be hidden")
+            attachScreenshot(of: app, stage: "library-language-\(language)-read-only")
+        }
+    }
+
     func testDevelopmentLibrarySurvivesRelaunch() {
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         guard assertLibrary(in: app, stage: "Initial launch") else { return }
 
@@ -18,7 +43,7 @@ final class DevelopmentLibraryTests: XCTestCase {
         let name = "LINKa-EDITOR-iOS17-20261106"
         let renamed = name + "-RENAMED"
         let label = "NATIVE-CARD-17"
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             guard assertLibrary(in: app, stage: editorStage) else { return }
@@ -43,7 +68,7 @@ final class DevelopmentLibraryTests: XCTestCase {
     func testResumeOwnedEditorDraftNativeInputAndFinish() throws {
         continueAfterFailure = false
         let name = "LINKa-EDITOR-iOS17-20261106"
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             editorStage = "editor-resume-existing-own-draft"
@@ -69,7 +94,7 @@ final class DevelopmentLibraryTests: XCTestCase {
     func testResumeOwnedOpenCardFormAndFinish() throws {
         continueAfterFailure = false
         let name = "LINKa-EDITOR-iOS17-20261106"
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             editorStage = "editor-resume-owned-open-card"
@@ -90,7 +115,7 @@ final class DevelopmentLibraryTests: XCTestCase {
 
     func testRenameOwnedPublishedBoardAndColdReopen() throws {
         continueAfterFailure = false
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             editorStage = "editor-existing-published-board"
@@ -108,7 +133,7 @@ final class DevelopmentLibraryTests: XCTestCase {
         continueAfterFailure = false
         let name = "LINKa-EDITOR-iOS17-20261106-RENAMED"
         let label = "NATIVE-CARD-17"
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             editorStage = "editor-existing-published-edit"
@@ -155,7 +180,7 @@ final class DevelopmentLibraryTests: XCTestCase {
         continueAfterFailure = false
         let name = "LINKa-EDITOR-iOS17-20261106-RENAMED"
         let label = "NATIVE-CARD-17"
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             editorStage = "editor-resume-own-changed-card-form"
@@ -193,7 +218,7 @@ final class DevelopmentLibraryTests: XCTestCase {
         continueAfterFailure = false
         let name = "LINKa-EDITOR-iOS17-20261106-RENAMED"
         let label = "NATIVE-CARD-17"
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         func captureField(_ stage: String) throws {
             editorStage = stage
             let field = try editorVisible(app.textViews)
@@ -305,7 +330,7 @@ final class DevelopmentLibraryTests: XCTestCase {
         continueAfterFailure = false
         let name = "LINKa-EDITOR-iOS17-20261106-RENAMED"
         let original = "NATIVE-CARD-17"
-        let app = XCUIApplication(bundleIdentifier: "su.linka.pictures.development")
+        let app = productApplication()
         app.launch()
         do {
             editorStage = "system-selection-open-existing-draft"
