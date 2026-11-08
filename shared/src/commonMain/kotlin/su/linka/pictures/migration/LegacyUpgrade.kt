@@ -15,11 +15,10 @@ import su.linka.pictures.storage.*
 // Root owns source readers, credential callbacks, the single coordinator and the returned runtime.
 internal class LegacyUpgrade(
     private val root: Path,
-    private val legacySets: Path,
+    private val source: MigrationSource,
     private val files: FileSystem,
     private val driver: SQLiteDriver,
     private val createFiles: (Path) -> PlatformFilesPort,
-    @Suppress("UNUSED_PARAMETER") inspection: MediaInspectionPort,
     private val ids: IdSource,
     private val readSettings: suspend () -> LegacyUpgradeSettings,
     private val prepareCredentials: suspend () -> OperationResult<Unit>,
@@ -47,18 +46,18 @@ internal class LegacyUpgrade(
                     admission.read("active")?.let { return@attempt openActive(it) }
                     storageActive()
                     checkUnclaimedRoot(resumeInterrupted)
-                    val initial = inventory(files, legacySets, readSettings())
+                    val initial = inventory(source, readSettings())
                     val previous = admission.read("journal")
                     val journal = if (previous != null) {
                         if (!resumeInterrupted) reject(ProblemCode.INTERRUPTED)
-                        if (previous.sourceDigest != initial.digest || previous.total != initial.entries.size || previous.phase == MigrationPhase.COMMITTED) reject(ProblemCode.CONFLICT)
-                        checkGeneration(previous.migrationId, requireDatabase = true)
-                        previous
+                        if (previous.sourceKind != source.kind || previous.sourceDigest != initial.digest || previous.total != initial.entries.size || previous.phase == MigrationPhase.COMMITTED) reject(ProblemCode.CONFLICT)
+                        prepareGeneration(previous)
+                        previous.copy(schema = 2)
                     } else {
                         if (files.exists(root / "libraries") && files.list(root / "libraries").isNotEmpty()) reject(ProblemCode.CONFLICT)
                         val id = ids.next()
                         if (!safeMigrationId(id)) reject(ProblemCode.INVALID_DATA)
-                        val fresh = AdmissionRecord(migrationId = id, sourceDigest = initial.digest, phase = MigrationPhase.INVENTORY, total = initial.entries.size)
+                        val fresh = AdmissionRecord(migrationId = id, sourceDigest = initial.digest, phase = MigrationPhase.INVENTORY, total = initial.entries.size, sourceKind = source.kind)
                         writeJournal(fresh) { if (files.exists(root / "journal") || files.exists(root / "active")) reject(ProblemCode.CONFLICT) }
                         files.createDirectories(root / "libraries")
                         files.createDirectory(root / "libraries" / id, mustCreate = true)
@@ -85,7 +84,7 @@ internal class LegacyUpgrade(
                         storageActive()
                         val id = stableId(journal.migrationId, index)
                         if (listing.items.any { it.id == id }) continue
-                        importEntry(entry, id, initial.settings.boardGrid[entry.path.name] ?: 3, runtime, nativeFiles, permit, beforeWrite)
+                        importEntry(entry, id, initial.settings.boardGrid[entry.name] ?: 3, runtime, nativeFiles, permit, beforeWrite)
                         val actual = runtime.library.listing.value
                         actual.refreshProblem?.let { throw StorageAbort(OperationResult.Failed(it)) }
                         record = record!!.copy(imported = actual.items.count { it.kind == LibraryEntryKind.BOARD }, retained = actual.items.count { it.kind == LibraryEntryKind.RETAINED_ARCHIVE })
@@ -93,7 +92,7 @@ internal class LegacyUpgrade(
                         update(record!!)
                     }
                     val desired = PortableSettings(boards = initial.entries.mapIndexed { index, entry ->
-                        val value = initial.settings.boardGrid[entry.path.name] ?: 3
+                        val value = initial.settings.boardGrid[entry.name] ?: 3
                         stableId(journal.migrationId, index) to BoardPresentation(value == 2 || value == 3)
                     }.toMap())
                     if (runtime.library.settings().required() != desired) {
@@ -117,7 +116,7 @@ internal class LegacyUpgrade(
                     admission.write("active", committed) {
                         verifyCoordinator(journal.migrationId, initial.digest, MigrationPhase.READY_TO_PUBLISH)
                         validateCredentials().required()
-                        if (inventory(files, legacySets, readSettings()).digest != initial.digest) reject(ProblemCode.INTEGRITY_FAILURE)
+                        if (inventory(source, readSettings()).digest != initial.digest) reject(ProblemCode.INTEGRITY_FAILURE)
                         activationGuard().required()
                     }
                     activated = true
@@ -155,10 +154,8 @@ internal class LegacyUpgrade(
     }
 
     private fun checkRoots() {
-        require(root.isAbsolute && legacySets.isAbsolute)
-        val a = root.normalized().toString().trimEnd('/') + "/"
-        val b = legacySets.normalized().toString().trimEnd('/') + "/"
-        if (a.startsWith(b) || b.startsWith(a)) reject(ProblemCode.INVALID_DATA)
+        require(root.isAbsolute)
+        source.validateTarget(root)
         val metadata = files.metadataOrNull(root)
         if (metadata != null && (!metadata.isDirectory || metadata.symlinkTarget != null || files.canonicalize(root) != root.normalized())) reject(ProblemCode.INVALID_DATA)
         if (metadata == null) {
@@ -177,7 +174,7 @@ internal class LegacyUpgrade(
             if (entry.name in setOf("active", "journal", "libraries")) continue
             if (!entry.name.startsWith(".admission-") || !safeMigrationId(entry.name.removePrefix(".admission-"))) reject(ProblemCode.CONFLICT)
             val pending = admission.read(entry.name) ?: reject(ProblemCode.CONFLICT)
-            if (journal == null || pending.migrationId != journal.migrationId || pending.sourceDigest != journal.sourceDigest || pending.total != journal.total || pending.phase == MigrationPhase.COMMITTED) reject(ProblemCode.CONFLICT)
+            if (journal == null || pending.migrationId != journal.migrationId || pending.sourceKind != journal.sourceKind || pending.sourceDigest != journal.sourceDigest || pending.total != journal.total || pending.phase == MigrationPhase.COMMITTED) reject(ProblemCode.CONFLICT)
             if (!resume) reject(ProblemCode.INTERRUPTED)
             // Proven owned leftovers are preserved, never promoted over the authoritative reopened DB.
         }
@@ -194,6 +191,21 @@ internal class LegacyUpgrade(
             if (!metadata.isDirectory || metadata.symlinkTarget != null || files.canonicalize(path) != path.normalized()) reject(ProblemCode.INVALID_DATA)
         }
         if (requireDatabase && !files.exists(generation / "library.sqlite3")) reject(ProblemCode.INTEGRITY_FAILURE)
+    }
+
+    private fun prepareGeneration(record: AdmissionRecord) {
+        val generation = root / "libraries" / record.migrationId
+        if (!files.exists(generation / "library.sqlite3") && record.phase == MigrationPhase.INVENTORY) {
+            val parent = root / "libraries"
+            for (path in listOf(parent, generation)) {
+                val metadata = files.metadataOrNull(path)
+                if (metadata == null) files.createDirectory(path, mustCreate = true)
+                else if (!metadata.isDirectory || metadata.symlinkTarget != null || files.canonicalize(path) != path.normalized()) reject(ProblemCode.INVALID_DATA)
+            }
+            if (files.list(generation).isNotEmpty()) reject(ProblemCode.INTEGRITY_FAILURE)
+            return
+        }
+        checkGeneration(record.migrationId, requireDatabase = true)
     }
 
     private suspend fun openActive(active: AdmissionRecord, details: Map<BoardId, Problem> = emptyMap()): LegacyOpenedLibrary {
@@ -220,7 +232,7 @@ internal class LegacyUpgrade(
     private suspend fun importEntry(entry: LegacyEntry, id: BoardId, grid: Int, runtime: StorageRuntime, nativeFiles: PlatformFilesPort, permit: WritePermit, beforeWrite: () -> Unit) {
         val temporary = nativeFiles.createTemporaryFile("legacy.linka", "application/zip").required()
         try {
-            val hash = HashingSource.sha256(files.source(entry.path))
+            val hash = HashingSource.sha256(source.open(entry))
             var count = 0L
             hash.use { source ->
                 nativeFiles.sink(temporary).required().buffer().use { sink ->
@@ -236,7 +248,7 @@ internal class LegacyUpgrade(
                 }
             }
             if (count != entry.size || hash.hash.hex() != entry.hash) reject(ProblemCode.INTEGRITY_FAILURE)
-            when (val decoded = readBoard(temporary, entry.path.name, runtime.media, nativeFiles)) {
+            when (val decoded = readBoard(temporary, entry.name, runtime.media, nativeFiles)) {
                 is OperationResult.Completed -> decoded.value.use { prepared ->
                     val behavior = prepared.document.behavior.copy(defaultMode = if (grid == 1 || grid == 3) InteractionMode.COMPOSE else InteractionMode.DIRECT)
                     beforeWrite()
@@ -254,7 +266,7 @@ internal class LegacyUpgrade(
                     archive.lease.use {
                         if (archive.asset.id.value != entry.hash || archive.asset.byteCount != entry.size) reject(ProblemCode.INTEGRITY_FAILURE)
                         beforeWrite()
-                        runtime.library.retainArchive(RetainedArchive(id, entry.path.name, 1, archive.asset.id, reason), permit).required()
+                        runtime.library.retainArchive(RetainedArchive(id, entry.name, 1, archive.asset.id, reason), permit).required()
                     }
                     mutableState.value = mutableState.value.copy(detailProblems = mutableState.value.detailProblems + (id to decoded.problem))
                 }

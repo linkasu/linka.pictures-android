@@ -31,8 +31,11 @@ internal class LegacyOpenedLibrary(
 )
 
 @Serializable
+internal enum class MigrationSourceKind { LEGACY_FILES, BUNDLED }
+
+@Serializable
 internal data class AdmissionRecord(
-    val schema: Int = 1,
+    val schema: Int = 2,
     val migrationId: String,
     val sourceDigest: String,
     val phase: MigrationPhase,
@@ -40,9 +43,11 @@ internal data class AdmissionRecord(
     val imported: Int = 0,
     val retained: Int = 0,
     val credentialsInitialized: Boolean = false,
+    val sourceKind: MigrationSourceKind = MigrationSourceKind.LEGACY_FILES,
 ) {
     init {
-        require(schema == 1 && safeMigrationId(migrationId))
+        require(schema in 1..2 && safeMigrationId(migrationId))
+        require(schema != 1 || sourceKind == MigrationSourceKind.LEGACY_FILES)
         require(sourceDigest.length == 64 && sourceDigest.all { it in '0'..'9' || it in 'a'..'f' })
         require(total in 0..100000 && imported >= 0 && retained >= 0 && imported.toLong() + retained <= total)
     }

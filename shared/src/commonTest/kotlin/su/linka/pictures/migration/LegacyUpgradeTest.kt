@@ -43,13 +43,13 @@ class LegacyUpgradeTest {
             if (initialized) OperationResult.Completed(Unit) else OperationResult.Failed(Problem(ProblemCode.INTEGRITY_FAILURE))
         }
 
-        fun coordinator(files: FileSystem = fs, driver: SQLiteDriver = BundledSQLiteDriver()) = LegacyUpgrade(root, legacy, files, driver, { codecFiles }, codecFiles, ids,
+        fun coordinator(files: FileSystem = fs, driver: SQLiteDriver = BundledSQLiteDriver(), source: MigrationSource = FileMigrationSource(legacy, files)) = LegacyUpgrade(root, source, files, driver, { codecFiles }, ids,
             readSettings = { reads++; settings },
             prepareCredentials = { prepares++; prepare() }, validateCredentials = { validations++; validate() },
             readBoard = { file, name, media, registered ->
                 assertTrue(file.path in codecFiles.temporary, "legacy path must never bypass owned native temporaries")
                 decoded++
-                LinkaCodec(media, registered, codecFiles, ids).read(file, name).also { afterDecode() }
+                LinkaCodec(media, registered, codecFiles, ids).readLegacyUpgrade(file, name).also { afterDecode() }
             })
 
         fun source(name: String, version: String = "1.2", withoutSpace: Boolean = false): ByteArray {
@@ -150,6 +150,61 @@ class LegacyUpgradeTest {
         assertEquals(1, rig.prepares)
         result.runtime.close()
         assertTrue(fs.exists(rig.root / "libraries" / rig.journal().migrationId / "library.sqlite3"))
+    } }
+
+    @Test fun bundledSourceKindIsDurableAndCannotChangeWhileInterrupted() = runTest { owned { rig ->
+        val original = rig.source("Болит.linka", "1.3")
+        val source = object : MigrationSource by FileMigrationSource(rig.legacy, fs) {
+            override val kind = MigrationSourceKind.BUNDLED
+        }
+        rig.prepare = { throw CancellationException("synthetic interruption") }
+        assertFailsWith<CancellationException> { rig.coordinator(source = source).open() }
+        assertEquals(MigrationSourceKind.BUNDLED, rig.journal().sourceKind)
+        assertEquals(2, rig.journal().schema)
+        rig.coordinator().open(true).problem(ProblemCode.CONFLICT)
+        rig.prepare = { rig.initialized = true; OperationResult.Completed(Unit) }
+        val opened = rig.coordinator(source = source).open(true).ok()
+        assertEquals(1, opened.report.imported)
+        opened.runtime.close()
+        assertContentEquals(original, fs.read(rig.legacy / "Болит.linka") { readByteArray() })
+    } }
+
+    @Test fun originalSchemaOneActiveRemainsByteForByteAndNeverReimports() = runTest { owned { rig ->
+        rig.source("board")
+        rig.coordinator().open().ok().runtime.close()
+        val json = kotlinx.serialization.json.Json
+        val current = json.parseToJsonElement(fs.read(rig.root / "active") { readUtf8() }) as kotlinx.serialization.json.JsonObject
+        val original = kotlinx.serialization.json.JsonObject(current.filterKeys { it != "sourceKind" } +
+            ("schema" to kotlinx.serialization.json.JsonPrimitive(1))).toString().encodeToByteArray()
+        fs.write(rig.root / "active") { write(original) }
+        val reads = rig.reads
+        rig.coordinator().open().ok().runtime.close()
+        assertEquals(reads, rig.reads)
+        assertContentEquals(original, fs.read(rig.root / "active") { readByteArray() })
+        val invalid = original.decodeToString().replace("\"schema\":1", "\"schema\":3")
+        fs.write(rig.root / "active") { writeUtf8(invalid) }
+        rig.coordinator().open().problem(ProblemCode.INVALID_DATA)
+        assertEquals(invalid, fs.read(rig.root / "active") { readUtf8() })
+    } }
+
+    @Test fun originalSchemaOneJournalResumesTheSameGenerationWithoutDuplicateBoards() = runTest { owned { rig ->
+        rig.source("board")
+        rig.prepare = { throw CancellationException("synthetic interruption") }
+        assertFailsWith<CancellationException> { rig.coordinator().open() }
+        val record = rig.journal()
+        val json = kotlinx.serialization.json.Json
+        val current = json.parseToJsonElement(fs.read(rig.root / "journal") { readUtf8() }) as kotlinx.serialization.json.JsonObject
+        val old = kotlinx.serialization.json.JsonObject(current.filterKeys { it != "sourceKind" } +
+            ("schema" to kotlinx.serialization.json.JsonPrimitive(1))).toString()
+        fs.write(rig.root / "journal") { writeUtf8(old) }
+        rig.prepare = { rig.initialized = true; OperationResult.Completed(Unit) }
+        val decoded = rig.decoded
+        val opened = rig.coordinator().open(true).ok()
+        assertEquals(decoded, rig.decoded)
+        assertEquals("legacy-${record.migrationId}-0", opened.runtime.library.listing.value.items.single().id.value)
+        assertEquals(record.migrationId, rig.journal().migrationId)
+        assertEquals(2, rig.journal().schema)
+        opened.runtime.close()
     } }
 
     @Test fun interruptedCredentialCallbackRequiresExplicitReopenAndSkipsCommittedBoards() = runTest {
@@ -283,8 +338,9 @@ class LegacyUpgradeTest {
                 fs.createDirectory(rig.root / "libraries" / "foreign")
                 fs.write(rig.root / "libraries" / "foreign" / "sentinel") { writeUtf8("untouched") }
             } else {
-                val inventory = inventory(fs, rig.legacy, rig.settings)
+                val inventory = inventory(FileMigrationSource(rig.legacy, fs), rig.settings)
                 fs.createDirectory(rig.root / "libraries" / "owned")
+                fs.write(rig.root / "libraries" / "owned" / "foreign-sentinel") { writeUtf8("untouched") }
                 AdmissionFiles(rig.root, fs, rig.ids).write("journal", AdmissionRecord(migrationId = "owned", sourceDigest = inventory.digest, phase = MigrationPhase.INVENTORY, total = 1))
             }
             assertIs<OperationResult.Failed>(rig.coordinator().open(true))
@@ -322,16 +378,10 @@ class LegacyUpgradeTest {
                 }
             }
             try { rig.coordinator(fault).open().ok().runtime.close() } catch (_: Termination) { }
-            val journal = AdmissionFiles(rig.root, fs, rig.ids).read("journal")
-            val active = fs.exists(rig.root / "active")
             val result = rig.coordinator().open(resumeInterrupted = true)
-            if (!active && journal != null && !fs.exists(rig.root / "libraries" / journal.migrationId / "library.sqlite3")) {
-                result.problem(ProblemCode.INTEGRITY_FAILURE)
-            } else {
-                val opened = result.ok()
-                assertEquals(1, opened.runtime.library.listing.value.items.size)
-                opened.runtime.close()
-            }
+            val opened = result.ok()
+            assertEquals(1, opened.runtime.library.listing.value.items.size)
+            opened.runtime.close()
             assertContentEquals(original, fs.read(rig.legacy / "board") { readByteArray() })
         }
     }
