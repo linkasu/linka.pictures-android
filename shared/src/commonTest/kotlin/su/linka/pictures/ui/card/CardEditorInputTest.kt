@@ -42,6 +42,37 @@ class CardEditorInputTest {
         draft = EditorDraft(DraftId("draft"), null, null,
             BoardDocument(BoardId("board"), "Board", listOf(BoardPage(form.pageId, 1, 1, emptyList()))), form))
 
+    @Test fun switchCarriesAdmittedVersionEvenBeforeTheAcceptedModelRenders() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val recomposer = Recomposer(coroutineContext)
+        val composition = Composition(EmptyApplier(), recomposer)
+        try {
+            var input: CardEditorInput? = null
+            val actions = mutableListOf<AuthoringAction>()
+            var handled: ((AuthoringState) -> Unit)? = null
+            composition.setContent {
+                val owner = rememberCardEditorInput(initial, "owner") { action, callback ->
+                    actions += action
+                    handled = callback
+                }
+                SideEffect { input = owner }
+            }
+            input!!.change(input!!.value.copy(label = "Последний символ"))
+            val acknowledge = handled!!
+            input!!.switchCard(AuthoringAction.SwitchCard(form.pageId, 1, initial.lifecycleVersion))
+            assertEquals(1, actions.size)
+            acknowledge(initial.copy(editVersion = 7, draft = initial.draft!!.copy(form = form.copy(label = "Последний символ"))))
+            runCurrent()
+            val switch = assertIs<AuthoringAction.SwitchCard>(actions.last())
+            assertEquals(initial.stamp()!!.copy(editVersion = 7), switch.expected)
+            assertEquals(initial.lifecycleVersion, switch.expectedLifecycle)
+        } finally {
+            composition.dispose()
+            recomposer.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun resizeAndPhaseChangesKeepPendingInputAndItsAcknowledgement() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val recomposer = Recomposer(coroutineContext)

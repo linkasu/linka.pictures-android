@@ -126,6 +126,8 @@ fun EditorScreen(
                                           onSelect = { position ->
                                               if (cardInput == null) dispatch(AuthoringAction.OpenCard(page.id, position))
                                               else cardInput.switchCard(AuthoringAction.SwitchCard(page.id, position, state.lifecycleVersion))
+                                          }, dragStamp = state.stamp().takeIf {
+                                              structural && state.phase == AuthoringPhase.EDITING && moveSource == null
                                           })
                                  }
                                  Divider(color = palette.border)

@@ -120,6 +120,106 @@ class AuthoringSessionTest {
         try { block(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
     }
 
+    @Test fun stampedSwitchCannotSaveADifferentSourceOrANewerInputRevision() = runTest { fresh { f ->
+        f.start(); f.open(); f.saved()
+        val old = f.session.state.value
+        val page = old.draft!!.document.pages.first().id
+        f.send(AuthoringAction.CancelCard)
+        f.await { it.draft?.form == null }
+        f.open(1); f.saved()
+        suspend fun reject(stamp: AuthoringStamp, id: String) {
+            val before = f.session.state.value
+            val barrier = CompletableDeferred<AuthoringState>()
+            f.session.send(AuthoringCommand(CommandId(id), "owner", null,
+                AuthoringAction.SwitchCard(page, 2, expected = stamp)) { barrier.complete(it) })
+            val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
+            assertEquals(before.draft, after.draft)
+            assertFalse(after.switchingCard)
+        }
+        reject(old.stamp()!!, "old-source")
+        val beforeInput = f.session.state.value.stamp()!!
+        f.send(AuthoringAction.ChangeCard("Новый ввод", "", SpeechChoice.NONE, true))
+        f.await { it.editVersion > beforeInput.editVersion && it.savePhase == DraftSavePhase.SAVED }
+        reject(beforeInput, "old-input")
+    } }
+
+    @Test fun stampedMoveRejectsChangedRevisionFormMediaAndLifecycleWithoutMutation() = runTest { fresh { f ->
+        f.start()
+        val page = f.session.state.value.draft!!.document.pages.first().id
+        f.send(AuthoringAction.SetCell(page, 0, CellKind.SPACE))
+        f.await { it.draft?.document?.pages?.first()?.cells?.firstOrNull()?.kind == CellKind.SPACE && it.savePhase == DraftSavePhase.SAVED }
+        val before = f.session.state.value
+        f.details("Changed")
+        f.await { it.editVersion > before.editVersion && it.savePhase == DraftSavePhase.SAVED }
+        var attempt = 0
+        suspend fun rejected(stamp: AuthoringStamp) {
+            val current = f.session.state.value
+            val barrier = CompletableDeferred<AuthoringState>()
+            f.session.send(AuthoringCommand(CommandId("drop-${attempt++}"), "owner", null,
+                AuthoringAction.MoveCell(page, 0, page, 1, stamp)) { barrier.complete(it) })
+            val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
+            assertEquals(current.draft, after.draft)
+            assertEquals(current.editVersion, after.editVersion)
+        }
+        rejected(before.stamp()!!)
+        val current = f.session.state.value.stamp()!!
+        rejected(current.copy(epoch = current.epoch + 1))
+        rejected(current.copy(draftId = DraftId("foreign")))
+        f.send(AuthoringAction.Background); f.await { it.phase == AuthoringPhase.PAUSED }
+        f.send(AuthoringAction.Resume); f.await { it.phase == AuthoringPhase.EDITING }
+        rejected(current)
+        f.open(2); f.saved()
+        rejected(f.session.state.value.stamp()!!)
+        f.native.recording = CompletableDeferred()
+        f.send(AuthoringAction.Record); f.await { it.mediaBusy }
+        rejected(f.session.state.value.stamp()!!)
+    } }
+
+    @Test fun stampedMoveSwapsContentWithContentEmptyAndSpaceWithoutChangingIds() = runTest {
+        for (kind in CellKind.entries) fresh { f ->
+            f.start()
+            val page = f.session.state.value.draft!!.document.pages.first().id
+            suspend fun card(position: Int, label: String) {
+                f.open(position)
+                f.send(AuthoringAction.ChangeCard(label, "", SpeechChoice.NONE, true))
+                f.send(AuthoringAction.SaveCard)
+                f.await { it.draft?.form == null && it.draft?.document?.pages?.first()?.cells?.any { cell -> cell.card?.label == label } == true &&
+                    it.savePhase == DraftSavePhase.SAVED }
+            }
+            card(0, "A")
+            if (kind == CellKind.CONTENT) card(1, "B") else {
+                f.send(AuthoringAction.SetCell(page, 1, kind))
+                f.await { it.draft?.document?.pages?.first()?.cells?.any { cell -> cell.position == 1 && cell.kind == kind } == true &&
+                    it.savePhase == DraftSavePhase.SAVED }
+            }
+            val before = f.session.state.value
+            f.send(AuthoringAction.MoveCell(page, 0, page, 1, before.stamp()))
+            val after = f.await { it.editVersion > before.editVersion && it.savePhase == DraftSavePhase.SAVED }
+            assertEquals(before.editVersion + 1, after.editVersion)
+            val expected = before.draft!!.document.pages.first().cells.map { it.copy(position = 1 - it.position) }.sortedBy { it.position }
+            assertEquals(expected, after.draft!!.document.pages.first().cells.sortedBy { it.position })
+        }
+    }
+
+    @Test fun stampedMoveSwapsEmptyAndSpaceExactlyOnceAndSelfIsNoOp() = runTest { fresh { f ->
+        f.start()
+        val page = f.session.state.value.draft!!.document.pages.first().id
+        f.send(AuthoringAction.SetCell(page, 0, CellKind.SPACE))
+        f.await { it.draft?.document?.pages?.first()?.cells?.firstOrNull()?.kind == CellKind.SPACE && it.savePhase == DraftSavePhase.SAVED }
+        val before = f.session.state.value
+        val move = AuthoringCommand(CommandId("drag-once"), "owner", null,
+            AuthoringAction.MoveCell(page, 0, page, 1, before.stamp()))
+        f.session.send(move)
+        f.await { it.editVersion == before.editVersion + 1 && it.savePhase == DraftSavePhase.SAVED }
+        f.session.send(move)
+        val after = CompletableDeferred<AuthoringState>()
+        f.session.send(AuthoringCommand(CommandId("self-drop"), "owner", null,
+            AuthoringAction.MoveCell(page, 1, page, 1, f.session.state.value.stamp())) { after.complete(it) })
+        val result = withContext(Dispatchers.Default) { withTimeout(10_000) { after.await() } }
+        assertEquals(before.editVersion + 1, result.editVersion)
+        assertEquals(listOf(BoardCell(1, CellKind.SPACE)), result.draft!!.document.pages.first().cells)
+    } }
+
     @Test fun switchWaitsForExactCandidateNotAdmissionOrPreviousSaveAndIgnoresRapidTargets() = runTest { fresh { f ->
         f.start(); f.open(); f.saved()
         val page = f.session.state.value.draft!!.document.pages.first().id
@@ -145,29 +245,6 @@ class AuthoringSessionTest {
         targetSave.reply.complete(OperationResult.Completed(Unit))
         f.saved()
         assertNull(f.session.state.value.published)
-    } }
-
-    @Test fun stampedSwitchCannotSaveADifferentSourceOrANewerInputRevision() = runTest { fresh { f ->
-        f.start(); f.open(); f.saved()
-        val old = f.session.state.value
-        val page = old.draft!!.document.pages.first().id
-        f.send(AuthoringAction.CancelCard)
-        f.await { it.draft?.form == null }
-        f.open(1); f.saved()
-        suspend fun reject(stamp: AuthoringStamp, id: String) {
-            val before = f.session.state.value
-            val barrier = CompletableDeferred<AuthoringState>()
-            f.session.send(AuthoringCommand(CommandId(id), "owner", null,
-                AuthoringAction.SwitchCard(page, 2, expected = stamp)) { barrier.complete(it) })
-            val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
-            assertEquals(before.draft, after.draft)
-            assertFalse(after.switchingCard)
-        }
-        reject(old.stamp()!!, "old-source")
-        val beforeInput = f.session.state.value.stamp()!!
-        f.send(AuthoringAction.ChangeCard("Новый ввод", "", SpeechChoice.NONE, true))
-        f.await { it.editVersion > beforeInput.editVersion && it.savePhase == DraftSavePhase.SAVED }
-        reject(beforeInput, "old-input")
     } }
 
     @Test fun earlierSaveFailureCancelsPendingSwitchInsteadOfRetryingIt() = runTest { fresh { f ->

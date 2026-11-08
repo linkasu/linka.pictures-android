@@ -663,6 +663,10 @@ class AuthoringSession(
     }
 
     private fun moveCell(action: AuthoringAction.MoveCell) {
+        if (action.fromPage == action.toPage && action.from == action.to) return
+        if (action.expected != null && (action.expected != state.value.stamp() ||
+            action.expected.lifecycleVersion != lifecycle.value || state.value.phase != AuthoringPhase.EDITING ||
+            state.value.draft?.form != null || state.value.mediaBusy || action.fromPage != action.toPage)) return
         val document = state.value.draft!!.document
         val from = document.pages.firstOrNull { it.id == action.fromPage } ?: return
         val to = document.pages.firstOrNull { it.id == action.toPage } ?: return
