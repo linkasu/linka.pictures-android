@@ -1,0 +1,2453 @@
+{
+  "schema": "linka-starter-audio-v1",
+  "source": "https://tts.linka.su/tts",
+  "voice": "anton",
+  "provenance": "User-directed synthesis LINKa TTS anton; no legacy media reused",
+  "license": null,
+  "licenseNote": "No external media license inferred",
+  "tools": {
+    "ffprobe": "ffprobe version 8.1.2 Copyright (c) 2007-2026 the FFmpeg developers",
+    "ffmpeg": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers"
+  },
+  "records": {
+    "ru.yes": {
+      "key": "ru.yes",
+      "exact_phrase": "Да",
+      "expected_filename": "ru-yes.mp3",
+      "used_in": "ru.core.v1:p1:c1",
+      "speechText": "Да",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "899e3262e85b3220ad611f0668d7ada3d9535be7addd7e5c9cd7f78272292856",
+      "size": 6381,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.792,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Да",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.no": {
+      "key": "ru.no",
+      "exact_phrase": "Нет",
+      "expected_filename": "ru-no.mp3",
+      "used_in": "ru.core.v1:p1:c2",
+      "speechText": "Нет",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "5e802bb9f438f8955b47188156550dc9463d6277747a00576b548c6238fcbb44",
+      "size": 7725,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.96,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Нет",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.want": {
+      "key": "ru.want",
+      "exact_phrase": "Хочу",
+      "expected_filename": "ru-want.mp3",
+      "used_in": "ru.core.v1:p1:c3;ru.food.v1:p1:c1;ru.activities.v1:p1:c1",
+      "speechText": "Хочу",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "2cd763ea1973092d5dc3b04e6e733317a38a7edac88f89bf5479914ec9162844",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Хочу",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.not_want": {
+      "key": "ru.not_want",
+      "exact_phrase": "Не хочу",
+      "expected_filename": "ru-not-want.mp3",
+      "used_in": "ru.core.v1:p1:c4;ru.food.v1:p1:c2;ru.activities.v1:p1:c2",
+      "speechText": "Не хочу",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "34502857b1ca56d486c930f5e53f4368cf6c233e7b2347da33577d5a5c9b61d8",
+      "size": 10221,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.272,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.9,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Не хочу",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.help": {
+      "key": "ru.help",
+      "exact_phrase": "Помоги",
+      "expected_filename": "ru-help.mp3",
+      "used_in": "ru.core.v1:p1:c5;ru.feelings.v1:p1:c3",
+      "speechText": "Помоги",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "c7f5df90c02687060b9fab6e4d3ae0199e67bb26c11e5388a5c9af7930e0749d",
+      "size": 7341,
+      "voice": "anton",
+      "acquisition": "reused_primary_pilot",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.912,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://tts.linka.su/tts?text=%D0%9F%D0%BE%D0%BC%D0%BE%D0%B3%D0%B8&voice=anton",
+        "httpStatus": 200,
+        "contentType": "audio/mpeg",
+        "evidence": "primary supplied pilot and verified hash/size"
+      }
+    },
+    "ru.hurts": {
+      "key": "ru.hurts",
+      "exact_phrase": "Больно",
+      "expected_filename": "ru-hurts.mp3",
+      "used_in": "ru.core.v1:p1:c6;ru.feelings.v1:p1:c1",
+      "speechText": "Больно",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "4d54cd9ae38cebd3a1bfc0523cc3c93fd4f8cb1e8ac3366bf0b6c9dd0eb6dc5c",
+      "size": 8877,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.104,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Больно",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.drink": {
+      "key": "ru.drink",
+      "exact_phrase": "Пить",
+      "expected_filename": "ru-drink.mp3",
+      "used_in": "ru.core.v1:p1:c7",
+      "speechText": "Пить",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "883c27ef615d59699c5d18b38a1413202b61cfb2cc7d0cf7f3ee7cd68cd99baa",
+      "size": 7341,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.912,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Пить",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.toilet": {
+      "key": "ru.toilet",
+      "exact_phrase": "Туалет",
+      "expected_filename": "ru-toilet.mp3",
+      "used_in": "ru.core.v1:p1:c8",
+      "speechText": "Туалет",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "db5b98f506ccbe0c730a8b9e99d5ac1f2312e7513c8df566cef390aa065e68de",
+      "size": 9069,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.128,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Туалет",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.enough": {
+      "key": "ru.enough",
+      "exact_phrase": "Хватит",
+      "expected_filename": "ru-enough.mp3",
+      "used_in": "ru.core.v1:p1:c9;ru.food.v1:p1:c9",
+      "speechText": "Хватит",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "ed02abe844689756961e028432ea99a73afff21879a5375febdefc5c8f2577df",
+      "size": 9069,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.128,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -1.6,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Хватит",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.more": {
+      "key": "ru.more",
+      "exact_phrase": "Ещё",
+      "expected_filename": "ru-more.mp3",
+      "used_in": "ru.core.v1:p2:c1;ru.food.v1:p1:c3",
+      "speechText": "Ещё",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "7f95d707be8b65571131a2295732f7dc2d6d949352cacd77524a9c821384add0",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ещё",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.eat": {
+      "key": "ru.eat",
+      "exact_phrase": "Есть",
+      "expected_filename": "ru-eat.mp3",
+      "used_in": "ru.core.v1:p2:c2",
+      "speechText": "Есть",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "e78cf093d5ba85fe352c6246074a53c2d243e403608cf06dbd47de6c2d59a1f0",
+      "size": 8493,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.056,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.9,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Есть",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.rest": {
+      "key": "ru.rest",
+      "exact_phrase": "Отдых",
+      "expected_filename": "ru-rest.mp3",
+      "used_in": "ru.core.v1:p2:c3;ru.feelings.v1:p1:c9",
+      "speechText": "Отдых",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "09130bf266304705921eb7c64d570af43888682e20d3550f1aa423f1f6c06c2f",
+      "size": 8685,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.08,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Отдых",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.uncomfortable": {
+      "key": "ru.uncomfortable",
+      "exact_phrase": "Неудобно",
+      "expected_filename": "ru-uncomfortable.mp3",
+      "used_in": "ru.core.v1:p2:c4;ru.feelings.v1:p1:c2",
+      "speechText": "Неудобно",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "56e320d299324d6fb4b338e6236b558cacedf47ce08b421792c8504b8c6b37ca",
+      "size": 10797,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.344,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Неудобно",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.good": {
+      "key": "ru.good",
+      "exact_phrase": "Хорошо",
+      "expected_filename": "ru-good.mp3",
+      "used_in": "ru.core.v1:p2:c5",
+      "speechText": "Хорошо",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "1734e9e3faeb24b88e938d2f0b79cfbe6409e5ac96d621dbf788ffba628d4c09",
+      "size": 6765,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.84,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.9,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Хорошо",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.bad": {
+      "key": "ru.bad",
+      "exact_phrase": "Плохо",
+      "expected_filename": "ru-bad.mp3",
+      "used_in": "ru.core.v1:p2:c6",
+      "speechText": "Плохо",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "33bb6ff3f24341ae69d9764aa2f1f69a8150c389ee9a12c60a80b0e5f48fe53f",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.2,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Плохо",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.not_understand": {
+      "key": "ru.not_understand",
+      "exact_phrase": "Не понимаю",
+      "expected_filename": "ru-not-understand.mp3",
+      "used_in": "ru.core.v1:p2:c7",
+      "speechText": "Не понимаю",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "9485eafa992affbfa3123949f382c2f3139db44202e28878fa35f78083c089d2",
+      "size": 10989,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.368,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.6,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Не понимаю",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.other": {
+      "key": "ru.other",
+      "exact_phrase": "Другое",
+      "expected_filename": "ru-other.mp3",
+      "used_in": "ru.core.v1:p2:c8;ru.activities.v1:p1:c9",
+      "speechText": "Другое",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "722f44f23f946c67d702d743b844eb1272affa993ec0acf2bbe7b0ff560b74d2",
+      "size": 9261,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.152,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.6,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Другое",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.look": {
+      "key": "ru.look",
+      "exact_phrase": "Посмотри",
+      "expected_filename": "ru-look.mp3",
+      "used_in": "ru.core.v1:p2:c9",
+      "speechText": "Посмотри",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "ad25868fcdbe95965143da3a2fd2b03a0f6e74fa5d085784df5849dc2c636bdc",
+      "size": 7725,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.96,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.9,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Посмотри",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.hello": {
+      "key": "ru.hello",
+      "exact_phrase": "Привет",
+      "expected_filename": "ru-hello.mp3",
+      "used_in": "ru.core.v1:p3:c1",
+      "speechText": "Привет",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "d299c5032b3d3e53118de0baa99fa3e53842459817725c49ac0a600111b91f5c",
+      "size": 8301,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.032,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Привет",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.bye": {
+      "key": "ru.bye",
+      "exact_phrase": "Пока",
+      "expected_filename": "ru-bye.mp3",
+      "used_in": "ru.core.v1:p3:c2",
+      "speechText": "Пока",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "ccefcc97ecc5ce6e52c025a0007a6e034bca075875f0ae1adcf51defc7aa8297",
+      "size": 8109,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.008,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -1.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Пока",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.play": {
+      "key": "ru.play",
+      "exact_phrase": "Играть",
+      "expected_filename": "ru-play.mp3",
+      "used_in": "ru.core.v1:p3:c3;ru.activities.v1:p1:c4",
+      "speechText": "Играть",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "1bde822f681643ca540f3e112f87cdfccb9d59e1783d3141fcc69720e051cc41",
+      "size": 7917,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.984,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Играть",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.together": {
+      "key": "ru.together",
+      "exact_phrase": "Вместе",
+      "expected_filename": "ru-together.mp3",
+      "used_in": "ru.core.v1:p3:c4;ru.activities.v1:p1:c3",
+      "speechText": "Вместе",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "774751c47cc000142286c0427bb71a6a6e61c2a3078d173d3fb4792469ea08fc",
+      "size": 9645,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.2,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.2,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Вместе",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.like": {
+      "key": "ru.like",
+      "exact_phrase": "Нравится",
+      "expected_filename": "ru-like.mp3",
+      "used_in": "ru.core.v1:p3:c5",
+      "speechText": "Нравится",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "a137846474fc9745f8514d46e70d8493b41a05223d6d1e80ebfc7069a91b291f",
+      "size": 10029,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.248,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Нравится",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.dislike": {
+      "key": "ru.dislike",
+      "exact_phrase": "Не нравится",
+      "expected_filename": "ru-dislike.mp3",
+      "used_in": "ru.core.v1:p3:c6",
+      "speechText": "Не нравится",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "0380d44cf9ba17af4178bb1556bddd7ea5c35bbcc213d638fa7104de7e4bdfe1",
+      "size": 10797,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.344,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Не нравится",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.scared": {
+      "key": "ru.scared",
+      "exact_phrase": "Страшно",
+      "expected_filename": "ru-scared.mp3",
+      "used_in": "ru.core.v1:p3:c7",
+      "speechText": "Страшно",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "7902a26a591f5aaec8c7ba602ad1faaed800e703dc9d386af7c1a504f4f04f23",
+      "size": 10029,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.248,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -0.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Страшно",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.angry": {
+      "key": "ru.angry",
+      "exact_phrase": "Злюсь",
+      "expected_filename": "ru-angry.mp3",
+      "used_in": "ru.core.v1:p3:c8",
+      "speechText": "Злюсь",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "89e682a155a864b09bc11d453b20c91f7f593f34a16b316b1e57b70d42684d01",
+      "size": 8685,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.08,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Злюсь",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.hug": {
+      "key": "ru.hug",
+      "exact_phrase": "Обнять",
+      "expected_filename": "ru-hug.mp3",
+      "used_in": "ru.core.v1:p3:c9",
+      "speechText": "Обнять",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "849c8ed02787f2dda63570c544c734edf1b907638b6c773d115c5ec6d9d2ea31",
+      "size": 7533,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.936,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Обнять",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.water": {
+      "key": "ru.water",
+      "exact_phrase": "Вода",
+      "expected_filename": "ru-water.mp3",
+      "used_in": "ru.food.v1:p1:c4",
+      "speechText": "Вода",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "2b6b0134f790968ee405f721d25cbf218ee3444256488a65b75fea028404ddfe",
+      "size": 6765,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.84,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -1.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Вода",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.juice": {
+      "key": "ru.juice",
+      "exact_phrase": "Сок",
+      "expected_filename": "ru-juice.mp3",
+      "used_in": "ru.food.v1:p1:c5",
+      "speechText": "Сок",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "821d360f83b588f542f4a1cb37deaa928a00797076264fc5ec21302000abab38",
+      "size": 8109,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.008,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Сок",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.tea": {
+      "key": "ru.tea",
+      "exact_phrase": "Чай",
+      "expected_filename": "ru-tea.mp3",
+      "used_in": "ru.food.v1:p1:c6",
+      "speechText": "Чай",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "2f08d6a2eddc4151acc9c3e7b88a001c5888d42b5f855d2f8756a6236eb18051",
+      "size": 5421,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.672,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Чай",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.porridge": {
+      "key": "ru.porridge",
+      "exact_phrase": "Каша",
+      "expected_filename": "ru-porridge.mp3",
+      "used_in": "ru.food.v1:p1:c7",
+      "speechText": "Каша",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "6f1f78bef08d10b824d94100d72d64cfd360621029675c6e240b9e6c0436bafa",
+      "size": 8109,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.008,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -1.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Каша",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.soup": {
+      "key": "ru.soup",
+      "exact_phrase": "Суп",
+      "expected_filename": "ru-soup.mp3",
+      "used_in": "ru.food.v1:p1:c8",
+      "speechText": "Суп",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "885ffd8ea3a214fd843e4a6c919831b008d88e49254faebe91251a01d94155a3",
+      "size": 7917,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.984,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.2,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Суп",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.read": {
+      "key": "ru.read",
+      "exact_phrase": "Читать",
+      "expected_filename": "ru-read.mp3",
+      "used_in": "ru.activities.v1:p1:c5",
+      "speechText": "Читать",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "25610f42376d91c9bb8f2b33d955ad77ba9eac60b01b3c1195dd463bb2ae313a",
+      "size": 6381,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.792,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Читать",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.walk": {
+      "key": "ru.walk",
+      "exact_phrase": "Гулять",
+      "expected_filename": "ru-walk.mp3",
+      "used_in": "ru.activities.v1:p1:c6",
+      "speechText": "Гулять",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "6a811787828d0d6fdaa9f67d2cb856743d7f5707c62cb71a7d0f0b88e1a7e75c",
+      "size": 9069,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.128,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Гулять",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.music": {
+      "key": "ru.music",
+      "exact_phrase": "Музыка",
+      "expected_filename": "ru-music.mp3",
+      "used_in": "ru.activities.v1:p1:c7",
+      "speechText": "Музыка",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "6797c0c7f559edac21f8101d1eecbfec400b13cc27093e0eb74130383d6bc0ad",
+      "size": 9453,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.176,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.8,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Музыка",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.cartoon": {
+      "key": "ru.cartoon",
+      "exact_phrase": "Мультфильм",
+      "expected_filename": "ru-cartoon.mp3",
+      "used_in": "ru.activities.v1:p1:c8",
+      "speechText": "Мультфильм",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "285a66781f295da54df3bcaba0658006a6fe5cc886a4b2c7c72daea54d6ca7fa",
+      "size": 9645,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.2,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Мультфильм",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.head": {
+      "key": "ru.head",
+      "exact_phrase": "Голова",
+      "expected_filename": "ru-head.mp3",
+      "used_in": "ru.feelings.v1:p1:c4",
+      "speechText": "Голова",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "e83003aa3ee36f623605f5d2862b2230710c259042b12f2b8df882b439b3161f",
+      "size": 9069,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.128,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Голова",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.belly": {
+      "key": "ru.belly",
+      "exact_phrase": "Живот",
+      "expected_filename": "ru-belly.mp3",
+      "used_in": "ru.feelings.v1:p1:c5",
+      "speechText": "Живот",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "85baab3f77741fee19be16dfabcbf8ae502e78e3483e25a613d46189b29d92b8",
+      "size": 8685,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.08,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Живот",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.back": {
+      "key": "ru.back",
+      "exact_phrase": "Спина",
+      "expected_filename": "ru-back.mp3",
+      "used_in": "ru.feelings.v1:p1:c6",
+      "speechText": "Спина",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "23431cb6b35696498ddf6c6926c24db5d498b91cbc0458aa3ffcb050d99b006a",
+      "size": 6957,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.864,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.6,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Спина",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.arm": {
+      "key": "ru.arm",
+      "exact_phrase": "Рука",
+      "expected_filename": "ru-arm.mp3",
+      "used_in": "ru.feelings.v1:p1:c7",
+      "speechText": "Рука",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "a791f54a50c8b6b96ace1b21d8563f48674fb99d09f2b7b8934db742e03aa2e3",
+      "size": 6765,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.84,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Рука",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.leg": {
+      "key": "ru.leg",
+      "exact_phrase": "Нога",
+      "expected_filename": "ru-leg.mp3",
+      "used_in": "ru.feelings.v1:p1:c8",
+      "speechText": "Нога",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "e17aeff655518eb723336789b2435bb07bc551e470d56c4676e18dd8ac5f5560",
+      "size": 6957,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.864,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Нога",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.a": {
+      "key": "ru.letter.a",
+      "exact_phrase": "А",
+      "expected_filename": "ru-letter-a.mp3",
+      "used_in": "ru.letters.v1:p1:c1",
+      "speechText": "А",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "61259acc85eb7774445db3db20a279feeac3764ef407845e893dca959da0cea3",
+      "size": 5229,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.648,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -0.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "А",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.be": {
+      "key": "ru.letter.be",
+      "exact_phrase": "Б",
+      "expected_filename": "ru-letter-be.mp3",
+      "used_in": "ru.letters.v1:p1:c2",
+      "speechText": "Бэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "33e2153dab71f57f8df83d688ca25f37a02dc30b8e114040ac00144367e67e10",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Бэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.ve": {
+      "key": "ru.letter.ve",
+      "exact_phrase": "В",
+      "expected_filename": "ru-letter-ve.mp3",
+      "used_in": "ru.letters.v1:p1:c3",
+      "speechText": "Вэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "74d17fbf13aa32e476b55139b725af060e0a7b9f709a23c0715792a59db6e2d1",
+      "size": 7725,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.96,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -1.6,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Вэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.ge": {
+      "key": "ru.letter.ge",
+      "exact_phrase": "Г",
+      "expected_filename": "ru-letter-ge.mp3",
+      "used_in": "ru.letters.v1:p1:c4",
+      "speechText": "Гэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "dcb17bc9e196f8ecc67141684c933d0f19273cbee70806d3a9ddbc3a0e9b1b7a",
+      "size": 7725,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.96,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.1,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Гэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.de": {
+      "key": "ru.letter.de",
+      "exact_phrase": "Д",
+      "expected_filename": "ru-letter-de.mp3",
+      "used_in": "ru.letters.v1:p1:c5",
+      "speechText": "Дэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "521ee32ee9ee148dbebe101322d602707ea029506e1f3231552da4eecaeed96d",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Дэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.e": {
+      "key": "ru.letter.e",
+      "exact_phrase": "Е",
+      "expected_filename": "ru-letter-e.mp3",
+      "used_in": "ru.letters.v1:p1:c6",
+      "speechText": "Е",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "2ab6bb65b5333e2e6459d7b940527566fbb8af77228f3449a924440aab5f32f3",
+      "size": 7533,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.936,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.8,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Е",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.yo": {
+      "key": "ru.letter.yo",
+      "exact_phrase": "Ё",
+      "expected_filename": "ru-letter-yo.mp3",
+      "used_in": "ru.letters.v1:p1:c7",
+      "speechText": "Ё",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "7676f8bd988efe74c94e37c8cc329336066ae49d3b72bac7ba663c5985e1a5dc",
+      "size": 6957,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.864,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.9,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ё",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.zhe": {
+      "key": "ru.letter.zhe",
+      "exact_phrase": "Ж",
+      "expected_filename": "ru-letter-zhe.mp3",
+      "used_in": "ru.letters.v1:p1:c8",
+      "speechText": "Жэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "7ac94af98a8402b4d9206e2ce0223831b1a1caf4c45d81a6ba90b9abf8447edb",
+      "size": 7341,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.912,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Жэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.ze": {
+      "key": "ru.letter.ze",
+      "exact_phrase": "З",
+      "expected_filename": "ru-letter-ze.mp3",
+      "used_in": "ru.letters.v1:p1:c9",
+      "speechText": "Зэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "44c8d9be9aee1d2d75e8c6d2ab37f43161b3365e7b7704cd22b8025276b8b991",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Зэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.i": {
+      "key": "ru.letter.i",
+      "exact_phrase": "И",
+      "expected_filename": "ru-letter-i.mp3",
+      "used_in": "ru.letters.v1:p2:c1",
+      "speechText": "И",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "5c863cbf435c54526ffc3a840e3f6a5fd35a659370c5608042140f6b55d6f1b2",
+      "size": 6381,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.792,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -6.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "И",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.short_i": {
+      "key": "ru.letter.short_i",
+      "exact_phrase": "Й",
+      "expected_filename": "ru-letter-short-i.mp3",
+      "used_in": "ru.letters.v1:p2:c2",
+      "speechText": "И краткое",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "ecd24a9a8a5c8f43e42d596ef33d78c72adf084f1b9fb617665d48c7190ca729",
+      "size": 10221,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.272,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -1.8,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "И краткое",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.ka": {
+      "key": "ru.letter.ka",
+      "exact_phrase": "К",
+      "expected_filename": "ru-letter-ka.mp3",
+      "used_in": "ru.letters.v1:p2:c3",
+      "speechText": "Ка",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "f90d2b9a7729ac6573e175f641d846dbbad3f49ce40d43caa191adcf378ce6cc",
+      "size": 5805,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.72,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ка",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.el": {
+      "key": "ru.letter.el",
+      "exact_phrase": "Л",
+      "expected_filename": "ru-letter-el.mp3",
+      "used_in": "ru.letters.v1:p2:c4",
+      "speechText": "Эль",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "5de6fab071097a842615a57d81dfeff7f295ab5f15fcf5321551a44fc1b34a67",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.9,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Эль",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.em": {
+      "key": "ru.letter.em",
+      "exact_phrase": "М",
+      "expected_filename": "ru-letter-em.mp3",
+      "used_in": "ru.letters.v1:p2:c5",
+      "speechText": "Эм",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "2b3158e73e88ea0c631050d848c29613403fc16b1c401ab787b59de5d59eead7",
+      "size": 6189,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.768,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Эм",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.en": {
+      "key": "ru.letter.en",
+      "exact_phrase": "Н",
+      "expected_filename": "ru-letter-en.mp3",
+      "used_in": "ru.letters.v1:p2:c6",
+      "speechText": "Эн",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "ca9af102e6b2af784610ee45f575bf3afecdf5270f664a0c981ecb70c8bffa80",
+      "size": 6765,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.84,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.9,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Эн",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.o": {
+      "key": "ru.letter.o",
+      "exact_phrase": "О",
+      "expected_filename": "ru-letter-o.mp3",
+      "used_in": "ru.letters.v1:p2:c7",
+      "speechText": "О",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "c13c30eb3502284438f5162bdceb5fce0a7b034acf8c6c71f77602bddac21965",
+      "size": 5613,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.696,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.4,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "О",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.pe": {
+      "key": "ru.letter.pe",
+      "exact_phrase": "П",
+      "expected_filename": "ru-letter-pe.mp3",
+      "used_in": "ru.letters.v1:p2:c8",
+      "speechText": "Пэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "376383b9c24b3018501db27599d72c49304af70bdb948fc9a1d8ae56cb41686e",
+      "size": 5613,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.696,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Пэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.er": {
+      "key": "ru.letter.er",
+      "exact_phrase": "Р",
+      "expected_filename": "ru-letter-er.mp3",
+      "used_in": "ru.letters.v1:p2:c9",
+      "speechText": "Эр",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "c67a946dd7b92cad62cb692c27b5ea084073305cca5f88e24a39b57ba16741ad",
+      "size": 6381,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.792,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Эр",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.es": {
+      "key": "ru.letter.es",
+      "exact_phrase": "С",
+      "expected_filename": "ru-letter-es.mp3",
+      "used_in": "ru.letters.v1:p3:c1",
+      "speechText": "Эс",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "2c66ac04ee1b044e2def996addae3870b3b1023688208ede127b49cbfe889b03",
+      "size": 7341,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.912,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Эс",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.te": {
+      "key": "ru.letter.te",
+      "exact_phrase": "Т",
+      "expected_filename": "ru-letter-te.mp3",
+      "used_in": "ru.letters.v1:p3:c2",
+      "speechText": "Тэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "eca6d5dec84197fc947c7de62b9f2d8c334cf40e5f9c762c6ce1b337501e1f53",
+      "size": 6573,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.816,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Тэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.u": {
+      "key": "ru.letter.u",
+      "exact_phrase": "У",
+      "expected_filename": "ru-letter-u.mp3",
+      "used_in": "ru.letters.v1:p3:c3",
+      "speechText": "У",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "5cee938b98211270a51db153ac1f840bd153c5d67395fc4a16273c3863fadfc8",
+      "size": 5997,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.744,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.1,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "У",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.ef": {
+      "key": "ru.letter.ef",
+      "exact_phrase": "Ф",
+      "expected_filename": "ru-letter-ef.mp3",
+      "used_in": "ru.letters.v1:p3:c4",
+      "speechText": "Эф",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "f027b350dbf7f3fc08bbaefc85b6f24c4b05ba5de4d3af423bcac6b3bcce3561",
+      "size": 6573,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.816,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.8,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Эф",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.kha": {
+      "key": "ru.letter.kha",
+      "exact_phrase": "Х",
+      "expected_filename": "ru-letter-kha.mp3",
+      "used_in": "ru.letters.v1:p3:c5",
+      "speechText": "Ха",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "a599f7e70ed62aaee383d47295ae368dcb3f63df9fdaf28a8f1616fa34802f0c",
+      "size": 6765,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.84,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ха",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.tse": {
+      "key": "ru.letter.tse",
+      "exact_phrase": "Ц",
+      "expected_filename": "ru-letter-tse.mp3",
+      "used_in": "ru.letters.v1:p3:c6",
+      "speechText": "Цэ",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "5e1b15d658e002fa932754ca77ff50e998862438de099262dc3e166ebc4e52fe",
+      "size": 6957,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.864,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.2,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Цэ",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.che": {
+      "key": "ru.letter.che",
+      "exact_phrase": "Ч",
+      "expected_filename": "ru-letter-che.mp3",
+      "used_in": "ru.letters.v1:p3:c7",
+      "speechText": "Че",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "695d5ff5854b9f7c8b51e397ce4b9cd4c695ca84fdff148ad1621658ea18cc76",
+      "size": 5037,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.624,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -5.3,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Че",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.sha": {
+      "key": "ru.letter.sha",
+      "exact_phrase": "Ш",
+      "expected_filename": "ru-letter-sha.mp3",
+      "used_in": "ru.letters.v1:p3:c8",
+      "speechText": "Ша",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "5c33dd4ba8eba1a389d5801000a3e6fb10cae7d5a901f560fd5e659708a4df52",
+      "size": 5613,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.696,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.6,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ша",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.shcha": {
+      "key": "ru.letter.shcha",
+      "exact_phrase": "Щ",
+      "expected_filename": "ru-letter-shcha.mp3",
+      "used_in": "ru.letters.v1:p3:c9",
+      "speechText": "Ща",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "60326c2129b4d5dca0cfb9427727bb035e2c980bead3e61bec9e58ae8539e7f4",
+      "size": 5229,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.648,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.8,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ща",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.hard_sign": {
+      "key": "ru.letter.hard_sign",
+      "exact_phrase": "Ъ",
+      "expected_filename": "ru-letter-hard-sign.mp3",
+      "used_in": "ru.letters.v1:p4:c1",
+      "speechText": "Твёрдый знак",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "26a8459156f2e9771afb304ac6aa4f2f0b40fc498340e9ae2f3b529d000b828f",
+      "size": 8493,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.056,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Твёрдый знак",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.yeru": {
+      "key": "ru.letter.yeru",
+      "exact_phrase": "Ы",
+      "expected_filename": "ru-letter-yeru.mp3",
+      "used_in": "ru.letters.v1:p4:c2",
+      "speechText": "Ы",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "4d65b27df428511582a5a30384ea50e23ca42b459ea7f58634776201b5b2e673",
+      "size": 5997,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.744,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.5,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ы",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.soft_sign": {
+      "key": "ru.letter.soft_sign",
+      "exact_phrase": "Ь",
+      "expected_filename": "ru-letter-soft-sign.mp3",
+      "used_in": "ru.letters.v1:p4:c3",
+      "speechText": "Мягкий знак",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "bf90423f947aa64ccc9db362103d7c44f3b6f9319a7d133d04c8287728e3bff4",
+      "size": 11565,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 1.44,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -3.8,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Мягкий знак",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.eh": {
+      "key": "ru.letter.eh",
+      "exact_phrase": "Э",
+      "expected_filename": "ru-letter-eh.mp3",
+      "used_in": "ru.letters.v1:p4:c4",
+      "speechText": "Э",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "008f39716d6a7cc67bc17aa22f37dd838d40a2c0e4ab63d1afd9c6b3ac024d3c",
+      "size": 5997,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.744,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -1.7,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Э",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.yu": {
+      "key": "ru.letter.yu",
+      "exact_phrase": "Ю",
+      "expected_filename": "ru-letter-yu.mp3",
+      "used_in": "ru.letters.v1:p4:c5",
+      "speechText": "Ю",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "93c60015afbce0a94a01bd9583ef55137faf073034c6c1456fa0e1567d26c214",
+      "size": 7533,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.936,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -4.2,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Ю",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    },
+    "ru.letter.ya": {
+      "key": "ru.letter.ya",
+      "exact_phrase": "Я",
+      "expected_filename": "ru-letter-ya.mp3",
+      "used_in": "ru.letters.v1:p4:c6",
+      "speechText": "Я",
+      "sourceUrl": "https://tts.linka.su/tts",
+      "sha256": "42ce8872a58ac109f4333f5002c32d20d1b235c636f8f781a19eca26073edfb5",
+      "size": 7149,
+      "voice": "anton",
+      "acquisition": "https_post_json_once",
+      "validation": {
+        "format": "mp3",
+        "codec": "mp3",
+        "durationSeconds": 0.888,
+        "sampleRate": 48000,
+        "channels": 1,
+        "maxVolumeDb": -2.0,
+        "strictDecode": "passed",
+        "nonSilent": true,
+        "listeningReview": "not_performed"
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://tts.linka.su/tts",
+        "json": {
+          "text": "Я",
+          "voice": "anton"
+        },
+        "httpStatus": 200,
+        "contentType": "audio/mpeg"
+      }
+    }
+  }
+}
