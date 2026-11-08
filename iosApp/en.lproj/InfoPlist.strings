@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "The microphone is used only when you request an audio recording for a card.";
+"NSFaceIDUsageDescription" = "Face ID confirms device ownership when you explicitly change assistant protection.";

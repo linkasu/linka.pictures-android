@@ -16,6 +16,8 @@ import su.linka.pictures.ui.app.LinkaApp
 import su.linka.pictures.ui.theme.LinkaTheme
 import su.linka.pictures.ui.theme.LocalLinkaPalette
 import androidx.compose.material.Surface
+import org.jetbrains.compose.resources.stringResource
+import su.linka.pictures.resources.*
 
 private object ProductProcess {
     val root by lazy { IosProductRoot() }
@@ -69,7 +71,7 @@ private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) 
     LinkaTheme {
       Surface(Modifier.fillMaxSize(), color = LocalLinkaPalette.current.background, contentColor = LocalLinkaPalette.current.text) {
         when (val current = state) {
-            RootState.Loading -> Text("Открываем библиотеку…", Modifier.padding(24.dp))
+            RootState.Loading -> Text(stringResource(Res.string.ios_opening_library), Modifier.padding(24.dp))
             is RootState.Failed -> RootError(current.problem)
             is RootState.Ready -> {
                 val graph = current.graph
@@ -79,16 +81,16 @@ private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) 
                 val problem by graph.thumbnails.problem.collectAsState()
                 val notice by graph.notice.collectAsState()
                 Column(Modifier.fillMaxSize()) {
-                    notice.problem?.let { Text("Ошибка: ${it.code}. Доступ закрыт; перезапустите приложение после устранения причины.") }
-                    problem?.let { Text("Не удалось загрузить изображение: ${it.code}") }
+                    notice.problem?.let { Text(stringResource(Res.string.ios_access_closed_error, it.code.name)) }
+                    problem?.let { Text(stringResource(Res.string.ios_image_load_error, it.code.name)) }
                     val communication = session
                     if (notice.replacementEpoch != null) {
-                        Text(if (notice.problem != null) "Библиотека заменена, прежнее сообщение очищено. Требуется перезапуск."
-                            else "Библиотека заменена. Открываем новое сообщение…")
-                    } else if (communication == null) Text("Открываем сообщение…")
+                        Text(stringResource(if (notice.problem != null) Res.string.ios_replaced_library_restart
+                            else Res.string.ios_replaced_library_opening_message))
+                    } else if (communication == null) Text(stringResource(Res.string.ios_opening_message))
                     else {
                         val message by communication.state.collectAsState()
-                        if (notice.problem != null) Text("Текущее сообщение (только чтение): ${message.renderedText}")
+                        if (notice.problem != null) Text(stringResource(Res.string.ios_read_only_message, message.renderedText))
                         ReadOnlyProduct(notice.readOnly, message.renderedText) {
                             LinkaApp(graph.storage.library, graph.storage.media, graph.storage.messages,
                                 graph.access, graph.audio, graph.files, graph.preparation, graph.inspection,
@@ -108,8 +110,8 @@ private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) 
 private fun RootError(problem: Problem) = Surface(Modifier.fillMaxSize(),
     color = LocalLinkaPalette.current.background, contentColor = LocalLinkaPalette.current.text) {
   Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
-    Text("Не удалось безопасно открыть библиотеку")
+    Text(stringResource(Res.string.ios_library_open_error))
     Text("${problem.code}" + (problem.systemCode?.let { " (iOS: $it)" } ?: ""))
-    Text("Доступ не открыт. Перезапустите приложение после устранения причины; защита не отключена.")
+    Text(stringResource(Res.string.ios_access_not_opened))
   }
 }

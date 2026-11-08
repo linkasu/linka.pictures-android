@@ -26,6 +26,9 @@ import su.linka.pictures.platform.capabilities.*
 import su.linka.pictures.platform.files.IosPlatformFilesPort
 import su.linka.pictures.storage.StorageRuntime
 import su.linka.pictures.ui.images.ThumbnailLoader
+import org.jetbrains.compose.resources.getString
+import su.linka.pictures.resources.Res
+import su.linka.pictures.resources.ios_owner_verification_reason
 
 internal sealed interface RootState {
     data object Loading : RootState
@@ -242,7 +245,7 @@ internal class IosProductRoot {
         admitRootCredentials(credentials, paths.existed) {
             if (job.isActive && !closed) OperationResult.Completed(Unit) else OperationResult.Cancelled
         }.required()
-        val verification = IosDeviceOwnerVerifier("Подтвердите владельца устройства для изменения защиты помощника",
+        val verification = IosDeviceOwnerVerifier(getString(Res.string.ios_owner_verification_reason),
             { request, owner -> access?.isVerificationCurrent(request, owner) == true },
             ::ownerForeground, { access?.suspendForSystemPrompt() }, scope)
         verifier = verification

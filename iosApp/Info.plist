@@ -6,13 +6,15 @@
     <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleName</key><string>LINKa P02 bootstrap</string>
     <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>ru</string></array>
     <key>MinimumOSVersion</key><string>17.0</string>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>CADisableMinimumFrameDurationOnPhone</key><true/>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Микрофон нужен только по вашей команде для записи звука карточки.</string>
+    <string>The microphone is used only when you request an audio recording for a card.</string>
     <key>NSFaceIDUsageDescription</key>
-    <string>Face ID подтверждает владельца устройства при явном изменении защиты помощника.</string>
+    <string>Face ID confirms device ownership when you explicitly change assistant protection.</string>
     <key>UILaunchScreen</key><dict/>
     <key>UISupportedInterfaceOrientations</key>
     <array>
