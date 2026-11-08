@@ -1,4 +1,10 @@
-# V15: production Android admission — BLOCKED
+# V15: production Android admission
+
+**Обновление 8 ноября2026:** единый launcher и native migration binding реализованы;
+старые UI/writers удаляются. Изолированные API21 admission/process-death проверки
+описаны в [unified-runtime.md](unified-runtime.md). Настоящий подписанный production
+upgrade и внешние release gates ещё не приняты. Ниже — исторический блокер 7 ноября,
+объясняющий, почему простой manifest swap был запрещён.
 
 7 ноября2026 проверен фактический путь запуска. Визуальный перенос не даёт
 разрешения открыть новую библиотеку вместо существующей пользовательской.

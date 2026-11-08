@@ -1,5 +1,12 @@
 # P09: cross-store admission protocol — accepted implementation contract
 
+Дополнение 8 ноября2026: [реализация и проверки](unified-runtime.md). MigrationSource
+явно различает filesystem и bundled inputs; admission schema2 сохраняет sourceKind,
+читает schema1 active без перезаписи и продолжает schema1 journal в том же поколении.
+Для раннего INVENTORY разрешено создание только доказанно своей отсутствующей БД
+в отсутствующем/пустом generation; неизвестные файлы по-прежнему блокируют запуск.
+Это уточняет строгую проверку requireDatabase шага3 ниже, но не разрешает reset.
+
 COORD, 5 ноября 2026. Conditional implementation только на isolated synthetic data; **G4 не PASS**, normal `su.linka.pictures` на настоящие данные не устанавливается. Исходники legacy не меняются, downgrade1.4 не rollback.
 
 ## Writers и граница активации

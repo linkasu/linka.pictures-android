@@ -1,5 +1,10 @@
 # P09 synthetic legacy admission
 
+Historical implementation report. Current Android binding and source/receipt
+compatibility are described in [unified-runtime.md](unified-runtime.md). The current
+constructor accepts MigrationSource rather than legacySets and no longer carries
+the unused inspection parameter; the signatures/counts below document the earlier phase.
+
 Implemented against `legacy-upgrade-protocol.md` (COORD, 2026-11-05), starting from `9548d04`. This change owns only `migration` common code/tests. **Not full P09, native P08 proof, root integration, or G4 PASS.** No real preferences, sets, passwords, device or normal APK were read/installed.
 
 ## Root binding

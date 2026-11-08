@@ -1,5 +1,21 @@
 # LINKa «Покажи»: журнал исполнения
 
+## Актуально: единый runtime, 8 ноября2026
+
+Android debug/release теперь используют один MainActivity/LinkaApp и настоящее
+migration admission; legacy UI/writers и Analytics удалены. Текущая development
+SQLite открывается на прежнем месте. Семь bundled примеров, RU/EN, native test
+ресурсы и CI-проверки объединены без production signing/установки.
+
+Проверено: shared JVM528/528, Android debug/release unit26/26 каждый, actual core
+Native iOS17 **652/652**, app/shared lint0errors, оба frameworks/app-host link,
+unsigned iOS Simulator/device builds. API21 real migration/process-death и actual
+development update/launcher+alias проверки выполнены. API35 — environment BLOCKED,
+не PASS. Native UI EN→RU smoke собран, но пока не исполнен; physical/signing/store/
+power-loss/Keychain admission gates отдельно OPEN. Подробности и ограничения:
+[unified-runtime.md](unified-runtime.md). Старые записи ниже — история, не текущие
+утверждения о legacy production startup.
+
 Дата начала: 4 ноября 2026 года. Основание: `/Users/aacidov/.opencode/plan/linka-pokazhi-implementation.md` и три соседних приложения contracts/work-packages/verification. Этот журнал отражает выполненное, не заменяет нормативный план.
 
 ## Актуальный визуальный контракт: Electron, 7 ноября2026
