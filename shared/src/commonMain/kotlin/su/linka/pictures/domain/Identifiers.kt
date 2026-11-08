@@ -16,3 +16,5 @@ import su.linka.pictures.text.isNativeText
 @JvmInline value class RequestId(val value: String) { init { require(value.isNotBlank() && isNativeText(value)) } }
 @JvmInline value class OperationId(val value: String) { init { require(value.isNotBlank() && isNativeText(value)) } }
 @JvmInline value class RecoveryId(val value: String) { init { require(value.isNotBlank() && isNativeText(value)) } }
+
+@Serializable @JvmInline value class FolderId(val value: String) { init { require(value.isNotBlank() && value.length <= 256 && isNativeText(value)) } }

@@ -48,7 +48,7 @@ internal fun SQLiteConnection.rows(sql: String, vararg values: Any?): List<List<
 internal fun SQLiteConnection.number(sql: String, vararg values: Any?): Long =
     rows(sql, *values).single().single()!!.toLong()
 
-internal val schemaStatements = listOf(
+internal val schema1Statements = listOf(
     "CREATE TABLE library_meta(singleton INTEGER PRIMARY KEY CHECK(singleton=1), epoch INTEGER NOT NULL CHECK(epoch>=0), revision INTEGER NOT NULL CHECK(revision>=0), settings_json TEXT NOT NULL)",
     "CREATE TABLE entries(id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('BOARD','RETAINED_ARCHIVE')), revision INTEGER NOT NULL CHECK(revision>0), order_index INTEGER NOT NULL UNIQUE, payload_json TEXT NOT NULL)",
     "CREATE TABLE drafts(id TEXT PRIMARY KEY NOT NULL, board_id TEXT, base_revision INTEGER, version INTEGER NOT NULL CHECK(version>0), payload_json TEXT NOT NULL)",
@@ -60,16 +60,23 @@ internal val schemaStatements = listOf(
     "CREATE TABLE recovery_drafts(id TEXT PRIMARY KEY NOT NULL, board_id TEXT, base_revision INTEGER, version INTEGER NOT NULL, payload_json TEXT NOT NULL)",
 )
 
+internal const val ORGANIZATION_COLUMN = "organization_json TEXT NOT NULL DEFAULT '{\"schema\":1,\"value\":{\"folders\":[],\"placements\":{}}}'"
+internal val schemaStatements = schema1Statements.map { definition ->
+    if (definition.startsWith("CREATE TABLE library_meta(") || definition.startsWith("CREATE TABLE recovery("))
+        definition.dropLast(1) + ", " + ORGANIZATION_COLUMN + ")"
+    else definition
+}
+
 internal fun SQLiteConnection.readSchema(): Long {
     val version = number("PRAGMA user_version")
-    if (version > 1) fail(ProblemCode.NEWER_SCHEMA)
-    if (version !in 0L..1L) fail(ProblemCode.INVALID_DATA)
+    if (version > 2) fail(ProblemCode.NEWER_SCHEMA)
+    if (version !in 0L..2L) fail(ProblemCode.INVALID_DATA)
     val objects = rows("SELECT name FROM sqlite_master")
     if (version == 0L && objects.isNotEmpty()) fail(ProblemCode.INVALID_DATA)
-    if (version == 1L) {
-        for (definition in schemaStatements) {
+    if (version in 1L..2L) {
+        for (definition in if (version == 1L) schema1Statements else schemaStatements) {
             val table = definition.substringAfter("CREATE TABLE ").substringBefore('(')
-            // Schema1 has one producer; do not repair altered columns/constraints in place.
+            // Both versions have exact producers; altered columns/constraints are not repaired.
             if (rows("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", table).singleOrNull()?.singleOrNull() != definition) fail(ProblemCode.INVALID_DATA)
         }
     }

@@ -10,10 +10,24 @@ data class BackupManifest(
     val settings: PortableSettings,
     val counts: SnapshotCounts,
     val format: String = "su.linka.pictures.backup",
-    val version: String = "1.0",
+    val version: String = "1.1",
 ) {
     init {
         require(revision >= 0)
-        require(format == "su.linka.pictures.backup" && version == "1.0")
+        require(format == "su.linka.pictures.backup" && version == "1.1")
     }
+}
+
+
+/** Frozen 1.0 header, parsed strictly before conversion to current settings. */
+@Serializable
+internal data class LegacyBackupManifest(
+    val revision: Long,
+    val settings: su.linka.pictures.domain.LegacyPortableSettings,
+    val counts: SnapshotCounts,
+    val format: String = "su.linka.pictures.backup",
+    val version: String = "1.0",
+) {
+    init { require(revision >= 0 && format == "su.linka.pictures.backup" && version == "1.0") }
+    fun current() = BackupManifest(revision, settings.current(), counts)
 }

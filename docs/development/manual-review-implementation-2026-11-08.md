@@ -6,7 +6,7 @@
 | Этап | Объём | Состояние |
 |---|---|---|
 | S0 | Frozen schema1 fixture, контракты | PASS: 1 JVM characterization; визуальные/content gates открыты |
-| S1 | Schema2, старые данные и настройки | TODO |
+| S1 | Schema2, старые данные и настройки | PASS: focused storage/backup; native old-binary gate ещё не выполнен |
 | S2 | Папки и guarded операции | TODO |
 | S3 | Snapshot, backup/recovery | TODO |
 | S4 | UI папок и меню по удержанию | TODO |

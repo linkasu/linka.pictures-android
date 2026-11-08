@@ -260,11 +260,12 @@ class StorageRuntime private constructor(
                 if (version == 0L) {
                     opened.transaction(null) {
                         schemaStatements.forEach { db.exec(it) }
-                        db.exec("INSERT INTO library_meta VALUES(1,0,0,?)", encode(PortableSettings()))
+                        db.exec("INSERT INTO library_meta(singleton,epoch,revision,settings_json) VALUES(1,0,0,?)", encode(PortableSettings()))
                         db.exec("INSERT INTO message VALUES(1,0,0,?)", encode(MessageDraft()))
-                        db.exec("PRAGMA user_version=1")
+                        db.exec("PRAGMA user_version=2")
                     }
                 }
+                if (version == 1L) opened.transaction(null) { opened.upgradeSchema1() }
                 fileSystem.createDirectories(root / "media")
                 fileSystem.createDirectories(root / "staging")
                 opened.also { runtime ->

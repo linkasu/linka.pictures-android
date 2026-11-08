@@ -2,7 +2,16 @@ package su.linka.pictures.domain
 
 import kotlinx.serialization.Serializable
 
-@Serializable data class BoardPresentation(val showPageButtons: Boolean = true)
+@Serializable enum class PageNavigation { NONE, BOTTOM, SIDE }
+
+@Serializable
+data class BoardPresentation(
+    val navigation: PageNavigation = PageNavigation.BOTTOM,
+    val dragToCompose: Boolean = false,
+) {
+    constructor(showPageButtons: Boolean) : this(if (showPageButtons) PageNavigation.BOTTOM else PageNavigation.NONE)
+    val showPageButtons: Boolean get() = navigation != PageNavigation.NONE
+}
 
 @Serializable
 data class PortableSettings(

@@ -57,6 +57,23 @@ class BackupCodecTest {
         rig.discard(output); source.close(); restored.close(); restored.close(); clean(rig, store)
     }
 
+    @Test fun shippedBackup10ConvertsLegacyPageButtonsWithoutRelaxingUnknownFields() = runTest {
+        val rig = CodecTestRig(); val store = BackupTestStore(rig)
+        val old = header(fixture(rig, store)) { root ->
+            root.with("version", JsonPrimitive("1.0")).with("settings",
+                root.getValue("settings").jsonObject.with("boards", buildJsonObject {
+                    put("board", buildJsonObject { put("showPageButtons", false) })
+                }))
+        }
+        val restored = codec(rig, store).read(rig.input(syntheticZip(old))).value()
+        assertEquals(PageNavigation.NONE, restored.settings.boards.getValue(BoardId("board")).navigation)
+        assertFalse(restored.settings.boards.getValue(BoardId("board")).dragToCompose)
+        restored.close(); clean(rig, store)
+        val invalid = header(old) { root -> root.with("settings", root.getValue("settings").jsonObject.with("untrusted", JsonPrimitive(true))) }
+        failed(codec(rig, store).read(rig.input(syntheticZip(invalid))), ProblemCode.INVALID_DATA)
+        clean(rig, store)
+    }
+
     @Test fun fullInternalRoundTripPreservesRevisionFormsTtsRetainedSettingsAndOnlyExplicitRoots() = runTest {
         val rig = CodecTestRig(); val store = BackupTestStore(rig); val source = fullSnapshot(rig)
         val messageOnly = rig.asset("PRIVATE_MESSAGE_ONLY".encodeToByteArray(), MediaKind.AUDIO, "audio/wav")

@@ -210,11 +210,11 @@ class StorageRuntimeTest {
     } }
 
     @Test fun newerAndUnknownZeroSchemasRemainByteForByteUnchanged() = runTest {
-        for (version in listOf(0, 2)) fresh { root ->
+        for (version in listOf(0, 3)) fresh { root ->
             val path = root / "library.sqlite3"
             BundledSQLiteDriver().open(path.toString()).use { db -> db.exec("CREATE TABLE unrelated(secret TEXT)"); db.exec("PRAGMA user_version=$version") }
             val before = fs.read(path) { readByteString() }
-            StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(if (version == 2) ProblemCode.NEWER_SCHEMA else ProblemCode.INVALID_DATA)
+            StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(if (version == 3) ProblemCode.NEWER_SCHEMA else ProblemCode.INVALID_DATA)
             assertEquals(before, fs.read(path) { readByteString() })
         }
     }
@@ -1058,7 +1058,7 @@ class StorageRuntimeTest {
             writer.exec("PRAGMA journal_mode=WAL")
             writer.exec("PRAGMA wal_autocheckpoint=0")
             writer.exec("CREATE TABLE protected_payload(value TEXT)")
-            writer.exec("PRAGMA user_version=2")
+            writer.exec("PRAGMA user_version=3")
             writer.exec("INSERT INTO protected_payload VALUES('owned synthetic fixture')")
             val mainOnly = source / "main-only"
             fs.createDirectory(mainOnly)
@@ -1131,7 +1131,7 @@ class StorageRuntimeTest {
             writer.exec("PRAGMA cache_spill=ON")
             writer.exec("CREATE TABLE protected_payload(value BLOB)")
             writer.exec("WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<64) INSERT INTO protected_payload SELECT zeroblob(4096) FROM n")
-            writer.exec("PRAGMA user_version=2")
+            writer.exec("PRAGMA user_version=3")
             writer.exec("BEGIN IMMEDIATE")
             writer.exec("PRAGMA user_version=1")
             writer.exec("UPDATE protected_payload SET value=randomblob(4096)")
@@ -1197,7 +1197,7 @@ class StorageRuntimeTest {
             override fun source(file: Path): Source {
                 if (file == path && ++reads == 2) {
                     // Deliberate violation of the single-writer prerequisite, in an owned fixture only.
-                    BundledSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=2") }
+                    BundledSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=3") }
                     external = tree(root).filterKeys { !it.startsWith("probe-") }
                 }
                 return super.source(file)
@@ -1217,7 +1217,7 @@ class StorageRuntimeTest {
         driver.afterStep = { file, sql -> if (sql == "PRAGMA user_version") {
             assertNotEquals(path.toString(), file)
             driver.afterStep = null
-            BundledSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=2") }
+            BundledSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=3") }
             external = tree(root).filterKeys { !it.startsWith("probe-") }
         } }
         StorageRuntime.open(root, fs, driver).problem(ProblemCode.CONFLICT)

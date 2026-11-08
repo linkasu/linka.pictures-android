@@ -1,6 +1,9 @@
 package su.linka.pictures.storage
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.SQLiteDriver
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.SQLiteStatement
 import kotlinx.coroutines.test.runTest
 import okio.FileSystem
 import okio.Path
@@ -62,7 +65,58 @@ class Schema1UpgradeTest {
                 assertEquals(11, assertIs<OperationResult.Completed<StoredMessage>>(runtime.messages.message()).value.version)
                 assertEquals("recovery", assertIs<OperationResult.Completed<su.linka.pictures.application.ports.RecoveryInfo?>>(runtime.library.recovery()).value!!.id.value)
                 assertEquals(1.25f, assertIs<OperationResult.Completed<PortableSettings>>(runtime.library.settings()).value.textScale)
+                assertFalse(assertIs<OperationResult.Completed<PortableSettings>>(runtime.library.settings()).value.boards.getValue(BoardId("existing")).showPageButtons)
             } finally { runtime.close() }
+            BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { db ->
+                assertEquals(2, db.number("PRAGMA user_version"))
+                assertEquals(2, db.readSchema())
+            }
         } finally { fs.deleteRecursively(parent) }
     }
+    @Test fun migrationFailureRollsBackAndLostCommitAcknowledgementReconciles() = runTest {
+        for (point in listOf("ALTER TABLE library_meta", "ALTER TABLE recovery", "UPDATE library_meta", "COMMIT", "COMMIT_AFTER")) {
+            val fs = FileSystem.SYSTEM
+            val parent = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "linka-schema1-fault-${token()}"
+            fs.createDirectory(parent, mustCreate = true)
+            try {
+                val root = parent / "library"
+                createSchema1(root)
+                val path = (root / "library.sqlite3").toString()
+                val before = BundledSQLiteDriver().open(path).use { it.fingerprint() }
+                var injected = false
+                val driver = object : SQLiteDriver {
+                    override fun open(fileName: String): SQLiteConnection {
+                        val db = BundledSQLiteDriver().open(fileName)
+                        return object : SQLiteConnection by db {
+                            override fun prepare(sql: String): SQLiteStatement {
+                                val statement = db.prepare(sql)
+                                return object : SQLiteStatement by statement {
+                                    override fun step(): Boolean {
+                                        val hit = !injected && fileName == path && sql.startsWith(point.removeSuffix("_AFTER"))
+                                        if (hit && point != "COMMIT_AFTER") { injected = true; error("synthetic migration failure") }
+                                        val result = statement.step()
+                                        if (hit) { injected = true; error("synthetic lost acknowledgement") }
+                                        return result
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                val opened = StorageRuntime.open(root, fs, driver)
+                assertTrue(injected)
+                if (point == "COMMIT_AFTER") {
+                    assertIs<OperationResult.Completed<StorageRuntime>>(opened).value.close()
+                    BundledSQLiteDriver().open(path).use { assertEquals(2, it.readSchema()) }
+                } else {
+                    assertIs<OperationResult.Failed>(opened)
+                    BundledSQLiteDriver().open(path).use {
+                        assertEquals(1, it.readSchema())
+                        assertEquals(before, it.fingerprint())
+                    }
+                }
+            } finally { fs.deleteRecursively(parent) }
+        }
+    }
+
 }

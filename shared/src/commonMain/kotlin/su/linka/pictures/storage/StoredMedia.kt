@@ -91,7 +91,17 @@ internal class StoredMedia(private val runtime: StorageRuntime) : MediaStore {
     internal fun validatePersistentRoots(hashFiles: Boolean = true) {
         val meta = db.rows("SELECT singleton,epoch,revision,settings_json FROM library_meta").singleOrNull() ?: fail(ProblemCode.INVALID_DATA)
         if (meta[0] != "1" || meta[1]!!.toLong() < 0 || meta[2]!!.toLong() < 0) fail(ProblemCode.INVALID_DATA)
-        decode<PortableSettings>(meta[3]!!)
+        val legacy = db.number("PRAGMA user_version") == 1L
+        fun settings(json: String) { if (legacy) decode<LegacyPortableSettings>(json).current() else decode<PortableSettings>(json) }
+        settings(meta[3]!!)
+        if (!legacy) {
+            for ((metaTable, entryTable) in listOf("library_meta" to "entries", "recovery" to "recovery_entries")) {
+                db.rows("SELECT organization_json FROM $metaTable").singleOrNull()?.single()?.let { json ->
+                    if (json.encodeToByteArray().size > 2 * 1024 * 1024) fail(ProblemCode.LIMIT_EXCEEDED)
+                    decode<LibraryOrganization>(json).validateEntries(db.rows("SELECT id FROM $entryTable").map { BoardId(it.single()!!) }.toSet())
+                }
+            }
+        }
         var expectedRefs = 0L
         fun check(kind: String, id: String, roles: Map<AssetId, MediaKind>) {
             val roots = roles.keys
@@ -106,7 +116,7 @@ internal class StoredMedia(private val runtime: StorageRuntime) : MediaStore {
         if (hasRecovery == 1L) {
             val recovery = db.rows("SELECT singleton,library_revision,settings_json FROM recovery").single()
             if (recovery[0] != "1" || recovery[1]!!.toLong() < 0) fail(ProblemCode.INVALID_DATA)
-            decode<PortableSettings>(recovery[2]!!)
+            settings(recovery[2]!!)
         }
         for (recovery in listOf(false, true)) {
             val entries = if (recovery) "recovery_entries" else "entries"

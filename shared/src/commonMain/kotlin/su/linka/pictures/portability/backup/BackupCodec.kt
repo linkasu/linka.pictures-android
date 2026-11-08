@@ -121,8 +121,11 @@ class BackupCodec(
             val manifestBytes = metadataBytes(header)
             val rawHeader = boundedJson(manifestBytes.decodeToString(throwOnInvalidSequence = true))
             checkData(rawHeader.string("format") == "su.linka.pictures.backup")
-            if (rawHeader.string("version") != "1.0") fail(ProblemCode.UNSUPPORTED_VERSION)
-            val manifest = decodeMetadata<BackupManifest>(manifestBytes)
+            val manifest = when (rawHeader.string("version")) {
+                "1.0" -> decodeMetadata<LegacyBackupManifest>(manifestBytes).current()
+                "1.1" -> decodeMetadata<BackupManifest>(manifestBytes)
+                else -> fail(ProblemCode.UNSUPPORTED_VERSION)
+            }
             checkCounts(manifest.counts)
             val counts = manifest.counts
             checkData(staged.size.toLong() == counts.boards.toLong() + counts.drafts + counts.retained + counts.assets + 2)

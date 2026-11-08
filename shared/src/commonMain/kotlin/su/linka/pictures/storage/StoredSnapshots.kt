@@ -82,7 +82,7 @@ internal class StoredSnapshots(private val runtime: StorageRuntime) {
     }
 
     private fun captureRecovery(id: RecoveryId) {
-        db.exec("INSERT INTO recovery SELECT 1,?,?,revision,settings_json FROM library_meta WHERE singleton=1", id.value, Clock.System.now().toEpochMilliseconds())
+        db.exec("INSERT INTO recovery SELECT 1,?,?,revision,settings_json,organization_json FROM library_meta WHERE singleton=1", id.value, Clock.System.now().toEpochMilliseconds())
         db.exec("INSERT INTO recovery_entries SELECT * FROM entries")
         db.exec("INSERT INTO recovery_drafts SELECT * FROM drafts")
         db.exec("INSERT INTO asset_refs SELECT 'RECOVERY_BOARD',owner_id,asset_id FROM asset_refs WHERE owner_kind='BOARD'")
