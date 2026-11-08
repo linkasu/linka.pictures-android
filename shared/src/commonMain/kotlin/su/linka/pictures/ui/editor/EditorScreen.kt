@@ -39,6 +39,7 @@ fun EditorScreen(
     modifier: Modifier = Modifier,
     onImagesNeeded: ((Set<AssetId>) -> Unit)? = null,
 ) {
+    val newBoardName = stringResource(Res.string.new_board)
     val backWithSavedDraftLabel = stringResource(Res.string.back_with_saved_draft)
     val saveAndExitLabel = stringResource(Res.string.save_and_exit)
     val finishTheFormFirst214Label = stringResource(Res.string.finish_the_form_first_214)
@@ -105,7 +106,7 @@ fun EditorScreen(
                 AuthoringFeedback(state, dispatch, showSaveStatus = urgentSave)
                 if (document == null) {
                     Text(if (state.phase == AuthoringPhase.LOADING) stringResource(Res.string.loading_draft) else stringResource(Res.string.create_a_board_or_open_a_draft), Modifier.padding(8.dp))
-                    LabeledActionButton(stringResource(Res.string.new_board), state.phase == AuthoringPhase.IDLE, false, { dispatch(AuthoringAction.NewBoard()) })
+                    LabeledActionButton(newBoardName, state.phase == AuthoringPhase.IDLE, false, { dispatch(AuthoringAction.NewBoard(newBoardName)) })
                  } else if (page != null) {
                      Row(Modifier.weight(1f).fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                          Surface(Modifier.weight(1f).fillMaxHeight(), color = palette.surface,

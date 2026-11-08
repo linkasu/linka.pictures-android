@@ -26,17 +26,20 @@ class LocalizationResourcesTest(unittest.TestCase):
                 self.assertNotEqual(english[name], russian[name])
                 self.assertIsNone(re.search("[А-Яа-яЁё]", english[name]))
                 self.assertEqual(
-                    sorted(re.findall(r"%\d+\$s", english[name])),
-                    sorted(re.findall(r"%\d+\$s", russian[name])),
+                    sorted(re.findall(r"%\d+\$[sd]", english[name])),
+                    sorted(re.findall(r"%\d+\$[sd]", russian[name])),
                 )
         ui = main / "kotlin/su/linka/pictures/ui"
         used = set()
         for source in ui.rglob("*.kt"):
             text = source.read_text()
             self.assertIsNone(re.search("[А-Яа-яЁё]", text), str(source))
+            self.assertNotIn("AuthoringAction.NewBoard()", text, str(source))
             used.update(re.findall(r"Res\.string\.(\w+)", text))
         self.assertTrue(used <= set(english))
-        self.assertEqual({key for key in english if not key.startswith(("startup_", "bootstrap_"))}, used)
+        self.assertEqual({key for key in english if not key.startswith(("startup_", "bootstrap_", "ios_"))}, used)
+        self.assertEqual("New board", english["new_board"])
+        self.assertEqual("Новая доска", russian["new_board"])
 
 
 if __name__ == "__main__":

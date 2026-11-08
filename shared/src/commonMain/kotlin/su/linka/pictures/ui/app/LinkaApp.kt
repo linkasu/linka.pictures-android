@@ -43,6 +43,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     onOwnerOpened: (String) -> Unit, onOwnerClosed: (String) -> Unit,
     onLibraryReplaced: (Long) -> Unit,
     onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null) {
+    val newBoardName = stringResource(Res.string.new_board)
     val textScaleIsNotSupportedLabel = stringResource(Res.string.text_scale_is_not_supported)
     val couldNotOpenTheBoardReturnToLabel = stringResource(Res.string.could_not_open_the_board_return_to)
     val opened by rememberUpdatedState(onOwnerOpened)
@@ -226,7 +227,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
             when (current.page) {
                 ProductPage.LIBRARY -> LibraryScreen(library, controller, current.owner, capability, commandsEnabled && !openingBoard,
                     images, { libraryAssets = it }, accessPanel, ::returnToCommunication,
-                    ::openBoard, { navigate(ProductPage.EDITOR, AuthoringAction.NewBoard()) },
+                    ::openBoard, { navigate(ProductPage.EDITOR, AuthoringAction.NewBoard(newBoardName)) },
                     { navigate(ProductPage.EDITOR, AuthoringAction.EditBoard(it)) },
                     { navigate(ProductPage.EDITOR, AuthoringAction.ResumeDraft(it)) },
                     { navigate(ProductPage.SETTINGS) }, { navigate(ProductPage.ACCESS) },
