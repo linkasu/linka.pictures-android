@@ -69,7 +69,7 @@ class SmotriOriginalSetsTest {
 
     @Test fun importOrReuseOriginalsAndCaptureEveryPageWithoutSelection() {
         assertEquals("su.linka.pictures.development", target.packageName)
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitNamed("Ваши наборы")
             click("Меню библиотеки")
             click("Настройки")
@@ -86,28 +86,28 @@ class SmotriOriginalSetsTest {
 
     @Test fun testFixedPagesAndAdultRejection() {
         assertEquals("su.linka.pictures.development", target.packageName)
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitNamed("Ваши наборы")
             captureBoards()
         }
     }
 
     @Test fun captureExistingPhraseWithoutWrites() {
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitNamed("Ваши наборы")
             captureBoards(fixtures.take(1))
         }
     }
 
     @Test fun captureExistingKeyboardWithoutWrites() {
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitNamed("Ваши наборы")
             captureBoards(fixtures.takeLast(1))
         }
     }
 
     @Test fun testBaselinePresentationSettingsReadOnly() {
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitNamed("Ваши наборы")
             openSettings()
             assertEquals("Portable baseline", "1.0" to false, readPresentationSettings())
@@ -122,7 +122,7 @@ class SmotriOriginalSetsTest {
         val original = (target.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager)
             .defaultDisplay.rotation
         try {
-            ActivityScenario.launch(DevelopmentActivity::class.java).use { scenario ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 awaitNamed("Ваши наборы")
                 scenario.onActivity { assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, it.requestedOrientation) }
                 check(findLibraryBoard(fixtures.first().name))
@@ -149,7 +149,7 @@ class SmotriOriginalSetsTest {
     }
 
     @Test fun testUnsupportedScaleDoesNotChangeWorkingBoard() {
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitNamed("Ваши наборы")
             openSettings()
             assertEquals("Portable baseline", "1.0" to false, readPresentationSettings())
@@ -194,7 +194,7 @@ class SmotriOriginalSetsTest {
     }
 
     @Test fun testRejectedBoardPreservesWorkingBoardAndMessage() {
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitNamed("Ваши наборы")
             openPhrase()
             click("Следующая страница")

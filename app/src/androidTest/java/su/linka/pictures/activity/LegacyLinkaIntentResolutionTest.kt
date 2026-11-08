@@ -8,14 +8,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Test
 
-/** Resolution only: the legacy writer stays disabled and is never launched. */
+/** The historical external component is an alias to the only product activity. */
 class LegacyLinkaIntentResolutionTest {
     @Test fun contentMimeMatchingDoesNotDependOnOpaqueProviderPathExtensions() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         assertTrue(context.packageName.endsWith(".development"))
-        val component = ComponentName(context, BroadcastReceiverActivity::class.java)
+        val component = ComponentName(context.packageName, "su.linka.pictures.activity.BroadcastReceiverActivity")
         val flags = PackageManager.MATCH_DISABLED_COMPONENTS or PackageManager.MATCH_DEFAULT_ONLY
-        assertFalse(context.packageManager.getActivityInfo(component, flags).enabled)
+        assertTrue(context.packageManager.getActivityInfo(component, flags).enabled)
+        assertEquals(MainActivity::class.java.name, context.packageManager.getActivityInfo(component, flags).targetActivity)
         fun resolves(uri: String, mime: String): Boolean {
             val intent = Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(uri), mime)
                 .setPackage(context.packageName).addCategory(Intent.CATEGORY_BROWSABLE)

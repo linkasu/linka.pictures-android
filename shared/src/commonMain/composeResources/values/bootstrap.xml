@@ -1,0 +1,15 @@
+<resources>
+    <string name="startup_opening">Opening the local library…</string>
+    <string name="startup_progress">Imported: %1$d. Preserved archives: %2$d. Total: %3$d.</string>
+    <string name="startup_blocked">The application could not be opened safely.</string>
+    <string name="startup_unconfirmed">The outcome of the write is unknown. Do not repeat the operation before reopening and checking the data.</string>
+    <string name="startup_preserved">The original data has not been reset and protection has not been disabled.</string>
+    <string name="startup_resume">Continue the interrupted migration</string>
+    <string name="startup_restart">Close the application completely and reopen it after resolving the problem.</string>
+    <string name="bootstrap_stopped">Changes have been stopped: %1$s. Restart the application to check the saved data.</string>
+    <string name="bootstrap_images">Some images could not be prepared: %1$s.</string>
+    <string name="bootstrap_incoming">A file was received. Open Library → Transfer → Import or restore to inspect it. Nothing is added automatically.</string>
+    <string name="bootstrap_incoming_failed">The file was not opened: %1$s. Select it through the import menu; the library has not changed.</string>
+    <string name="bootstrap_owner_title">Restore assistant access</string>
+    <string name="bootstrap_owner_description">Confirm the device owner</string>
+</resources>

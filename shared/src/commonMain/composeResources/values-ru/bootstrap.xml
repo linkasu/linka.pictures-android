@@ -1,0 +1,15 @@
+<resources>
+    <string name="startup_opening">Открываем локальную библиотеку…</string>
+    <string name="startup_progress">Импортировано: %1$d. Сохранённых архивов: %2$d. Всего: %3$d.</string>
+    <string name="startup_blocked">Не удалось безопасно открыть приложение.</string>
+    <string name="startup_unconfirmed">Исход записи неизвестен. Не повторяйте операцию до повторного открытия и проверки данных.</string>
+    <string name="startup_preserved">Исходные данные не сброшены, защита не отключена.</string>
+    <string name="startup_resume">Продолжить прерванный перенос</string>
+    <string name="startup_restart">Полностью закройте приложение и откройте его после устранения причины.</string>
+    <string name="bootstrap_stopped">Приложение остановило изменения: %1$s. Перезапустите его для проверки сохранённых данных.</string>
+    <string name="bootstrap_images">Не удалось подготовить часть изображений: %1$s.</string>
+    <string name="bootstrap_incoming">Получен файл. Откройте библиотеку → Перенос → Импорт или восстановление, чтобы проверить его. Автоматического добавления нет.</string>
+    <string name="bootstrap_incoming_failed">Файл не открыт: %1$s. Выберите файл через меню импорта; библиотека не изменена.</string>
+    <string name="bootstrap_owner_title">Восстановление доступа помощника</string>
+    <string name="bootstrap_owner_description">Подтвердите владельца устройства</string>
+</resources>

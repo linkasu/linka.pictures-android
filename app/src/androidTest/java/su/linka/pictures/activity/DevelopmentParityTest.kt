@@ -40,7 +40,7 @@ class DevelopmentParityTest {
 
     @Test fun electronVisualAtlasExistingLibraryWithoutWrites() {
         assertFixtureIdentity()
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
             electronScreenshot("library")
             clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
@@ -89,7 +89,7 @@ class DevelopmentParityTest {
 
     @Test fun filledBoardThroughRealSafImport() {
         assertFixtureIdentity()
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             assertEmptyLibraryAndMessage()
             prepareNamedImport()
             selectOwnedSafFixture()
@@ -115,7 +115,7 @@ class DevelopmentParityTest {
         assertEquals("Fixture directory must stay directly under target cache", target.cacheDir.canonicalFile,
             directory.canonicalFile.parentFile)
 
-        ActivityScenario.launch(DevelopmentActivity::class.java).use { scenario ->
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             assertEmptyLibraryAndMessage()
             assertTrue("Cannot create owned fixture cache directory", directory.isDirectory || directory.mkdir())
             withOwnedCopy(directory) { copy ->
@@ -129,7 +129,7 @@ class DevelopmentParityTest {
                         ?: error("Owned fixture content URI is not readable")
                     assertEquals(expectedSha, source.use { sha(it.readBytes()) })
                     stage("owned-content-read-verified")
-                    val intent = Intent(target, DevelopmentActivity::class.java)
+                    val intent = Intent(target, MainActivity::class.java)
                         .setAction(Intent.ACTION_VIEW).setDataAndType(uri, "application/octet-stream")
                     // Actual same-UID native delivery; no external URI grant or substituted reader.
                     stage("before-native-content-intent")
@@ -155,10 +155,10 @@ class DevelopmentParityTest {
     }
 
     @Test fun warmRejectedIntentStillClosesTheScenarioWithoutWritingLibraryData() {
-        val scenario = ActivityScenario.launch(DevelopmentActivity::class.java)
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
         scenario.use {
             awaitLibrary()
-            val rejected = Intent(target, DevelopmentActivity::class.java).setAction(Intent.ACTION_VIEW)
+            val rejected = Intent(target, MainActivity::class.java).setAction(Intent.ACTION_VIEW)
                 .setDataAndType(Uri.parse("file:///u14-rejected-input.linka"), "application/octet-stream")
             withIncomingIntent(scenario, rejected) {
                 await("unsupported URI rejected without reading") { root -> find(root) { node ->
@@ -169,7 +169,7 @@ class DevelopmentParityTest {
         assertEquals(androidx.lifecycle.Lifecycle.State.DESTROYED, scenario.state)
     }
 
-    private fun withIncomingIntent(scenario: ActivityScenario<DevelopmentActivity>, intent: Intent, block: () -> Unit) {
+    private fun withIncomingIntent(scenario: ActivityScenario<MainActivity>, intent: Intent, block: () -> Unit) {
         var original: Intent? = null
         var failure: Throwable? = null
         try {
@@ -193,7 +193,7 @@ class DevelopmentParityTest {
     @Test fun reopenFilledBoardWithoutImportOrMessageEdits() {
         assertFixtureIdentity()
         assertTrue("No existing owned library to reopen", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
             clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
             awaitNineCards()
@@ -210,7 +210,7 @@ class DevelopmentParityTest {
     @Test fun existingPhrasePlaybackStopAndReplayWithoutMessageEdits() {
         assertFixtureIdentity()
         assertTrue("No existing owned library to play", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
             clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
             awaitNineCards()
@@ -234,7 +234,7 @@ class DevelopmentParityTest {
 
     @Test fun existingBoardLandscapeWithoutMessageEdits() {
         assertFixtureIdentity()
-        ActivityScenario.launch(DevelopmentActivity::class.java).use { scenario ->
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             awaitLibrary()
             var original = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             scenario.onActivity { original = it.requestedOrientation }
@@ -302,7 +302,7 @@ class DevelopmentParityTest {
     @Test fun inspectOwnedFixtureGridSemantics() {
         assertFixtureIdentity()
         assertTrue("No existing owned library to inspect", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
             clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
             await("owned public fixture labels for read-only AX inspection") { root ->

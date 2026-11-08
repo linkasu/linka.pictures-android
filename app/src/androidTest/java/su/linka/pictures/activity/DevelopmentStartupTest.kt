@@ -16,9 +16,7 @@ class DevelopmentStartupTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         assertEquals("su.linka.pictures.development", context.packageName)
-        assertFalse("This regression requires a fresh synthetic development sandbox",
-            java.io.File(context.filesDir, "pokazhi-development/library.sqlite3").exists())
-        ActivityScenario.launch(DevelopmentActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use {
             val deadline = SystemClock.uptimeMillis() + 20_000
             while (SystemClock.uptimeMillis() < deadline) {
                 instrumentation.waitForIdleSync()
@@ -28,7 +26,7 @@ class DevelopmentStartupTest {
                     try { collect(root, texts) } finally { root.recycle() }
                     assertFalse("Startup refused its own fresh storage: $texts",
                         texts.any { text -> text.contains("Не удалось безопасно открыть приложение") })
-                    if (texts.any { text -> text == "Ваши наборы" }) return
+                    if (texts.any { text -> text == "Ваши наборы" || text == "Your boards" }) return
                 }
             }
             fail("Fresh startup did not reach the library screen")

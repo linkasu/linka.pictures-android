@@ -116,10 +116,8 @@ kotlin {
             kotlin.srcDir('src/javaMain/kotlin')
             dependencies {
                 implementation 'androidx.annotation:annotation:1.8.1'
-                implementation 'net.lingala.zip4j:zip4j:2.11.5'
+                implementation 'androidx.core:core-ktx:1.15.0'
                 implementation 'com.github.bumptech.glide:gifdecoder:4.16.0'
-                implementation project.dependencies.platform('com.google.firebase:firebase-bom:33.5.1')
-                implementation 'com.google.firebase:firebase-analytics'
             }
         }
         jvmMain {
@@ -143,10 +141,11 @@ android {
     defaultConfig {
         minSdk 21
         targetSdk 34
-        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        testInstrumentationRunner 'su.linka.pictures.bootstrap.LibraryTestRunner'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    sourceSets.androidTest.assets.srcDir(rootProject.file('app/src/main/assets'))
 }
