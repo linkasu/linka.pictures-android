@@ -35,28 +35,28 @@ class DevelopmentParityTest {
         "ПИСАТЬ КАКАТЬ", "ГУЛЯТЬ", "ИГРАТЬ", "ОБНИМАТЬСЯ")
     private val fixtureName = "LINKa-U14-HOCHU-cfb199d.linka"
     private val pickerPackages = setOf("com.android.documentsui", "com.google.android.documentsui")
-    private val libraryTitles = listOf("Ваши наборы", "Библиотека")
-    private val libraryMenu = listOf("Меню библиотеки", "Меню", "Ещё")
+    private val libraryTitles = UiText.YourBoards.labels
+    private val libraryMenu = UiText.LibraryMenu.labels
 
     @Test fun electronVisualAtlasExistingLibraryWithoutWrites() {
         assertFixtureIdentity()
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
             electronScreenshot("library")
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            clickNamed(listOf("ХОЧУ"), scroll = true)
             awaitNineCards(); awaitFilledMessage()
             electronScreenshot("board")
-            clickNamed(listOf("Настройки доски"))
-            awaitNamed("Параметры доски")
+            clickNamed(UiText.BoardSettings.labels)
+            awaitNamed(UiText.BoardOptions)
             electronScreenshot("board-settings")
-            clickNamed(listOf("Закрыть"))
-            clickNamed(listOf("Открыть библиотеку"))
+            clickNamed(UiText.Close.labels)
+            clickNamed(UiText.OpenLibrary.labels)
             awaitLibrary()
-            clickNamed(libraryMenu); clickNamed(listOf("Настройки"))
-            awaitNamed("Масштаб текста")
+            clickNamed(libraryMenu); clickNamed(UiText.Settings.labels)
+            awaitNamed(UiText.TextScale)
             electronScreenshot("settings")
-            clickNamed(listOf("Масштаб текста"))
-            awaitNamed("Масштаб текста (0.5–3)")
+            clickNamed(UiText.TextScale.labels)
+            awaitNamed(UiText.TextScaleDialog)
             val automation = instrumentation.uiAutomation
             automation.serviceInfo = automation.serviceInfo.apply {
                 flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
@@ -65,13 +65,13 @@ class DevelopmentParityTest {
                 val keyboard = automation.windows.firstOrNull {
                     it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
                 }?.let { Rect().also(it::getBoundsInScreen) }
-                val cancel = namedHitBounds(root, listOf("Отмена"))
+                val cancel = namedHitBounds(root, UiText.Cancel.labels)
                 keyboard != null && cancel != null && cancel.bottom <= keyboard.top
             }
             electronScreenshot("scale-dialog")
-            clickNamed(listOf("Отмена"))
-            clickNamed(listOf("Назад")); awaitLibrary()
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            clickNamed(UiText.Cancel.labels)
+            clickNamed(UiText.Back.labels); awaitLibrary()
+            clickNamed(listOf("ХОЧУ"), scroll = true)
             awaitNineCards(); awaitFilledMessage()
             electronScreenshot("restored-board")
         }
@@ -135,7 +135,7 @@ class DevelopmentParityTest {
                     stage("before-native-content-intent")
                     withIncomingIntent(scenario, intent) {
                         await("owned incoming notice without auto-import") { root -> find(root) { node ->
-                            node.text?.toString()?.startsWith("Получен файл.") == true
+                            UiText.IncomingFile.matches(node.text)
                         } && emptyLibrary(root) }
                         prepareNamedImport()
                         // Every following wait permits only target package: unexpected DocumentsUI fails.
@@ -162,7 +162,7 @@ class DevelopmentParityTest {
                 .setDataAndType(Uri.parse("file:///u14-rejected-input.linka"), "application/octet-stream")
             withIncomingIntent(scenario, rejected) {
                 await("unsupported URI rejected without reading") { root -> find(root) { node ->
-                    node.text?.toString()?.startsWith("Файл не открыт: UNSAFE_ARCHIVE") == true
+                    node.text?.toString() in UiText.IncomingFailed.labels("UNSAFE_ARCHIVE")
                 } }
             }
         }
@@ -195,12 +195,12 @@ class DevelopmentParityTest {
         assertTrue("No existing owned library to reopen", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            clickNamed(listOf("ХОЧУ"), scroll = true)
             awaitNineCards()
             awaitFilledMessage()
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             awaitLibrary()
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            clickNamed(listOf("ХОЧУ"), scroll = true)
             awaitNineCards()
             awaitFilledMessage()
             evidenceReady("reopen-native-back-regression")
@@ -212,21 +212,21 @@ class DevelopmentParityTest {
         assertTrue("No existing owned library to play", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            clickNamed(listOf("ХОЧУ"), scroll = true)
             awaitNineCards()
             awaitFilledMessage()
-            clickNamed(listOf("Произнести"))
-            awaitAudio("Произнести", "Воспроизведение завершено.")
-            clickNamed(listOf("Произнести"))
-            awaitAudio("Остановить", "Сообщение звучит.")
-            clickNamed(listOf("Остановить"))
-            awaitAudio("Произнести", "Воспроизведение остановлено.")
-            clickNamed(listOf("Произнести"))
-            awaitAudio("Произнести", "Воспроизведение завершено.")
+            clickNamed(UiText.Speak.labels)
+            awaitAudio(UiText.Speak, UiText.PlaybackCompleted)
+            clickNamed(UiText.Speak.labels)
+            awaitAudio(UiText.StopSpeaking, UiText.SpeakingMessage)
+            clickNamed(UiText.StopSpeaking.labels)
+            awaitAudio(UiText.Speak, UiText.PlaybackStopped)
+            clickNamed(UiText.Speak.labels)
+            awaitAudio(UiText.Speak, UiText.PlaybackCompleted)
             awaitFilledMessage()
             instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             awaitLibrary()
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            clickNamed(listOf("ХОЧУ"), scroll = true)
             awaitFilledMessage()
             stage("recordings-completed-stop-replay-reopened; physical-audio-quality-not-evaluated")
         }
@@ -244,7 +244,7 @@ class DevelopmentParityTest {
                     Rect().also(root::getBoundsInScreen).let { it.width() > it.height() }
                 }
                 awaitLibrary()
-                clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+                clickNamed(listOf("ХОЧУ"), scroll = true)
                 awaitNineCards()
                 awaitFilledMessage()
                 val image = stableIdleScreenshot()
@@ -260,17 +260,17 @@ class DevelopmentParityTest {
         }
     }
 
-    private fun awaitAudio(label: String, status: String) {
+    private fun awaitAudio(label: UiText, status: UiText) {
         var lastState: String? = null
         try {
             await("$label: $status") { root ->
-                withNamedAction(root, listOf(label), false, null) { node, _ ->
+                withNamedAction(root, label.labels, false, null) { node, _ ->
                     val state = AccessibilityNodeInfoCompat.wrap(node).stateDescription?.toString()
                     if (state != lastState) {
                         lastState = state
                         instrumentation.sendStatus(0, Bundle().apply { putString("u14AudioState", state?.take(256)) })
                     }
-                    state == status
+                    status.matches(state)
                 }
             }
         } catch (failure: Throwable) {
@@ -304,7 +304,7 @@ class DevelopmentParityTest {
         assertTrue("No existing owned library to inspect", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
         ActivityScenario.launch(MainActivity::class.java).use {
             awaitLibrary()
-            clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+            clickNamed(listOf("ХОЧУ"), scroll = true)
             await("owned public fixture labels for read-only AX inspection") { root ->
                 titles.all { title -> named(root, listOf(title)) }
             }
@@ -365,45 +365,46 @@ class DevelopmentParityTest {
         awaitLibrary()
         await("fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate", predicate = ::emptyLibrary)
         clickNamed(libraryMenu)
-        clickNamed(listOf("К сообщению"))
+        clickNamed(UiText.GoToMessage.labels)
         await("message not empty: use reopen-only verification; never clear existing parts") { root ->
-            named(root, listOf("Общее сообщение: пусто"))
+            named(root, UiText.EmptyMessage.labels)
         }
-        clickNamed(listOf("Открыть библиотеку"))
+        clickNamed(UiText.OpenLibrary.labels)
         awaitLibrary()
     }
 
     private fun prepareNamedImport() {
         stage("prepare-import-enter")
-        val importLabels = listOf("Импорт", "Импорт, резервная копия и восстановление")
+        val importLabels = UiText.ImportBackupRestore.labels
         if (!visibleNamed(importLabels)) clickNamed(libraryMenu)
         clickNamed(importLabels)
-        awaitNamed("Файлы и восстановление")
-        setField("Название импортируемой доски", "Импортированная доска", "ХОЧУ")
+        awaitNamed(UiText.FilesRestore)
+        setField(UiText.ImportedBoardName, UiText.ImportedBoard, "ХОЧУ")
         stage("prepare-import-before-click")
-        clickNamed(listOf("Выбрать .linka для импорта (без записи в библиотеку)"), scroll = true)
+        clickNamed(UiText.ChooseImport.labels, scroll = true)
         stage("prepare-import-click-delivered")
     }
 
     private fun confirmImportAndCompose() {
         await("real imported media preview", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
-            find(root) { node -> node.text?.toString()?.contains(
-                "Страниц: 1; карточек: 9; изображений: 9; записей: 9;") == true }
+            find(root) { node -> UiText.PreviewCounts.labels(1, 9, 9, 9).any {
+                node.text?.startsWith(it) == true
+            } }
         }
         stage("import-preview-observed")
         // New owner capability comes only from the actual foreground UI, never a direct access API.
-        clickNamed(listOf("Разрешить команды в этом экране"), scroll = true, backwards = true)
-        clickNamed(listOf("Подтверждаю импорт «ХОЧУ» как новой доски"), scroll = true)
-        awaitNamed("Операция завершена.", scroll = true)
-        clickNamed(listOf("Назад"))
+        clickNamed(UiText.AllowCommands.labels, scroll = true, backwards = true)
+        clickNamed(UiText.ConfirmImport.labels("ХОЧУ"), scroll = true)
+        awaitNamed(UiText.OperationCompleted, scroll = true)
+        clickNamed(UiText.Back.labels)
         awaitLibrary()
-        clickNamed(listOf("Открыть «ХОЧУ»", "ХОЧУ"), scroll = true)
+        clickNamed(listOf("ХОЧУ"), scroll = true)
         awaitNineCards()
-        await("empty composed message") { root -> named(root, listOf("Общее сообщение: пусто")) }
+        await("empty composed message") { root -> named(root, UiText.EmptyMessage.labels) }
         clickNamed(listOf("ХОЧУ"), cardOnly = true)
         await("first composed part without playback") { root ->
-            named(root, listOf("Произнести")) && !named(root, listOf("Остановить")) &&
-                named(root, listOf("Общее сообщение: ХОЧУ"))
+            named(root, UiText.Speak.labels) && !named(root, UiText.StopSpeaking.labels) &&
+                named(root, UiText.SharedMessage.labels("ХОЧУ"))
         }
         clickNamed(listOf("КУШАТЬ"), cardOnly = true)
         awaitFilledMessage()
@@ -432,7 +433,7 @@ class DevelopmentParityTest {
         // Availability is checked in the real provider UI before selecting; there is no filesystem/URI guess.
         clickNamed(listOf(fixtureName), packages = pickerPackages, requiredViewId = "android:id/title")
         await("SAF returned to target", packages = pickerPackages + target.packageName) { root ->
-            root.packageName?.toString() == target.packageName && named(root, listOf("Файлы и восстановление"))
+            root.packageName?.toString() == target.packageName && named(root, UiText.FilesRestore.labels)
         }
     }
 
@@ -442,13 +443,13 @@ class DevelopmentParityTest {
     }
 
     private fun awaitFilledMessage() = await("ХОЧУ КУШАТЬ composed; no displayed autoplay") { root ->
-        named(root, listOf("Общее сообщение: ХОЧУ КУШАТЬ")) && named(root, listOf("Произнести")) && !named(root, listOf("Остановить"))
+        named(root, UiText.SharedMessage.labels("ХОЧУ КУШАТЬ")) && named(root, UiText.Speak.labels) && !named(root, UiText.StopSpeaking.labels)
     }
 
     private fun awaitLibrary() = await("Ваши наборы / library") { named(it, libraryTitles) }
 
     private fun emptyLibrary(root: AccessibilityNodeInfo) = find(root) { node ->
-        node.text?.toString()?.startsWith("В библиотеке пока нет досок.") == true
+        UiText.EmptyLibrary.matches(node.text)
     }
 
     private fun evidenceReady(inputPath: String) = instrumentation.sendStatus(0, Bundle().apply {
@@ -597,8 +598,8 @@ class DevelopmentParityTest {
         finally { root.recycle() }
     }
 
-    private fun awaitNamed(label: String, scroll: Boolean = false) = await(label,
-        scrollAction = if (scroll) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else null) { named(it, listOf(label)) }
+    private fun awaitNamed(label: UiText, scroll: Boolean = false) = await(label.name,
+        scrollAction = if (scroll) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else null) { named(it, label.labels) }
 
     @Test fun namedHitRectangleUsesVisibleLabelNotWideRowCenter() {
         val label = Rect(160, 554, 1017, 597)
@@ -703,9 +704,9 @@ class DevelopmentParityTest {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value)
         })
 
-    private fun setField(label: String, oldValue: String, value: String) {
+    private fun setField(label: UiText, oldValue: UiText, value: String) {
         await("set named field $label") { root -> find(root) { node ->
-            node.isEditable && (matches(node, listOf(label, oldValue)) || node.text?.contains(label) == true) && replaceText(node, value)
+            node.isEditable && (matches(node, label.labels + oldValue.labels) || label.containedIn(node.text)) && replaceText(node, value)
         } }
         await("verify field $label") { root -> find(root) { node -> node.isEditable && node.text?.contains(value) == true } }
     }

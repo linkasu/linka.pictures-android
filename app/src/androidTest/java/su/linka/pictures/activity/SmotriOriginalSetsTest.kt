@@ -70,12 +70,12 @@ class SmotriOriginalSetsTest {
     @Test fun importOrReuseOriginalsAndCaptureEveryPageWithoutSelection() {
         assertEquals("su.linka.pictures.development", target.packageName)
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitNamed("Ваши наборы")
-            click("Меню библиотеки")
-            click("Настройки")
+            awaitNamed(UiText.YourBoards)
+            click(UiText.LibraryMenu)
+            click(UiText.Settings)
             awaitNamed("1.0", scroll = true)
-            click("Назад")
-            awaitNamed("Ваши наборы")
+            click(UiText.Back)
+            awaitNamed(UiText.YourBoards)
             for (fixture in fixtures) {
                 if (!findLibraryBoard(fixture.name)) import(fixture)
                 assertTrue("Imported original must be listed", findLibraryBoard(fixture.name))
@@ -87,32 +87,32 @@ class SmotriOriginalSetsTest {
     @Test fun testFixedPagesAndAdultRejection() {
         assertEquals("su.linka.pictures.development", target.packageName)
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitNamed("Ваши наборы")
+            awaitNamed(UiText.YourBoards)
             captureBoards()
         }
     }
 
     @Test fun captureExistingPhraseWithoutWrites() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitNamed("Ваши наборы")
+            awaitNamed(UiText.YourBoards)
             captureBoards(fixtures.take(1))
         }
     }
 
     @Test fun captureExistingKeyboardWithoutWrites() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitNamed("Ваши наборы")
+            awaitNamed(UiText.YourBoards)
             captureBoards(fixtures.takeLast(1))
         }
     }
 
     @Test fun testBaselinePresentationSettingsReadOnly() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitNamed("Ваши наборы")
+            awaitNamed(UiText.YourBoards)
             openSettings()
             assertEquals("Portable baseline", "1.0" to false, readPresentationSettings())
-            click("Назад")
-            awaitNamed("Ваши наборы")
+            click(UiText.Back)
+            awaitNamed(UiText.YourBoards)
         }
     }
 
@@ -123,25 +123,25 @@ class SmotriOriginalSetsTest {
             .defaultDisplay.rotation
         try {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-                awaitNamed("Ваши наборы")
+                awaitNamed(UiText.YourBoards)
                 scenario.onActivity { assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, it.requestedOrientation) }
                 check(findLibraryBoard(fixtures.first().name))
-                click("Действия с набором «${fixtures.first().name}»")
-                click("Открыть")
-                awaitNamed("Меню общения")
-                await("message before rotation") { publicState("Общее сообщение:") != null }
-                val before = publicState("Общее сообщение:")
+                clickAny(UiText.BoardActions.labels(fixtures.first().name))
+                click(UiText.Open)
+                awaitNamed(UiText.CommunicationMenu)
+                await("message before rotation") { publicState(UiText.SharedMessage) != null }
+                val before = publicState(UiText.SharedMessage)
                 for (rotation in listOf(0, 1, 2, 3)) {
                     assertTrue(automation.setRotation(rotation))
                     await("landscape after rotation $rotation") {
                         target.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
-                            publicState("Общее сообщение:") == before
+                            publicState(UiText.SharedMessage) == before
                     }
-                    assertFalse(exists("Остановить"))
+                    assertFalse(exists(UiText.StopSpeaking))
                 }
                 capture("landscape-policy", stable = false)
-                click("Открыть библиотеку")
-                awaitNamed("Ваши наборы")
+                click(UiText.OpenLibrary)
+                awaitNamed(UiText.YourBoards)
             }
         } finally {
             check(automation.setRotation(if (automatic) android.app.UiAutomation.ROTATION_UNFREEZE else original))
@@ -150,19 +150,19 @@ class SmotriOriginalSetsTest {
 
     @Test fun testUnsupportedScaleDoesNotChangeWorkingBoard() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitNamed("Ваши наборы")
+            awaitNamed(UiText.YourBoards)
             openSettings()
             assertEquals("Portable baseline", "1.0" to false, readPresentationSettings())
-            click("Назад")
+            click(UiText.Back)
             openPhrase()
-            val message = checkNotNull(publicState("Общее сообщение:"))
-            val audio = checkNotNull(publicState("Произнести"))
-            val counter = checkNotNull(publicState("Страница "))
-            val mode = checkNotNull(publicState("Меню общения"))
-            click("Открыть библиотеку")
-            awaitNamed("Ваши наборы")
+            val message = checkNotNull(publicState(UiText.SharedMessage))
+            val audio = checkNotNull(publicState(UiText.Speak))
+            val counter = checkNotNull(publicState(UiText.Page))
+            val mode = checkNotNull(publicState(UiText.CommunicationMenu))
+            click(UiText.OpenLibrary)
+            awaitNamed(UiText.YourBoards)
             openSettings()
-            click("Масштаб текста", scroll = true)
+            click(UiText.TextScale, scroll = true)
             await("proposed unsupported scale") { root -> find(root) { node ->
                 (node.isEditable || node.className?.toString() == "android.widget.EditText") &&
                     node.isEnabled && setText(node, "3.0")
@@ -172,55 +172,55 @@ class SmotriOriginalSetsTest {
                     node.text?.toString() == "3.0"
             } }
             dismissKeyboard()
-            click("Применить", scroll = true)
-            awaitNamed("Масштаб не поддерживается")
-            assertFalse("Scale rejection must remain adult-only", exists("Меню общения"))
+            click(UiText.Apply, scroll = true)
+            awaitNamed(UiText.UnsupportedScale)
+            assertFalse("Scale rejection must remain adult-only", exists(UiText.CommunicationMenu))
             capture("fixed-scale-unsupported", stable = false)
-            click("Закрыть")
+            click(UiText.Close)
             dismissKeyboard()
-            click("Отмена", scroll = true)
-            click("Назад")
-            awaitNamed("Ваши наборы")
+            click(UiText.Cancel, scroll = true)
+            click(UiText.Back)
+            awaitNamed(UiText.YourBoards)
             openSettings()
             assertEquals("1.0" to false, readPresentationSettings())
-            click("Назад")
+            click(UiText.Back)
             returnToMessage()
             awaitNamed(fixtures.first().name)
             await("rejected scale preserves working board") { root ->
                 unchangedCommunication(root, message, audio) &&
-                    publicState("Страница ", root) == counter && publicState("Меню общения", root) == mode
+                    publicState(UiText.Page, root) == counter && publicState(UiText.CommunicationMenu, root) == mode
             }
         }
     }
 
     @Test fun testRejectedBoardPreservesWorkingBoardAndMessage() {
         ActivityScenario.launch(MainActivity::class.java).use {
-            awaitNamed("Ваши наборы")
+            awaitNamed(UiText.YourBoards)
             openPhrase()
-            click("Следующая страница")
-            awaitNamed("Страница 2 из 2")
-            val message = checkNotNull(publicState("Общее сообщение:"))
-            val audio = checkNotNull(publicState("Произнести"))
-            val counter = checkNotNull(publicState("Страница "))
-            val mode = checkNotNull(publicState("Меню общения"))
-            click("Открыть библиотеку")
-            awaitNamed("Ваши наборы")
+            click(UiText.NextPage)
+            awaitNamed(UiText.Page.labels(2, 2))
+            val message = checkNotNull(publicState(UiText.SharedMessage))
+            val audio = checkNotNull(publicState(UiText.Speak))
+            val counter = checkNotNull(publicState(UiText.Page))
+            val mode = checkNotNull(publicState(UiText.CommunicationMenu))
+            click(UiText.OpenLibrary)
+            awaitNamed(UiText.YourBoards)
             val dense = fixtures.single { it.slug == "keyboard" }
             check(findLibraryBoard(dense.name))
-            click("Действия с набором «${dense.name}»")
-            click("Открыть")
-            awaitNamed("Масштаб не поддерживается")
-            assertFalse("Rejected board must not enter child mode", exists("Меню общения"))
-            assertFalse("Rejection must not start playback", exists("Остановить"))
+            clickAny(UiText.BoardActions.labels(dense.name))
+            click(UiText.Open)
+            awaitNamed(UiText.UnsupportedScale)
+            assertFalse("Rejected board must not enter child mode", exists(UiText.CommunicationMenu))
+            assertFalse("Rejection must not start playback", exists(UiText.StopSpeaking))
             capture("fixed-rejected-board", stable = false)
-            click("Закрыть")
-            awaitNamed("Ваши наборы")
-            assertFalse(exists("Меню общения"))
+            click(UiText.Close)
+            awaitNamed(UiText.YourBoards)
+            assertFalse(exists(UiText.CommunicationMenu))
             returnToMessage()
             awaitNamed(fixtures.first().name)
             await("rejected board preserves working board and message") { root ->
                 unchangedCommunication(root, message, audio) &&
-                    publicState("Страница ", root) == counter && publicState("Меню общения", root) == mode
+                    publicState(UiText.Page, root) == counter && publicState(UiText.CommunicationMenu, root) == mode
             }
         }
     }
@@ -228,44 +228,44 @@ class SmotriOriginalSetsTest {
     private fun openPhrase() {
         val phrase = fixtures.first()
         if (!findLibraryBoard(phrase.name)) await("phrase library entry", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) { root ->
-            find(root) { matches(it, listOf("Действия с набором «${phrase.name}»")) }
+            find(root) { matches(it, UiText.BoardActions.labels(phrase.name)) }
         }
-        click("Действия с набором «${phrase.name}»")
-        click("Открыть")
-        awaitNamed("Меню общения")
+        clickAny(UiText.BoardActions.labels(phrase.name))
+        click(UiText.Open)
+        awaitNamed(UiText.CommunicationMenu)
         awaitNamed(phrase.name)
-        awaitNamed("Страница 1 из ${phrase.pages}")
+        awaitNamed(UiText.Page.labels(1, phrase.pages))
         await("phrase message and audio ready") { root ->
-            publicState("Общее сообщение:", root) != null && publicState("Произнести", root) != null
+            publicState(UiText.SharedMessage, root) != null && publicState(UiText.Speak, root) != null
         }
     }
 
     private fun returnToMessage() {
-        click("Меню библиотеки")
-        click("К сообщению")
-        awaitNamed("Меню общения")
+        click(UiText.LibraryMenu)
+        click(UiText.GoToMessage)
+        awaitNamed(UiText.CommunicationMenu)
     }
 
     private fun openSettings() {
-        click("Меню библиотеки")
-        click("Настройки")
-        awaitNamed("Настройки")
+        click(UiText.LibraryMenu)
+        click(UiText.Settings)
+        awaitNamed(UiText.Settings)
     }
 
     private fun readPresentationSettings(): Pair<String, Boolean> {
         await("settings form start", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) { root ->
-            find(root) { matches(it, listOf("Родительский контроль")) }
+            find(root) { matches(it, UiText.ParentalControl.labels) }
         }
         var contrast: Boolean? = null
         await("saved high contrast", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
             find(root) { node ->
-                if (matches(node, listOf("Высокий контраст"))) {
+                if (matches(node, UiText.HighContrast.labels)) {
                     contrast = checkableState(node)
                     contrast != null
                 } else false
             }
         }
-        click("Масштаб текста", scroll = true)
+        click(UiText.TextScale, scroll = true)
         var scale: String? = null
         await("portable text scale dialog") { root -> find(root) { node ->
             if (node.isEditable || node.className?.toString() == "android.widget.EditText") {
@@ -274,7 +274,7 @@ class SmotriOriginalSetsTest {
             } else false
         } }
         dismissKeyboard()
-        click("Отмена", scroll = true)
+        click(UiText.Cancel, scroll = true)
         return checkNotNull(scale) to checkNotNull(contrast)
     }
 
@@ -298,66 +298,66 @@ class SmotriOriginalSetsTest {
     private fun captureBoards(selected: List<Fixture> = fixtures) {
         for (fixture in selected) {
             if (!findLibraryBoard(fixture.name)) await("fixture library entry", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) { root ->
-                find(root) { matches(it, listOf("Действия с набором «${fixture.name}»")) }
+                find(root) { matches(it, UiText.BoardActions.labels(fixture.name)) }
             }
-            click("Действия с набором «${fixture.name}»")
-            click("Открыть")
+            clickAny(UiText.BoardActions.labels(fixture.name))
+            click(UiText.Open)
             await("adult rejection or admitted child board") { root ->
-                find(root) { matches(it, listOf("Масштаб не поддерживается", "Меню общения")) }
+                find(root) { matches(it, UiText.UnsupportedScale.labels + UiText.CommunicationMenu.labels) }
             }
-            if (exists("Масштаб не поддерживается")) {
-                assertFalse("Rejected board must remain adult-only", exists("Меню общения"))
-                assertFalse("Rejection must not start playback", exists("Остановить"))
+            if (exists(UiText.UnsupportedScale)) {
+                assertFalse("Rejected board must remain adult-only", exists(UiText.CommunicationMenu))
+                assertFalse("Rejection must not start playback", exists(UiText.StopSpeaking))
                 capture(capturePrefix + "${fixture.slug}-unsupported", stable = false)
                 instrumentation.sendStatus(0, Bundle().apply { putString("smotriAdmission", "${fixture.slug}:unsupported") })
-                click("Закрыть")
-                awaitNamed("Ваши наборы")
-                assertFalse(exists("Меню общения"))
+                click(UiText.Close)
+                awaitNamed(UiText.YourBoards)
+                assertFalse(exists(UiText.CommunicationMenu))
                 continue
             }
-            awaitNamed("Меню общения")
+            awaitNamed(UiText.CommunicationMenu)
             awaitNamed(fixture.name)
-            awaitNamed("Страница 1 из ${fixture.pages}")
+            awaitNamed(UiText.Page.labels(1, fixture.pages))
             instrumentation.sendStatus(0, Bundle().apply { putString("smotriAdmission", "${fixture.slug}:supported") })
             val previousDirect = setSessionMode(fixture.mode == "DIRECT")
             var messageBefore: String? = null
             var audioBefore: String? = null
             await("message and speech semantics after mode change") { root ->
-                messageBefore = publicState("Общее сообщение:", root)
-                audioBefore = publicState("Произнести", root)
+                messageBefore = publicState(UiText.SharedMessage, root)
+                audioBefore = publicState(UiText.Speak, root)
                 messageBefore != null && audioBefore != null
             }
             assertNotNull("Message semantics required for no-selection check", messageBefore)
             assertNotNull("Speech semantics required for no-selection check", audioBefore)
             try { for (page in 1..fixture.pages) {
-                awaitNamed("Страница $page из ${fixture.pages}")
+                awaitNamed(UiText.Page.labels(page, fixture.pages))
                 await("pagination preserves communication state") { root -> unchangedCommunication(root, messageBefore!!, audioBefore!!) }
                 captureWholePage(fixture, page)
                 await("whole-page capture preserves communication state") { root -> unchangedCommunication(root, messageBefore!!, audioBefore!!) }
-                if (page < fixture.pages) click("Следующая страница")
-            } } finally { if (exists("Меню общения")) setSessionMode(previousDirect) }
-            click("Открыть библиотеку")
-            awaitNamed("Ваши наборы")
+                if (page < fixture.pages) click(UiText.NextPage)
+            } } finally { if (exists(UiText.CommunicationMenu)) setSessionMode(previousDirect) }
+            click(UiText.OpenLibrary)
+            awaitNamed(UiText.YourBoards)
         }
     }
 
     private fun setSessionMode(direct: Boolean): Boolean {
-        val current = publicState("Меню общения")
-        val expected = if (direct) "Прямой режим" else "Составление сообщения"
-        if (current?.endsWith("|$expected") == true) return direct
-        click("Меню общения")
+        val current = publicState(UiText.CommunicationMenu)
+        val expected = if (direct) UiText.DirectMode else UiText.ComposingMessage
+        if (expected.labels.any { current?.endsWith("|$it") == true }) return direct
+        click(UiText.CommunicationMenu)
         await("session mode menu") { root -> find(root) {
-            matches(it, listOf("Перейти в прямой режим", "Составлять сообщение"))
+            matches(it, UiText.SwitchToDirectMode.labels + UiText.ComposeMessage.labels)
         } }
-        val previous = exists("Составлять сообщение")
-        if (previous != direct) click(if (direct) "Перейти в прямой режим" else "Составлять сообщение")
+        val previous = exists(UiText.ComposeMessage)
+        if (previous != direct) click(if (direct) UiText.SwitchToDirectMode else UiText.ComposeMessage)
         else instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         await("mode menu dismissed") { root -> find(root) {
-            it.text?.startsWith("Страница ") == true || it.contentDescription?.startsWith("Страница ") == true
+            UiText.Page.starts(it.text) || UiText.Page.starts(it.contentDescription)
         } }
         // API21 may omit the menu stateDescription; its actual opposite-mode action is authoritative.
-        click("Меню общения")
-        awaitNamed(if (direct) "Составлять сообщение" else "Перейти в прямой режим")
+        click(UiText.CommunicationMenu)
+        awaitNamed(if (direct) UiText.ComposeMessage else UiText.SwitchToDirectMode)
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         return previous
     }
@@ -387,7 +387,7 @@ class SmotriOriginalSetsTest {
         try {
             assertEquals(target.packageName, root.packageName?.toString())
             check(find(root) { grid ->
-                if (AccessibilityNodeInfoCompat.wrap(grid).stateDescription?.startsWith("Сетка ") != true) false
+                if (!UiText.Grid.starts(AccessibilityNodeInfoCompat.wrap(grid).stateDescription)) false
                 else {
                     val viewport = Rect().also(grid::getBoundsInScreen)
                     find(grid) { node ->
@@ -413,7 +413,7 @@ class SmotriOriginalSetsTest {
             check(i < 100) { "Cannot establish library start; do not import" }
         }
         for (i in 0..100) {
-            if (exists("Действия с набором «$name»")) return true
+            if (exists(UiText.BoardActions.labels(name))) return true
             if (!scrollLibrary(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) return false
         }
         error("Cannot establish library end; do not import")
@@ -430,11 +430,11 @@ class SmotriOriginalSetsTest {
     }
 
     private fun import(fixture: Fixture) {
-        click("Меню библиотеки")
-        click("Импорт, резервная копия и восстановление")
-        awaitNamed("Файлы и восстановление")
+        click(UiText.LibraryMenu)
+        click(UiText.ImportBackupRestore)
+        awaitNamed(UiText.FilesRestore)
         await("transfer top anchor", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD) { root ->
-            find(root) { it.text?.toString() == "Пароль помощника не установлен." }
+            find(root) { UiText.NoAssistantPassword.matches(it.text) }
         }
         await("import name", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root -> find(root) { node ->
             (node.isEditable || node.className?.toString() == "android.widget.EditText") && node.isEnabled && setText(node, fixture.name)
@@ -443,7 +443,7 @@ class SmotriOriginalSetsTest {
         if (automation.windows.any {
             it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
         }) instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-        click("Выбрать .linka для импорта (без записи в библиотеку)", scroll = true)
+        click(UiText.ChooseImport, scroll = true)
         await("DocumentsUI", picker + target.packageName) { it.packageName?.toString() in picker }
         if (!exists(fixture.file, picker)) {
             clickAny(listOf("Show roots", "Показать корневые папки", "Открыть панель навигации"), picker)
@@ -452,7 +452,7 @@ class SmotriOriginalSetsTest {
         click(fixture.file, picker)
         await("original preview", picker + target.packageName, AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
             root.packageName?.toString() == target.packageName && find(root) {
-                it.text?.toString()?.startsWith("Страниц: ${fixture.pages};") == true
+                UiText.PreviewPages.labels(fixture.pages).any { prefix -> it.text?.startsWith(prefix) == true }
             }
         }
         val uri = android.provider.DocumentsContract.buildDocumentUri(
@@ -466,18 +466,18 @@ class SmotriOriginalSetsTest {
             digest.digest().joinToString("") { "%02x".format(it) })
         if (fixture.slug == "keyboard") {
             await("explicit inactive-media warning", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
-                find(root) { it.text?.startsWith("Неактивных вложений EMPTY/SPACE: 11.") == true }
+                find(root) { it.text?.toString() in UiText.InactiveAttachments.labels(11) }
             }
             capture("keyboard-inactive-preview", stable = false)
         }
-        click("Разрешить команды в этом экране", scroll = true, backwards = true)
+        click(UiText.AllowCommands, scroll = true, backwards = true)
         // Never replay this confirmation after an ambiguous timeout; next run first searches the unique name.
-        click("Подтверждаю импорт «${fixture.name}» как новой доски", scroll = true)
+        clickAny(UiText.ConfirmImport.labels(fixture.name), scroll = true)
         await("completed transfer", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
-            find(root) { matches(it, listOf("Операция завершена.")) }
+            find(root) { matches(it, UiText.OperationCompleted.labels) }
         }
-        click("Назад")
-        awaitNamed("Ваши наборы")
+        click(UiText.Back)
+        awaitNamed(UiText.YourBoards)
     }
 
     private fun inspectGrid(fixture: Fixture, page: Int) {
@@ -488,8 +488,8 @@ class SmotriOriginalSetsTest {
             find(root) { node ->
                 val label = node.contentDescription?.toString() ?: node.text?.toString()
                 val bounds = Rect().also(node::getBoundsInScreen)
-                if (label?.startsWith("Общее сообщение:") == true) phraseBottom = bounds.bottom
-                if (matches(node, listOf("Страница $page из ${fixture.pages}", "Предыдущая страница", "Следующая страница"))) {
+                if (UiText.SharedMessage.starts(label)) phraseBottom = bounds.bottom
+                if (matches(node, UiText.Page.labels(page, fixture.pages) + UiText.PreviousPage.labels + UiText.NextPage.labels)) {
                     footerTop = minOf(footerTop ?: bounds.top, bounds.top)
                 }
                 false
@@ -497,7 +497,7 @@ class SmotriOriginalSetsTest {
             val positions = linkedSetOf<Pair<Int, Int>>()
             val minimum = Math.round(48f * target.resources.displayMetrics.density)
             check(find(root) { grid ->
-                if (AccessibilityNodeInfoCompat.wrap(grid).stateDescription?.startsWith("Сетка ") != true) false
+                if (!UiText.Grid.starts(AccessibilityNodeInfoCompat.wrap(grid).stateDescription)) false
                 else {
                     val collection = checkNotNull(grid.collectionInfo) { "Grid collection metadata missing" }
                     assertEquals("Full page rows", fixture.rows, collection.rowCount)
@@ -535,16 +535,16 @@ class SmotriOriginalSetsTest {
         } finally { root.recycle() }
     }
 
-    private fun publicState(prefix: String): String? {
+    private fun publicState(prefix: UiText): String? {
         val root = automation.rootInActiveWindow ?: return null
         return try { publicState(prefix, root) } finally { root.recycle() }
     }
 
-    private fun publicState(prefix: String, root: AccessibilityNodeInfo): String? {
+    private fun publicState(prefix: UiText, root: AccessibilityNodeInfo): String? {
         var state: String? = null
         find(root) { node ->
             val label = node.contentDescription?.toString() ?: node.text?.toString()
-            if (label?.startsWith(prefix) == true) {
+            if (prefix.starts(label)) {
                 state = "$label|${AccessibilityNodeInfoCompat.wrap(node).stateDescription}"
                 true
             } else false
@@ -553,9 +553,9 @@ class SmotriOriginalSetsTest {
     }
 
     private fun unchangedCommunication(root: AccessibilityNodeInfo, message: String, audio: String): Boolean {
-        assertFalse("No playback or card selection", find(root) { matches(it, listOf("Остановить")) })
-        val actualMessage = publicState("Общее сообщение:", root) ?: return false
-        val actualAudio = publicState("Произнести", root) ?: return false
+        assertFalse("No playback or card selection", find(root) { matches(it, UiText.StopSpeaking.labels) })
+        val actualMessage = publicState(UiText.SharedMessage, root) ?: return false
+        val actualAudio = publicState(UiText.Speak, root) ?: return false
         assertEquals("Navigation must not edit message", message, actualMessage)
         assertEquals("Navigation must not start audio", audio, actualAudio)
         return true
@@ -581,14 +581,14 @@ class SmotriOriginalSetsTest {
     private var lastPendingImage: String? = null
     private fun awaitVisibleMedia() = await("visible card bitmaps decoded (30s)") { root ->
         find(root) { grid ->
-            if (AccessibilityNodeInfoCompat.wrap(grid).stateDescription?.startsWith("Сетка ") != true) false
+            if (!UiText.Grid.starts(AccessibilityNodeInfoCompat.wrap(grid).stateDescription)) false
             else {
                 val viewport = Rect().also(grid::getBoundsInScreen)
                 !find(grid) { node ->
                     val bounds = Rect().also(node::getBoundsInScreen)
                     // API21 also returns stale anonymous layout nodes; wait on the actual accessible card buttons.
                     val pending = node.isClickable && !node.contentDescription.isNullOrBlank() && bounds.intersect(viewport) &&
-                        AccessibilityNodeInfoCompat.wrap(node).stateDescription?.contains("Изображение ещё не показано") == true
+                        UiText.ImagePending.containedIn(AccessibilityNodeInfoCompat.wrap(node).stateDescription)
                     if (pending) {
                         val detail = "${node.contentDescription}|${node.text}|${bounds.toShortString()}|viewport=${viewport.toShortString()}"
                         if (detail != lastPendingImage) {
@@ -644,14 +644,24 @@ class SmotriOriginalSetsTest {
         node.text?.toString() in names || node.contentDescription?.toString() in names
 
     private fun exists(name: String, packages: Set<String> = setOf(target.packageName)): Boolean {
+        return exists(listOf(name), packages)
+    }
+
+    private fun exists(name: UiText) = exists(name.labels)
+
+    private fun exists(names: List<String>, packages: Set<String> = setOf(target.packageName)): Boolean {
         val root = automation.rootInActiveWindow ?: return false
-        return try { root.packageName?.toString() in packages && find(root) { matches(it, listOf(name)) } }
+        return try { root.packageName?.toString() in packages && find(root) { matches(it, names) } }
         finally { root.recycle() }
     }
 
-    private fun awaitNamed(name: String, scroll: Boolean = false) = await(name,
+    private fun awaitNamed(name: UiText, scroll: Boolean = false) = awaitNamed(name.labels, scroll)
+
+    private fun awaitNamed(name: String, scroll: Boolean = false) = awaitNamed(listOf(name), scroll)
+
+    private fun awaitNamed(names: List<String>, scroll: Boolean = false) = await(names.joinToString(" / "),
         scrollAction = if (scroll) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else null) { root ->
-        find(root) { matches(it, listOf(name)) }
+        find(root) { matches(it, names) }
     }
 
     private fun await(state: String, packages: Set<String> = setOf(target.packageName), scrollAction: Int? = null,
@@ -710,6 +720,9 @@ class SmotriOriginalSetsTest {
 
     private fun click(name: String, packages: Set<String> = setOf(target.packageName), scroll: Boolean = false,
         backwards: Boolean = false) = clickAny(listOf(name), packages, scroll, backwards)
+
+    private fun click(name: UiText, scroll: Boolean = false, backwards: Boolean = false) =
+        clickAny(name.labels, scroll = scroll, backwards = backwards)
 
     private fun clickAny(names: List<String>, packages: Set<String> = setOf(target.packageName),
         scroll: Boolean = false, backwards: Boolean = false) {
