@@ -27,7 +27,13 @@ Work-dir — sibling, не Compose resource root. Его можно удалит
 передать отдельную явную temporary/build папку. Неизвестные top-level элементы в
 Compose output отклоняются, а не удаляются. Скрипт заменяет только свои generated
 имена после проверки входов. Прерванная запись — failed build; повторный запуск
-восстанавливает outputs. Gradle/Compose wiring и native admission делает primary.
+восстанавливает outputs. Native admission/runtime defaults не изменяются этим этапом.
+
+`shared/build.gradle` подключает `:shared:buildStarterResources` к commonMain
+Compose resources, поэтому Android/iOS resource tasks запускают producer автоматически.
+Sync объединяет generated files с исходными переводами и отклоняет дублирующиеся
+пути: Compose `customDirectory` заменяет стандартный каталог, а не дополняет его.
+Inputs/outputs объявлены Gradle; неизменённый комплект получает UP-TO-DATE.
 
 **App build:** Python stdlib; нет HTTP, ffmpeg, native SDK, генерации или pip.
 PNG bounded RGB/RGBA8 parser проверяет CRC/IHDR/IDAT/IEND/raster; unfilter 0–4,
@@ -124,10 +130,12 @@ Wire/ZIP tests: public canonical3.0, 5 наборов/10 страниц/90 по�
 slot/SPACE/punctuation, recording metadata и deterministic ZIP_STORED без ZIP64.
 
 Wire основан на `shared/src/commonMain/.../portability/linka/{LinkaWire,LinkaCodec}.kt`
-и `portability/zip/{CodecBoundary,CodecIO,ZipProfile,CheckedZip}.kt`. Actual Kotlin
-codec/native media и human/listening review ещё обязательны до shipping.
+и `portability/zip/{CodecBoundary,CodecIO,ZipProfile,CheckedZip}.kt`.
+`StarterResourcesTest` в JVM читает все пять generated ресурсов настоящим Kotlin
+кодеком и проверяет 90 позиций, LITERAL/SPACE, recording metadata и PNG через ImageIO.
+Android/iOS native media и human/listening review остаются отдельными release gates.
 
 Последняя проверка: PNG 2/2, pipeline/CSV 5/5, ZIP/wire 5/5, acquisition/audio 7/7 —
 19/19 PASS. На настоящих пяти PNG сборка и повторный запуск с заблокированными
 subprocess/tool lookup/network дали 41 crop и 5 архивов/10 страниц/90 позиций;
-исходные файлы не изменились, outputs побайтно совпали. Это не native codec PASS.
+исходные файлы не изменились, outputs побайтно совпали. Это не native media PASS.

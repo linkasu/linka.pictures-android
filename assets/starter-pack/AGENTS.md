@@ -32,10 +32,12 @@
 Запуск от корня: `python3 -B scripts/build-starter-resources.py --output-dir shared/build/generated/starter-resources`.
 Только `files/starter/{5 .linka,catalog.json}` попадает в output; crops/derived receipts
 живут в sibling work-dir. App build — Python stdlib, без сети, ffmpeg и новых пакетов.
-Проверки и список Gradle inputs: `docs/development/starter-pack-packer.md`.
+При изменении build-процесса прочитай `docs/development/starter-pack-packer.md`:
+там проверки, контракт outputs и список Gradle inputs.
 
 Generated crops/archives оставляй в build/, source of truth — CSV + raw PNG/MP3 +
 acquisition receipts. `shipping=false`, technical review не равен human/clinical/
 usability approval. Буквы LITERAL требуют native TTS для целых слов; четыре основных
-набора используют записи офлайн. Пользовательские библиотеки не заменять; bootstrap,
-Kotlin/native gate и Gradle integration остаются ответственностью primary.
+набора используют записи офлайн. Gradle вызывает `:shared:buildStarterResources`
+автоматически. Пользовательские библиотеки не заменять: изменение bootstrap и
+включение новых runtime defaults требуют отдельной проверки сохранности данных.

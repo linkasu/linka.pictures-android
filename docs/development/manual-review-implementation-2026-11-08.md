@@ -15,13 +15,14 @@
 | S7 | Безопасное переключение карточек с автосохранением | PASS: actor/card JVM, compact selector approved/implemented; Android lint and both iOS framework links PASS; native IME pending |
 | S8 | Перетаскивание: обмен ячеек текущей страницы | PASS: focused actor/gesture JVM; native gestures pending |
 | S9 | Опциональный drag в COMPOSE, append во фразу | PASS: focused actor/gesture JVM; native gestures pending |
-| S10 | Новый единый стартовый комплект Android/iOS | BLOCKED: словарь утверждён, ожидаются записи пользователя и проверенные изображения |
+| S10 | Новый единый стартовый комплект Android/iOS | CSV/offline build-time pipeline готов; 5 архивов включаются в ресурсы Android/iOS, runtime/defaults и native/shipping gates открыты |
 
 Опции листания/drag сохраняются для каждого набора. DIRECT остаётся tap-only.
 Папки удаляются только пустыми. Пользовательские данные при обновлении сохраняются.
 Пользователь выбрал компактный селектор ячейки в форме; он реализован.
-Стартовый словарь 5 наборов / 10 страниц / 90 позиций утверждён; пользователь
-предоставит собственные записи. До их получения S10 не включён в поставку.
+Стартовый словарь 5 наборов / 10 страниц / 90 позиций утверждён. Первоначальное
+решение о собственных записях заменено пользовательским LINKa TTS POST с голосом
+Anton. Подготовка источников сама по себе не включает S10 в runtime defaults.
 
 План: /Users/aacidov/.opencode/plan/linka-manual-review-2026-11-08-coding-plan.md.
 Нативные/визуальные PASS не предполагаются по результатам JVM-тестов.
@@ -57,7 +58,9 @@
 
 Подробные результаты: `evidence/manual-review-2026-11-08-host.json`.
 Словарь: `starter-pack-proposal.md`; записи: `starter-pack-recordings.csv`.
-Image preview не создан: запрос завершился ошибкой авторизации API, повторов нет.
+Первоначальный experimental image API не дал результата. Позже пользователь
+предоставил рабочий `execute` → `codex.generate_image`: созданы и технически
+просмотрены 5 листов / 41 пиктограмма. Это не human/clinical/usability approval.
 
 ## Коммиты этапов
 
@@ -68,7 +71,32 @@ S10 proposal `28e2e1a`, словарь/CSV `d441151`; дополнительны
 
 Push, production signing, публикация и замена стартовых shipping assets не выполнялись.
 
-## Финальный patch и артефакт
+Источники S10: аудио `1ff7830`, public `.linka 3.0` packer `bfbd0f2`, исходные
+листы PNG `9c6c590`, CSV/pipeline `20fb3f5`. Аудио: 73 POST JSON и один сохранённый GET-пилот «Помоги»
+с реальным provenance. Все 74 MP3 прошли офлайн decode/non-silent проверки;
+прослушивание и Android/iOS native playback остаются отдельными gates.
+
+### Подключение build-time ресурсов
+
+Gradle producer подключён через общий Compose resource root. Поскольку
+`customDirectory` заменяет исходный каталог, Sync объединяет новые файлы с обеими
+существующими локализациями и отклоняет совпадающие пути.
+
+Полная проверка после интеграции CSV-producer, без его пропуска: 19 Python,
+561 JVM + 26 debug + 26 release unit, lint/safety/50 selectors, APK и оба iOS
+framework link PASS. В APK и staged iOS resources найдены все 5 архивов с точными
+байтами каталога и сохранённые переводы. Новый JVM-тест читает ресурсы штатным
+public Kotlin-кодеком, проверяет 90 позиций, LITERAL/SPACE и озвучку Anton; PNG
+действительно декодируются ImageIO.
+
+Реальный producer дополнительно запущен с запрещёнными socket/HTTP/subprocess/
+tool lookup: все 41 crop и 5 архивов собраны, исходники неизменны, повторный запуск
+даёт те же байты. Повторный Gradle build получает UP-TO-DATE. Все outputs — в
+`shared/build/generated/`; generation/TTS не вызываются app build.
+Это не Android/iOS native media, listening или human/usability PASS; bootstrap,
+существующие библиотеки и runtime defaults не изменялись.
+
+## Patch и артефакт UI-проверки до S10
 
 После `c594686` повторены затронутые проверки: settings/board-settings JVM,
 Android lint/APK, обе iOS framework links, native test binary и Xcode app — PASS.
@@ -76,7 +104,7 @@ Android lint/APK, обе iOS framework links, native test binary и Xcode app �
 358; это не 368 уникальных тестов). В linker остаётся предупреждение ICU object
 17.2 против app minimum17.0; выпуск этим прогоном не одобрен.
 
-Финальный Android APK SHA256:
+Android APK этой проверки (не последующих сборок S10), SHA256:
 `348863d71899c31e9a367849533ac46aed0a9c51ce9c9b5080cb4842e3325e65`.
 Установка через MCP вернула timeout, но установленный `base.apk` имеет ровно этот
 hash: установка подтверждена чтением, не повторялась вслепую. Launch также дал

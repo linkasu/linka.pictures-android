@@ -6,8 +6,43 @@ plugins {
     id 'org.jetbrains.compose'
 }
 
+def starterResources = layout.buildDirectory.dir('generated/starter-resources')
+def starterWork = layout.buildDirectory.dir('generated/starter-resources-work')
+def buildStarterResources = tasks.register('buildStarterResources', Exec) {
+    group = 'build'
+    description = 'Crop and package the editable starter content offline.'
+    workingDir rootProject.projectDir
+    commandLine 'python3', '-B', rootProject.file('scripts/build-starter-resources.py').absolutePath,
+        '--output-dir', starterResources.get().asFile.absolutePath
+    inputs.files(rootProject.files(
+        'docs/development/starter-pack-manifest.json',
+        'docs/development/starter-pack-recordings.csv',
+        'assets/starter-pack/sheets.csv',
+        'assets/starter-pack/source-manifest.json',
+        'assets/starter-pack/audio/manifest.json',
+        'scripts/build-starter-resources.py',
+        'scripts/prepare-starter-images.py',
+        'scripts/pack-starter-sets.py',
+        'scripts/prepare-starter-audio.py',
+        'scripts/starter_png.py'),
+        rootProject.fileTree('assets/starter-pack/previews') { include '*.png' },
+        rootProject.fileTree('assets/starter-pack/audio') { include '*.mp3' }
+    ).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dirs(starterResources, starterWork)
+}
+
+// Compose's customDirectory replaces the default directory, including UI translations.
+def commonMainResources = layout.buildDirectory.dir('generated/commonMain-resources')
+def mergeCommonMainResources = tasks.register('mergeCommonMainResources', Sync) {
+    from('src/commonMain/composeResources')
+    from(buildStarterResources.map { starterResources.get() })
+    into(commonMainResources)
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+}
+
 compose.resources {
     packageOfResClass = 'su.linka.pictures.resources'
+    customDirectory('commonMain', mergeCommonMainResources.map { commonMainResources.get() })
 }
 
 def decoderOutputs = layout.buildDirectory.dir('ios-audio-decoder')
