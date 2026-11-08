@@ -5,6 +5,7 @@ import su.linka.pictures.resources.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
@@ -67,6 +68,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     val message by communication.state.collectAsState()
     val voices by audio.voices.collectAsState()
     val listing by library.listing.collectAsState()
+    var libraryFolder by rememberSaveable { mutableStateOf<String?>(null) }
     var settings by remember(library) { mutableStateOf(PortableSettings()) }
     var settingsLoaded by remember(library, listing.epoch) { mutableStateOf(false) }
     val systemDark = isSystemInDarkTheme()
@@ -87,7 +89,9 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     }
     val backAction: (() -> Unit)? = when (productBackAction(started, transitioning, route?.page, route?.boardId != null)) {
         ProductBackAction.CONSUME -> ({})
-        ProductBackAction.NATIVE_EXIT -> null
+        ProductBackAction.NATIVE_EXIT -> if (route?.page == ProductPage.LIBRARY && libraryFolder != null) ({
+            libraryFolder = listing.organization.folders.firstOrNull { it.id.value == libraryFolder }?.parentId?.value
+        }) else null
         ProductBackAction.LIBRARY -> ({ navigate(ProductPage.LIBRARY) })
         ProductBackAction.COMMUNICATION -> ({ navigate(ProductPage.COMMUNICATION) })
         ProductBackAction.EDITOR -> ({ editorBack?.invoke() })
@@ -232,6 +236,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                     { navigate(ProductPage.EDITOR, AuthoringAction.ResumeDraft(it)) },
                     { navigate(ProductPage.SETTINGS) }, { navigate(ProductPage.ACCESS) },
                     { navigate(ProductPage.TRANSFER, board = it) }, gate = access,
+                    ids = ids, folderId = libraryFolder?.let(::FolderId), onFolderChanged = { libraryFolder = it?.value },
                     canOpenBoards = settingsLoaded,
                     canReturnToCommunication = settingsLoaded && boardLayout != null && !openingBoard && presentation.commandsEnabled,
                     communicationNotices = communicationNotices(message, presentation, voices))

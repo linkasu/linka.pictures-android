@@ -384,4 +384,13 @@
     <string name="card_preview_no_speech_or_actions">Card preview — no speech or actions</string>
     <string name="changes_apply_only_after_saving_settings">Changes apply only after saving settings.</string>
     <string name="library_folder_count">Folders: %1$s</string>
+    <string name="library_create_folder">Create folder</string>
+    <string name="library_rename_folder">Rename folder</string>
+    <string name="library_move_to_folder">Move to folder</string>
+    <string name="library_delete_empty_folder">Delete empty folder</string>
+    <string name="library_folder_not_empty">Move the contents first. Only empty folders can be deleted.</string>
+    <string name="library_root">Library</string>
+    <string name="library_folder">Folder</string>
+    <string name="library_context_menu">Open actions menu</string>
+    <string name="library_destination">Destination: %1$s</string>
 </resources>

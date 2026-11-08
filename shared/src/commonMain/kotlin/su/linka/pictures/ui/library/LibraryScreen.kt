@@ -5,7 +5,7 @@ import org.jetbrains.compose.resources.StringResource
 import su.linka.pictures.resources.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.*
@@ -40,7 +40,7 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     onResume: (DraftId) -> Unit, onSettings: () -> Unit, onAccess: () -> Unit,
     onTransfer: (BoardId?) -> Unit, gate: AssistantGate? = null,
     canReturnToCommunication: Boolean = true, communicationNotices: List<StringResource> = emptyList(),
-    canOpenBoards: Boolean = true) {
+    canOpenBoards: Boolean = true, ids: IdSource, folderId: FolderId? = null, onFolderChanged: (FolderId?) -> Unit = {}) {
     val listing by library.listing.collectAsState()
     val shownListing = listing
     var drafts by remember { mutableStateOf<OperationResult<List<DraftSummary>>?>(null) }
@@ -53,6 +53,7 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
     var busy by remember { mutableStateOf(false) }
     var decision by remember { mutableStateOf<BoardDecision?>(null) }
     var draftDecision by remember { mutableStateOf<DraftDecision?>(null) }
+    var folderDecision by remember { mutableStateOf<FolderDecision?>(null) }
     var name by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val restartProblem by controller.restartProblem.collectAsState()
@@ -64,17 +65,24 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
             draftsEpoch = snapshot.epoch; drafts = read
         } else drafts = OperationResult.Failed(Problem(ProblemCode.STALE_REQUEST))
     }
+    LaunchedEffect(listing.epoch, listing.organization, folderId) {
+        if (folderId != null && listing.organization.folders.none { it.id == folderId }) onFolderChanged(null)
+    }
     fun requestAuthorization(action: ProtectedAction) {
         authorize = needsLibraryAuthorization(gate?.check(action, capability, owner))
     }
     VisibleImageDemand(shownListing.epoch, onAssets) {
     Scaffold(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
       topBar = { ProductTopBar(stringResource(Res.string.your_boards),
-          modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp), actions = {
+          modifier = Modifier.heightIn(min = toolbarHeightForFontScale(56f, LocalDensity.current.fontScale).dp),
+          navigationIcon = { if (folderId != null) IconButton({ onFolderChanged(listing.organization.folders.firstOrNull { it.id == folderId }?.parentId) }) {
+              Icon(LibraryIcons.Back, stringResource(Res.string.back))
+          } }, actions = {
           IconButton(onClick = onCreate, enabled = enabled && !busy) { Icon(LibraryIcons.Add, stringResource(Res.string.create_board)) }
           Box {
               IconButton(onClick = { menu = true }) { Icon(LibraryIcons.More, stringResource(Res.string.library_menu)) }
               DropdownMenu(menu, { menu = false }) {
+                   DropdownMenuItem(onClick = { menu = false; folderDecision = FolderDecision(shownListing, FolderOperation.CREATE, FolderId(ids.next()), parentId = folderId) }, enabled = enabled && !busy) { Text(stringResource(Res.string.library_create_folder)) }
                   DropdownMenuItem(onClick = { menu = false; onSettings() }, enabled = enabled && !busy) { Text(stringResource(Res.string.settings)) }
                   DropdownMenuItem(onClick = { menu = false; onTransfer(null) }, enabled = enabled && !busy) { Text(stringResource(Res.string.import_backup_and_restore)) }
                   DropdownMenuItem(onClick = { menu = false; showDrafts = true }) { Text(stringResource(Res.string.saved_drafts)) }
@@ -87,23 +95,32 @@ internal fun LibraryScreen(library: LibraryStore, controller: LibraryController,
       LazyVerticalGrid(GridCells.Adaptive(libraryTileMinWidth(LocalDensity.current.fontScale).dp),
           Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(8.dp)) {
         item(span = { GridItemSpan(maxLineSpan) }) { Column {
+           Text((listOf(stringResource(Res.string.library_root)) + folderPath(shownListing.organization, folderId).map { it.name }).joinToString(" / "))
            communicationNotices.forEach { Text(stringResource(it)) }
           restartProblem?.let { Feedback(OperationResult.Failed(it)) }
           listing.refreshProblem?.let { Feedback(OperationResult.Failed(it)) }
          if (listing.items.isEmpty()) Text(if (listing.refreshProblem == null) stringResource(Res.string.no_boards_in_the_library_yet_create) else stringResource(Res.string.could_not_read_the_library_data_was))
          if (result !is OperationResult.Completed) Feedback(result)
        } }
-        items(shownListing.items, key = { "board:${it.id.value}" }) { entry ->
+        items(shownListing.organization.folders.filter { it.parentId == folderId }, key = { "folder:${it.id.value}" }) { folder ->
+             FolderTile(folder, enabled && !busy, { onFolderChanged(folder.id) },
+                 { folderDecision = FolderDecision(shownListing, FolderOperation.RENAME, folder.id) },
+                 { folderDecision = FolderDecision(shownListing, FolderOperation.MOVE_FOLDER, folder.id) },
+                 { folderDecision = FolderDecision(shownListing, FolderOperation.DELETE, folder.id) })
+         }
+         items(shownListing.items.filter { shownListing.organization.placements[it.id] == folderId }, key = { "board:${it.id.value}" }) { entry ->
               LibraryTile(library, entry, shownListing.epoch, images, enabled && !busy, !busy && canOpenBoards,
                  { onOpen(entry.id) }, { onEdit(entry.id) }, { onTransfer(entry.id) },
                  { decision = BoardDecision(entry, shownListing.epoch, false); name = entry.name
                      result = null; requestAuthorization(ProtectedAction.RENAME_BOARD) },
-                 { decision = BoardDecision(entry, shownListing.epoch, true)
+                 { folderDecision = FolderDecision(shownListing, FolderOperation.MOVE_ENTRY, entryId = entry.id) },
+                  { decision = BoardDecision(entry, shownListing.epoch, true)
                      result = null; requestAuthorization(ProtectedAction.DELETE_BOARD) })
          }
       }
     }
     }
+    folderDecision?.let { shown -> LibraryOrganizationDialog(shown, controller, owner, capability, enabled, access) { folderDecision = null } }
     if (showDrafts && draftDecision == null) ProductDialog(stringResource(Res.string.saved_drafts), { if (!busy) showDrafts = false }, actions = {
         TextButton(onClick = { showDrafts = false }, enabled = !busy) { Text(stringResource(Res.string.close)) }
     }) {
@@ -195,7 +212,7 @@ private fun LibraryCover(library: LibraryStore, entry: LibraryEntrySummary, epoc
 @Composable
 private fun LibraryTile(library: LibraryStore, entry: LibraryEntrySummary, epoch: Long,
     images: Map<AssetId, ImageBitmap>, enabled: Boolean, canOpen: Boolean,
-    onOpen: () -> Unit, onEdit: () -> Unit, onExport: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
+    onOpen: () -> Unit, onEdit: () -> Unit, onExport: () -> Unit, onRename: () -> Unit, onMove: () -> Unit, onDelete: () -> Unit) {
     var menu by remember(entry.id) { mutableStateOf(false) }
     val board = entry.kind == LibraryEntryKind.BOARD
     val unavailable = stringResource(Res.string.cannot_open)
@@ -204,8 +221,9 @@ private fun LibraryTile(library: LibraryStore, entry: LibraryEntrySummary, epoch
     val palette = LocalLinkaPalette.current
     Surface(Modifier.fillMaxWidth().padding(1.dp), color = palette.surface, contentColor = palette.text,
         border = BorderStroke(if (palette.highContrast) 2.dp else 1.dp, palette.border), elevation = 0.dp) {
-      Box(Modifier.clickable(enabled = canOpen && board, role = Role.Button,
-          onClickLabel = stringResource(Res.string.open_1_s, entry.name), onClick = onOpen)
+      Box(Modifier.combinedClickable(role = Role.Button,
+          onClickLabel = stringResource(Res.string.open_1_s, entry.name), onClick = { if (canOpen && board) onOpen() },
+          onLongClickLabel = stringResource(Res.string.library_context_menu), onLongClick = { menu = true })
           .semantics { stateDescription = description }) {
         Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.fillMaxWidth().height(88.dp).padding(horizontal = 24.dp)) {
@@ -222,6 +240,7 @@ private fun LibraryTile(library: LibraryStore, entry: LibraryEntrySummary, epoch
                 DropdownMenuItem(onClick = { menu = false; onEdit() }, enabled = enabled && board) { Text(stringResource(Res.string.edit)) }
                 DropdownMenuItem(onClick = { menu = false; onRename() }, enabled = enabled && board) { Text(stringResource(Res.string.rename)) }
                 DropdownMenuItem(onClick = { menu = false; onExport() }, enabled = enabled && board) { Text(stringResource(Res.string.export)) }
+                DropdownMenuItem(onClick = { menu = false; onMove() }, enabled = enabled) { Text(stringResource(Res.string.library_move_to_folder)) }
                 DropdownMenuItem(onClick = { menu = false; onDelete() }, enabled = enabled) { Text(stringResource(Res.string.delete)) }
             }
         }
