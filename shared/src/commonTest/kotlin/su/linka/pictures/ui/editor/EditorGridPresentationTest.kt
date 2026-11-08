@@ -51,6 +51,7 @@ class EditorGridPresentationTest {
         assertEquals(Res.string.create_card, editorCellLabel(BoardCell(1, CellKind.EMPTY, extensionsJson = "{\"opaque\":true}")))
         assertEquals(Res.string.space, editorCellLabel(BoardCell(2, CellKind.SPACE)))
         assertEquals(Res.string.create_card, editorCellLabel(null))
+        assertNull(editorCellLabel(cell.copy(card = cell.card!!.copy(label = "User's own label"))))
     }
 
     @Test fun resumedFormKeepsItsOwnGridVisibleEvenAfterPageReordering() {
