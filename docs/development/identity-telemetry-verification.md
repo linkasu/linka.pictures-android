@@ -1,65 +1,100 @@
-# Identity и общая метрика: проверка 2026-11-08 UTC
+# Identity и общая метрика: проверка 2026-11-09 UTC
 
-Клиент реализован в коммитах `9d3e401` и `c12636d`. Это не допуск
-обязательного email-входа к массовому выпуску.
+Функциональные блокеры OTP, миграции, consent delivery и iOS native tests
+закрыты. Это не разрешение массового выпуска: почтовая квота остаётся
+200 сообщений за rolling 24h и 1/s.
 
-## Пройденные проверки
+## Приложение
 
-- JVM shared tests, Android debug/release unit tests, Android/shared lint,
-  `verifyReleaseSafety`, 50 RU/EN UI selectors, debug APK и iOS framework.
-- Localization и offline release-workflow checks; доставка Compose test resources.
-- 19 тестов Identity FSM и 3 native iOS identity checks на Simulator.
-- Два Android device-теста защищённого identity-хранилища на API 35.
-- Конверт для API 21–22 проверен unit-тестами, но не устройством этой версии.
-- Реальный debug APK установлен поверх существующей тестовой установки:
-  обязательный gate показан, запрос OTP принят действующим Identity.
-  Повторная отправка автоматически не выполнялась.
+- Реализация: `9d3e401`, `c12636d`; исправление запуска iOS native tests:
+  `97aaf75`. Библиотечная схема, карточки, черновики и правила защиты
+  помощника этой интеграцией не изменены.
+- Shared JVM tests, Android debug/release unit tests, Android/shared lint,
+  release safety, 50 RU/EN selectors, debug APK и iOS framework проверены.
+  Localization, offline release-workflow checks и доставка Compose resources
+  также прошли.
+- Полный iOS native gate: **707 tests / 82 suites, 0 failures, 0 errors**.
+  Команда: `./gradlew :shared:iosSimulatorArm64Test --device
+  DD0F9A3F-DC32-4373-BA08-400FECE3A1CC` с JDK17. Причина прежних ошибок —
+  standalone-контекст Kotlin runner без системных сервисов Simulator.
+  `standalone=false` исправляет запуск; sandbox/fixtures/production ports
+  и проверки не ослаблялись.
+- Два device-теста Android identity-хранилища прошли на API35. Ветка
+  API21–22 проверена unit-тестами конверта, но не устройством этой версии.
+- Реальное OTP-письмо получено через Apple Mail MCP; код принят debug APK.
+  Приложение перешло к отдельному выбору аналитики. На тестовом устройстве
+  выбрано **выключено**, без подразумеваемого согласия.
+- Фактический офлайн-перезапуск проверен: Wi-Fi и mobile data выключены,
+  active default network отсутствует, процесс остановлен и запущен снова,
+  библиотека открылась без регистрации. Обе исходные настройки сети
+  восстановлены; данные приложения не очищались, сетевой ADB не менялся.
 
-## Развёрнутый бэкенд
+## Production Identity
 
-Metrics PR [30](https://github.com/linkasu/linka.metrics/pull/30), commit
-`22794e09f51fdd570e9189ad46475dd2872bf27f`: CI, публикация GHCR,
-Deploy VPS и Deploy YC Collector успешны. Native ClickHouse backup и
-изолированное восстановление проверены workflow. `/v2/consents` без
-полномочий возвращает `401 invalid_consent_token`.
+- Consent API: [PR9](https://github.com/linkasu/linka.identity/pull/9).
+  Санитизированные delivery diagnostics:
+  [PR10](https://github.com/linkasu/linka.identity/pull/10), deployed source
+  `43bef5706299fa7d1e73e645cce6965a3162f89d`.
+- CI: 890 race tests, integration gate, vet/build и workflow tests.
+  [Maintenance42595713234](https://github.com/linkasu/linka.identity/actions/runs/42595713234)
+  и [normal42597945174](https://github.com/linkasu/linka.identity/actions/runs/42597945174)
+  завершились успешно.
+- Active revision `bbam5rlbgaeimir4nklj`, image
+  `cr.yandex/crp5051c3iheo6jgo8kt/linka-identity@sha256:9e8e1b626483dbc8c4d5d74bae50882c5b8d38da00993693d8c084b253d9335f`.
+- Schema **2→3**: 29→31 tables. Все 1391 строка данных в прежних 28
+  data tables сохранились по хэшам; меняется только schema metadata,
+  две новые таблицы при promotion были пусты.
+- Новый keyless runtime principal `aje85f95ii4g6sv8jr93` получил тот же
+  минимальный набор resource-scoped прав. Старый runtime-v2
+  `ajeesdb9vm232kicq06k` больше не имеет доступа к YDB; write probe
+  подтверждает gRPC7 `PermissionDenied`. Ключи шифрования/JWT/SMTP
+  не ротировались. Worker timer восстановлен в ACTIVE.
+- Под write fence сделан backup `etnqma7ocrqc763rs4rk`, READY, TTL168h.
+  Изолированное native restore всех 29 таблиц / 1392 строк, включая schema
+  metadata, совпало с frozen source по хэшам.
+- По явному разрешению выполнен дополнительный local rehearsal на
+  официальном YDB с защищённой копией native backup: данные не
+  расшифровывались, fingerprints совпали, тот же финальный CI-image
+  прошёл миграцию. Проверена матрица old2 pass / new2 reject /
+  old3 reject / new3 pass. Новые облачные test tenants имели отдельный
+  Query Service compilation timeout; это не объявляется исправлением
+  облачного сервиса. В production preflight новый SQL-table query прошёл.
+- По указанию пользователя throttle limit повышен до **500 RU/s**,
+  provisioned capacity=0, storage limit=5GiB сохранён. При 10 RU/s
+  runtime probes давали ResourceExhausted; те же probes после повышения
+  прошли. Первый consent timeout не оставил частичного commit.
+- Временные облачные БД, local YDB container и защищённые data exports
+  удалены. Сохранены только metadata/hash receipts, без записей и credentials.
 
-Identity PR [9](https://github.com/linkasu/linka.identity/pull/9), commit
-`2661ca507c837848357e1039ad8eb39859c37252`: CI и публикация образа успешны.
-Production **не мигрирован**: рабочая schema 2, прежний runtime, таймер и права
-записи сохранены. Schema 3 требует отдельного успешного cutover; не запускать
-normal deploy поверх schema 2 и не подменять migration gate.
+## Sender и Metrics
 
-## Непройденные gates
+- Причина SMTP-отказа подтверждена: MAIL550 `identity not found`.
+  В нужном каталоге создана Postbox identity `nkolinka.ru`, добавлены
+  только два выданных DKIM CNAME. Все прежние DNS-записи, включая
+  MX/SPF/DMARC и старые DKIM, сохранены. VerificationStatus=SUCCESS,
+  SendingEnabled=true; повтор проверки выполнен документированной
+  кнопкой Cloud Console.
+- Metrics [PR30](https://github.com/linkasu/linka.metrics/pull/30) ввёл epochs.
+  Live-проверка обнаружила missing ledger grants: bind-mounted bootstrap
+  мог сохранять старый inode после rsync. Исправление
+  [PR31](https://github.com/linkasu/linka.metrics/pull/31), deployed source
+  `f0b6415700357cdc507973727bd4e0b3286adafe`, передаёт текущий host bootstrap
+  через stdin. Behavioral red/green regression, make check и полный CI прошли.
+  Publish Images, Deploy VPS42606395257 и Deploy YC Collector42606535617 успешны.
+- Live canary без email и пользовательского содержимого прошёл
+  `allow(epoch1) → deny(epoch1) → allow(epoch2) → deny(epoch2)` с completed
+  receipts. Batch принят, exact replay идемпотентен; старые и поддельные
+  epochs отвергнуты. Тестовый scope оставлен denied.
+- Три остановленных тестовых consent-события после review повторно
+  поставлены в очередь. ID, payload, original timestamps и attempts=12
+  сохранены; счётчики не сбрасывались. Все семь consent events delivered,
+  pending/manual-DLQ для этой темы отсутствуют. Финальные health/ready —200.
 
-1. **YDB rehearsal.** Native backup `etnvmjafachb4lbr7hj4` имеет статус READY
-   и TTL 168 часов. В отдельную временную БД восстановлены 29 таблиц / 1240
-   строк; Table API читает данные. Query Service стабильно отвечает
-   `Query compilation timed out`, в том числе для новой пустой probe-таблицы.
-   Проверены provisioned RCU 1 и 10 в пределах лимита временной БД; проблему
-   это не устранило. Мигратор из точного CI-образа также не прошёл rehearsal.
-   Production migration не начата. Временная БД удалена, её provisioned
-   capacity перед удалением возвращена в 0. Backup и metadata-only receipts
-   сохранены; контакты и credentials в этот документ не включены.
-2. **Реальная доставка OTP.** Одна согласованная проверка прошла очередь и одну
-   sender-попытку, затем сервер зафиксировал `delivery_failed`.
-   Письмо не найдено через Apple Mail MCP по точному отправителю и получателю;
-   это не само по себе доказательство отсутствия доставки, но серверный
-   terminal state подтверждён. Причина отказа sender ещё не установлена.
-   Повторные письма не запрашивались. End-to-end verify/офлайн-reopen остаются
-   непроверенными. Действующий лимит отправки — 200/rolling 24h и 1/s;
-   повышение квот этим изменением не выполнялось.
-3. **Полный iOS native gate.** Первый прогон: 707 тестов, 25 ошибок.
-   После выбора закреплённого Simulator iOS 17: 68 целевых тестов, 23 ошибки.
-   Две репрезентативные ошибки image/file ports воспроизведены также на
-   неизменённом исходном `6fc5add` в отдельном worktree. Их проверки не
-   ослаблялись; весь iOS gate зелёным не считается.
+## Не входит в подтверждённый допуск
 
-## Следующий допуск
-
-Устранить Query Service blocker и выполнить rehearsal/cutover Identity 2→3
-с остановкой writers, свежим backup и проверкой сохранности данных. Затем
-проверить отдельное согласие, outbox acknowledgement, `allow→deny→allow`,
-неприём старого epoch и отсутствие старой истории в DataLens. Устранить
-отказ sender и отдельно согласовать повтор реального письма; пройти OTP,
-перезапуск и офлайн-доступ на обеих платформах. Публикация Android/iOS до
-прохождения этих gates не выполнялась.
+Публикация Android/iOS в магазины, App Store/legal review, реальный OTP на
+iOS и аппаратная проверка API21–22 не выполнялись. Запрос Postbox quota
+`atdjdfucdvqi1b9huu3c` на 10000/day и 5/s всё ещё PENDING; runtime limit200/day
+не повышался. Историческая/маркетинговая рассылка не включалась. Нельзя
+считать 500 RU/s разрешением на массовую отправку писем или массовый
+mandatory-email rollout до отдельного capacity/policy допуска.
