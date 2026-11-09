@@ -54,7 +54,8 @@ def prepareIosAudioDecoder = tasks.register('prepareIosAudioDecoder', Exec) {
         rootProject.file('scripts/ios_audio_decoder_outputs.py'),
         rootProject.file('scripts/preflight-ios-ffmpeg.py'),
         file('src/nativeInterop/c/linka_audio_decoder.c'),
-        file('src/nativeInterop/cinterop/include/linka_audio_decoder.h'))
+        file('src/nativeInterop/cinterop/include/linka_audio_decoder.h'),
+        rootProject.fileTree('third_party/ffmpeg'))
     // The producer owns its seeded manifest/cache; Gradle must not delete it as stale task output.
     // No Gradle outputs: always verify provenance, with the producer's no-build fast path.
 }
@@ -68,13 +69,18 @@ kotlin {
     [iosArm64(), iosSimulatorArm64()].each { target ->
         def minimum = "-Xoverride-konan-properties=osVersionMin.${target.konanTarget.name}=17.0".toString()
         target.compilerOptions { freeCompilerArgs.add(minimum) }
-        target.binaries.all { freeCompilerArgs += [minimum] }
+        target.binaries.all {
+            freeCompilerArgs += [minimum]
+            linkerOpts '-lsqlite3'
+        }
         def decoderInterop = target.compilations.main.cinterops.create('linkaAudioDecoder') {
             definitionFile.set(layout.buildDirectory.file("ios-audio-decoder/${target.name}/linka_audio_decoder.def"))
         }
         tasks.named(decoderInterop.interopProcessingTaskName).configure {
             dependsOn prepareIosAudioDecoder
             inputs.files(fileTree("${buildDir}/ios-audio-decoder/${target.name}/lib") { include '*.a' })
+            inputs.dir(decoderOutputs.map { it.dir("${target.name}/include") })
+            inputs.dir(decoderOutputs.map { it.dir("${target.name}/LinkaFFmpeg.framework") })
         }
         target.binaries.framework {
             baseName = 'Shared'
@@ -150,6 +156,43 @@ kotlin {
                 }
             }
         }
+        def runtime = decoderOutputs.map { it.dir("${target.name}/LinkaFFmpeg.framework") }
+        target.binaries.withType(org.jetbrains.kotlin.gradle.plugin.mpp.Framework).all { framework ->
+            framework.linkTaskProvider.configure {
+                dependsOn prepareIosAudioDecoder
+                inputs.dir(runtime)
+                doLast {
+                    def symbols = { File binary ->
+                        def output = new ByteArrayOutputStream()
+                        project.exec { commandLine 'xcrun', 'nm', '-g', '-U', binary; standardOutput = output }
+                        output.toString('UTF-8').readLines().findAll { !it.trim().isEmpty() }.collect { it.tokenize().last() }.findAll {
+                            it ==~ /_(av.*|ff_.*|swr_.*|swresample_.*)/
+                        }.toSet()
+                    }
+                    def embedded = symbols(new File(framework.outputDirectory, "${framework.baseName}.framework/${framework.baseName}"))
+                        .intersect(symbols(runtime.get().file('LinkaFFmpeg').asFile))
+                    if (!embedded.isEmpty()) throw new GradleException("FFmpeg definitions leaked into static ${framework.baseName}: ${embedded.take(8)}")
+                }
+            }
+        }
+        target.binaries.withType(org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable).all { binary ->
+            // Keep @ inside the option: standalone @arguments are Kotlin compiler response files.
+            binary.freeCompilerArgs += ['-linker-option=-rpath', '-linker-option=@executable_path/Frameworks']
+            binary.linkTaskProvider.configure { dependsOn prepareIosAudioDecoder; inputs.dir(runtime) }
+            def stageRuntime = tasks.register("stage${target.name.capitalize()}${binary.name.capitalize()}FfmpegRuntime", Sync) {
+                dependsOn binary.linkTaskProvider, prepareIosAudioDecoder
+                from(runtime)
+                into(new File(binary.outputDirectory, 'Frameworks/LinkaFFmpeg.framework'))
+                doLast {
+                    project.exec { commandLine 'codesign', '--force', '--sign', '-', '--timestamp=none', destinationDir }
+                }
+            }
+            binary.linkTaskProvider.configure { finalizedBy stageRuntime }
+            tasks.withType(org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest).configureEach {
+                // Finalizers stage only the selected binary; independent binaries have distinct output directories.
+                mustRunAfter stageRuntime
+            }
+        }
     }
     androidTarget {
         compilations.all {
@@ -166,7 +209,7 @@ kotlin {
                 implementation compose.foundation
                 implementation compose.material
                 implementation compose.components.resources
-                implementation 'androidx.sqlite:sqlite-bundled:2.5.2'
+                implementation 'androidx.sqlite:sqlite:2.5.2'
                 implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
                 implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
                 implementation 'com.squareup.okio:okio:3.10.2'
@@ -181,6 +224,7 @@ kotlin {
         androidMain {
             kotlin.srcDir('src/javaMain/kotlin')
             dependencies {
+                implementation 'androidx.sqlite:sqlite-bundled:2.5.2'
                 implementation 'androidx.annotation:annotation:1.8.1'
                 implementation 'androidx.core:core-ktx:1.15.0'
                 implementation 'com.github.bumptech.glide:gifdecoder:4.16.0'
@@ -189,6 +233,14 @@ kotlin {
         }
         jvmMain {
             kotlin.srcDir('src/javaMain/kotlin')
+            dependencies {
+                implementation 'androidx.sqlite:sqlite-bundled:2.5.2'
+            }
+        }
+        iosMain {
+            dependencies {
+                implementation 'androidx.sqlite:sqlite-framework:2.5.2'
+            }
         }
         androidInstrumentedTest {
             dependencies {

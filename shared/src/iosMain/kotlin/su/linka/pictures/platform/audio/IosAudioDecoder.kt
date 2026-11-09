@@ -12,12 +12,12 @@ import su.linka.pictures.application.ports.*
 import su.linka.pictures.platform.audio.decoder.*
 import su.linka.pictures.text.isNativeText
 
-/** Development-only FFmpeg compatibility decoder. Never adopts/replaces canonical media. */
+/** Native inspection for WAV/MP3; bounded compatibility decode for legacy formats. */
 internal class IosAudioDecoder(private val files: PlatformFilesPort) {
     private data class Identity(val device: Long, val inode: ULong)
     private data class Owned(val file: TemporaryFile, val identity: Identity)
 
-    internal data class Decoded(val status: Int, val duration: Long, val mediaType: String)
+    internal data class Decoded(val status: Int, val duration: Long, val mediaType: String, val nativePlayback: Boolean = false)
 
     internal companion object {
         private val processDecoder = Mutex()
@@ -49,6 +49,17 @@ internal class IosAudioDecoder(private val files: PlatformFilesPort) {
                 else -> failure(result.status)
             }
         }
+    }
+
+    suspend fun preparePlayback(file: LocalFile): OperationResult<LocalFile> {
+        val checked = withContext(Dispatchers.IO) {
+            processDecoder.withLock {
+                if (!validPath(file.path)) Decoded(LINKA_AUDIO_INVALID, 0, "") else native(file, -1)
+            }
+        }
+        if (checked.status != LINKA_AUDIO_OK) return failure(checked.status)
+        currentCoroutineContext().ensureActive()
+        return if (checked.nativePlayback) OperationResult.Completed(file) else decodeToWave(file)
     }
 
     suspend fun decodeToWave(file: LocalFile): OperationResult<TemporaryFile> {
@@ -106,7 +117,7 @@ internal class IosAudioDecoder(private val files: PlatformFilesPort) {
                 val result = alloc<LinkaAudioResult>()
                 val status = linka_audio_decode(file.path, output, cancellation, reference.asCPointer(), result.ptr)
                 currentCoroutineContext().ensureActive()
-                mapDecoded(status, result.format, result.duration_millis)
+                mapDecoded(status, result.format, result.duration_millis).copy(nativePlayback = status == LINKA_AUDIO_OK && result.native_playback == 1)
             }
         } finally { reference.dispose() }
     }

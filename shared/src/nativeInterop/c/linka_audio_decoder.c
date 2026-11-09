@@ -1,4 +1,5 @@
 #include "linka_audio_decoder.h"
+#include <AudioToolbox/AudioToolbox.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -9,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -29,6 +31,262 @@
 #define FRAME_SAMPLES_CAP 32768
 #define ALLOCATION_CAP (16 * 1024 * 1024)
 
+typedef struct NativeInspect {
+    int fd;
+    LinkaAudioCancelled cancelled;
+    void *context;
+    LinkaAudioResult *info;
+    struct timespec started;
+    int status;
+} NativeInspect;
+
+static int basic_format(const uint8_t *signature, size_t count) {
+    if (count >= 12 && (!memcmp(signature, "RIFF", 4) || !memcmp(signature, "RF64", 4)) &&
+        !memcmp(signature + 8, "WAVE", 4)) return LINKA_AUDIO_WAV;
+    if ((count >= 3 && !memcmp(signature, "ID3", 3)) ||
+        (count >= 2 && signature[0] == 0xff && (signature[1] & 0xe0) == 0xe0)) return LINKA_AUDIO_MP3;
+    return 0;
+}
+
+static int native_stopped(NativeInspect *state) {
+    struct timespec now;
+    if (state->status) return 1;
+    if (state->cancelled && state->cancelled(state->context)) state->status = LINKA_AUDIO_CANCELLED;
+    else if (clock_gettime(CLOCK_MONOTONIC, &now)) state->status = LINKA_AUDIO_IO;
+    else if (now.tv_sec - state->started.tv_sec > 30 ||
+             (now.tv_sec - state->started.tv_sec == 30 && now.tv_nsec >= state->started.tv_nsec))
+        state->status = LINKA_AUDIO_LIMIT;
+    return state->status != 0;
+}
+
+/* CoreAudio can only read this descriptor; it has no URL or supplemental-file callback. */
+static OSStatus native_read(void *opaque, SInt64 position, UInt32 requested, void *buffer, UInt32 *actual) {
+    NativeInspect *state = opaque;
+    *actual = 0;
+    if (native_stopped(state)) return kAudioFileUnspecifiedError;
+    if (position < 0 || position > state->info->source_bytes) {
+        state->status = LINKA_AUDIO_INVALID;
+        return kAudioFilePositionError;
+    }
+    int64_t remaining = state->info->source_bytes - position;
+    if (requested > remaining) requested = (UInt32)remaining;
+    if (requested > SOURCE_CAP - state->info->read_bytes) {
+        state->status = LINKA_AUDIO_LIMIT;
+        return kAudioFileUnspecifiedError;
+    }
+    while (*actual < requested) {
+        if (native_stopped(state)) return kAudioFileUnspecifiedError;
+        ssize_t count = pread(state->fd, (uint8_t *)buffer + *actual, requested - *actual, position + *actual);
+        if (count < 0 && errno == EINTR) continue;
+        if (count <= 0) {
+            state->status = count < 0 ? LINKA_AUDIO_IO : LINKA_AUDIO_INVALID;
+            return kAudioFileUnspecifiedError;
+        }
+        *actual += (UInt32)count;
+        state->info->read_bytes += count;
+    }
+    return noErr;
+}
+
+static SInt64 native_size(void *opaque) {
+    NativeInspect *state = opaque;
+    return native_stopped(state) ? 0 : state->info->source_bytes;
+}
+
+static int native_error(NativeInspect *state, OSStatus error) {
+    if (native_stopped(state)) return state->status;
+    if (error == noErr) return LINKA_AUDIO_OK;
+    if (error == kAudioFileUnsupportedFileTypeError || error == kAudioFileUnsupportedDataFormatError ||
+        error == kAudioConverterErr_FormatNotSupported || error == kAudioConverterErr_OperationNotSupported ||
+        error == kExtAudioFileError_CodecUnavailableInputConsumed || error == kExtAudioFileError_CodecUnavailableInputNotConsumed)
+        return LINKA_AUDIO_UNSUPPORTED;
+    if (error == -108) return LINKA_AUDIO_LIMIT; /* memFullErr */
+    if (error == kAudioFilePermissionsError || error == kAudioFileNotOpenError) return LINKA_AUDIO_IO;
+    return LINKA_AUDIO_INVALID;
+}
+
+static int native_exact(NativeInspect *state, int64_t position, void *buffer, UInt32 count) {
+    UInt32 actual;
+    OSStatus error = native_read(state, position, count, buffer, &actual);
+    return error == noErr && actual == count;
+}
+
+static uint32_t native_le32(const uint8_t *bytes) {
+    return (uint32_t)bytes[0] | (uint32_t)bytes[1]<<8 | (uint32_t)bytes[2]<<16 | (uint32_t)bytes[3]<<24;
+}
+
+static uint64_t native_le64(const uint8_t *bytes) {
+    return native_le32(bytes) | (uint64_t)native_le32(bytes + 4)<<32;
+}
+
+/* AudioFile may clamp a truncated data chunk to EOF. Check declared RIFF extents too. */
+static int native_wave_frames(NativeInspect *state, const uint8_t *signature, UInt32 stride, int64_t *frames) {
+    uint8_t fields[28];
+    uint64_t end = (uint64_t)native_le32(signature + 4) + 8, data64 = 0;
+    int rf64 = !memcmp(signature, "RF64", 4), data_seen = 0;
+    uint64_t position = 12;
+    if (rf64) {
+        if (native_le32(signature + 4) != UINT32_MAX || !native_exact(state, position, fields, 8) ||
+            memcmp(fields, "ds64", 4)) return LINKA_AUDIO_INVALID;
+        uint32_t size = native_le32(fields + 4);
+        if (size < 28 || (uint64_t)size + 20 > (uint64_t)state->info->source_bytes ||
+            !native_exact(state, position + 8, fields, 28)) return LINKA_AUDIO_INVALID;
+        uint64_t riff_size = native_le64(fields);
+        if (riff_size > (uint64_t)state->info->source_bytes - 8) return LINKA_AUDIO_INVALID;
+        end = riff_size + 8;
+        data64 = native_le64(fields + 8);
+        /* The bounded source cannot contain >4GiB chunks requiring a ds64 size table. */
+        if (native_le32(fields + 24)) return LINKA_AUDIO_UNSUPPORTED;
+        position += 8 + size + (size & 1);
+    }
+    if (end < position || end > (uint64_t)state->info->source_bytes) return LINKA_AUDIO_INVALID;
+    for (unsigned chunks = 0; position < end; ++chunks) {
+        if (chunks >= 4096) return LINKA_AUDIO_LIMIT;
+        if (end - position < 8 || !native_exact(state, position, fields, 8)) return LINKA_AUDIO_INVALID;
+        uint64_t size = native_le32(fields + 4);
+        int data = !memcmp(fields, "data", 4);
+        if (rf64 && data && size == UINT32_MAX) size = data64;
+        position += 8;
+        if (size > end - position) return LINKA_AUDIO_INVALID;
+        if (data) {
+            if (data_seen++ || !size || size % stride) return LINKA_AUDIO_INVALID;
+            *frames = (int64_t)(size / stride);
+        }
+        position += size;
+        /* FFmpeg also accepts a final unpadded odd-sized chunk. */
+        if (position < end) position += size & 1;
+    }
+    return data_seen ? LINKA_AUDIO_OK : LINKA_AUDIO_INVALID;
+}
+
+/* Without Xing, CoreAudio can round both packet count and length down on truncation. */
+static int native_mp3_packets(NativeInspect *state, AudioFileID file, const AudioStreamBasicDescription *source) {
+    SInt64 offset = 0;
+    UInt64 bytes = 0;
+    UInt32 size = sizeof(offset);
+    int status = native_error(state, AudioFileGetProperty(file, kAudioFilePropertyDataOffset, &size, &offset));
+    if (status) return status;
+    size = sizeof(bytes);
+    status = native_error(state, AudioFileGetProperty(file, kAudioFilePropertyAudioDataByteCount, &size, &bytes));
+    if (status) return status;
+    if (offset < 0 || offset > state->info->source_bytes || !bytes ||
+        bytes > (uint64_t)(state->info->source_bytes - offset)) return LINKA_AUDIO_INVALID;
+    uint64_t end = (uint64_t)offset + bytes;
+    static const unsigned rates[] = {44100, 48000, 32000};
+    static const unsigned bitrate1[] = {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320};
+    static const unsigned bitrate2[] = {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160};
+    for (uint64_t position = (uint64_t)offset; position < end;) {
+        uint8_t header[4];
+        if (end - position < 4 || !native_exact(state, (int64_t)position, header, sizeof(header))) return LINKA_AUDIO_INVALID;
+        unsigned version = (header[1] >> 3) & 3, rate_index = (header[2] >> 2) & 3, bitrate = header[2] >> 4;
+        if (header[0] != 0xff || (header[1] & 0xe0) != 0xe0 || version == 1 ||
+            ((header[1] >> 1) & 3) != 1 || rate_index == 3 || bitrate == 15) return LINKA_AUDIO_INVALID;
+        /* shortcut: free-format MP3 needs a bounded packet-size source before support can be added. */
+        if (!bitrate) return LINKA_AUDIO_UNSUPPORTED;
+        unsigned rate = rates[rate_index] / (version == 3 ? 1 : version == 2 ? 2 : 4);
+        unsigned channels = header[3] >> 6 == 3 ? 1 : 2;
+        if (rate != source->mSampleRate || channels != source->mChannelsPerFrame) return LINKA_AUDIO_UNSUPPORTED;
+        unsigned length = (version == 3 ? 144000 * bitrate1[bitrate] : 72000 * bitrate2[bitrate]) / rate + ((header[2] >> 1) & 1);
+        if (length < 4 || length > end - position) return LINKA_AUDIO_INVALID;
+        position += length;
+    }
+    return LINKA_AUDIO_OK;
+}
+
+static int native_inspect(NativeInspect *state, int kind, const uint8_t *signature) {
+    AudioFileID file = NULL;
+    ExtAudioFileRef decoder = NULL;
+    AudioFileTypeID type = 0;
+    AudioStreamBasicDescription source = {0};
+    UInt32 size = sizeof(type);
+    int status;
+    int64_t expected_frames = 0;
+    SInt64 declared_frames = 0;
+    OSStatus error = AudioFileOpenWithCallbacks(state, native_read, NULL, native_size, NULL,
+                                               kind == LINKA_AUDIO_WAV ? kAudioFileWAVEType : kAudioFileMP3Type, &file);
+    if ((status = native_error(state, error))) goto done;
+    error = AudioFileGetProperty(file, kAudioFilePropertyFileFormat, &size, &type);
+    if ((status = native_error(state, error))) goto done;
+    if (type != (kind == LINKA_AUDIO_WAV ? kAudioFileWAVEType : kAudioFileMP3Type)) {
+        status = LINKA_AUDIO_UNSUPPORTED; goto done;
+    }
+    size = sizeof(source);
+    error = AudioFileGetProperty(file, kAudioFilePropertyDataFormat, &size, &source);
+    if ((status = native_error(state, error))) goto done;
+    if (!isfinite(source.mSampleRate) || source.mSampleRate <= 0 || !source.mChannelsPerFrame) {
+        status = LINKA_AUDIO_INVALID; goto done;
+    }
+    if (source.mSampleRate > 192000 || source.mChannelsPerFrame > 8) { status = LINKA_AUDIO_LIMIT; goto done; }
+    if ((kind == LINKA_AUDIO_MP3 && source.mFormatID != kAudioFormatMPEGLayer3) ||
+        (kind == LINKA_AUDIO_WAV && (source.mFormatID != kAudioFormatLinearPCM || source.mBitsPerChannel != 16 ||
+         !(source.mFormatFlags & kAudioFormatFlagIsSignedInteger) ||
+         (source.mFormatFlags & (kAudioFormatFlagIsFloat | kAudioFormatFlagIsBigEndian | kAudioFormatFlagIsNonInterleaved)) ||
+         source.mBytesPerFrame != source.mChannelsPerFrame * 2 || source.mFramesPerPacket != 1 ||
+         source.mBytesPerPacket != source.mBytesPerFrame))) { status = LINKA_AUDIO_UNSUPPORTED; goto done; }
+    if (kind == LINKA_AUDIO_WAV) {
+        status = native_wave_frames(state, signature, source.mBytesPerFrame, &expected_frames);
+        if (status) goto done;
+        if (expected_frames > source.mSampleRate * SECONDS_CAP) { status = LINKA_AUDIO_LIMIT; goto done; }
+    } else {
+        status = native_mp3_packets(state, file, &source);
+        if (status) goto done;
+    }
+    error = ExtAudioFileWrapAudioFileID(file, false, &decoder);
+    if ((status = native_error(state, error))) goto done;
+    size = sizeof(declared_frames);
+    error = ExtAudioFileGetProperty(decoder, kExtAudioFileProperty_FileLengthFrames, &size, &declared_frames);
+    if ((status = native_error(state, error))) goto done;
+    if (declared_frames <= 0) { status = LINKA_AUDIO_INVALID; goto done; }
+    if (declared_frames > source.mSampleRate * SECONDS_CAP) { status = LINKA_AUDIO_LIMIT; goto done; }
+    AudioStreamBasicDescription client = {
+        .mSampleRate = source.mSampleRate, .mFormatID = kAudioFormatLinearPCM,
+        .mFormatFlags = kAudioFormatFlagsNativeFloatPacked, .mBytesPerPacket = source.mChannelsPerFrame * sizeof(float),
+        .mFramesPerPacket = 1, .mBytesPerFrame = source.mChannelsPerFrame * sizeof(float),
+        .mChannelsPerFrame = source.mChannelsPerFrame, .mBitsPerChannel = 32
+    };
+    error = ExtAudioFileSetProperty(decoder, kExtAudioFileProperty_ClientDataFormat, sizeof(client), &client);
+    if ((status = native_error(state, error))) goto done;
+    state->info->format = kind;
+    state->info->source_rate = (int)source.mSampleRate;
+    state->info->source_channels = (int)source.mChannelsPerFrame;
+    float samples[1024 * 8];
+    for (;;) {
+        if (native_stopped(state)) { status = state->status; goto done; }
+        UInt32 frames = 1024;
+        AudioBufferList buffers = {.mNumberBuffers = 1, .mBuffers = {{
+            .mNumberChannels = client.mChannelsPerFrame, .mDataByteSize = sizeof(samples), .mData = samples
+        }}};
+        error = ExtAudioFileRead(decoder, &frames, &buffers);
+        if ((status = native_error(state, error))) goto done;
+        if (frames > 1024 || buffers.mNumberBuffers != 1 ||
+            buffers.mBuffers[0].mDataByteSize < frames * client.mBytesPerFrame ||
+            buffers.mBuffers[0].mDataByteSize > sizeof(samples)) { status = LINKA_AUDIO_INVALID; goto done; }
+        if (!frames) break;
+        if (frames > source.mSampleRate * SECONDS_CAP - state->info->frames) { status = LINKA_AUDIO_LIMIT; goto done; }
+        for (UInt32 n = 0; n < frames * source.mChannelsPerFrame; ++n)
+            if (!isfinite(samples[n])) { status = LINKA_AUDIO_INVALID; goto done; }
+        state->info->frames += frames;
+    }
+    /* MP3 decoding can silently stop before EOF on an incomplete final packet. */
+    if (!state->info->frames || state->info->frames != declared_frames ||
+        (kind == LINKA_AUDIO_WAV && state->info->frames != expected_frames)) {
+        status = LINKA_AUDIO_INVALID; goto done;
+    }
+    state->info->duration_millis = (int64_t)ceil(state->info->frames * 1000.0 / source.mSampleRate);
+    status = LINKA_AUDIO_OK;
+done:
+    if (decoder) {
+        int cleanup = native_error(state, ExtAudioFileDispose(decoder));
+        if (!status || (status == LINKA_AUDIO_UNSUPPORTED && cleanup)) status = cleanup;
+    }
+    if (file) {
+        int cleanup = native_error(state, AudioFileClose(file));
+        if (!status || (status == LINKA_AUDIO_UNSUPPORTED && cleanup)) status = cleanup;
+    }
+    if (!status && !state->status) state->info->native_playback = 1;
+    return state->status ? state->status : status;
+}
+
 /* This private development FFmpeg instance has a single decoder owner. No adaptive
  * codec threads; this lock creates no threads. The per-allocation ceiling is NOT RSS. */
 static pthread_mutex_t decoder_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -48,6 +306,7 @@ typedef struct Decode {
     LinkaAudioCancelled cancelled;
     void *context;
     LinkaAudioResult *info;
+    NativeInspect *limits;
     int64_t deadline;
     int64_t input_samples;
     int stopped_status;
@@ -60,6 +319,10 @@ typedef struct Decode {
 
 static int stopped(void *opaque) {
     Decode *state = opaque;
+    if (state->limits) {
+        if (native_stopped(state->limits)) state->stopped_status = state->limits->status;
+        return state->stopped_status != 0;
+    }
     if (state->cancelled && state->cancelled(state->context)) state->stopped_status = LINKA_AUDIO_CANCELLED;
     else if (av_gettime_relative() >= state->deadline) state->stopped_status = LINKA_AUDIO_LIMIT;
     return state->stopped_status != 0;
@@ -187,19 +450,15 @@ static int walk_boxes(Boxes *state, uint64_t start, uint64_t end, unsigned depth
     return 0;
 }
 
-static int input_format(Decode *state, int fd, const AVInputFormat **format) {
+static int input_format(Decode *state, int fd, const uint8_t *signature, size_t count, const AVInputFormat **format) {
     Boxes boxes = {.fd = fd, .decode = state};
-    uint8_t signature[12] = {0};
-    size_t count = state->info->source_bytes < 12 ? (size_t)state->info->source_bytes : 12;
-    int status = read_at(&boxes, 0, signature, count);
-    if (status < 0) return status;
+    int status;
     const char *name = NULL;
+    int basic = basic_format(signature, count);
     if (count >= 4 && !memcmp(signature, "OggS", 4)) name = "ogg";
     else if (count >= 5 && !memcmp(signature, "#!AMR", 5)) name = "amr";
-    else if (count >= 12 && (!memcmp(signature, "RIFF", 4) || !memcmp(signature, "RF64", 4)) &&
-             !memcmp(signature + 8, "WAVE", 4)) name = "wav";
-    else if ((count >= 3 && !memcmp(signature, "ID3", 3)) ||
-             (count >= 2 && signature[0] == 0xff && (signature[1] & 0xe0) == 0xe0)) name = "mp3";
+    else if (basic == LINKA_AUDIO_WAV) name = "wav";
+    else if (basic == LINKA_AUDIO_MP3) name = "mp3";
     else {
         /* A valid <=64MiB BMFF header cannot have these audio prefixes. Force the
          * chosen demuxer, so a fake audio prefix never bypasses the MOV gate. */
@@ -329,10 +588,45 @@ int linka_audio_decode(const char *source, int output_fd, LinkaAudioCancelled ca
     memset(info, 0, sizeof(*info));
     info->status = LINKA_AUDIO_INVALID;
     if (!source) return info->status;
-    if (pthread_mutex_trylock(&decoder_lock)) return info->status = LINKA_AUDIO_IO;
+    NativeInspect native = {.fd = -1, .cancelled = cancelled, .context = context, .info = info};
+    if (clock_gettime(CLOCK_MONOTONIC, &native.started)) return info->status = LINKA_AUDIO_IO;
+    if (native_stopped(&native)) return info->status = native.status;
+    native.fd = open(source, O_RDONLY | O_NOFOLLOW);
+    struct stat metadata, output_metadata;
+    int initial = LINKA_AUDIO_OK;
+    if (native.fd < 0 || fstat(native.fd, &metadata)) initial = LINKA_AUDIO_IO;
+    else {
+        info->source_bytes = metadata.st_size;
+        if (!S_ISREG(metadata.st_mode) || metadata.st_size <= 0) initial = LINKA_AUDIO_INVALID;
+        else if (metadata.st_size > SOURCE_CAP) initial = LINKA_AUDIO_LIMIT;
+    }
+    uint8_t signature[12] = {0};
+    UInt32 signature_count = initial ? 0 : info->source_bytes < 12 ? (UInt32)info->source_bytes : 12;
+    if (!initial && !native_exact(&native, 0, signature, signature_count))
+        initial = native.status ? native.status : LINKA_AUDIO_INVALID;
+    int kind = basic_format(signature, signature_count);
+    if (!initial && output_fd < 0 && kind) {
+        initial = native_inspect(&native, kind, signature);
+        if (initial != LINKA_AUDIO_UNSUPPORTED || native_stopped(&native)) goto initial_done;
+        /* Unsupported native variants still get the existing bounded compatibility inspection. */
+        info->format = info->source_rate = info->source_channels = 0;
+        info->frames = info->duration_millis = 0;
+        info->native_playback = 0;
+        initial = LINKA_AUDIO_OK;
+    }
+    if (!initial) {
+        if (native_stopped(&native)) initial = native.status;
+        else if (pthread_mutex_trylock(&decoder_lock)) initial = LINKA_AUDIO_IO;
+        else goto compatibility;
+    }
+initial_done:
+    if (native.status) initial = native.status;
+    if (native.fd >= 0 && close(native.fd) && !initial) initial = LINKA_AUDIO_IO;
+    if (initial) info->native_playback = 0;
+    return info->status = initial;
+compatibility:
     pthread_once(&policy_once, policy);
-    Decode state = {.cancelled = cancelled, .context = context, .info = info,
-                    .deadline = av_gettime_relative() + 30LL * AV_TIME_BASE};
+    Decode state = {.cancelled = cancelled, .context = context, .info = info, .limits = &native};
     AVFormatContext *format = NULL;
     AVIOContext *io = NULL;
     AVCodecContext *decoder = NULL;
@@ -341,16 +635,10 @@ int linka_audio_decode(const char *source, int output_fd, LinkaAudioCancelled ca
     AVDictionary *options = NULL;
     AVDictionary **probe = NULL;
     unsigned probe_count = 0;
-    int fd = -1, copy_fd = -1, status = AVERROR_INVALIDDATA;
-    struct stat metadata, output_metadata;
+    int fd = native.fd, copy_fd = -1, status = AVERROR_INVALIDDATA;
     if (stopped(&state)) { status = AVERROR_EXIT; goto done; }
-    fd = open(source, O_RDONLY | O_NOFOLLOW);
-    if (fd < 0 || fstat(fd, &metadata)) { status = AVERROR(EIO); goto done; }
-    info->source_bytes = metadata.st_size;
-    if (!S_ISREG(metadata.st_mode) || metadata.st_size <= 0) goto done;
-    if (metadata.st_size > SOURCE_CAP) { status = AVERROR(EFBIG); goto done; }
     const AVInputFormat *forced_format = NULL;
-    if ((status = input_format(&state, fd, &forced_format)) < 0) goto done;
+    if ((status = input_format(&state, fd, signature, signature_count, &forced_format)) < 0) goto done;
     if (output_fd >= 0) {
         if (fstat(output_fd, &output_metadata) || !S_ISREG(output_metadata.st_mode) || output_metadata.st_size != 0 ||
             output_metadata.st_nlink != 1 || (metadata.st_dev == output_metadata.st_dev && metadata.st_ino == output_metadata.st_ino)) {

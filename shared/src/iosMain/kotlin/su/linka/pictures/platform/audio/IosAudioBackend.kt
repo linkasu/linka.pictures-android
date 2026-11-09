@@ -19,7 +19,7 @@ import su.linka.pictures.text.isNativeText
 internal class IosAudioBackend(
     private val files: PlatformFilesPort,
     private val inspection: MediaInspectionPort,
-    private val preparePlaybackClip: suspend (LocalFile) -> OperationResult<TemporaryFile>,
+    private val preparePlaybackClip: suspend (LocalFile) -> OperationResult<LocalFile>,
     private val requestMicrophonePermission: suspend (RequestId) -> OperationResult<Unit>,
     private val isApplicationActive: () -> Boolean,
     scope: CoroutineScope,
@@ -210,8 +210,11 @@ internal class IosAudioBackend(
 
     override suspend fun playClip(file: LocalFile, requestId: RequestId): OperationResult<Unit> = operate(requestId) { call ->
         val prepared = value(preparePlaybackClip(file))
-        if (prepared.path.toPath(normalize = true) == file.path.toPath(normalize = true)) throw IosAudioFailure(ProblemCode.CONFLICT)
-        call.temporary = prepared
+        if (prepared !== file) {
+            if (prepared !is TemporaryFile || prepared.path.toPath(normalize = true) == file.path.toPath(normalize = true))
+                throw IosAudioFailure(ProblemCode.CONFLICT)
+            call.temporary = prepared
+        }
         current(call)
         value(inspection.audio(prepared))
         withContext(Dispatchers.Main.immediate) {

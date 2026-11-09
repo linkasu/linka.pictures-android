@@ -28,7 +28,7 @@
         };
         C00000000000000000000003 = {
             isa = PBXGroup;
-            children = (C00000000000000000000007, C0000000000000000000000D, C00000000000000000000017, C00000000000000000000020, C00000000000000000000004);
+            children = (C00000000000000000000007, C0000000000000000000000D, C00000000000000000000017, C00000000000000000000020, C00000000000000000000022, C00000000000000000000004);
             sourceTree = "<group>";
         };
         C00000000000000000000004 = {
@@ -40,7 +40,7 @@
         C00000000000000000000005 = {
             isa = PBXNativeTarget;
             buildConfigurationList = C00000000000000000000009;
-            buildPhases = (C0000000000000000000000A);
+            buildPhases = (C0000000000000000000000A, C00000000000000000000026);
             buildRules = ();
             dependencies = ();
             name = LinkaKeychainHost;
@@ -80,6 +80,7 @@
                 CODE_SIGN_ENTITLEMENTS = LinkaKeychainHost/LinkaKeychainHost.entitlements;
                 INFOPLIST_FILE = LinkaKeychainHost/Info.plist;
                 INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
                 PRODUCT_BUNDLE_IDENTIFIER = "$(LINKA_HOST_BUNDLE_ID)";
                 PRODUCT_NAME = "$(TARGET_NAME)";
             };
@@ -90,7 +91,7 @@
         C00000000000000000000015 = {
             isa = PBXNativeTarget;
             buildConfigurationList = C00000000000000000000019;
-            buildPhases = (C0000000000000000000001A);
+            buildPhases = (C0000000000000000000001A, C00000000000000000000025);
             buildRules = ();
             dependencies = (C0000000000000000000001D);
             name = LinkaKeychainHostTests;
@@ -111,9 +112,9 @@
             isa = XCBuildConfiguration;
             buildSettings = {
                 BUNDLE_LOADER = "$(TEST_HOST)";
-                FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/iosSimulatorArm64/appHostDebugFramework");
+                FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/iosSimulatorArm64/appHostDebugFramework", "$(SRCROOT)/../shared/build/ios-audio-decoder/iosSimulatorArm64");
                 LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
-                OTHER_LDFLAGS = ("$(inherited)", "-framework", SharedAppHostTests, "-lsqlite3");
+                OTHER_LDFLAGS = ("$(inherited)", "-framework", SharedAppHostTests, "-lsqlite3", "-framework", AudioToolbox);
                 PRODUCT_BUNDLE_IDENTIFIER = "$(LINKA_HOST_BUNDLE_ID).tests";
                 PRODUCT_NAME = "$(TARGET_NAME)";
                 TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LinkaKeychainHost.app/LinkaKeychainHost";
@@ -125,6 +126,11 @@
         C0000000000000000000001E = { isa = PBXContainerItemProxy; containerPortal = C00000000000000000000001; proxyType = 1; remoteGlobalIDString = C00000000000000000000005; remoteInfo = LinkaKeychainHost; };
         C00000000000000000000020 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaKeychainHostTests/AudioTests.swift; sourceTree = "<group>"; };
         C00000000000000000000021 = { isa = PBXBuildFile; fileRef = C00000000000000000000020; };
+        C00000000000000000000022 = { isa = PBXFileReference; explicitFileType = wrapper.framework; name = LinkaFFmpeg.framework; path = "../shared/build/ios-audio-decoder/iosSimulatorArm64/LinkaFFmpeg.framework"; sourceTree = SOURCE_ROOT; };
+        C00000000000000000000023 = { isa = PBXBuildFile; fileRef = C00000000000000000000022; };
+        C00000000000000000000024 = { isa = PBXBuildFile; fileRef = C00000000000000000000022; settings = { ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy); }; };
+        C00000000000000000000025 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C00000000000000000000023); runOnlyForDeploymentPostprocessing = 0; };
+        C00000000000000000000026 = { isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 10; files = (C00000000000000000000024); name = "Embed Frameworks"; runOnlyForDeploymentPostprocessing = 0; };
     };
     rootObject = C00000000000000000000001;
 }

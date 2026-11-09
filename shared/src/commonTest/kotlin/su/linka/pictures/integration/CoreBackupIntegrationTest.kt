@@ -2,7 +2,7 @@
 
 package su.linka.pictures.integration
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -67,7 +67,7 @@ class CoreBackupIntegrationTest {
             fs.sink(credential, mustCreate = true).buffer().use { it.write(credentialBytes) }
             val filePort = CoreBackupFiles(fs, filesRoot).also { files = it }
             val inspection = SyntheticCoreInspection(fs, root)
-            suspend fun open(path: Path): StorageRuntime = StorageRuntime.open(path, fs, BundledSQLiteDriver()).ok().also(runtimes::add)
+            suspend fun open(path: Path): StorageRuntime = StorageRuntime.open(path, fs, testSQLiteDriver()).ok().also(runtimes::add)
             val source = open(sourceRoot)
             var target = open(targetRoot)
             val bytes = mutableMapOf<AssetId, ByteString>()

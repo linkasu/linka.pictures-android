@@ -3,7 +3,7 @@
 
 package su.linka.pictures.bootstrap
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.driver.NativeSQLiteDriver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -271,7 +271,7 @@ internal class IosProductRoot {
             admitRootCredentials(credentials, true, guard).required()
             // Assignment must survive cancellation of startup: cleanup must see every opened writer.
             store = withContext(NonCancellable) {
-                StorageRuntime.open(paths.root, fs, BundledSQLiteDriver()).required().also { storage = it }
+                StorageRuntime.open(paths.root, fs, NativeSQLiteDriver()).required().also { storage = it }
             }
             nativeFiles = platformFiles(paths.root, paths.temporary, fs)
         } else {
@@ -285,7 +285,7 @@ internal class IosProductRoot {
                 return
             }
             val importer = LegacyCredentialImporter(credentials)
-            val upgrade = LegacyUpgrade(paths.root, StarterMigrationSource(), fs, BundledSQLiteDriver(),
+            val upgrade = LegacyUpgrade(paths.root, StarterMigrationSource(), fs, NativeSQLiteDriver(),
                 { generation -> platformFiles(generation, paths.temporary, fs) }, ids,
                 readSettings = { LegacyUpgradeSettings(emptyMap(), false) },
                 prepareCredentials = { importer.prepare(false, null, guard) },
@@ -301,6 +301,7 @@ internal class IosProductRoot {
             nativeFiles = opened.files
         }
         currentCoroutineContext().ensureActive()
+        credentials.allowDeviceBackup(guard).required()
         val verification = IosDeviceOwnerVerifier(getString(Res.string.ios_owner_verification_reason),
             { request, owner -> access?.isVerificationCurrent(request, owner) == true },
             ::ownerForeground, { access?.suspendForSystemPrompt() }, scope)
@@ -314,7 +315,7 @@ internal class IosProductRoot {
         val inspection = IosMediaInspectionPort(decoder::inspect)
         settings.value = store.library.settings().required()
         val recording = RecordingOwners(::ownerForeground, assistant::suspendForSystemPrompt, recovery::denied)
-        val backend = IosAudioBackend(ownedFiles, inspection, decoder::decodeToWave, recording::permission,
+        val backend = IosAudioBackend(ownedFiles, inspection, decoder::preparePlayback, recording::permission,
             { UIApplication.sharedApplication.applicationState == UIApplicationState.UIApplicationStateActive }, scope)
         val coordinator = AudioCoordinator(backend, store.media, ownedFiles, scope) { settings.value?.languageTag }
         val port = recording.bind(coordinator)

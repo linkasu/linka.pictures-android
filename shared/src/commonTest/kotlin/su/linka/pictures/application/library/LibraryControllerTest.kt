@@ -1,6 +1,6 @@
 package su.linka.pictures.application.library
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlinx.coroutines.test.runTest
 import okio.FileSystem
 import su.linka.pictures.application.*
@@ -28,7 +28,7 @@ class LibraryControllerTest {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "p13-library-${kotlin.random.Random.nextLong()}"
         fs.createDirectory(root, mustCreate = true)
-        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
+        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, testSQLiteDriver())).value
         try { test(runtime, Gate()) } finally { runtime.close(); fs.deleteRecursively(root) }
     }
     private fun permit(runtime: StorageRuntime) = WritePermit(runtime.library.listing.value.epoch) { OperationResult.Completed(Unit) }

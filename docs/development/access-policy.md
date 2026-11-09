@@ -1,5 +1,20 @@
 # P08: политика защиты помощника
 
+## Уточнение iOS backup — 9 ноября 2026
+
+Пользователь явно выбрал перенос защиты помощника вместе с библиотекой через
+защищённый системный backup iOS. Только assistant Keychain item меняется на
+`kSecAttrAccessibleWhenUnlocked`, `kSecAttrSynchronizable=false`; формат/bytes
+verifier и access group не меняются. Старый `ThisDeviceOnly` item переводится
+после validation, с последним root guard и readback атрибутов/неизменных bytes.
+Ни delete/add, ни reset отсутствующего/повреждённого record не допускаются.
+Identity email, receipt и account/installation tokens остаются `ThisDeviceOnly`.
+Portable `.linka`/backup/recovery по-прежнему не переносит credential record.
+
+Ниже сохранён исторический срез 5 ноября; его упоминания `ThisDeviceOnly` для
+assistant store superseded этим решением. Это изменение eligibility Keychain,
+не утверждение, что фактический restore на втором физическом устройстве уже проверен.
+
 COORD, 5 ноября 2026. Угроза — случайные/нежелательные изменения и выдача данных в локальном приложении, не владелец/root разблокированного устройства. Общение всегда вне gate. Этот документ фиксирует решения, не закрывает native/security/G4 gates.
 
 ## Верификатор и совместимость

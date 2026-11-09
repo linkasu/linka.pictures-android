@@ -1,0 +1,12 @@
+<resources>
+    <string name="licenses_title">Лицензии сторонних компонентов</string>
+    <string name="licenses_ffmpeg_summary">Компонент совместимости аудио в iOS использует FFmpeg %1$s под лицензией GNU LGPL версии 2.1 или более поздней. Ниже без интернета доступны оригинальные английские тексты лицензии и уведомлений проекта.</string>
+    <string name="licenses_read_lgpl">Прочитать лицензию GNU LGPL 2.1</string>
+    <string name="licenses_read_ffmpeg_notices">Прочитать оригинальные лицензионные уведомления FFmpeg</string>
+    <string name="licenses_source_explanation">По ссылке доступны точный архив FFmpeg, лицензионные уведомления и инструкция по пересборке совместимого iOS-компонента. Для получения и сборки исходников нужны интернет и Xcode; ключи подписи приложения не передаются.</string>
+    <string name="licenses_open_source">Исходники FFmpeg и инструкция по пересборке</string>
+    <string name="licenses_link_error">Не удалось открыть ссылку на исходники. Повторите попытку, когда будет доступен браузер.</string>
+    <string name="licenses_loading">Загружаем локальный юридический текст…</string>
+    <string name="licenses_load_error">Не удалось загрузить локальный юридический текст. Повторите попытку.</string>
+    <string name="licenses_retry">Повторить загрузку текста</string>
+</resources>

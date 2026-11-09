@@ -1,5 +1,100 @@
 # Релиз 2.0.0: фактическая подготовка 9 ноября 2026
 
+## Актуализация после первого CI и исследования аудио
+
+Этот раздел заменяет устаревшие статусы ниже, которые оставлены как журнал этапов.
+
+### Финальные локальные результаты follow-up
+
+- Полный gate: **593 JVM, 26+26 Android unit, 722 iOS Native**, без failures/errors/skips;
+  Android/shared lint, safety, selectors, APK/AAB, device Release framework и Simulator
+  Debug framework PASS. Producer integrity **16/16** PASS. Android test APK пересобран
+  после добавления runtime page-size assertion; Compose resources синхронизированы.
+- Новый archive `build/prerelease/LinkaPokazhi-final-20261109.xcarchive` собран.
+  `check-prerelease.py --app …` и `codesign --verify --deep --strict …` PASS:
+  runtime действительно dynamic/embedded, FFmpeg definitions в executable отсутствуют,
+  DiskSpace imports в app/runtime отсутствуют, privacy manifests/resources присутствуют.
+- App-host iOS17: **4/5**, файл/dynamic version/Keychain PASS, TTS FAIL с отсутствующим
+  executable Apple TextToSpeechMauiSupport. Это не скрытый skip и не PASS для TTS17.
+  На уже установленном iOS26.5 полный тот же suite **5/5 PASS**.
+  Evidence: `KeychainAudioDynamicRuntime{,-ios26}.xcresult` под build/prerelease.
+- Полный подписанный app-host с заменённым recipient runtime: **5/5 PASS** на26.5.
+  Test plugin побайтово тот же, host entitlements неизменны, relink не выполнялся;
+  проверена именно изменённая версия через environment expectation теста.
+  Evidence: `build/prerelease/RuntimeReplacementHost/{preparation.json,result.xcresult}`.
+- **Distribution export новой сборки BLOCKED**: Xcode account credentials отсутствуют,
+  локально доступна только Development identity; прежний Distribution был managed.
+  Попытка штатного CSR-процесса остановлена на отказе браузерного tool в file access:
+  ограничения не обходились. Ни нового сертификата, ни отзыва/изменения старого нет.
+  Неиспользованный временный private key и CSR удалены только из своего temp directory.
+  Нужен пользовательский вход в Xcode/штатная настройка Distribution. Старый IPA
+  остаётся superseded; новый archive пока имеет Development, не App Store подпись.
+
+- Identity PR11 объединён; main `348d94bee8bf1a2520d1f123524bf83e763b1111`
+  прошёл main CI/publish и normal deploy
+  `https://github.com/linkasu/linka.identity/actions/runs/42621149593`.
+  Live negative canary: health/ready200, deletion без JWT401, неизвестная status
+  capability404. Реальное удаление тестового аккаунта ещё НЕ выполнено.
+- App PR38 объединён после зелёного PR CI, main `35275a5…`.
+  Следующий main CI `42620570319` выявил реальную гонку Background/SwitchCard:
+  поздний UNAUTHORIZED менял уже durable source из SAVED в FAILED. Управляемый
+  regression воспроизвёл RED и прошёл GREEN для reply до/после Resume.
+  Исправление пока в незакоммиченной follow-up ветке
+  `fix/prerelease-privacy-and-resume-20261109`; main не считается исправленным.
+- iOS production и native storage tests переведены на NativeSQLiteDriver из
+  `sqlite-framework:2.5.2`; bundled остаётся Android/JVM. Schema/SQL/bytes не менялись.
+  Полный локальный gate после этого прошёл, включая 719 iOS Native tests.
+  Отсутствие DiskSpace imports нужно подтвердить на новой Release-сборке.
+- Старый signed IPA SHA256 `471979b04221e938c5fbb9829c0cac3ba2e43b48d2fad71597acea78e0375b42`
+  экспортирован Apple Distribution, но **SUPERSEDED, НЕ ЗАГРУЖАТЬ**: старый SQLite,
+  старая audio packaging и гонка. Это не финальный кандидат.
+- Пользователь разрешил перенос только assistant protection item через защищённый
+  системный Keychain backup. `WhenUnlocked`, sync=false, bytes неизменны, последний
+  guard/readback; неизвестная accessibility fail-closed. Identity остаётся
+  ThisDeviceOnly. Hosted XCTest реально исполнились **2/2 PASS**, result bundle
+  `build/prerelease/KeychainBackupPolicy.xcresult`; физический restore не проверен.
+- Повторный read-only Android launcher smoke на emulator-5554 (API35/4KB) прошёл
+  1/1 за7.178s после update-install собственного development APK. Данные не очищались;
+  это не fresh-install, не API36/16KB и не upgrade опубликованного production APK.
+- Последний завершённый полный gate до audio/backup follow-up: 593 JVM,
+  26+26 Android unit и719 iOS Native, без failures/errors/skips. Новые audio
+  проверки ещё требуют повторного native gate; старые результаты не приписываются
+  изменённому бинарнику.
+- Оригинальные FFmpeg license assets доступны офлайн в настройках; SHA проверены.
+  Пользователь отверг object/relink-пакет приложения; публикации такого пакета нет.
+  Прототипы в ignored build сохранены только как исторический эксперимент.
+- Выбранный минимальный аудиопуть после primary-source research: AVAudioPlayer для
+  WAV PCM16/MP3 без временной перекодировки; существующий bounded FFmpeg8.1.2
+  только legacy fallback, в отдельном dynamic LinkaFFmpeg.framework. Новые codecs
+  и собственный 3GP parser перед выпуском не добавляются. На iOS17 нативные OGG/AMR/3GP
+  уже дали отрицательные runtime-результаты. Переупаковка и native route ещё проверяются.
+  Обоснование: `audio-native-research-2026-11-09.md` и
+  `audio-decoders-research-2026-11-09.md`.
+- Dynamic bridge proof реально прошёл на iOS17: все5 форматов, 25 отрицательных
+  сценариев, same-TU native/policy/truncation/cancel/bounds/fault-injection и отдельная
+  Kotlin/CInterop compilation. Evidence run `f54d408a-7c18-4db0-99b2-834da74a1fc0`
+  в `build/ios-ffmpeg-preflight`, status DEVELOPMENT_PROOF_PASS, все5 исходных SHA
+  неизменны. Точные синтетические fixtures теперь tracked, не зависят от старого `/tmp`.
+  CoreAudio source MP3 frames включают padding; explicit FFmpeg conversion его
+  обрезает. Эти разные контракты проверяются отдельно, а не выравниваются под тест.
+- Recipient rebuild из реально изменённого `libavutil/version.c` прошёл:
+  один и тот же harness после замены framework (без перелинковки) выдал версию
+  с marker `LINKA_RECIPIENT_REBUILD_PROOF_20261109`. 1/10111 source files изменён,
+  prefix unsigned, только test copies получили штатную Simulator-подпись.
+  Evidence: `build/prerelease/recipient-rebuild-proof-gln88jt3/proof.json`.
+  Замена внутри целого app-host ещё проверяется; CLI proof её не подменяет.
+- Firebase ещё не запускался, расходов0. Пользователь разрешил один прогон до$5.
+  Каталог `gcloud firebase test android models describe MediumPhone_ps16k.arm`
+  подтверждает VIRTUAL/arm64/API36, название16K и tag preview=36; это не physical
+  stable-device proof. Разрешённый workflow теперь ограничен тремя executions:
+  startup API36/16KB10m (с runtime assert16384), physical redfin/API30 migration15m,
+  Robo API36/16KB5m, без retries/shards. Максимум по опубликованным $1/h virtual
+  и$5/h physical — $1.50 до free quota; новый paid run ещё не запущен.
+  Ни store upload, ни review, ни public release не выполнялись и не разрешены
+  автоматически. Политика на сайте и финальные store forms пока не актуализированы.
+
+## Исторический срез до этих исправлений
+
 Статус: **NO-GO для публичного выпуска**. Локальные проверки ниже не заменяют
 подпись, deployment Identity, store validation, physical acceptance или legal approval.
 Исходный commit приложения: `a561401`; релизная ветка —

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pinned development bridge build + optional owned-simulator proof. No product wiring."""
+"""Pinned iOS bridge/dynamic-runtime producer with opt-in owned-simulator proof; never signs/uploads."""
 import argparse
 import hashlib
 import json
@@ -18,8 +18,28 @@ require = PREFLIGHT["require"]
 sha = PREFLIGHT["sha"]
 UDID = PREFLIGHT["UDID"]
 SOURCE_SHA = "464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c"
+VENDORED_PINS = OUTPUTS['VENDORED_PINS']
 FLAGS = [x for x in PREFLIGHT["FLAGS"] if not x.startswith(("--enable-ffmpeg", "--enable-avfilter", "--enable-filter=", "--disable-filter=", "--enable-muxer=", "--enable-encoder="))]
 FLAGS += ["--disable-avfilter", "--disable-pthreads", "--disable-w32threads", "--disable-os2threads"]
+
+
+def vendored_source(task, extract=True):
+    vendor = task.project / 'third_party/ffmpeg'
+    for name, expected in VENDORED_PINS.items():
+        path = vendor / name
+        require(path.is_file() and not path.is_symlink() and sha(path) == expected, f'vendored source changed: {name}')
+    archive = vendor / 'ffmpeg-8.1.2.tar.xz'
+    home = task.root / 'source-verification-home'
+    home.mkdir(mode=0o700)
+    _, signature = task.run(['gpgv', '--homedir', home, '--keyring', vendor / 'ffmpeg-release-key.gpg',
+                             '--status-fd', '1', vendor / 'ffmpeg-8.1.2.tar.xz.asc', archive])
+    require(f"[GNUPG:] VALIDSIG {PREFLIGHT['FINGERPRINT']} " in signature, 'vendored source signature')
+    task.result.update(downloads=[dict(url=PREFLIGHT['SOURCE'], path=str(archive), sha256=SOURCE_SHA,
+                                      origin='vendored exact previously authenticated upstream archive; no network request')],
+                       signature=dict(verified=True, fingerprint=PREFLIGHT['FINGERPRINT'], verification='local gpgv with pinned vendored public key'))
+    if extract:
+        task.inspect_extract(archive)
+    return archive
 
 
 def target(task, sdk, triple, cached=None, build_tests=False):
@@ -80,7 +100,11 @@ def target(task, sdk, triple, cached=None, build_tests=False):
     compile_flags = [tools["clang"], "-target", triple, "-isysroot", sysroot.strip(), "-std=c17", "-O2",
         "-Wall", "-Wextra", "-Werror", "-Werror=partial-availability", "-I", prefix / "include", "-I", header.parent]
     bridge = prefix / "lib/liblinka_audio_decoder.a"
-    if cached and previous['bridge_source_sha256'] == sha(source) and previous['bridge_header_sha256'] == sha(header):
+    bridge_inputs = OUTPUTS['current_sources'](task.project, FLAGS)['files']
+    old_inputs = previous.get('bridge_inputs_sha256', {
+        'shared/src/nativeInterop/c/linka_audio_decoder.c': previous['bridge_source_sha256'],
+        'shared/src/nativeInterop/cinterop/include/linka_audio_decoder.h': previous['bridge_header_sha256']}) if cached else {}
+    if cached and old_inputs == bridge_inputs:
         require(sha(old / 'lib' / bridge.name) == previous['libraries'][bridge.name]['sha256'], 'cached bridge changed')
         shutil.copyfile(old / 'lib' / bridge.name, bridge)
     else:
@@ -94,22 +118,56 @@ def target(task, sdk, triple, cached=None, build_tests=False):
     task.result.setdefault("development_targets", {})[sdk] = dict(prefix=str(prefix), configure=flags,
         config_sha256=sha(build / "config.h"), components_sha256=sha(build / "config_components.h"),
         make_config_sha256=sha(build / "ffbuild/config.mak"), enabled=enabled, libraries=libraries,
-        bridge_source_sha256=sha(source), bridge_header_sha256=sha(header))
+        bridge_source_sha256=sha(source), bridge_header_sha256=sha(header), bridge_inputs_sha256=bridge_inputs)
     if cached:
         task.result['development_targets'][sdk]['ffmpeg_reused_from'] = previous['prefix']
     task.save()
+    archive = next(Path(x['path']) for x in task.result['downloads'] if x['url'] == PREFLIGHT['SOURCE'])
+    if cached and (old / OUTPUTS['RUNTIME']).is_dir():
+        OUTPUTS['verify_runtime'](old, sdk, task.env)
+        shutil.copytree(old / OUTPUTS['RUNTIME'], prefix / OUTPUTS['RUNTIME'])
+    else:
+        OUTPUTS['build_runtime'](prefix, sdk, task.env, archive)
     executable = build / "bridge-test"
     if sdk == "iphonesimulator" and build_tests:
+        frameworks = build / 'Frameworks'
+        frameworks.mkdir()
+        shutil.copytree(prefix / OUTPUTS['RUNTIME'], frameworks / OUTPUTS['RUNTIME'])
+        task.run(['codesign', '--force', '--sign', '-', '--timestamp=none', frameworks / OUTPUTS['RUNTIME']])
+        runtime_link = ['-F', prefix, '-framework', 'LinkaFFmpeg', '-Wl,-rpath,@executable_path/Frameworks']
         task.run([*compile_flags, task.project / "scripts/test-ios-audio-decoder.c", "-L", prefix / "lib",
-            "-llinka_audio_decoder", "-lavformat", "-lavcodec", "-lswresample", "-lavutil", "-lm", "-pthread",
-            "-framework", "CoreFoundation", "-framework", "CoreVideo", "-framework", "CoreMedia", "-o", executable], timeout=120)
+            "-llinka_audio_decoder", *runtime_link, "-lm",
+            "-framework", "CoreFoundation", "-framework", "CoreVideo", "-framework", "CoreMedia", "-framework", "AudioToolbox", "-o", executable], timeout=120)
         task.result["bridge_test_binary"] = task.macho(executable, platform)
         unit = build / 'bridge-unit'
+        # Native inspection is in the same bridge TU; do not link a second bridge archive.
         task.run([*compile_flags, task.project / 'scripts/test-ios-audio-decoder-unit.c', '-L', prefix / 'lib',
-            '-lavformat', '-lavcodec', '-lswresample', '-lavutil', '-lm', '-pthread',
-            '-framework', 'CoreFoundation', '-framework', 'CoreVideo', '-framework', 'CoreMedia', '-o', unit], timeout=120)
+            *runtime_link, '-lm',
+            '-framework', 'CoreFoundation', '-framework', 'CoreVideo', '-framework', 'CoreMedia', '-framework', 'AudioToolbox', '-o', unit], timeout=120)
         task.result['bridge_unit_binary'] = task.macho(unit, platform)
+        for binary in (executable, unit):
+            _, linked = task.run(['xcrun', 'otool', '-L', binary])
+            require(OUTPUTS['INSTALL_NAME'] in linked, 'proof executable must use final dynamic runtime')
     return prefix, executable
+
+
+def bridge_fixtures(task):
+    source = task.project / 'scripts/fixtures/ios-audio'
+    target = task.root / 'fixtures'
+    target.mkdir()
+    copied = {}
+    for name, (original, size, expected) in PREFLIGHT['EXPECTED'].items():
+        fixture = source / original.name
+        require(fixture.is_file() and not fixture.is_symlink() and fixture.stat().st_size <= 65536 and
+                (size is None or fixture.stat().st_size == size) and sha(fixture) == expected, f'fixture changed: {name}')
+        task.originals[fixture] = expected
+        output = target / fixture.name
+        shutil.copyfile(fixture, output)
+        copied[name] = output
+    task.result['fixtures'] = {name: dict(source=str(source / file.name), bytes=file.stat().st_size, sha256=sha(file))
+                               for name, file in copied.items()}
+    task.save()
+    return copied
 
 
 def negative_wave(path, channels=1, rate=16000, seconds=0.2, width=2):
@@ -168,8 +226,9 @@ def moov_header(data, extended=False, size0=False):
 
 def proof(task, executable, fixtures):
     task.runtime()
-    _, unit = task.run(['xcrun', 'simctl', 'spawn', UDID, executable.parent / 'bridge-unit', fixtures['vorbis']])
-    require('same-TU saturation/nonfinite/calloc-failure/reuse PASS' in unit, 'native same-TU unit')
+    _, unit = task.run(['xcrun', 'simctl', 'spawn', UDID, executable.parent / 'bridge-unit',
+                        fixtures['vorbis'], fixtures['wav'], fixtures['mp3']])
+    require('same-TU native/policy/truncation/cancel/bounds/unsupported/saturation/nonfinite/calloc-failure/reuse PASS' in unit, 'native same-TU unit')
     task.result['native_same_tu_unit'] = unit.strip()
     base = ["xcrun", "simctl", "spawn", UDID, executable]
     _, info = task.run([*base, "info"])
@@ -200,7 +259,14 @@ def proof(task, executable, fixtures):
             frames = wav.getnframes()
             samples = struct.unpack('<' + 'h' * (frames * 2), wav.readframes(frames))
             rms = (sum((x / 32768) ** 2 for x in samples) / len(samples)) ** 0.5
-            require(frames == decoded["frames"] == inspection["frames"] and 0.1 <= frames / 16000 <= 0.5 and rms > 0, "WAV inspection/energy mismatch")
+            require(frames == decoded["frames"] and 0.1 <= frames / 16000 <= 0.5 and rms > 0, "WAV conversion/energy mismatch")
+        require(inspection['native_playback'] == int(name in ('wav', 'mp3')) and decoded['native_playback'] == 0, 'wrong native/compatibility route')
+        if inspection['native_playback']:
+            # CoreAudio reports source PCM frames including MP3 padding; FFmpeg trims this gapless fixture.
+            require(inspection['rate'] == 16000 and inspection['frames'] == {'wav': 3200, 'mp3': 4608}[name], 'native source-frame count changed')
+            require(inspection['duration_millis'] == (inspection['frames'] * 1000 + inspection['rate'] - 1) // inspection['rate'], 'native duration mismatch')
+        else:
+            require(frames == inspection['frames'], 'legacy inspection/conversion mismatch')
         matrix[name] = dict(inspect=inspection, decoded=decoded, wave_bytes=destination.stat().st_size, wave_sha256=sha(destination), rms=rms)
     task.result["development_matrix"] = matrix
     silence = output / 'silence.wav'
@@ -304,18 +370,12 @@ def proof(task, executable, fixtures):
 def scoped_kotlin(task, prefix):
     # Independent generated project: real selected sources, no tracked root wiring or skip flags.
     definition = task.root / 'linka_audio_decoder.def'
-    definition.write_text(f'''headers = linka_audio_decoder.h
-headerFilter = linka_audio_decoder.h
-package = su.linka.pictures.platform.audio.decoder
-compilerOpts = -I{prefix}/include
-staticLibraries = liblinka_audio_decoder.a libavformat.a libavcodec.a libswresample.a libavutil.a
-libraryPaths = {prefix}/lib
-linkerOpts = -lm -pthread -framework CoreFoundation -framework CoreVideo -framework CoreMedia
-''')
+    definition.write_text(OUTPUTS['definition'](prefix))
     project = task.root / 'kotlin-proof'
     project.mkdir()
     common = ['application/OperationResult.kt', 'application/ports/LocalFile.kt',
-              'application/ports/PlatformFilesPort.kt', 'application/ports/MediaInspectionPort.kt', 'text/NativeText.kt']
+              'application/ports/PlatformFilesPort.kt', 'application/ports/MediaInspectionPort.kt',
+              'application/ports/ExportDestination.kt', 'application/ports/AccessPort.kt', 'text/NativeText.kt']
     sources = {}
     for relative in common:
         source = task.project / 'shared/src/commonMain/kotlin/su/linka/pictures' / relative
@@ -359,7 +419,16 @@ def main():
     parser.add_argument('--prove', action='store_true', help='run only the owned iOS17 simulator; never automatic on build')
     parser.add_argument('--compile-kotlin', action='store_true', help='independent generated cinterop compile proof, not root integration')
     parser.add_argument('--gradle-output-root', help='explicit absolute generated build directory; verified stable prefixes for both targets')
+    parser.add_argument('--compatible-source', type=Path, help='separate user rebuild: modified compatible FFmpeg source; never production publication')
+    parser.add_argument('--runtime-output', type=Path, help='fresh user runtime output under a build directory')
+    parser.add_argument('--sdk', choices=('iphoneos', 'iphonesimulator'), default='iphoneos')
     args = parser.parse_args()
+    if args.compatible_source or args.runtime_output:
+        require(args.compatible_source and args.runtime_output and not any((args.gradle_output_root, args.reuse_build_run, args.verified_source_run, args.prove, args.compile_kotlin)), 'user runtime rebuild cannot publish production outputs')
+        OUTPUTS['rebuild_compatible_runtime'](args.compatible_source, args.runtime_output, args.sdk, FLAGS,
+                                             Path(__file__).resolve().parents[1] / 'third_party/ffmpeg/ffmpeg-8.1.2.tar.xz')
+        return
+    OUTPUTS['current_sources'](Path(__file__).resolve().parents[1], FLAGS)
     PREFLIGHT["self_test"]()
     published = None
     output_root = OUTPUTS['output_root'](args.gradle_output_root) if args.gradle_output_root else None
@@ -389,34 +458,28 @@ def main():
                 (directory / 'ffbuild/config.mak').write_text(record.get('make_config_text', ''))
                 record.update(prefix=str(output_root / target_name), config_directory=str(directory))
                 cached['development_targets'][sdk] = record
-            archive_record = next(x for x in cached['downloads'] if x['url'] == PREFLIGHT['SOURCE'])
-            archive = Path(archive_record['path'])
-            require(sha(archive) == SOURCE_SHA, 'published source archive cache unavailable/changed; reseed explicitly')
-            _, signature = task.run(['gpgv', '--homedir', archive.parent / 'gnupg', '--keyring', archive.parent / 'release-key.gpg',
-                                    '--status-fd', '1', archive.parent / 'source.asc', archive])
-            require(f"[GNUPG:] VALIDSIG {PREFLIGHT['FINGERPRINT']} " in signature, 'published source signature')
-            task.result.update(downloads=cached['downloads'], signature=cached['signature'], source_inspection={})
+            vendored_source(task, extract=False)
+            task.result['source_inspection'] = {}
+            cached['downloads'] = task.result['downloads']
         elif args.reuse_build_run:
             import uuid
             require(str(uuid.UUID(args.reuse_build_run)) == args.reuse_build_run, 'invalid owned cache UUID')
             cached = json.loads((task.root.parent / args.reuse_build_run / 'result.json').read_text())
             archive_record = next(x for x in cached['downloads'] if x['url'] == PREFLIGHT['SOURCE'])
-            archive = Path(archive_record['path'])
-            require(archive.resolve().is_relative_to(task.root.parent.resolve()) and sha(archive) == SOURCE_SHA, 'source cache changed/outside owner')
-            _, signature = task.run(['gpgv', '--homedir', archive.parent / 'gnupg', '--keyring', archive.parent / 'release-key.gpg',
-                                    '--status-fd', '1', archive.parent / 'source.asc', archive])
-            require(f"[GNUPG:] VALIDSIG {PREFLIGHT['FINGERPRINT']} " in signature, 'cached source signature')
-            task.result.update(downloads=cached['downloads'], signature=cached['signature'], source_inspection=cached['source_inspection'],
-                               development_cache=args.reuse_build_run)
+            require(archive_record['sha256'] == SOURCE_SHA and cached['signature']['verified'] and
+                    cached['signature']['fingerprint'] == PREFLIGHT['FINGERPRINT'], 'unverified cached source receipt')
+            vendored_source(task, extract=False)
+            cached['downloads'] = task.result['downloads']
+            task.result.update(source_inspection=cached['source_inspection'], development_cache=args.reuse_build_run)
         else:
             if args.verified_source_run:
                 task.reuse_source(args.verified_source_run)
             else:
-                task.intake()
+                vendored_source(task)
         require(next(x['sha256'] for x in task.result['downloads'] if x['url'] == PREFLIGHT['SOURCE']) == SOURCE_SHA, "pinned release SHA")
         prefix, executable = target(task, 'iphonesimulator', 'arm64-apple-ios17.0-simulator', cached, args.prove)
         if args.prove:
-            fixtures = task.fixtures()
+            fixtures = bridge_fixtures(task)
             proof(task, executable, fixtures)
         if args.compile_kotlin:
             scoped_kotlin(task, prefix)

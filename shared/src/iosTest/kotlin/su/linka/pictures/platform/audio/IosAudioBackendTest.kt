@@ -29,7 +29,7 @@ class IosAudioBackendTest {
     private fun backend(scope: CoroutineScope, foreground: Boolean = true,
                         permission: suspend (RequestId) -> OperationResult<Unit> = { OperationResult.Failed(Problem(ProblemCode.PERMISSION_DENIED)) },
                         platformFiles: PlatformFilesPort = files,
-                        prepare: suspend (LocalFile) -> OperationResult<TemporaryFile> = { error("No decoder expected") }) =
+                        prepare: suspend (LocalFile) -> OperationResult<LocalFile> = { error("No decoder expected") }) =
         IosAudioBackend(platformFiles, inspection, prepare, permission, { foreground }, scope)
 
     @BeforeTest fun mainDispatcher() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
@@ -127,7 +127,8 @@ class IosAudioBackendTest {
                 val path = reservation.file.path.toPath()
                 FileSystem.SYSTEM.write(path) { writeUtf8("canonical playback source") }
                 val before = FileSystem.SYSTEM.read(path) { readByteString() }
-                val backend = backend(owner, platformFiles = reservation.files, prepare = { OperationResult.Completed(reservation.file) })
+                val alias = TemporaryFile(reservation.file.path)
+                val backend = backend(owner, platformFiles = reservation.files, prepare = { OperationResult.Completed(alias) })
                 assertProblem(ProblemCode.CONFLICT, backend.playClip(reservation.file, RequestId("play-alias")))
                 assertProblem(ProblemCode.CONFLICT, backend.playClip(LocalFile("${reservation.root}/./reservation.wav"), RequestId("normalized-play-alias")))
                 assertEquals(0, reservation.discarded)
@@ -279,6 +280,36 @@ class IosAudioBackendTest {
             backend.stop(id); backend.finishRecording(id)
             assertEquals(OperationResult.Completed(Unit), backend.speak("", null, null, RequestId("new")))
         } finally { release.complete(Unit); owner.cancel() }
+    }
+
+    @Test fun lateBorrowedOriginalAfterStopIsNeverDiscardedEvenWhenTemporary() = runTest {
+        val owner = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val original = TemporaryFile("borrowed-original.wav")
+        try {
+            val backend = backend(owner, prepare = {
+                withContext(NonCancellable) { entered.complete(Unit); release.await() }
+                OperationResult.Completed(it)
+            })
+            val id = RequestId("borrowed")
+            val pending = async { backend.playClip(original, id) }
+            entered.await()
+            backend.stop(id)
+            release.complete(Unit)
+            assertEquals(OperationResult.Cancelled, pending.await())
+            assertTrue(files.discarded.isEmpty())
+        } finally { release.complete(Unit); owner.cancel() }
+    }
+
+    @Test fun invalidBorrowedSourceIsNotClaimedForCleanup() = runTest {
+        val owner = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        try {
+            val original = TemporaryFile("borrowed-invalid.wav")
+            val backend = backend(owner, prepare = { OperationResult.Completed(it) })
+            assertProblem(ProblemCode.INVALID_DATA, backend.playClip(original, RequestId("invalid-borrowed")))
+            assertTrue(files.discarded.isEmpty())
+        } finally { owner.cancel() }
     }
 
     @Test fun inspectionFailureAndDiscardExceptionDoNotStrandNextRequest() = runTest {

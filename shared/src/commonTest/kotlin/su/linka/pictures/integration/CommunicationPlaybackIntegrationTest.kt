@@ -1,6 +1,6 @@
 package su.linka.pictures.integration
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlin.test.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +29,7 @@ class CommunicationPlaybackIntegrationTest {
         var storage: StorageRuntime? = null
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
-            val runtime = StorageRuntime.open(root, fs, BundledSQLiteDriver()).ok().also { storage = it }
+            val runtime = StorageRuntime.open(root, fs, testSQLiteDriver()).ok().also { storage = it }
             for ((name, label) in listOf("want" to "ХОЧУ", "food" to "КУШАТЬ")) {
                 val prepared = runtime.media.prepare(Buffer().writeUtf8(name), MediaKind.AUDIO, "audio/test").ok()
                 try {

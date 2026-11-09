@@ -6,6 +6,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlinx.cinterop.toKString
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import okio.Buffer
@@ -24,11 +25,14 @@ import su.linka.pictures.application.ports.VoiceStatus
 import su.linka.pictures.domain.RequestId
 import su.linka.pictures.platform.audio.IosAudioBackend
 import su.linka.pictures.platform.audio.IosAudioDecoder
+import su.linka.pictures.platform.audio.decoder.linka_audio_version
 import su.linka.pictures.platform.capabilities.IosMediaInspectionPort
 import su.linka.pictures.platform.files.IosPlatformFilesPort
 
 /** App-host only: real Main run loop and native terminal callbacks, never a virtual dispatcher. */
 object AudioAppHostChecks {
+    fun runtimeVersion(): String = linka_audio_version()?.toKString() ?: "unavailable"
+
     // Admission is serialized on real Main, including calls from other threads.
     private var busy = false
 
@@ -75,7 +79,7 @@ object AudioAppHostChecks {
                     val decoder = IosAudioDecoder(broker)
                     stage = "backend"
                     val inspection = IosMediaInspectionPort(decoder::inspect)
-                    val audio = IosAudioBackend(broker, inspection, decoder::decodeToWave,
+                    val audio = IosAudioBackend(broker, inspection, decoder::preparePlayback,
                         { throw CheckFailure("Unexpected microphone permission request") },
                         ::applicationActive, CoroutineScope(backendJob + Dispatchers.Main.immediate))
                     backend = audio
@@ -99,6 +103,11 @@ object AudioAppHostChecks {
                             "Native tone inspection failed")
                         stage = "clip-playback"
                         completed(audio.playClip(clip, request))
+                        withContext(Dispatchers.IO) {
+                            requireCheck(completed(broker.source(clip)).buffer().use { it.readByteArray().contentEquals(tone()) },
+                                "Playback changed or discarded the borrowed tone")
+                            requireCheck(fs.list(root / "temporary").size == 1, "Playback left compatibility copies")
+                        }
                     }
                 }
             } catch (error: CheckFailure) {

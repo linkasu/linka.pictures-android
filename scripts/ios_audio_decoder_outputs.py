@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import plistlib
 import re
 import shutil
 import subprocess
@@ -12,6 +13,26 @@ import uuid
 MANIFEST = 'linka-audio-decoder-manifest.json'
 FORMAT = 'su.linka.development.ios-audio-decoder'
 TARGETS = {'iosSimulatorArm64': ('iphonesimulator', '7'), 'iosArm64': ('iphoneos', '2')}
+RUNTIME = 'LinkaFFmpeg.framework'
+INSTALL_NAME = '@rpath/LinkaFFmpeg.framework/LinkaFFmpeg'
+SOURCE_NOTICE = '''This framework uses FFmpeg 8.1.2 under GNU LGPL version 2.1 or later.
+Original upstream notices: COPYING.LGPLv2.1 and LICENSE.md in this framework.
+Base source archive: https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
+Base archive SHA256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
+Complete base source is also supplied in third_party/ffmpeg/ffmpeg-8.1.2.tar.xz.
+Build/replacement recipe: docs/development/ios-ffmpeg-runtime.md in the source distribution.
+The archive URL identifies the upstream baseline, not any recipient modifications.
+No application license, patent clearance or shipping approval is granted by this notice.
+'''
+FFMPEG_LIBRARIES = ('libavformat.a', 'libavcodec.a', 'libswresample.a', 'libavutil.a')
+VENDORED_PINS = {
+    'ffmpeg-8.1.2.tar.xz': '464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c',
+    'ffmpeg-8.1.2.tar.xz.asc': '0a0963fccd70597838073f3e31b20f4a4d8cc2b5e577472c9a5a1f22624246f8',
+    'ffmpeg-release-key.asc': '397b3becedcd5a98769967ff1ff8501ddc89f8368b8f766e4701377d7dbaabe5',
+    'ffmpeg-release-key.gpg': 'fd543a75d3bba61b759ca25b135e6f91b34aa37ae6987316e5c636bf3c78ae8d',
+    'COPYING.LGPLv2.1': '246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30',
+    'LICENSE.md': '2e1d16c72fd74e12063776371da757322f8b77589386532f4fd8634bde7de1af',
+}
 
 
 def require(value, message):
@@ -47,18 +68,120 @@ def definition(prefix):
 headerFilter = linka_audio_decoder.h
 package = su.linka.pictures.platform.audio.decoder
 compilerOpts = -I{prefix}/include
-staticLibraries = liblinka_audio_decoder.a libavformat.a libavcodec.a libswresample.a libavutil.a
+staticLibraries = liblinka_audio_decoder.a
 libraryPaths = {prefix}/lib
-linkerOpts = -lm -framework CoreFoundation -framework CoreVideo -framework CoreMedia
+linkerOpts = -F{prefix} -framework LinkaFFmpeg -lm -framework CoreFoundation -framework CoreVideo -framework CoreMedia -framework AudioToolbox
 '''
 
 
 def current_definition(actual, prefix):
     expected = definition(prefix)
-    # Known schema1 seed used clang's -pthread driver flag; K/N invokes ld directly.
-    legacy = expected.replace('linkerOpts = -lm ', 'linkerOpts = -lm -pthread ')
-    require(actual in (expected, legacy), 'published def path/package mismatch')
+    # Only the exact historical static definitions may transition to schema2.
+    legacy = expected.replace('staticLibraries = liblinka_audio_decoder.a\n',
+        'staticLibraries = liblinka_audio_decoder.a libavformat.a libavcodec.a libswresample.a libavutil.a\n')
+    legacy = legacy.replace(f'-F{prefix} -framework LinkaFFmpeg ', '').replace(' -framework AudioToolbox', '')
+    require(actual in (expected, legacy, legacy.replace('linkerOpts = -lm ', 'linkerOpts = -lm -pthread ')), 'published def path/package mismatch')
     return actual == expected
+
+
+def runtime_privacy(imports):
+    # Apple's listed BootTime APIs exclude clock_gettime/gettimeofday. Do not invent DiskSpace use.
+    require(not imports.intersection({'_statfs', '_fstatfs', '_statvfs', '_fstatvfs'}), 'New DiskSpace API requires privacy review')
+    reasons = []
+    if imports.intersection({'_stat', '_fstat', '_lstat', '_fstatat'}):
+        reasons.append(dict(NSPrivacyAccessedAPIType='NSPrivacyAccessedAPICategoryFileTimestamp',
+                            NSPrivacyAccessedAPITypeReasons=['C617.1']))
+    if '_mach_absolute_time' in imports:
+        reasons.append(dict(NSPrivacyAccessedAPIType='NSPrivacyAccessedAPICategorySystemBootTime',
+                            NSPrivacyAccessedAPITypeReasons=['35F9.1']))
+    return dict(NSPrivacyAccessedAPITypes=reasons)
+
+
+def verify_runtime(prefix, sdk, env):
+    framework = prefix / RUNTIME
+    binary = framework / 'LinkaFFmpeg'
+    require(command(['xcrun', 'lipo', '-archs', binary], env).strip() == 'arm64', 'runtime architecture')
+    header = command(['xcrun', 'otool', '-hv', binary], env)
+    require('DYLIB' in header, 'runtime is not a dynamic library')
+    load = command(['xcrun', 'otool', '-l', binary], env)
+    expected = '2' if sdk == 'iphoneos' else '7'
+    builds = re.findall(r'cmd LC_BUILD_VERSION\s+cmdsize \d+\s+platform (\S+)\s+minos (\S+)', load)
+    require(len(builds) == 1 and builds[0][0] in (expected, 'IOS' if expected == '2' else 'IOSSIMULATOR') and
+            builds[0][1] in ('17.0', '17.0.0'), 'runtime platform/minimum')
+    require(re.search(r'cmd LC_ID_DYLIB\s+cmdsize \d+\s+name ' + re.escape(INSTALL_NAME) + r' ', load), 'runtime install name')
+    require('current version 8.1.2' in load and 'compatibility version 8.1.2' in load, 'runtime ABI/version metadata')
+    require('LC_CODE_SIGNATURE' not in load, 'producer must not sign runtime')
+    imports = set(re.findall(r'\b_\w+', command(['xcrun', 'nm', '-u', binary], env)))
+    privacy = plistlib.loads((framework / 'PrivacyInfo.xcprivacy').read_bytes())
+    require(privacy == runtime_privacy(imports), 'runtime privacy/import mismatch')
+    require((framework / 'Source.txt').read_text() == SOURCE_NOTICE, 'runtime source notice')
+    info = plistlib.loads((framework / 'Info.plist').read_bytes())
+    require(info['CFBundleExecutable'] == 'LinkaFFmpeg' and info['CFBundlePackageType'] == 'FMWK' and
+            info['CFBundleIdentifier'] == 'su.linka.pictures.ffmpeg' and
+            info['CFBundleShortVersionString'] == '8.1.2' and info['CFBundleVersion'] == '8.1.2' and info['MinimumOSVersion'] == '17.0' and
+            info['CFBundleSupportedPlatforms'] == ['iPhoneOS' if sdk == 'iphoneos' else 'iPhoneSimulator'], 'runtime bundle metadata')
+
+
+def build_runtime(prefix, sdk, env, archive):
+    """Link only the four verified FFmpeg libraries, never the application bridge."""
+    require(archive.is_file() and not archive.is_symlink() and digest(archive) == VENDORED_PINS['ffmpeg-8.1.2.tar.xz'], 'runtime base source/notices provenance')
+    framework = prefix / RUNTIME
+    framework.mkdir()
+    triple = 'arm64-apple-ios17.0' + ('-simulator' if sdk == 'iphonesimulator' else '')
+    sysroot = command(['xcrun', '--sdk', sdk, '--show-sdk-path'], env).strip()
+    args = ['xcrun', '--sdk', sdk, 'clang', '-target', triple, '-isysroot', sysroot, '-dynamiclib',
+            '-Wl,-install_name,' + INSTALL_NAME, '-Wl,-no_adhoc_codesign', '-Wl,-current_version,8.1.2', '-Wl,-compatibility_version,8.1.2']
+    for name in FFMPEG_LIBRARIES:
+        args += ['-Xlinker', '-force_load', '-Xlinker', str(prefix / 'lib' / name)]
+    args += ['-lm', '-framework', 'CoreFoundation', '-framework', 'CoreVideo', '-framework', 'CoreMedia',
+             '-o', str(framework / 'LinkaFFmpeg')]
+    command(args, env)
+    imports = set(re.findall(r'\b_\w+', command(['xcrun', 'nm', '-u', framework / 'LinkaFFmpeg'], env)))
+    info = dict(CFBundleExecutable='LinkaFFmpeg', CFBundleIdentifier='su.linka.pictures.ffmpeg',
+                CFBundleName='LinkaFFmpeg', CFBundlePackageType='FMWK', CFBundleVersion='8.1.2',
+                CFBundleShortVersionString='8.1.2', MinimumOSVersion='17.0',
+                CFBundleSupportedPlatforms=['iPhoneOS' if sdk == 'iphoneos' else 'iPhoneSimulator'])
+    (framework / 'Info.plist').write_bytes(plistlib.dumps(info))
+    (framework / 'PrivacyInfo.xcprivacy').write_bytes(plistlib.dumps(runtime_privacy(imports)))
+    (framework / 'Source.txt').write_text(SOURCE_NOTICE)
+    with tarfile.open(archive) as source:
+        for name in ('COPYING.LGPLv2.1', 'LICENSE.md'):
+            (framework / name).write_bytes(source.extractfile('ffmpeg-8.1.2/' + name).read())
+    verify_runtime(prefix, sdk, env)
+
+
+def rebuild_compatible_runtime(source, destination, sdk, flags, archive):
+    """Recipient build, isolated from production: no production manifest or verification bypass."""
+    source = source.resolve(strict=True)
+    destination = output_root(str(destination))
+    require(source.is_dir() and (source / 'configure').is_file() and not destination.exists() and
+            not destination.is_relative_to(source), 'fresh separate runtime build required')
+    destination.mkdir(parents=True)
+    build = destination / 'compile'
+    build.mkdir()
+    prefix = destination / 'runtime'
+    sysroot = command(['xcrun', '--sdk', sdk, '--show-sdk-path'], os.environ).strip()
+    tools = {name: command(['xcrun', '--sdk', sdk, '--find', name], os.environ).strip() for name in ('clang', 'ar', 'ranlib', 'nm')}
+    triple = 'arm64-apple-ios17.0' + ('-simulator' if sdk == 'iphonesimulator' else '')
+    env = dict(os.environ)
+    for key in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LIBRARY_PATH', 'CPATH', 'PKG_CONFIG_PATH'):
+        env.pop(key, None)
+    configure = [source / 'configure', *flags, f'--prefix={prefix}', f"--cc={tools['clang']}",
+                 f"--ar={tools['ar']}", f"--ranlib={tools['ranlib']}", f"--nm={tools['nm']}", '--pkg-config=/usr/bin/false',
+                 f'--sysroot={sysroot}', f'--extra-cflags=-target {triple}', f'--extra-ldflags=-target {triple}']
+    subprocess.run(list(map(str, configure)), cwd=build, env=env, check=True, timeout=180)
+    subprocess.run(['make', '-j4', 'install-libs', 'install-headers'], cwd=build, env=env, check=True, timeout=600)
+    configuration = {}
+    for path, field, checksum in [('config.h', 'config_text', 'config_sha256'),
+                                  ('config_components.h', 'components_text', 'components_sha256'),
+                                  ('ffbuild/config.mak', 'make_config_text', 'make_config_sha256')]:
+        configuration[field] = (build / path).read_text()
+        configuration[checksum] = hashlib.sha256(configuration[field].encode()).hexdigest()
+    flags_valid(configuration)
+    build_runtime(prefix, sdk, env, archive)
+    (destination / 'recipient-build.json').write_text(json.dumps(dict(scope='recipient compatible-source rebuild; not production provenance',
+        configure=list(map(str, configure)), sdk=sdk, source=str(source), files=inventory(prefix)), indent=2) + '\n')
+    print(f'Unsigned replaceable runtime: {prefix / RUNTIME}; sign with your own permitted identity for device use')
 
 
 def inventory(root):
@@ -96,9 +219,15 @@ def flags_valid(record):
 
 
 def current_sources(project, flags):
+    vendor = project / 'third_party/ffmpeg'
+    for name, expected in VENDORED_PINS.items():
+        require((vendor / name).is_file() and not (vendor / name).is_symlink() and digest(vendor / name) == expected,
+                f'vendored source provenance mismatch: {name}')
     names = ['shared/src/nativeInterop/c/linka_audio_decoder.c',
-             'shared/src/nativeInterop/cinterop/include/linka_audio_decoder.h']
+              'shared/src/nativeInterop/cinterop/include/linka_audio_decoder.h']
+    require(all((project / name).is_file() and not (project / name).is_symlink() for name in names), 'audio bridge sources are incomplete')
     return {'files': {name: digest(project / name) for name in names},
+            'vendor_files': {str((vendor / name).relative_to(project)): digest(vendor / name) for name in (*VENDORED_PINS, 'README.md')},
             'flags': flags, 'source_archive_sha256': '464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c',
             'source_version': '8.1.2', 'signer': 'FCF986EA15E6E293A5644F10B4322F04D67658D8'}
 
@@ -139,14 +268,14 @@ def inspect(root, project, flags, env):
     path = root / MANIFEST
     require(path.is_file() and not path.is_symlink(), 'nonempty unknown output directory: refusing overwrite')
     record = json.loads(path.read_text())
-    require(record['format'] == FORMAT and record['schema'] == 1 and record['root'] == str(root), 'unknown output ownership manifest')
+    require(record['format'] == FORMAT and record['schema'] in (1, 2) and record['root'] == str(root), 'unknown output ownership manifest')
     require(record['files'] == inventory(root), 'published files changed/unknown extra files: refusing overwrite')
     require(set(record['targets']) == set(TARGETS), 'incomplete target manifest')
     require(record['provenance']['signer'] == current_sources(project, flags)['signer'] and
             record['provenance']['source_archive_sha256'] == current_sources(project, flags)['source_archive_sha256'], 'published source provenance')
     require(record['signature']['verified'] and record['signature']['fingerprint'] == record['provenance']['signer'], 'published signature provenance')
-    definitions_current = True
-    for target, (_, platform) in TARGETS.items():
+    definitions_current = record['schema'] == 2
+    for target, (sdk, platform) in TARGETS.items():
         target_record = record['targets'][target]
         flags_valid(target_record)
         recorded_flags = record['provenance']['flags']
@@ -155,6 +284,10 @@ def inspect(root, project, flags, env):
                 target_record['bridge_header_sha256'] == record['provenance']['files']['shared/src/nativeInterop/cinterop/include/linka_audio_decoder.h'], 'published bridge/source fingerprint mismatch')
         if not current_definition((root / target / 'linka_audio_decoder.def').read_text(), root / target):
             definitions_current = False
+        if record['schema'] == 2:
+            require(current_definition((root / target / 'linka_audio_decoder.def').read_text(), root / target), 'schema2 must use dynamic runtime')
+            require(target_record['bridge_inputs_sha256'] == record['provenance']['files'], 'bridge input correspondence')
+            verify_runtime(root / target, sdk, env)
         require(digest(root / target / 'include/linka_audio_decoder.h') == record['provenance']['files']['shared/src/nativeInterop/cinterop/include/linka_audio_decoder.h'], 'published header/source mismatch')
         libraries = list((root / target / 'lib').glob('*.a'))
         require({p.name for p in libraries} == {'liblinka_audio_decoder.a','libavformat.a','libavcodec.a','libswresample.a','libavutil.a'}, 'published library set')
@@ -174,7 +307,7 @@ def publish(task, root, flags, prior):
     root.mkdir(parents=True, exist_ok=True)
     staging = root / f'.publish-{uuid.uuid4()}'
     staging.mkdir()
-    record = dict(format=FORMAT, schema=1, root=str(root), provenance=current_sources(task.project, flags),
+    record = dict(format=FORMAT, schema=2, root=str(root), provenance=current_sources(task.project, flags),
                   toolchain=toolchain(task.env), targets={}, artifact_run=str(task.root),
                   source_downloads=task.result['downloads'], signature=task.result['signature'])
     try:
@@ -184,6 +317,10 @@ def publish(task, root, flags, prior):
             destination = staging / target
             shutil.copytree(prefix / 'include', destination / 'include')
             shutil.copytree(prefix / 'lib', destination / 'lib')
+            archive = next(Path(x['path']) for x in task.result['downloads'] if x['url'].endswith('/ffmpeg-8.1.2.tar.xz'))
+            require(digest(archive) == record['provenance']['source_archive_sha256'], 'runtime source provenance')
+            verify_runtime(prefix, sdk, task.env)
+            shutil.copytree(prefix / RUNTIME, destination / RUNTIME)
             (destination / 'linka_audio_decoder.def').write_text(definition(root / target))
             build = prefix.parent
             record['targets'][target] = dict(source_record, config_text=(build / 'config.h').read_text(),
