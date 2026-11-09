@@ -102,6 +102,7 @@ internal fun SettingsScreen(library: LibraryStore, controller: LibraryController
         ProductSection(stringResource(Res.string.data_on_this_device)) {
             SettingsRow(stringResource(Res.string.local_data), stringResource(Res.string.boards_images_and_audio_stay_on_this))
         }
+        ThirdPartyLicenses()
       }
     }
     if (showAccess) ProductDialog(stringResource(Res.string.assistant_protection), { showAccess = false }, actions = {

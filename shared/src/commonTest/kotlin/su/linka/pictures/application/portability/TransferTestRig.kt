@@ -2,7 +2,7 @@
 
 package su.linka.pictures.application.portability
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlinx.coroutines.*
 import okio.*
 import su.linka.pictures.application.*
@@ -116,7 +116,7 @@ internal class TransferTestRig private constructor(val root: Path, val runtime: 
             val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "linka-p12-${Uuid.random()}"
             fs.createDirectory(root, mustCreate = true)
             fs.createDirectory(root / "files", mustCreate = true)
-            return TransferTestRig(root, StorageRuntime.open(root / "storage", fs, BundledSQLiteDriver()).ok(), CoreBackupFiles(fs, root / "files"))
+            return TransferTestRig(root, StorageRuntime.open(root / "storage", fs, testSQLiteDriver()).ok(), CoreBackupFiles(fs, root / "files"))
         }
     }
 }

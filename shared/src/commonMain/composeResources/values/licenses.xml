@@ -1,0 +1,12 @@
+<resources>
+    <string name="licenses_title">Third-party licenses</string>
+    <string name="licenses_ffmpeg_summary">The iOS audio compatibility component uses FFmpeg %1$s under the GNU LGPL version 2.1 or later. Original English license and project notices are available offline below.</string>
+    <string name="licenses_read_lgpl">Read the GNU LGPL 2.1 license</string>
+    <string name="licenses_read_ffmpeg_notices">Read the original FFmpeg license notices</string>
+    <string name="licenses_source_explanation">The source link opens the exact FFmpeg archive, license notices and instructions for rebuilding the compatible iOS runtime. Internet access and Xcode are needed to obtain and rebuild the source; application signing keys are not supplied.</string>
+    <string name="licenses_open_source">FFmpeg source and rebuild instructions</string>
+    <string name="licenses_link_error">Could not open the source link. Try again when a browser is available.</string>
+    <string name="licenses_loading">Loading the offline legal text…</string>
+    <string name="licenses_load_error">Could not load the offline legal text. Please try again.</string>
+    <string name="licenses_retry">Try loading the text again</string>
+</resources>

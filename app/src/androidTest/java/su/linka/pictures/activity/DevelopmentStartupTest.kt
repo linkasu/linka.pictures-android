@@ -1,6 +1,8 @@
 package su.linka.pictures.activity
 
 import android.os.SystemClock
+import android.system.Os
+import android.system.OsConstants
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -16,6 +18,9 @@ class DevelopmentStartupTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         assertEquals("su.linka.pictures.development", context.packageName)
+        InstrumentationRegistry.getArguments().getString("expected_page_size")?.let { expected ->
+            assertEquals("Unexpected runtime page size", expected.toLong(), Os.sysconf(OsConstants._SC_PAGESIZE))
+        }
         ActivityScenario.launch(MainActivity::class.java).use {
             val deadline = SystemClock.uptimeMillis() + 20_000
             while (SystemClock.uptimeMillis() < deadline) {

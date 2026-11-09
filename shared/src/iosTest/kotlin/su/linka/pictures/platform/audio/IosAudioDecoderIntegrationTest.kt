@@ -89,6 +89,20 @@ class IosAudioDecoderIntegrationTest {
         assertEquals(before, sha(unsupported))
     } }
 
+    @Test fun basicWavePlaybackBorrowsTheExactOriginalWithoutCreatingOrDeletingTemporaryFiles() = runTest { owned {
+        val source = file(wave(16))
+        val before = sha(source)
+        val underlying = files
+        val noTemporary = object : PlatformFilesPort by underlying {
+            override fun createTemporaryFile(suggestedName: String, mediaType: String): OperationResult<TemporaryFile> =
+                error("Native WAV playback must not allocate a compatibility file")
+            override fun discard(file: TemporaryFile) = error("Borrowed source must not be discarded")
+        }
+        assertSame(source, completed(IosAudioDecoder(noTemporary).preparePlayback(source)))
+        assertEquals(before, sha(source))
+        assertEquals(1, fs.list(temp).size)
+    } }
+
     @Test fun nonemptyFactoryAliasIsNotClaimedOrDiscarded() = runTest { owned {
         val source = file(wave(16))
         val before = sha(source)

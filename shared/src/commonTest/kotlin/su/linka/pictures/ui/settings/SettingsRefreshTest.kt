@@ -1,6 +1,6 @@
 package su.linka.pictures.ui.settings
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlinx.coroutines.test.runTest
 import okio.FileSystem
 import su.linka.pictures.application.*
@@ -24,7 +24,7 @@ class SettingsRefreshTest {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "u14-settings-${kotlin.random.Random.nextLong()}"
         fs.createDirectory(root, mustCreate = true)
-        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
+        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, testSQLiteDriver())).value
         try { test(runtime.library, Gate()) } finally { runtime.close(); fs.deleteRecursively(root) }
     }
 

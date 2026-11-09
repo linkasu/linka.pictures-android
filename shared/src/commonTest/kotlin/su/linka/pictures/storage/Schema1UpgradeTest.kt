@@ -1,6 +1,6 @@
 package su.linka.pictures.storage
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteStatement
@@ -31,7 +31,7 @@ internal fun createSchema1(root: Path) {
     val draft = EditorDraft(DraftId("draft"), document.id, 3, document,
         EditorForm.Card(PageId("page"), 1, CardId("unfinished"), label = "Последний ввод"))
     val settings = """{"schema":1,"value":{"textScale":1.25,"highContrast":true,"languageTag":"ru-RU","boards":{"existing":{"showPageButtons":false}}}}"""
-    BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { db ->
+    testSQLiteDriver().open((root / "library.sqlite3").toString()).use { db ->
         shippedSchema1.forEach { db.exec(it) }
         db.exec("INSERT INTO library_meta VALUES(1,4,9,?)", settings)
         db.exec("INSERT INTO entries VALUES(?,?,?,?,?,?)", "existing", document.name, "BOARD", 3, 0, encode(document))
@@ -52,7 +52,7 @@ class Schema1UpgradeTest {
         try {
             val root = parent / "library"
             createSchema1(root)
-            val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
+            val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, testSQLiteDriver())).value
             try {
                 assertEquals(4, runtime.library.listing.value.epoch)
                 assertEquals(9, runtime.library.listing.value.revision)
@@ -67,7 +67,7 @@ class Schema1UpgradeTest {
                 assertEquals(1.25f, assertIs<OperationResult.Completed<PortableSettings>>(runtime.library.settings()).value.textScale)
                 assertFalse(assertIs<OperationResult.Completed<PortableSettings>>(runtime.library.settings()).value.boards.getValue(BoardId("existing")).showPageButtons)
             } finally { runtime.close() }
-            BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { db ->
+            testSQLiteDriver().open((root / "library.sqlite3").toString()).use { db ->
                 assertEquals(2, db.number("PRAGMA user_version"))
                 assertEquals(2, db.readSchema())
             }
@@ -82,11 +82,11 @@ class Schema1UpgradeTest {
                 val root = parent / "library"
                 createSchema1(root)
                 val path = (root / "library.sqlite3").toString()
-                val before = BundledSQLiteDriver().open(path).use { it.fingerprint() }
+                val before = testSQLiteDriver().open(path).use { it.fingerprint() }
                 var injected = false
                 val driver = object : SQLiteDriver {
                     override fun open(fileName: String): SQLiteConnection {
-                        val db = BundledSQLiteDriver().open(fileName)
+                        val db = testSQLiteDriver().open(fileName)
                         return object : SQLiteConnection by db {
                             override fun prepare(sql: String): SQLiteStatement {
                                 val statement = db.prepare(sql)
@@ -107,10 +107,10 @@ class Schema1UpgradeTest {
                 assertTrue(injected)
                 if (point == "COMMIT_AFTER") {
                     assertIs<OperationResult.Completed<StorageRuntime>>(opened).value.close()
-                    BundledSQLiteDriver().open(path).use { assertEquals(2, it.readSchema()) }
+                    testSQLiteDriver().open(path).use { assertEquals(2, it.readSchema()) }
                 } else {
                     assertIs<OperationResult.Failed>(opened)
-                    BundledSQLiteDriver().open(path).use {
+                    testSQLiteDriver().open(path).use {
                         assertEquals(1, it.readSchema())
                         assertEquals(before, it.fingerprint())
                     }

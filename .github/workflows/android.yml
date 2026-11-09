@@ -145,7 +145,10 @@ jobs:
             --app artifacts/debug/app-debug.apk \
             --test artifacts/androidTest/debug/app-debug-androidTest.apk \
             --test-targets "class su.linka.pictures.activity.DevelopmentStartupTest" \
-            --device model=redfin,version=30,locale=en,orientation=portrait
+            --device model=MediumPhone_ps16k.arm,version=36,locale=en,orientation=portrait \
+            --environment-variables expected_page_size=16384 \
+            --num-flaky-test-attempts=0 \
+            --timeout 10m
 
       - name: Run real isolated migration integration tests
         run: |
@@ -154,14 +157,17 @@ jobs:
             --app artifacts/shared/shared-debug-androidTest.apk \
             --test artifacts/shared/shared-debug-androidTest.apk \
             --test-targets "class su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest" \
-            --device model=redfin,version=30,locale=en,orientation=portrait
+            --device model=redfin,version=30,locale=en,orientation=portrait \
+            --num-flaky-test-attempts=0 \
+            --timeout 15m
 
       - name: Run Firebase Robo exploration of the shared UI
         run: |
           gcloud firebase test android run \
             --type robo \
             --app artifacts/debug/app-debug.apk \
-            --device model=redfin,version=30,locale=en,orientation=portrait \
+            --device model=MediumPhone_ps16k.arm,version=36,locale=en,orientation=portrait \
+            --num-flaky-test-attempts=0 \
             --timeout 5m
   bundle-release:
     runs-on: ubuntu-latest

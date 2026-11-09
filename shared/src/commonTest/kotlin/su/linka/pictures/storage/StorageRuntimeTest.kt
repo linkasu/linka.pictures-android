@@ -10,7 +10,7 @@ package su.linka.pictures.storage
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.SQLiteStatement
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlin.test.*
 import kotlin.concurrent.atomics.AtomicReference
 import kotlinx.coroutines.*
@@ -41,7 +41,7 @@ class StorageRuntimeTest {
         fs.createDirectory(root, mustCreate = true)
         try { block(root) } finally { fs.deleteRecursively(root) }
     }
-    private suspend fun open(root: Path, fileSystem: FileSystem = fs, driver: SQLiteDriver = BundledSQLiteDriver()) = StorageRuntime.open(root, fileSystem, driver).ok()
+    private suspend fun open(root: Path, fileSystem: FileSystem = fs, driver: SQLiteDriver = testSQLiteDriver()) = StorageRuntime.open(root, fileSystem, driver).ok()
     private suspend fun media(runtime: StorageRuntime, bytes: String = "immutable") = runtime.media.prepare(Buffer().writeUtf8(bytes), MediaKind.IMAGE, "image/test").ok()
     private fun message(asset: AssetId, epoch: Long = 0, version: Long = 1) = StoredMessage(epoch, version, MessageDraft(listOf(
         MessagePart.Card(MessagePartId("part"), CardSelectionSnapshot(SelectionOrigin(BoardId("board"), 1, PageId("page"), CardId("card")), "Снимок", asset, SpeechSource.None)),
@@ -212,18 +212,18 @@ class StorageRuntimeTest {
     @Test fun newerAndUnknownZeroSchemasRemainByteForByteUnchanged() = runTest {
         for (version in listOf(0, 3)) fresh { root ->
             val path = root / "library.sqlite3"
-            BundledSQLiteDriver().open(path.toString()).use { db -> db.exec("CREATE TABLE unrelated(secret TEXT)"); db.exec("PRAGMA user_version=$version") }
+            testSQLiteDriver().open(path.toString()).use { db -> db.exec("CREATE TABLE unrelated(secret TEXT)"); db.exec("PRAGMA user_version=$version") }
             val before = fs.read(path) { readByteString() }
-            StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(if (version == 3) ProblemCode.NEWER_SCHEMA else ProblemCode.INVALID_DATA)
+            StorageRuntime.open(root, fs, testSQLiteDriver()).problem(if (version == 3) ProblemCode.NEWER_SCHEMA else ProblemCode.INVALID_DATA)
             assertEquals(before, fs.read(path) { readByteString() })
         }
     }
 
     @Test fun incompleteSchemaOneIsRefusedWithoutFallback() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).use { db -> db.exec("CREATE TABLE entries(id TEXT)"); db.exec("PRAGMA user_version=1") }
+        testSQLiteDriver().open(path.toString()).use { db -> db.exec("CREATE TABLE entries(id TEXT)"); db.exec("PRAGMA user_version=1") }
         val before = fs.read(path) { readByteString() }
-        StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
+        StorageRuntime.open(root, fs, testSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
         assertEquals(before, fs.read(path) { readByteString() })
     } }
 
@@ -239,7 +239,7 @@ class StorageRuntimeTest {
             } finally { runtime.close() }
             val path = root / "media" / id.value.take(2) / id.value
             if (corrupt) fs.write(path) { writeUtf8("corrupted") } else fs.delete(path)
-            StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(if (corrupt) ProblemCode.INTEGRITY_FAILURE else ProblemCode.MISSING_ASSET)
+            StorageRuntime.open(root, fs, testSQLiteDriver()).problem(if (corrupt) ProblemCode.INTEGRITY_FAILURE else ProblemCode.MISSING_ASSET)
         }
     }
 
@@ -251,7 +251,7 @@ class StorageRuntimeTest {
         var successfulCloses = 0
         override fun open(fileName: String): SQLiteConnection {
             opens++
-            val connection = BundledSQLiteDriver().open(fileName)
+            val connection = testSQLiteDriver().open(fileName)
             return object : SQLiteConnection by connection {
                 override fun close() {
                     if (failClose) { failClose = false; throw IOException("injected close") }
@@ -588,14 +588,14 @@ class StorageRuntimeTest {
     @Test fun unknownViewOnlySchemaZeroAndLostDatabaseAreNotFreshLibraries() = runTest {
         fresh { root ->
             val path = root / "library.sqlite3"
-            BundledSQLiteDriver().open(path.toString()).use { it.exec("CREATE VIEW unrelated AS SELECT 1") }
+            testSQLiteDriver().open(path.toString()).use { it.exec("CREATE VIEW unrelated AS SELECT 1") }
             val bytes = fs.read(path) { readByteString() }
-            StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
+            StorageRuntime.open(root, fs, testSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
             assertEquals(bytes, fs.read(path) { readByteString() })
         }
         fresh { root ->
             fs.createDirectory(root / "media")
-            StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
+            StorageRuntime.open(root, fs, testSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
             assertFalse(fs.exists(root / "library.sqlite3"))
         }
     }
@@ -610,7 +610,7 @@ class StorageRuntimeTest {
                 if (refs) runtime.db.exec("DELETE FROM asset_refs")
                 else runtime.db.exec("UPDATE entries SET payload_json=?", "{\"value\":${storageJson.encodeToString(BoardDocument.serializer(), board(asset = prepared.asset.id))}}")
             } finally { runtime.close() }
-            StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(if (refs) ProblemCode.INTEGRITY_FAILURE else ProblemCode.INVALID_DATA)
+            StorageRuntime.open(root, fs, testSQLiteDriver()).problem(if (refs) ProblemCode.INTEGRITY_FAILURE else ProblemCode.INVALID_DATA)
         }
     }
 
@@ -623,7 +623,7 @@ class StorageRuntimeTest {
                 if (sql == "ROLLBACK") { driver.before = null; throw IOException("injected") }
             }
             val result = runtime.library.addBoard(board(), permit())
-            BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
+            testSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
                 assertEquals(0, observer.number("SELECT revision FROM library_meta WHERE singleton=1"))
                 assertEquals(0, observer.number("SELECT count(*) FROM entries"))
             }
@@ -646,7 +646,7 @@ class StorageRuntimeTest {
                 throw IOException("injected after durable commit")
             } }
             val result = runtime.library.addBoard(board(), permit())
-            BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
+            testSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
                 assertEquals(1, observer.number("SELECT revision FROM library_meta WHERE singleton=1"))
                 assertEquals(1, observer.number("SELECT count(*) FROM entries"))
             }
@@ -717,7 +717,7 @@ class StorageRuntimeTest {
             driver.unconfirmedAfterCommit(cancel = true)
             assertEquals(OperationResult.UnconfirmedCommit, runtime.library.addBoard(board(), permit()))
             assertEquals(ProblemCode.COMMIT_OUTCOME_UNKNOWN, runtime.library.listing.value.refreshProblem?.code)
-            BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
+            testSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
                 assertEquals(1, observer.number("SELECT count(*) FROM entries"))
             }
         } finally { runtime.close() }
@@ -745,7 +745,7 @@ class StorageRuntimeTest {
         try {
             driver.after = { sql -> if (sql == "COMMIT") {
                 driver.after = null
-                BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { it.exec("DELETE FROM asset_refs") }
+                testSQLiteDriver().open((root / "library.sqlite3").toString()).use { it.exec("DELETE FROM asset_refs") }
                 throw IOException("injected after damaged commit")
             } }
             assertEquals(OperationResult.UnconfirmedCommit, runtime.library.addBoard(board(asset = prepared.asset.id), permit()))
@@ -753,7 +753,7 @@ class StorageRuntimeTest {
             assertEquals(OperationResult.UnconfirmedCommit, runtime.media.collectGarbage())
             assertTrue(fs.exists(runtime.mediaStore.path(prepared.asset.id)))
         } finally { prepared.lease.close(); runtime.close() }
-        StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(ProblemCode.INTEGRITY_FAILURE)
+        StorageRuntime.open(root, fs, testSQLiteDriver()).problem(ProblemCode.INTEGRITY_FAILURE)
     } }
 
     @Test fun observedCommitCompletesEvenIfListingRefreshFails() = runTest { fresh { root ->
@@ -1019,18 +1019,18 @@ class StorageRuntimeTest {
 
     @Test fun alteredSchemaOneConstraintsAreRefusedWithoutRepair() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).use { db ->
+        testSQLiteDriver().open(path.toString()).use { db ->
             for (definition in schemaStatements) db.exec(if (definition.startsWith("CREATE TABLE assets")) definition.replace("CHECK(byte_count>=0)", "CHECK(byte_count>=-1)") else definition)
             db.exec("PRAGMA user_version=1")
         }
         val bytes = fs.read(path) { readByteString() }
-        StorageRuntime.open(root, fs, BundledSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
+        StorageRuntime.open(root, fs, testSQLiteDriver()).problem(ProblemCode.INVALID_DATA)
         assertEquals(bytes, fs.read(path) { readByteString() })
     } }
 
     @Test fun acceptedProbeClosesAndCleansBeforeDriverCanOpenSource() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).close()
+        testSQLiteDriver().open(path.toString()).close()
         val driver = TrackingDriver()
         var probe: Path? = null
         var closed = false
@@ -1054,7 +1054,7 @@ class StorageRuntimeTest {
 
     @Test fun newerSchemaWithRecoverableWalMustRemainPhysicallyUnchanged() = runTest { fresh { source -> fresh { root ->
         val sourcePath = source / "library.sqlite3"
-        BundledSQLiteDriver().open(sourcePath.toString()).use { writer ->
+        testSQLiteDriver().open(sourcePath.toString()).use { writer ->
             writer.exec("PRAGMA journal_mode=WAL")
             writer.exec("PRAGMA wal_autocheckpoint=0")
             writer.exec("CREATE TABLE protected_payload(value TEXT)")
@@ -1063,7 +1063,7 @@ class StorageRuntimeTest {
             val mainOnly = source / "main-only"
             fs.createDirectory(mainOnly)
             fs.copy(sourcePath, mainOnly / "library.sqlite3")
-            BundledSQLiteDriver().open((mainOnly / "library.sqlite3").toString()).use { control ->
+            testSQLiteDriver().open((mainOnly / "library.sqlite3").toString()).use { control ->
                 assertEquals(0, control.number("PRAGMA user_version"))
             }
             // Idle writer keeps a stable WAL. Copy only our own fixture to simulate crash leftovers.
@@ -1095,7 +1095,7 @@ class StorageRuntimeTest {
         override fun open(fileName: String): SQLiteConnection {
             paths += fileName
             onOpen?.invoke(fileName)
-            val connection = BundledSQLiteDriver().open(fileName)
+            val connection = testSQLiteDriver().open(fileName)
             return object : SQLiteConnection by connection {
                 override fun prepare(sql: String): SQLiteStatement {
                     val statement = connection.prepare(sql)
@@ -1124,7 +1124,7 @@ class StorageRuntimeTest {
 
     @Test fun hotRollbackJournalRecoversOnlyOnProbeAndPreservesUnknownSourceTree() = runTest { fresh { fixture -> fresh { root ->
         val path = fixture / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).use { writer ->
+        testSQLiteDriver().open(path.toString()).use { writer ->
             writer.exec("PRAGMA journal_mode=DELETE")
             writer.exec("PRAGMA synchronous=FULL")
             writer.exec("PRAGMA cache_size=1")
@@ -1172,7 +1172,7 @@ class StorageRuntimeTest {
     }
 
     @Test fun copySpaceFailureNeverCallsDriverOrChangesSource() = runTest { fresh { root ->
-        BundledSQLiteDriver().open((root / "library.sqlite3").toString()).close()
+        testSQLiteDriver().open((root / "library.sqlite3").toString()).close()
         fs.write(root / "opaque") { writeUtf8("keep") }
         val before = tree(root)
         val driver = TrackingDriver()
@@ -1189,7 +1189,7 @@ class StorageRuntimeTest {
 
     @Test fun sourceMutationDuringCopyIsDetectedWithoutOpeningOrRevertingSource() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).close()
+        testSQLiteDriver().open(path.toString()).close()
         val driver = TrackingDriver()
         var reads = 0
         var external: Map<String, String>? = null
@@ -1197,7 +1197,7 @@ class StorageRuntimeTest {
             override fun source(file: Path): Source {
                 if (file == path && ++reads == 2) {
                     // Deliberate violation of the single-writer prerequisite, in an owned fixture only.
-                    BundledSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=3") }
+                    testSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=3") }
                     external = tree(root).filterKeys { !it.startsWith("probe-") }
                 }
                 return super.source(file)
@@ -1211,13 +1211,13 @@ class StorageRuntimeTest {
 
     @Test fun sourceMutationAfterCopyValidationStillForbidsLiveOpen() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).close()
+        testSQLiteDriver().open(path.toString()).close()
         val driver = TrackingDriver()
         var external: Map<String, String>? = null
         driver.afterStep = { file, sql -> if (sql == "PRAGMA user_version") {
             assertNotEquals(path.toString(), file)
             driver.afterStep = null
-            BundledSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=3") }
+            testSQLiteDriver().open(path.toString()).use { it.exec("PRAGMA user_version=3") }
             external = tree(root).filterKeys { !it.startsWith("probe-") }
         } }
         StorageRuntime.open(root, fs, driver).problem(ProblemCode.CONFLICT)
@@ -1258,7 +1258,7 @@ class StorageRuntimeTest {
         for (kind in listOf("corrupt", "zero", "one")) fresh { root ->
             val path = root / "library.sqlite3"
             if (kind == "corrupt") fs.write(path) { writeUtf8("not SQLite") } else {
-                BundledSQLiteDriver().open(path.toString()).use { db ->
+                testSQLiteDriver().open(path.toString()).use { db ->
                     db.exec("CREATE TABLE unrelated(value TEXT)")
                     if (kind == "one") db.exec("PRAGMA user_version=1")
                 }
@@ -1276,7 +1276,7 @@ class StorageRuntimeTest {
         val seeded = open(fixture)
         try { seeded.library.addBoard(board(), permit()).ok() } finally { seeded.close() }
         val path = fixture / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).use { writer ->
+        testSQLiteDriver().open(path.toString()).use { writer ->
             writer.exec("PRAGMA wal_autocheckpoint=0")
             val updated = board().copy(name = "committed in WAL")
             writer.exec("UPDATE entries SET name=?,revision=2,payload_json=? WHERE id=?", updated.name, encode(updated), updated.id.value)
@@ -1316,7 +1316,7 @@ class StorageRuntimeTest {
 
     @Test fun probeCancellationIsNotConvertedToIoFailureByCleanupError() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).close()
+        testSQLiteDriver().open(path.toString()).close()
         val before = tree(root)
         val driver = TrackingDriver()
         var reads = 0
@@ -1469,7 +1469,7 @@ class StorageRuntimeTest {
                 operation.join()
                 assertNull(failure.load())
                 if (unknown) assertEquals(OperationResult.UnconfirmedCommit, outcome.load()) else outcome.load()!!.ok()
-                BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
+                testSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
                     assertEquals(1, observer.number("SELECT count(*) FROM entries"))
                 }
             } finally {
@@ -1496,7 +1496,7 @@ class StorageRuntimeTest {
             assertFalse(runtime.quarantined)
             assertTrue(runtime.library.listing.value.items.isEmpty())
             assertEquals(0, runtime.library.listing.value.revision)
-            BundledSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
+            testSQLiteDriver().open((root / "library.sqlite3").toString()).use { observer ->
                 assertEquals(0, observer.number("SELECT count(*) FROM entries"))
             }
         } finally {
@@ -1683,13 +1683,13 @@ class StorageRuntimeTest {
 
     @Test fun nativeProbeCannotOpenFailureIsIoAndNeverFallsBackToSource() = runTest { fresh { root ->
         val path = root / "library.sqlite3"
-        BundledSQLiteDriver().open(path.toString()).close()
+        testSQLiteDriver().open(path.toString()).close()
         val before = tree(root)
         val driver = TrackingDriver()
         driver.onOpen = { file ->
             assertNotEquals(path.toString(), file)
             // Actual native SQLITE_CANTOPEN, without permission changes or synthetic exception text.
-            BundledSQLiteDriver().open((file.toPath().parent!! / "missing-parent" / "db").toString()).close()
+            testSQLiteDriver().open((file.toPath().parent!! / "missing-parent" / "db").toString()).close()
         }
         StorageRuntime.open(root, fs, driver).problem(ProblemCode.IO_FAILURE)
         assertEquals(before, tree(root))
@@ -1895,7 +1895,7 @@ class StorageRuntimeTest {
     @Test fun emptyVersionZeroRefusesUnrecognizedOriginalEntriesWithoutSourceOpen() = runTest {
         for (name in listOf("legacyfile.maybe.zip", "future.bin", "probe-old-empty")) fresh { root ->
             val path = root / "library.sqlite3"
-            BundledSQLiteDriver().open(path.toString()).close()
+            testSQLiteDriver().open(path.toString()).close()
             if (name.startsWith("probe-")) fs.createDirectory(root / name) else fs.write(root / name) { writeUtf8("owned synthetic legacy bytes") }
             val before = tree(root)
             val driver = TrackingDriver()
@@ -1907,7 +1907,7 @@ class StorageRuntimeTest {
     }
 
     @Test fun emptyVersionZeroAcceptsOnlyKnownEmptyOwnedDirectoriesAndItsOwnProbe() = runTest { fresh { root ->
-        BundledSQLiteDriver().open((root / "library.sqlite3").toString()).close()
+        testSQLiteDriver().open((root / "library.sqlite3").toString()).close()
         fs.createDirectory(root / "media")
         fs.createDirectory(root / "staging")
         val runtime = open(root)

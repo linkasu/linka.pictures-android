@@ -3,7 +3,7 @@
 package su.linka.pictures.migration
 
 import androidx.sqlite.*
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlin.random.Random
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.test.*
@@ -43,7 +43,7 @@ class LegacyUpgradeTest {
             if (initialized) OperationResult.Completed(Unit) else OperationResult.Failed(Problem(ProblemCode.INTEGRITY_FAILURE))
         }
 
-        fun coordinator(files: FileSystem = fs, driver: SQLiteDriver = BundledSQLiteDriver(), source: MigrationSource = FileMigrationSource(legacy, files)) = LegacyUpgrade(root, source, files, driver, { codecFiles }, ids,
+        fun coordinator(files: FileSystem = fs, driver: SQLiteDriver = testSQLiteDriver(), source: MigrationSource = FileMigrationSource(legacy, files)) = LegacyUpgrade(root, source, files, driver, { codecFiles }, ids,
             readSettings = { reads++; settings },
             prepareCredentials = { prepares++; prepare() }, validateCredentials = { validations++; validate() },
             readBoard = { file, name, media, registered ->
@@ -358,7 +358,7 @@ class LegacyUpgradeTest {
             AdmissionFiles(rig.root, fs, rig.ids).write("journal", old.copy(phase = MigrationPhase.READY_TO_PUBLISH))
         }
         rig.coordinator().open().problem(ProblemCode.STALE_REQUEST)
-        val actual = StorageRuntime.open(rig.root / "libraries" / rig.journal().migrationId, fs, BundledSQLiteDriver()).ok()
+        val actual = StorageRuntime.open(rig.root / "libraries" / rig.journal().migrationId, fs, testSQLiteDriver()).ok()
         assertTrue(actual.library.listing.value.items.isEmpty())
         actual.close()
         assertEquals(0, rig.prepares)
@@ -406,7 +406,7 @@ class LegacyUpgradeTest {
         private var armed = false
         override fun open(fileName: String): SQLiteConnection {
             if (unknown && fired) throw IOException("synthetic independent observer unavailable")
-            val connection = BundledSQLiteDriver().open(fileName)
+            val connection = testSQLiteDriver().open(fileName)
             return object : SQLiteConnection by connection {
                 override fun prepare(sql: String): SQLiteStatement {
                     val statement = connection.prepare(sql)
@@ -486,7 +486,7 @@ class LegacyUpgradeTest {
         val inTransaction = AtomicReference(false)
         val driver = object : SQLiteDriver {
             override fun open(fileName: String): SQLiteConnection {
-                val connection = BundledSQLiteDriver().open(fileName)
+                val connection = testSQLiteDriver().open(fileName)
                 return object : SQLiteConnection by connection {
                     override fun prepare(sql: String): SQLiteStatement {
                         val statement = connection.prepare(sql)
@@ -526,7 +526,7 @@ class LegacyUpgradeTest {
         private val actual = mutableListOf<SQLiteConnection>()
         override fun open(fileName: String): SQLiteConnection {
             opens++
-            val connection = BundledSQLiteDriver().open(fileName)
+            val connection = testSQLiteDriver().open(fileName)
             actual += connection
             return object : SQLiteConnection by connection {
                 override fun close() {
@@ -623,7 +623,7 @@ class LegacyUpgradeTest {
         val authority = MigrationAuthority()
         val driver = object : SQLiteDriver {
             override fun open(fileName: String): SQLiteConnection {
-                val connection = BundledSQLiteDriver().open(fileName)
+                val connection = testSQLiteDriver().open(fileName)
                 return object : SQLiteConnection by connection {
                     override fun prepare(sql: String): SQLiteStatement {
                         val statement = connection.prepare(sql)
@@ -648,7 +648,7 @@ class LegacyUpgradeTest {
             runtime.library.addBoard(board, watched).problem(ProblemCode.STALE_REQUEST)
             assertEquals(2, checks, "revoke must deny the final precommit guard, not merely preflight")
         } finally { runtime.close() }
-        val reopened = StorageRuntime.open(root, fs, BundledSQLiteDriver()).ok()
+        val reopened = StorageRuntime.open(root, fs, testSQLiteDriver()).ok()
         assertTrue(reopened.library.listing.value.items.isEmpty())
         reopened.close()
     } }

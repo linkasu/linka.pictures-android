@@ -1,6 +1,6 @@
 package su.linka.pictures.ui.app
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.runTest
@@ -110,7 +110,7 @@ class ProductNavigationTest {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "p13-navigation-${kotlin.random.Random.nextLong()}"
         fs.createDirectory(root, mustCreate = true)
-        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
+        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, testSQLiteDriver())).value
         val fixture = Fixture(runtime)
         try { test(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
     }

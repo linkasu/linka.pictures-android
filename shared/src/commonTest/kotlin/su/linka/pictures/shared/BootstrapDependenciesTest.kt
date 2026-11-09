@@ -1,6 +1,6 @@
 package su.linka.pictures.shared
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
@@ -35,14 +35,14 @@ class BootstrapDependenciesTest {
             val hashing = HashingSource.sha256(fs.source(stream))
             hashing.buffer().use { assertEquals(text, it.readUtf8()) }
             assertEquals("de65987ee7e25b5910ba398715cba5745769314796ceb57e5bf7f8959d00d4f3", hashing.hash.hex())
-            BundledSQLiteDriver().open(database.toString()).use { connection ->
+            testSQLiteDriver().open(database.toString()).use { connection ->
                 connection.prepare("CREATE TABLE bootstrap (text TEXT NOT NULL)").use { it.step() }
                 connection.prepare("INSERT INTO bootstrap VALUES (?)").use {
                     it.bindText(1, text)
                     it.step()
                 }
             }
-            BundledSQLiteDriver().open(database.toString()).use { connection ->
+            testSQLiteDriver().open(database.toString()).use { connection ->
                 connection.prepare("SELECT text FROM bootstrap").use {
                     assertTrue(it.step())
                     assertEquals(text, it.getText(0))

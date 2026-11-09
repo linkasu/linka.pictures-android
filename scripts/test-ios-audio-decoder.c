@@ -33,8 +33,8 @@ int main(int argc, char **argv) {
     if (status && created) unlink(argv[3]);
     printf("{\"status\":%d,\"format\":%d,\"frames\":%" PRId64 ",\"duration_millis\":%" PRId64
            ",\"rate\":%d,\"channels\":%d,\"source_bytes\":%" PRId64 ",\"read_bytes\":%" PRId64
-           ",\"supplemental_denied\":%d,\"cancel_checks\":%d}\n", status, result.format, result.frames,
+           ",\"supplemental_denied\":%d,\"cancel_checks\":%d,\"native_playback\":%d}\n", status, result.format, result.frames,
            result.duration_millis, result.source_rate, result.source_channels, result.source_bytes,
-           result.read_bytes, result.supplemental_denied, request.calls);
+            result.read_bytes, result.supplemental_denied, request.calls, result.native_playback);
     return status;
 }

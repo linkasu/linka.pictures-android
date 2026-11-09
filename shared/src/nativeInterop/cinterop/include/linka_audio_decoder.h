@@ -27,6 +27,7 @@ typedef struct LinkaAudioResult {
     int64_t duration_millis;
     int64_t source_bytes;
     int64_t read_bytes;
+    int native_playback; /* 1 only after complete native inspection. */
 } LinkaAudioResult;
 
 /* output_fd=-1: full streaming inspect/discard. Otherwise caller owns a fresh,

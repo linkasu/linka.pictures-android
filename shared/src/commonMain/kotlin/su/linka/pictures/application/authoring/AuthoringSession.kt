@@ -459,8 +459,9 @@ class AuthoringSession(
                 // A previously reported failure remains visible until an explicit successful retry/apply.
             }
             is OperationResult.Failed -> {
-                val supersededAuthorization = result.problem.code == ProblemCode.UNAUTHORIZED && save.generation != resumedAt &&
-                    state.value.phase == AuthoringPhase.EDITING && resumedAt == lifecycle.value
+                val supersededAuthorization = result.problem.code == ProblemCode.UNAUTHORIZED && save.generation != lifecycle.value &&
+                    (state.value.phase == AuthoringPhase.EDITING && resumedAt == lifecycle.value ||
+                        state.value.phase == AuthoringPhase.PAUSED && revision == durableRevision)
                 if (!supersededAuthorization) {
                     mutableState.value = state.value.copy(savePhase = DraftSavePhase.FAILED, problem = result.problem)
                     if (result.problem.code == ProblemCode.UNAUTHORIZED && state.value.phase != AuthoringPhase.PAUSED) pause()

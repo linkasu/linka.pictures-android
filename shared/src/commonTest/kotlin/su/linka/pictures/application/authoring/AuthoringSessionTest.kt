@@ -1,6 +1,6 @@
 package su.linka.pictures.application.authoring
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -76,6 +76,7 @@ class AuthoringSessionTest {
         private val tasks = Channel<Runnable>(Channel.UNLIMITED)
         override fun dispatch(context: CoroutineContext, block: Runnable) { check(tasks.trySend(block).isSuccess) }
         fun runAll() { while (true) (tasks.tryReceive().getOrNull() ?: return).run() }
+        suspend fun runNext() = withContext(Dispatchers.Default) { withTimeout(10_000) { tasks.receive().run() } }
         suspend fun until(predicate: () -> Boolean) = withContext(Dispatchers.Default) {
             withTimeout(10_000) { while (!predicate()) { runAll(); yield() } }
         }
@@ -115,7 +116,7 @@ class AuthoringSessionTest {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "p11-authoring-${kotlin.random.Random.nextLong()}"
         fs.createDirectory(root, mustCreate = true)
-        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, BundledSQLiteDriver())).value
+        val runtime = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(root, fs, testSQLiteDriver())).value
         val fixture = Fixture(runtime, dispatcher, root)
         try { block(fixture) } finally { fixture.finish(); runtime.close(); fs.deleteRecursively(root) }
     }
@@ -311,27 +312,41 @@ class AuthoringSessionTest {
         assertEquals(1, assertIs<OperationResult.Completed<GarbageCollectionReport>>(f.runtime.media.collectGarbage()).value.removedAssets)
     } }
 
-    @Test fun backgroundDuringSwitchRetainsSourceAndDoesNotReplayAfterResume() = runTest { fresh { f ->
-        f.start(); f.open(); f.saved()
-        val before = f.session.state.value
-        val source = before.draft!!.form as EditorForm.Card
-        f.library.delayed = true
-        f.send(AuthoringAction.SwitchCard(source.pageId, 1, before.lifecycleVersion))
-        val save = f.nextSave()
-        f.send(AuthoringAction.Background)
-        f.await { it.phase == AuthoringPhase.PAUSED }
-        f.library.delayed = false
-        save.reply.complete(OperationResult.Completed(Unit))
-        f.send(AuthoringAction.Resume)
-        f.await { it.phase == AuthoringPhase.EDITING && it.savePhase == DraftSavePhase.SAVED }
-        val barrier = CompletableDeferred<AuthoringState>()
-        f.session.send(AuthoringCommand(CommandId("old-switch"), "owner", null,
-            AuthoringAction.SwitchCard(source.pageId, 2, before.lifecycleVersion)) { barrier.complete(it) })
-        val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
-        assertEquals(source, after.draft!!.form)
-        assertFalse(after.switchingCard)
-        assertNull(after.published)
-    } }
+    @Test fun backgroundDuringSwitchRetainsSourceAndDoesNotReplayAfterResume() = runTest {
+        for (resumeBeforeReply in listOf(false, true)) {
+            val dispatcher = QueuedDispatcher()
+            fresh(dispatcher) { f ->
+                f.start(); f.open(); f.saved()
+                val before = f.session.state.value
+                val source = before.draft!!.form as EditorForm.Card
+                f.library.delayed = true
+                f.send(AuthoringAction.SwitchCard(source.pageId, 1, before.lifecycleVersion))
+                dispatcher.until { f.session.state.value.switchingCard }
+                val save = f.nextSave()
+                f.send(AuthoringAction.Background)
+                f.await { it.phase == AuthoringPhase.PAUSED }
+                f.library.delayed = false
+                if (resumeBeforeReply) {
+                    f.send(AuthoringAction.Resume)
+                    f.await { it.phase == AuthoringPhase.EDITING && it.savePhase == DraftSavePhase.SAVED }
+                }
+                // Control both orderings rather than accepting whichever wins a thread race.
+                save.reply.complete(OperationResult.Failed(Problem(ProblemCode.UNAUTHORIZED)))
+                dispatcher.runNext()
+                assertEquals(DraftSavePhase.SAVED, f.session.state.value.savePhase)
+                if (!resumeBeforeReply) f.send(AuthoringAction.Resume)
+                f.await { it.phase == AuthoringPhase.EDITING && it.savePhase == DraftSavePhase.SAVED }
+                val barrier = CompletableDeferred<AuthoringState>()
+                f.session.send(AuthoringCommand(CommandId("old-switch"), "owner", null,
+                    AuthoringAction.SwitchCard(source.pageId, 2, before.lifecycleVersion)) { barrier.complete(it) })
+                dispatcher.until { barrier.isCompleted }
+                val after = withContext(Dispatchers.Default) { withTimeout(10_000) { barrier.await() } }
+                assertEquals(source, after.draft!!.form)
+                assertFalse(after.switchingCard)
+                assertNull(after.published)
+            }
+        }
+    }
 
     @Test fun switchWhileMediaBusyDoesNotCancelMediaOrCloseSource() = runTest { fresh { f ->
         f.start(); f.open(); f.saved()
@@ -451,7 +466,7 @@ class AuthoringSessionTest {
                 } finally { snapshot.close() }
             }
             f.finish(); f.runtime.close()
-            val reopened = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(f.root, FileSystem.SYSTEM, BundledSQLiteDriver())).value
+            val reopened = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(f.root, FileSystem.SYSTEM, testSQLiteDriver())).value
             val resumed = Fixture(reopened, Dispatchers.Default, f.root)
             try {
                 resumed.send(AuthoringAction.ResumeDraft(saved.id))
@@ -857,7 +872,7 @@ class AuthoringSessionTest {
             val saved = f.await { it.draft?.form == EditorForm.Grid(page.id, rows, "4") && it.savePhase == DraftSavePhase.SAVED }.draft!!
             assertEquals(page, saved.document.pages[0])
             f.finish(); f.runtime.close()
-            val reopened = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(f.root, FileSystem.SYSTEM, BundledSQLiteDriver())).value
+            val reopened = assertIs<OperationResult.Completed<StorageRuntime>>(StorageRuntime.open(f.root, FileSystem.SYSTEM, testSQLiteDriver())).value
             val resumed = Fixture(reopened, Dispatchers.Default, f.root)
             try {
                 resumed.send(AuthoringAction.ResumeDraft(saved.id))

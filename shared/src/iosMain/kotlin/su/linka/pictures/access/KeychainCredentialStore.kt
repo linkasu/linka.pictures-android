@@ -21,6 +21,41 @@ internal class KeychainCredentialStore(
         writer.withLock { readRaw() }
     }
 
+    /** Assistant protection migrates with the library; Identity credentials remain device-only. */
+    internal suspend fun allowDeviceBackup(guard: CommitGuard): OperationResult<Unit> = withContext(Dispatchers.IO) {
+        writer.withLock {
+            val previous = when (val read = readRaw()) {
+                is OperationResult.Completed -> read.value ?: return@withLock failure(ProblemCode.INTEGRITY_FAILURE)
+                else -> return@withLock read.asUnit()
+            }
+            when (val eligible = backupEligible()) {
+                is OperationResult.Completed -> if (eligible.value) return@withLock OperationResult.Completed(Unit)
+                else -> return@withLock eligible.asUnit()
+            }
+            when (val allowed = guard()) {
+                is OperationResult.Completed -> Unit
+                else -> return@withLock allowed
+            }
+            currentCoroutineContext().ensureActive()
+            var code: Int? = null
+            try {
+                code = withQuery { query ->
+                    val attributes = dictionary()
+                    try {
+                        CFDictionarySetValue(attributes, kSecAttrAccessible, kSecAttrAccessibleWhenUnlocked)
+                        SecItemUpdate(query, attributes)
+                    } finally { CFRelease(attributes) }
+                }
+            } catch (_: Exception) { }
+            val eligible = backupEligible()
+            val current = readRaw()
+            if (eligible is OperationResult.Completed && current is OperationResult.Completed &&
+                current.value?.contentEquals(previous) == true) {
+                if (eligible.value) OperationResult.Completed(Unit) else failure(ProblemCode.IO_FAILURE, code)
+            } else OperationResult.UnconfirmedCommit
+        }
+    }
+
     override suspend fun write(value: ByteArray, guard: CommitGuard): OperationResult<Unit> = withContext(Dispatchers.IO) {
         writer.withLock {
             if (value.isEmpty() || value.size > 8192 || !validService()) return@withLock failure(ProblemCode.INVALID_DATA)
@@ -41,7 +76,7 @@ internal class KeychainCredentialStore(
                         val attributes = dictionary()
                         try {
                             CFDictionarySetValue(attributes, kSecValueData, data)
-                            CFDictionarySetValue(attributes, kSecAttrAccessible, kSecAttrAccessibleWhenUnlockedThisDeviceOnly)
+                            CFDictionarySetValue(attributes, kSecAttrAccessible, kSecAttrAccessibleWhenUnlocked)
                             when (val allowed = guard()) {
                                 is OperationResult.Completed -> Unit
                                 else -> return@withLock allowed
@@ -49,7 +84,7 @@ internal class KeychainCredentialStore(
                             publishing = true
                             if (previous != null) SecItemUpdate(query, attributes) else {
                                 CFDictionarySetValue(query, kSecValueData, data)
-                                CFDictionarySetValue(query, kSecAttrAccessible, kSecAttrAccessibleWhenUnlockedThisDeviceOnly)
+                                CFDictionarySetValue(query, kSecAttrAccessible, kSecAttrAccessibleWhenUnlocked)
                                 SecItemAdd(query, null)
                             }
                         } finally { CFRelease(attributes) }
@@ -104,6 +139,34 @@ internal class KeychainCredentialStore(
         } catch (_: Exception) { failure(ProblemCode.IO_FAILURE) }
     }
 
+    private fun backupEligible(): OperationResult<Boolean> = try {
+        withQuery { query ->
+            CFDictionarySetValue(query, kSecReturnAttributes, kCFBooleanTrue)
+            CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitOne)
+            memScoped {
+                val result = alloc<CFTypeRefVar>(); result.value = null
+                val status = SecItemCopyMatching(query, result.ptr)
+                try {
+                    val returned = result.value
+                    if (status != errSecSuccess || returned == null) failure(ProblemCode.IO_FAILURE, status)
+                    else if (CFGetTypeID(returned) != CFDictionaryGetTypeID()) failure(ProblemCode.INTEGRITY_FAILURE)
+                    else {
+                        val accessible = CFDictionaryGetValue(returned.reinterpret(), kSecAttrAccessible)
+                        if (accessible == null || CFGetTypeID(accessible) != CFStringGetTypeID()) failure(ProblemCode.INTEGRITY_FAILURE)
+                        else {
+                            val value: CFStringRef = accessible.reinterpret()
+                            when {
+                                CFStringCompare(value, kSecAttrAccessibleWhenUnlocked, 0uL) == kCFCompareEqualTo -> OperationResult.Completed(true)
+                                CFStringCompare(value, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, 0uL) == kCFCompareEqualTo -> OperationResult.Completed(false)
+                                else -> failure(ProblemCode.INTEGRITY_FAILURE)
+                            }
+                        }
+                    }
+                } finally { result.value?.let { CFRelease(it) } }
+            }
+        }
+    } catch (_: Exception) { failure(ProblemCode.IO_FAILURE) }
+
     private inline fun <T> withQuery(block: (CFMutableDictionaryRef) -> T): T {
         val query = dictionary()
         try {
@@ -129,5 +192,11 @@ internal class KeychainCredentialStore(
 
     private fun validService() = service.length in 1..128 && isNativeText(service)
     private fun same(left: ByteArray?, right: ByteArray?) = if (left == null) right == null else right != null && left.contentEquals(right)
+    private fun OperationResult<*>.asUnit(): OperationResult<Unit> = when (this) {
+        is OperationResult.Failed -> this
+        OperationResult.Cancelled -> OperationResult.Cancelled
+        OperationResult.UnconfirmedCommit -> OperationResult.UnconfirmedCommit
+        is OperationResult.Completed -> error("Unexpected completed credential result")
+    }
     private fun failure(code: ProblemCode, systemCode: Int? = null) = OperationResult.Failed(Problem(code, systemCode = systemCode))
 }

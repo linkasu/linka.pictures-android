@@ -135,6 +135,7 @@ def main():
     record['provenance']['files']['shared/src/nativeInterop/c/linka_audio_decoder.c'] = '0' * 64
     for target in record['targets'].values():
         target['bridge_source_sha256'] = '0' * 64
+        target['bridge_inputs_sha256']['shared/src/nativeInterop/c/linka_audio_decoder.c'] = '0' * 64
     manifest.write_text(json.dumps(record))
     results['stale_c_update'] = invoke(root, True)
     record = json.loads(manifest.read_text())
@@ -150,7 +151,7 @@ def main():
     for target in outputs['TARGETS']:
         for lib in ('libavformat.a', 'libavcodec.a', 'libavutil.a', 'libswresample.a'):
             assert outputs['digest'](root / target / 'lib' / lib) == outputs['digest'](seed / target / 'lib' / lib)
-    results['stale_c_two_bridge_compiles_no_ffmpeg_or_runtime'] = 'PASS'
+    results['stale_c_bridge_sources_recompiled_no_ffmpeg_or_runtime_execution'] = 'PASS'
     assert 'VERIFIED_FASTPATH' in invoke(root, True)
     results['updated_fastpath'] = 'PASS'
     (base / 'result.json').write_text(json.dumps(results, indent=2) + '\n')

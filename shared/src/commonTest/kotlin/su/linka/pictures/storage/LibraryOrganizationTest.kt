@@ -1,6 +1,6 @@
 package su.linka.pictures.storage
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import su.linka.pictures.testing.testSQLiteDriver
 import kotlinx.coroutines.test.runTest
 import okio.FileSystem
 import su.linka.pictures.application.*
@@ -19,7 +19,7 @@ class LibraryOrganizationTest {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "linka-folders-${token()}"
         fs.createDirectory(root, mustCreate = true)
-        var runtime = StorageRuntime.open(root, fs, BundledSQLiteDriver()).ok()
+        var runtime = StorageRuntime.open(root, fs, testSQLiteDriver()).ok()
         try {
             runtime.library.addBoard(board, permit()).ok()
             val value = LibraryOrganization(listOf(folder, child), mapOf(board.id to child.id))
@@ -30,7 +30,7 @@ class LibraryOrganizationTest {
             assertEquals(shown, runtime.library.listing.value)
             assertIs<OperationResult.Failed>(runtime.library.saveOrganization(value, 1, permit()))
             runtime.close()
-            runtime = StorageRuntime.open(root, fs, BundledSQLiteDriver()).ok()
+            runtime = StorageRuntime.open(root, fs, testSQLiteDriver()).ok()
             assertEquals(value, runtime.library.listing.value.organization)
             runtime.library.renameBoard(board.id, "Другое имя", 1, permit()).ok()
             assertEquals(value, runtime.library.listing.value.organization)
@@ -45,8 +45,8 @@ class LibraryOrganizationTest {
         val fs = FileSystem.SYSTEM
         val root = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "linka-folder-snapshot-${token()}"
         fs.createDirectory(root, mustCreate = true)
-        val source = StorageRuntime.open(root / "source", fs, BundledSQLiteDriver()).ok()
-        val target = StorageRuntime.open(root / "target", fs, BundledSQLiteDriver()).ok()
+        val source = StorageRuntime.open(root / "source", fs, testSQLiteDriver()).ok()
+        val target = StorageRuntime.open(root / "target", fs, testSQLiteDriver()).ok()
         try {
             source.library.addBoard(board, permit()).ok()
             val original = LibraryOrganization(listOf(folder, child), mapOf(board.id to child.id))

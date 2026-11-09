@@ -54,6 +54,20 @@ def check_app(app):
         'UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown',
         'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight'}, 'iPad multitasking orientations missing'
     assert (app / info['CFBundleExecutable']).is_file(), 'Missing executable'
+    runtime = app / 'Frameworks/LinkaFFmpeg.framework'
+    runtime_info = load_plist(runtime / 'Info.plist')
+    runtime_binary = runtime / runtime_info['CFBundleExecutable']
+    assert runtime_info['CFBundlePackageType'] == 'FMWK' and runtime_binary.is_file(), 'Missing legacy audio runtime'
+    if sys.platform == 'darwin':
+        binary = app / info['CFBundleExecutable']
+        for path in (binary, runtime_binary):
+            symbols = subprocess.check_output(['nm', '-u', str(path)], text=True).split()
+            disk_apis = {'_statfs', '_fstatfs', '_statvfs', '_fstatvfs'} & set(symbols)
+            assert not disk_apis, f'Unexpected DiskSpace APIs in {path.name}: {sorted(disk_apis)}'
+        dependencies = subprocess.check_output(['otool', '-L', str(binary)], text=True)
+        assert '@rpath/LinkaFFmpeg.framework/LinkaFFmpeg' in dependencies, 'Legacy runtime is not dynamically linked'
+        definitions = subprocess.check_output(['nm', '-gU', str(binary)], text=True)
+        assert not re.search(r'\b_(?:avcodec_|avformat_|av_|swr_)\w+', definitions), 'FFmpeg still statically linked into app'
     assert (app / 'Assets.car').is_file(), 'Missing compiled AppIcon assets'
     assert info.get('CFBundleIcons', {}).get('CFBundlePrimaryIcon'), 'Missing primary app icon metadata'
     assert load_plist(app / 'PrivacyInfo.xcprivacy') == load_plist(ROOT / 'iosApp/PrivacyInfo.xcprivacy')
