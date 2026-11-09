@@ -6,6 +6,14 @@
 
 ### Финальные локальные результаты follow-up
 
+- PR39 объединён после CI `42646609869`; main `2b31446…` прошёл CI `42648108810`.
+  Первый manual run `42649543992` **отменён до Test Lab**: firebase-test имеет
+  `steps=[]`, ни одного gcloud test вызова не было. Обнаружен риск unscripted Robo:
+  он может отправить signup/OTP на production Identity без разрешённого алиаса.
+  Cloud matrix ниже superseded: оставлены только deterministic startup API36/16KB10m
+  и isolated migration physical API30 15m, без retries/shards; максимум compute
+  ~$1.42 до free quota. Robo не выполнялся и не считается пройденным.
+
 - Полный gate: **593 JVM, 26+26 Android unit, 722 iOS Native**, без failures/errors/skips;
   Android/shared lint, safety, selectors, APK/AAB, device Release framework и Simulator
   Debug framework PASS. Producer integrity **16/16** PASS. Android test APK пересобран
