@@ -19,13 +19,13 @@
         };
         B00000000000000000000002 = {
             isa = XCConfigurationList;
-            buildConfigurations = (B00000000000000000000006);
+            buildConfigurations = (B00000000000000000000006, B00000000000000000000016);
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Debug;
         };
         B00000000000000000000003 = {
             isa = PBXGroup;
-            children = (B00000000000000000000007, B0000000000000000000000D, B0000000000000000000000E, B0000000000000000000000F, B00000000000000000000014, B00000000000000000000004);
+            children = (B00000000000000000000007, B0000000000000000000000D, B0000000000000000000000E, B0000000000000000000000F, B00000000000000000000014, B00000000000000000000018, B0000000000000000000001A, B00000000000000000000004);
             sourceTree = "<group>";
         };
         B00000000000000000000004 = {
@@ -37,7 +37,7 @@
         B00000000000000000000005 = {
             isa = PBXNativeTarget;
             buildConfigurationList = B00000000000000000000009;
-            buildPhases = (B0000000000000000000000A, B00000000000000000000012);
+            buildPhases = (B0000000000000000000001C, B0000000000000000000000A, B00000000000000000000012);
             buildRules = ();
             dependencies = ();
             name = LinkaPokazhi;
@@ -73,7 +73,7 @@
         };
         B00000000000000000000009 = {
             isa = XCConfigurationList;
-            buildConfigurations = (B0000000000000000000000B);
+            buildConfigurations = (B0000000000000000000000B, B00000000000000000000017);
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Debug;
         };
@@ -89,6 +89,9 @@
                 "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = DevelopmentSimulator.entitlements;
                 FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/$(KOTLIN_FRAMEWORK_TARGET)/debugFramework");
                 INFOPLIST_FILE = Info.plist;
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+                MARKETING_VERSION = 1.4;
+                CURRENT_PROJECT_VERSION = 5;
                 "KOTLIN_FRAMEWORK_TARGET[sdk=iphoneos*]" = iosArm64;
                 "KOTLIN_FRAMEWORK_TARGET[sdk=iphonesimulator*]" = iosSimulatorArm64;
                 OTHER_LDFLAGS = ("$(inherited)", "-framework", Shared, "-lsqlite3");
@@ -138,7 +141,7 @@
         B00000000000000000000012 = {
             isa = PBXResourcesBuildPhase;
             buildActionMask = 2147483647;
-            files = (B00000000000000000000013, B00000000000000000000015);
+            files = (B00000000000000000000013, B00000000000000000000015, B00000000000000000000019, B0000000000000000000001B);
             runOnlyForDeploymentPostprocessing = 0;
         };
         B00000000000000000000013 = { isa = PBXBuildFile; fileRef = B0000000000000000000000F; };
@@ -153,6 +156,57 @@
             sourceTree = SOURCE_ROOT;
         };
         B00000000000000000000015 = { isa = PBXBuildFile; fileRef = B00000000000000000000014; };
+        B00000000000000000000016 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CLANG_ENABLE_MODULES = YES;
+                DEAD_CODE_STRIPPING = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+                SDKROOT = iphoneos;
+                SWIFT_VERSION = 5.0;
+                SWIFT_OPTIMIZATION_LEVEL = "-O";
+                DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+            };
+            name = Release;
+        };
+        B00000000000000000000017 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+                FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/$(KOTLIN_FRAMEWORK_TARGET)/releaseFramework");
+                INFOPLIST_FILE = Info.plist;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphoneos*]" = iosArm64;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphonesimulator*]" = iosSimulatorArm64;
+                OTHER_LDFLAGS = ("$(inherited)", "-framework", Shared, "-lsqlite3");
+                PRODUCT_BUNDLE_IDENTIFIER = "$(IOS_BUNDLE_ID)";
+                IOS_BUNDLE_ID = su.linka.pictures;
+                RELEASE_VERSION = 2.0.0;
+                RELEASE_BUILD_NUMBER = 1;
+                MARKETING_VERSION = "$(RELEASE_VERSION)";
+                CURRENT_PROJECT_VERSION = "$(RELEASE_BUILD_NUMBER)";
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                TARGETED_DEVICE_FAMILY = "1,2";
+                SKIP_INSTALL = NO;
+            };
+            name = Release;
+        };
+        B00000000000000000000018 = { isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+        B00000000000000000000019 = { isa = PBXBuildFile; fileRef = B00000000000000000000018; };
+        B0000000000000000000001A = { isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+        B0000000000000000000001B = { isa = PBXBuildFile; fileRef = B0000000000000000000001A; };
+        B0000000000000000000001C = {
+            isa = PBXShellScriptBuildPhase;
+            buildActionMask = 2147483647;
+            files = ();
+            inputPaths = ("$(SRCROOT)/../scripts/check-prerelease.py");
+            outputPaths = ();
+            name = "Validate explicit release metadata";
+            runOnlyForDeploymentPostprocessing = 0;
+            shellPath = /bin/sh;
+            shellScript = "if [ \"$CONFIGURATION\" = Release ]; then python3 -B \"$SRCROOT/../scripts/check-prerelease.py\" --ios-settings; fi\n";
+        };
     };
     rootObject = B00000000000000000000001;
 }

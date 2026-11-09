@@ -17,6 +17,14 @@ on:
         description: Sign release on main only after successful cloud tests
         type: boolean
         default: false
+      android_version_code:
+        description: Confirmed Play versionCode (required only for release packaging)
+        type: string
+        default: ''
+      release_version:
+        description: Confirmed release version major.minor[.patch]
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -35,6 +43,9 @@ jobs:
 
       - name: Check release workflow safety
         run: python3 -B scripts/check-release-workflow.py
+
+      - name: Check prerelease packaging configuration
+        run: python3 -B scripts/check-prerelease.py
 
       - name: Explain blocked signing request
         if: github.event_name == 'workflow_dispatch' && inputs.sign_release && !inputs.run_cloud_tests
@@ -191,6 +202,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Validate confirmed release metadata before signing setup
+        run: ./gradlew :app:verifyReleaseMetadata
+        env:
+          ANDROID_VERSION_CODE: ${{ inputs.android_version_code }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+
       - name: Decode keystore
         run: |
           echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${GITHUB_WORKSPACE}/ci-release.jks"
@@ -198,12 +215,17 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - name: Verify privacy gate and build signed release bundle
-        run: ./gradlew :app:verifyReleaseSafety :app:bundleRelease
+        run: ./gradlew :app:verifyReleaseSigning :app:verifyReleaseSafety :app:bundleRelease
         env:
+          ANDROID_VERSION_CODE: ${{ inputs.android_version_code }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
           ANDROID_KEYSTORE_PATH: ${{ format('{0}/ci-release.jks', github.workspace) }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Verify release bundle cryptographic signature
+        run: python3 -B scripts/check-prerelease.py --aab app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload release bundle
         uses: actions/upload-artifact@v4

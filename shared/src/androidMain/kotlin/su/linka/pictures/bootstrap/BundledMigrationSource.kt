@@ -7,7 +7,7 @@ import okio.source
 import su.linka.pictures.application.ProblemCode
 import su.linka.pictures.migration.*
 
-/** Physical filenames are case-independent; display names retain the shipped identities. */
+/** Frozen seven-board source for resuming pre-starter journals; never seed a fresh installation. */
 internal class BundledMigrationSource(private val assets: AssetManager) : MigrationSource {
     override val kind = MigrationSourceKind.BUNDLED
 

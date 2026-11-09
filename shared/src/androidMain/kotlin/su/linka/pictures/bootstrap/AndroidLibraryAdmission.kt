@@ -63,7 +63,12 @@ internal class AndroidLibraryAdmission(
         if (active == null && kind == MigrationSourceKind.BUNDLED && (fs.exists(source) || legacy!!.hasPreferences)) reject(ProblemCode.CONFLICT)
         val incoming: MigrationSource = when (kind) {
             MigrationSourceKind.LEGACY_FILES -> FileMigrationSource(source, fs)
-            MigrationSourceKind.BUNDLED -> BundledMigrationSource(context.assets)
+            MigrationSourceKind.BUNDLED -> when {
+                active != null -> StarterMigrationSource() // Active opens without consulting source bytes.
+                journal == null || journal.total == 5 -> StarterMigrationSource()
+                journal.total == 7 -> BundledMigrationSource(context.assets)
+                else -> reject(ProblemCode.CONFLICT)
+            }
         }
         return LegacyUpgrade(root, incoming, fs, driver, createFiles, ids,
             readSettings = {

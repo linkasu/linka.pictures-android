@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,7 @@ internal fun RegistrationScreen(identity: IdentitySession, reauthenticate: Boole
                 .verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(stringResource(Res.string.identity_title), Modifier.semantics { heading() }, style = MaterialTheme.typography.h5)
                 Text(stringResource(Res.string.identity_explanation))
+                PrivacyLinks()
                 when (if (reauthenticate && state.registrationRevision > initialRevision) RegistrationPhase.REGISTERED
                     else if (reauthenticate && state.phase == RegistrationPhase.REGISTERED)
                     if (state.hasChallenge) RegistrationPhase.CHALLENGE else RegistrationPhase.REQUIRED else state.phase) {
@@ -101,26 +103,75 @@ internal fun RegistrationScreen(identity: IdentitySession, reauthenticate: Boole
 internal fun TelemetrySettings(identity: IdentitySession) {
     val state by identity.view.collectAsState()
     var reauthenticate by remember { mutableStateOf(false) }
+    var confirmDeletion by remember { mutableStateOf(false) }
     val telemetryLabel = stringResource(Res.string.telemetry_title)
     ProductSection(stringResource(Res.string.identity_online_title)) {
         Text(stringResource(Res.string.identity_online_explanation))
-        TextButton(onClick = { reauthenticate = true }) { Text(stringResource(Res.string.identity_online_restore)) }
+        TextButton(onClick = { reauthenticate = true }, enabled = !state.busy && state.deletionStatus in setOf(null, "not_found")) {
+            Text(stringResource(if (state.phase == RegistrationPhase.REGISTERED) Res.string.identity_online_restore else Res.string.identity_online_register))
+        }
+        if (state.phase == RegistrationPhase.REGISTERED && state.deletionStatus == null) {
+            TextButton(onClick = { confirmDeletion = true }, enabled = !state.busy) { Text(stringResource(Res.string.identity_delete_account)) }
+        }
+        if (state.problem && state.deletionStatus == null) Text(stringResource(Res.string.identity_deletion_problem))
+        state.deletionStatus?.let { status ->
+            Text(stringResource(when (status) {
+                "requested" -> Res.string.identity_deletion_requested
+                "processing" -> Res.string.identity_deletion_processing
+                "completed" -> Res.string.identity_deletion_completed
+                "rejected" -> Res.string.identity_deletion_rejected
+                "cancelled" -> Res.string.identity_deletion_cancelled
+                "not_found" -> Res.string.identity_deletion_not_found
+                else -> Res.string.identity_deletion_unconfirmed
+            }), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            if (status in setOf("completed", "rejected", "cancelled")) {
+                TextButton(onClick = identity::dismissAccountDeletion, enabled = !state.busy) { Text(stringResource(Res.string.close)) }
+            } else {
+                TextButton(onClick = identity::checkAccountDeletion, enabled = !state.busy) { Text(stringResource(Res.string.identity_deletion_check)) }
+                if (status == "not_found") TextButton(onClick = { confirmDeletion = true }, enabled = !state.busy) {
+                    Text(stringResource(Res.string.identity_deletion_retry))
+                }
+            }
+            if (state.problem) Text(stringResource(Res.string.identity_deletion_problem))
+        }
     }
+    if (confirmDeletion) su.linka.pictures.ui.app.ProductDialog(stringResource(Res.string.identity_delete_account),
+        { confirmDeletion = false }, actions = {
+            TextButton(onClick = { confirmDeletion = false; identity.requestAccountDeletion() }, enabled = !state.busy) {
+                Text(stringResource(Res.string.identity_delete_account))
+            }
+            TextButton(onClick = { confirmDeletion = false }) { Text(stringResource(Res.string.cancel)) }
+        }) { Text(stringResource(Res.string.identity_deletion_explanation)) }
     if (reauthenticate) su.linka.pictures.ui.app.ProductDialog(stringResource(Res.string.identity_online_title), { reauthenticate = false }, actions = {
         TextButton(onClick = { reauthenticate = false }) { Text(stringResource(Res.string.close)) }
-    }) { RegistrationScreen(identity, reauthenticate = true, modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)) }
+    }) { RegistrationScreen(identity, reauthenticate = state.phase == RegistrationPhase.REGISTERED, modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)) }
     ProductSection(stringResource(Res.string.telemetry_title)) {
         Text(stringResource(Res.string.telemetry_explanation))
         Row {
             Switch(checked = state.consent == "allowed", onCheckedChange = identity.telemetry::setConsent,
+                enabled = state.phase == RegistrationPhase.REGISTERED && state.deletionStatus == null,
                 modifier = Modifier.semantics { contentDescription = telemetryLabel })
             Text(stringResource(if (state.consentConflict) Res.string.telemetry_unconfirmed else if (state.consent == "allowed") Res.string.telemetry_on else Res.string.telemetry_off))
         }
         if (state.consentPending) Text(stringResource(Res.string.telemetry_pending), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         if (state.consentConflict) Text(stringResource(Res.string.telemetry_conflict), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-        if (state.consentConflict) {
+        if (state.consentConflict && state.phase == RegistrationPhase.REGISTERED && state.deletionStatus == null) {
             TextButton(onClick = { identity.telemetry.setConsent(false) }) { Text(stringResource(Res.string.telemetry_resolve_off)) }
             TextButton(onClick = { identity.telemetry.setConsent(true) }) { Text(stringResource(Res.string.telemetry_resolve_on)) }
         } else if (state.consent == "allowed" || state.consentPending || state.problem) TextButton(onClick = identity.telemetry::synchronize) { Text(stringResource(Res.string.identity_retry)) }
     }
+    ProductSection(stringResource(Res.string.identity_privacy_title)) { PrivacyLinks() }
+}
+
+@Composable
+private fun PrivacyLinks() {
+    val uri = LocalUriHandler.current
+    var problem by remember { mutableStateOf(false) }
+    fun open(url: String) {
+        try { uri.openUri(url); problem = false } catch (_: Exception) { problem = true }
+    }
+    Text(stringResource(Res.string.identity_privacy_summary))
+    TextButton(onClick = { open("https://linka.su/privacy-policy/") }) { Text(stringResource(Res.string.identity_privacy_policy)) }
+    TextButton(onClick = { open("mailto:feedback@linka.su") }) { Text(stringResource(Res.string.identity_privacy_contact)) }
+    if (problem) Text(stringResource(Res.string.identity_link_problem), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }

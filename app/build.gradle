@@ -26,14 +26,15 @@ def hasReleaseSigningConfig = keystoreFile?.exists() && keystorePassword && keyA
 
 android {
     namespace 'su.linka.pictures'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "su.linka.pictures"
         minSdk 21
-        targetSdk 35
-        versionCode 5
-        versionName "1.4"
+        targetSdk 36
+        // Historical defaults are for local checks only; packaging requires explicit release metadata.
+        versionCode = (envOrProperty('ANDROID_VERSION_CODE') ?: '5').toString().toInteger()
+        versionName = (envOrProperty('RELEASE_VERSION') ?: '1.4').toString()
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -74,6 +75,30 @@ android {
     }
     kotlinOptions {
         jvmTarget = '17'
+    }
+}
+
+def verifyReleaseMetadata = tasks.register('verifyReleaseMetadata') {
+    doLast {
+        def code = envOrProperty('ANDROID_VERSION_CODE')?.toString()
+        def version = envOrProperty('RELEASE_VERSION')?.toString()
+        if (!code || !(code ==~ /[1-9][0-9]*/) || code.toBigInteger() > 2100000000 ||
+            !version || !(version ==~ /[0-9]+\.[0-9]+(\.[0-9]+)?/)) {
+            throw new GradleException('Packaging requires ANDROID_VERSION_CODE (1..2100000000) and RELEASE_VERSION (major.minor[.patch]); confirm store metadata first')
+        }
+    }
+}
+tasks.register('verifyReleaseSigning') {
+    dependsOn verifyReleaseMetadata
+    doLast {
+        if (!hasReleaseSigningConfig) {
+            throw new GradleException('Signed release requires a complete release signing configuration')
+        }
+    }
+}
+tasks.configureEach {
+    if (name in ['assembleRelease', 'bundleRelease', 'packageRelease', 'packageReleaseBundle']) {
+        dependsOn verifyReleaseMetadata
     }
 }
 

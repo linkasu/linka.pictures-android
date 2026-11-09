@@ -5,6 +5,7 @@ package su.linka.pictures.bootstrap
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.Button
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,7 +20,6 @@ import androidx.compose.material.Surface
 import org.jetbrains.compose.resources.stringResource
 import su.linka.pictures.resources.*
 import su.linka.pictures.identity.*
-import su.linka.pictures.ui.identity.RegistrationScreen
 
 private object ProductProcess {
     val root by lazy { IosProductRoot() }
@@ -70,18 +70,17 @@ private class ProductViewController(private val root: IosProductRoot) : UIViewCo
 @Composable
 private fun ProductContent(root: IosProductRoot, window: IosProductRoot.Window) {
     val state by root.state.collectAsState()
-    val registration by root.identity.view.collectAsState()
     val active by window.foreground.collectAsState()
     LaunchedEffect(active) { root.identity.telemetry.foreground(window.id, active) }
     DisposableEffect(window) { onDispose { root.identity.telemetry.foreground(window.id, false) } }
-    if (registration.phase != RegistrationPhase.REGISTERED) {
-        RegistrationScreen(root.identity)
-        return
-    }
     LinkaTheme {
       Surface(Modifier.fillMaxSize(), color = LocalLinkaPalette.current.background, contentColor = LocalLinkaPalette.current.text) {
         when (val current = state) {
             RootState.Loading -> Text(stringResource(Res.string.ios_opening_library), Modifier.padding(24.dp))
+            RootState.StartupResume -> Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)) {
+                Text(stringResource(Res.string.ios_starter_setup_interrupted))
+                Button(onClick = root::resumeStartup) { Text(stringResource(Res.string.ios_starter_continue_setup)) }
+            }
             is RootState.Failed -> RootError(current.problem)
             is RootState.Ready -> {
                 val graph = current.graph

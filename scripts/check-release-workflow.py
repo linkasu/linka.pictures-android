@@ -18,12 +18,17 @@ def check():
         assert block, f'missing manual input: {flag}'
         assert '        type: boolean\n' in block[1]
         assert '        default: false\n' in block[1]
+    for field in ('android_version_code', 'release_version'):
+        block = re.search(rf'^      {field}:\n((?:        .+\n)+)', triggers, re.M)
+        assert block and '        type: string\n' in block[1]
+        assert "        default: ''\n" in block[1], 'Do not guess production metadata'
     assert '\npermissions:\n  contents: read\n' in workflow
     jobs = dict(re.findall(r'^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)',
                            workflow.split('\njobs:\n', 1)[1], re.M | re.S))
     assert set(jobs) == {'build', 'firebase-test', 'bundle-release'}
     assert not re.search(r'^    (if|needs):', jobs['build'], re.M)
     for command in ('python3 -B scripts/check-release-workflow.py',
+                     'python3 -B scripts/check-prerelease.py',
                      './gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety :app:verifyUiSelectors',
                      'python3 -B shared/src/commonTest/check_localization.py',
                      './gradlew :app:assembleDebug :app:assembleDebugAndroidTest :shared:assembleDebugAndroidTest'):
@@ -57,7 +62,15 @@ def check():
             assert actual == expected, (job, event, ref, cloud, sign, build, firebase)
         count += 1
     release = jobs['bundle-release']
-    assert 'run: ./gradlew :app:verifyReleaseSafety :app:bundleRelease' in release
+    assert 'ANDROID_VERSION_CODE: ${{ inputs.android_version_code }}' in release
+    assert 'RELEASE_VERSION: ${{ inputs.release_version }}' in release
+    assert release.index('run: ./gradlew :app:verifyReleaseMetadata') < release.index('- name: Decode keystore')
+    signed_build = 'run: ./gradlew :app:verifyReleaseSigning :app:verifyReleaseSafety :app:bundleRelease'
+    signature_check = 'run: python3 -B scripts/check-prerelease.py --aab app/build/outputs/bundle/release/app-release.aab'
+    assert signed_build in release
+    assert signature_check in release
+    assert release.index('- name: Decode keystore') < release.index(signed_build)
+    assert release.index(signed_build) < release.index(signature_check) < release.index('- name: Upload release bundle')
     assert '--robo-script' not in workflow
     assert '--test-targets "class su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest"' in jobs['firebase-test']
     assert '--test-targets "class su.linka.pictures.activity.DevelopmentStartupTest"' in jobs['firebase-test']

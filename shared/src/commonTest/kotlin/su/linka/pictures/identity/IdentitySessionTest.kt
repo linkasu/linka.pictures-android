@@ -81,7 +81,7 @@ class IdentitySessionTest {
         assertFails { validateReceipt(device, receipt().dropLast(1) + "A", key, installation, account, "self") }
     }
 
-    @Test fun firstUpdatedLaunchIsGatedAndBootstrapIsDurableExactRetry() = runTest {
+    @Test fun optionalRegistrationBootstrapIsDurableExactRetry() = runTest {
         val device = Device()
         val identity = IdentitySession(device, backgroundScope)
         runCurrent()
@@ -100,6 +100,159 @@ class IdentitySessionTest {
         assertEquals(body, device.requests.last().third)
         assertEquals(RegistrationPhase.REQUIRED, identity.view.value.phase)
         assertFalse(device.secure!!.decodeToString().contains("person@example.test"))
+    }
+
+    @Test fun guestForegroundDoesNotCreateInstallationOrCollectTelemetry() = runTest {
+        val device = Device()
+        val identity = IdentitySession(device, backgroundScope)
+        runCurrent()
+        identity.telemetry.foreground("guest", true)
+        identity.telemetry.product("card_select")
+        identity.telemetry.utterance("completed", "standard")
+        runCurrent()
+        assertEquals(RegistrationPhase.REQUIRED, identity.view.value.phase)
+        assertTrue(device.requests.isEmpty())
+        assertNull(device.secure)
+        assertTrue(identity.saved.batches.isEmpty())
+    }
+
+    private fun onlineState(): IdentityState = registeredState().copy(accountAccess = "account-token",
+        accountExpires = "2028-01-01T00:00:00Z")
+
+    private fun deletionResponse(request: PendingDeletion, status: String, id: String = request.requestId) = buildJsonObject {
+        put("contract_version", 1); put("product", IDENTITY_PRODUCT); put("request_id", id); put("status", status)
+        put("requested_at", "2026-11-09T00:00:00Z")
+        if (status == "completed") put("completed_at", "2026-11-09T00:01:00Z")
+    }.toString()
+
+    @Test fun uncertainDeletionPersistsCapabilityBeforeSendAndStatusSurvivesRestart() = runTest {
+        val device = Device().apply { secure = identityJson.encodeToString(onlineState()).encodeToByteArray() }
+        val identity = IdentitySession(device, backgroundScope)
+        runCurrent()
+        device.requests.clear()
+        var captured: PendingDeletion? = null
+        device.handler = { url, bearer, body ->
+            if (!url.endsWith("/account-deletions")) throw IdentityDeviceFailure()
+            assertEquals("account-token", bearer)
+            val stored = identityJson.decodeFromString<IdentityState>(device.secure!!.decodeToString())
+            captured = assertNotNull(stored.deletion)
+            assertEquals(captured!!.requestId, jsonObject(body!!).text("request_id"))
+            assertEquals(captured!!.statusSecret, jsonObject(body).text("status_secret"))
+            assertEquals(32, decode64(captured!!.statusSecret).size)
+            assertTrue(stored.batches.isEmpty())
+            throw IdentityDeviceFailure()
+        }
+        identity.requestAccountDeletion(); runCurrent()
+        assertEquals("unconfirmed", identity.view.value.deletionStatus)
+        val pending = assertNotNull(captured)
+        val count = device.requests.size
+        val restarted = IdentitySession(device, backgroundScope)
+        runCurrent()
+        assertEquals(count, device.requests.size)
+        restarted.begin("must-not-register@example.test", "self"); runCurrent()
+        restarted.telemetry.foreground("deleting", true)
+        restarted.telemetry.product("card_select"); runCurrent()
+        assertEquals(count, device.requests.size)
+        device.handler = { url, bearer, body ->
+            assertTrue(url.endsWith("/account-deletions/status"))
+            assertEquals(pending.statusSecret, bearer)
+            assertEquals(pending.requestId, jsonObject(body!!).text("request_id"))
+            IdentityHttpResponse(200, deletionResponse(pending, "completed"))
+        }
+        restarted.checkAccountDeletion(); runCurrent()
+        assertEquals("completed", restarted.view.value.deletionStatus)
+        assertEquals(RegistrationPhase.REQUIRED, restarted.view.value.phase)
+        assertNull(restarted.saved.registrationResponse)
+        assertNull(restarted.saved.accountRefresh)
+        assertNull(restarted.saved.installationRefresh)
+        assertTrue(restarted.saved.commands.isEmpty())
+        assertTrue(restarted.saved.batches.isEmpty())
+        restarted.dismissAccountDeletion(); runCurrent()
+        assertEquals(IdentityState(), restarted.saved)
+    }
+
+    @Test fun acceptedDeletionIsNotCompletionAndUnknownStatusCannotBindAnotherRequest() = runTest {
+        val device = Device().apply { secure = identityJson.encodeToString(onlineState()).encodeToByteArray() }
+        val identity = IdentitySession(device, backgroundScope)
+        runCurrent()
+        device.handler = { url, _, _ ->
+            if (!url.endsWith("/account-deletions")) throw IdentityDeviceFailure()
+            IdentityHttpResponse(202, deletionResponse(identity.saved.deletion!!, "requested"))
+        }
+        identity.requestAccountDeletion(); runCurrent()
+        assertEquals("requested", identity.view.value.deletionStatus)
+        assertNotNull(identity.saved.registrationResponse)
+        val pending = identity.saved.deletion!!
+        val requests = device.requests.size
+        identity.requestAccountDeletion(); runCurrent()
+        assertEquals(requests, device.requests.size)
+        device.handler = { _, _, _ -> IdentityHttpResponse(200,
+            deletionResponse(pending, "completed", "00000000-0000-4000-8000-000000000001")) }
+        identity.checkAccountDeletion(); runCurrent()
+        assertEquals("requested", identity.view.value.deletionStatus)
+        assertNotNull(identity.saved.registrationResponse)
+        assertTrue(identity.view.value.problem)
+    }
+
+    @Test fun onlyExplicitRetryAfterNotFoundReusesTheOriginalDeletionCapability() = runTest {
+        val pending = PendingDeletion("00000000-0000-4000-8000-000000000000", encode64(ByteArray(32) { 2 }), accountKey = account)
+        val device = Device().apply { secure = identityJson.encodeToString(onlineState().copy(deletion = pending)).encodeToByteArray() }
+        val identity = IdentitySession(device, backgroundScope)
+        runCurrent()
+        assertTrue(device.requests.isEmpty())
+        device.handler = { _, _, _ -> IdentityHttpResponse(404, "{}") }
+        identity.checkAccountDeletion(); runCurrent()
+        assertEquals("not_found", identity.view.value.deletionStatus)
+        device.handler = { _, bearer, body ->
+            assertEquals("account-token", bearer)
+            assertEquals(pending.requestId, jsonObject(body!!).text("request_id"))
+            assertEquals(pending.statusSecret, jsonObject(body).text("status_secret"))
+            IdentityHttpResponse(202, deletionResponse(pending, "requested"))
+        }
+        identity.requestAccountDeletion(); runCurrent()
+        assertEquals("requested", identity.view.value.deletionStatus)
+        assertEquals(pending.statusSecret, identity.saved.deletion!!.statusSecret)
+    }
+
+    @Test fun deletionProgressCannotRegressAndRejectedRequestDoesNotEraseAccount() = runTest {
+        val pending = PendingDeletion("00000000-0000-4000-8000-000000000000", encode64(ByteArray(32) { 2 }),
+            "processing", "2026-11-09T00:00:00Z")
+        val device = Device().apply { secure = identityJson.encodeToString(onlineState().copy(deletion = pending)).encodeToByteArray() }
+        val identity = IdentitySession(device, backgroundScope)
+        runCurrent()
+        device.handler = { _, _, _ -> IdentityHttpResponse(200, deletionResponse(pending, "requested")) }
+        identity.checkAccountDeletion(); runCurrent()
+        assertEquals("processing", identity.view.value.deletionStatus)
+        device.handler = { _, _, _ -> IdentityHttpResponse(200, deletionResponse(pending, "rejected")) }
+        identity.checkAccountDeletion(); runCurrent()
+        assertEquals("rejected", identity.view.value.deletionStatus)
+        assertNotNull(identity.saved.registrationResponse)
+        identity.dismissAccountDeletion(); runCurrent()
+        assertNull(identity.saved.deletion)
+        assertEquals(RegistrationPhase.REGISTERED, identity.view.value.phase)
+    }
+
+    @Test fun deletionRetryReauthenticationCannotSwitchToAnotherAccount() = runTest {
+        val pending = PendingChallenge("{}", "self", encode64(ByteArray(32)), "00000000-0000-4000-8000-000000000000", "pending")
+        val deletion = PendingDeletion("00000000-0000-4000-8000-000000000001", encode64(ByteArray(32) { 2 }),
+            status = "not_found", accountKey = "c".repeat(64))
+        val device = Device().apply {
+            secure = identityJson.encodeToString(IdentityState(installation = installation,
+                installationRefresh = "installation-refresh", pending = pending, deletion = deletion)).encodeToByteArray()
+            handler = { url, _, _ -> when {
+                url.endsWith("/verify") -> IdentityHttpResponse(200, registration())
+                url.endsWith("jwks.json") -> IdentityHttpResponse(200, buildJsonObject { put("keys", JsonArray(listOf(key))) }.toString())
+                else -> throw IdentityDeviceFailure()
+            } }
+        }
+        val identity = IdentitySession(device, backgroundScope)
+        runCurrent()
+        identity.verify("123456"); runCurrent()
+        assertFalse(identity.registered)
+        assertNull(identity.saved.registrationResponse)
+        assertEquals(deletion, identity.saved.deletion)
+        assertTrue(identity.view.value.problem)
+        assertTrue(device.requests.none { it.first.endsWith("/account-deletions") })
     }
 
     @Test fun offlineReceiptSurvivesExpiredOnlineSessionAndUncertainRefreshIsNotReplayed() = runTest {

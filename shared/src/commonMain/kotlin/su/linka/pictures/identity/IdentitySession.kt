@@ -44,7 +44,7 @@ class IdentitySession internal constructor(internal val device: IdentityDevice, 
             consentPending = saved.consentConflict || saved.commands.isNotEmpty() || saved.consentDesired == "allowed" && !saved.deliveryCompleted,
             consentConflict = saved.consentConflict, hasChallenge = pending != null, registrationRevision = registrationRevision,
             resendAt = maxOf(saved.nextBeginAt, pending?.retryAt ?: 0, pending?.resendAfter?.let(::timeMillis) ?: 0),
-            hasReceivedProof = saved.verifyResponse != null)
+            hasReceivedProof = saved.verifyResponse != null, deletionStatus = saved.deletion?.status)
     }
 
     private fun recovery() {
@@ -55,6 +55,8 @@ class IdentitySession internal constructor(internal val device: IdentityDevice, 
     }
 
     internal fun retryLoad() { scope.launch { load() } }
+
+    internal fun invalidateRegistrationRequests() { generation++ }
 
     private suspend fun load() = lock.withLock {
         try {
@@ -119,7 +121,7 @@ class IdentitySession internal constructor(internal val device: IdentityDevice, 
         val currentGeneration = generation
         if (view.value.busy) return
         scope.launch { lock.withLock {
-            if (!usable || view.value.busy || currentGeneration != generation) return@withLock
+            if (!usable || saved.deletion?.status?.let { it != "not_found" } == true || view.value.busy || currentGeneration != generation) return@withLock
             publish(busy = true)
             try {
                 installation()
@@ -171,7 +173,7 @@ class IdentitySession internal constructor(internal val device: IdentityDevice, 
     internal fun verify(code: String) {
         val currentGeneration = generation
         scope.launch { lock.withLock {
-            if (!usable || currentGeneration != generation) return@withLock
+            if (!usable || saved.deletion?.status?.let { it != "not_found" } == true || currentGeneration != generation) return@withLock
             publish(busy = true)
             try {
                 require(Regex("[0-9]{6}").matches(code))
@@ -196,7 +198,7 @@ class IdentitySession internal constructor(internal val device: IdentityDevice, 
     }
 
     internal fun resumeVerification() { scope.launch { lock.withLock {
-        if (!usable) return@withLock
+        if (!usable || saved.deletion?.status?.let { it != "not_found" } == true) return@withLock
         try { finishVerification() } catch (_: Exception) { publish(problem = true) }
     } } }
 
@@ -213,6 +215,7 @@ class IdentitySession internal constructor(internal val device: IdentityDevice, 
         val key = keys.map { it.jsonObject }.single { it.text("kid") == header.text("kid") }
         val role = requireNotNull(saved.pending).role
         val account = response.text("account_key")
+        saved.deletion?.let { require(it.status == "not_found" && it.accountKey == account) }
         require(response.getValue("account_profile").jsonObject.text("holder_role") == role)
         validateReceipt(device, receipt, key, requireNotNull(saved.installation), account, role)
         val token = response.getValue("account_token").jsonObject

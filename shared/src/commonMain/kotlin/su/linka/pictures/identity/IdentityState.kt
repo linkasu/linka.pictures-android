@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package su.linka.pictures.identity
 
 import kotlinx.serialization.Serializable
@@ -8,7 +10,7 @@ internal data class IdentityView(val phase: RegistrationPhase = RegistrationPhas
     val resendAfter: String? = null, val retryAt: Long = 0, val problem: Boolean = false,
     val consent: String = "unknown", val consentPending: Boolean = false, val consentConflict: Boolean = false,
     val hasChallenge: Boolean = false, val registrationRevision: Long = 0, val resendAt: Long = 0,
-    val hasReceivedProof: Boolean = false)
+    val hasReceivedProof: Boolean = false, val deletionStatus: String? = null)
 
 @Serializable
 internal data class PendingChallenge(val body: String, val role: String, val nonce: String,
@@ -24,6 +26,11 @@ internal data class FrozenBatch(val id: String, val epoch: ULong, val body: Stri
     val nextRetryAt: Long = 0)
 
 @Serializable
+internal data class PendingDeletion(val requestId: String, val statusSecret: String,
+    val status: String = "unconfirmed", val requestedAt: String? = null, val completedAt: String? = null,
+    val accountKey: String = "")
+
+@Serializable
 internal data class IdentityState(val version: Int = 1, val bootstrapBody: String? = null,
     val installation: String? = null, val installationRefresh: String? = null,
     val nextBeginAt: Long = 0,
@@ -34,4 +41,6 @@ internal data class IdentityState(val version: Int = 1, val bootstrapBody: Strin
     val consentDesired: String = "unknown", val consentConflict: Boolean = false,
     val consentEpoch: ULong = 0u, val deliveryCompleted: Boolean = false,
     val metricsAccess: String? = null, val metricsExpires: String? = null,
-    val commands: List<ConsentCommand> = emptyList(), val batches: List<FrozenBatch> = emptyList())
+    val commands: List<ConsentCommand> = emptyList(), val batches: List<FrozenBatch> = emptyList(),
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val deletion: PendingDeletion? = null)

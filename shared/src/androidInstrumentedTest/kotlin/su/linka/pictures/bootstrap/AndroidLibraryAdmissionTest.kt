@@ -19,6 +19,7 @@ import su.linka.pictures.access.*
 import su.linka.pictures.application.*
 import su.linka.pictures.application.ports.*
 import su.linka.pictures.domain.*
+import su.linka.pictures.migration.*
 import su.linka.pictures.platform.capabilities.AndroidMediaInspectionPort
 import su.linka.pictures.platform.files.AndroidPlatformFilesPort
 import su.linka.pictures.storage.StorageRuntime
@@ -133,25 +134,25 @@ class AndroidLibraryAdmissionTest {
         } finally { rig.close() }
     }
 
-    @Test fun freshInstallSeedsSevenEntriesButDoesNotRecreateDeletedBoards() = runBlocking {
+    @Test fun freshInstallSeedsFiveEntriesButDoesNotRecreateDeletedBoards() = runBlocking {
         val rig = Rig()
         try {
             val first = rig.admission().open(false).ok()
-            assertEquals(7, first.report.total)
-            assertEquals(7, first.report.imported)
+            assertEquals(5, first.report.total)
+            assertEquals(5, first.report.imported)
             assertEquals(0, first.report.retained)
-            assertEquals(7, first.report.imported + first.report.retained)
+            assertEquals(5, first.report.imported + first.report.retained)
             val entries = first.runtime.library.listing.value.items
-            assertEquals(7, entries.size)
+            assertEquals(5, entries.size)
             assertTrue(entries.all { it.kind == LibraryEntryKind.BOARD })
-            assertEquals(7, entries.map { it.id }.toSet().size)
-            assertEquals(setOf("Цифры.linka", "цифры.linka"), entries.filter { it.name.equals("цифры.linka", true) }.map { it.name }.toSet())
+            assertEquals(5, entries.map { it.id }.toSet().size)
+            assertEquals(setOf("Общаюсь", "Еда и питьё", "Занятия", "Самочувствие", "Буквы"), entries.map { it.name }.toSet())
             val removed = entries.first()
             first.runtime.library.deleteBoard(removed.id, removed.revision, WritePermit(0) { OperationResult.Completed(Unit) }).ok()
             first.runtime.close()
             rig.forbidPreferences = true
             val next = rig.admission().open(false).ok()
-            assertEquals(6, next.runtime.library.listing.value.items.size)
+            assertEquals(4, next.runtime.library.listing.value.items.size)
             assertFalse(next.runtime.library.listing.value.items.any { it.id == removed.id })
             next.runtime.close()
         } finally { rig.close() }
@@ -169,6 +170,60 @@ class AndroidLibraryAdmissionTest {
             assertEquals(ProblemCode.INTEGRITY_FAILURE, result.problem.code)
             assertArrayEquals(before, database.readBytes())
             assertNull(admission.credentials.read().ok())
+        } finally { rig.close() }
+    }
+
+    @Test fun interruptedFiveAndPreChangeSevenBoardJournalsResumeTheirOriginalSource() = runBlocking {
+        for (total in listOf(5, 7)) {
+            val rig = Rig()
+            try {
+                val source: MigrationSource = if (total == 7) BundledMigrationSource(rig.context.assets) else StarterMigrationSource()
+                val initial = inventory(source, LegacyUpgradeSettings(emptyMap(), false))
+                val root = rig.context.filesDir.path.toPath() / "pokazhi-v1"
+                rig.fs.createDirectories(root)
+                val receipts = AdmissionFiles(root, rig.fs, rig.ids)
+                receipts.write("journal", AdmissionRecord(migrationId = "resume-$total", sourceDigest = initial.digest,
+                    phase = MigrationPhase.INVENTORY, total = total, sourceKind = MigrationSourceKind.BUNDLED))
+                class Termination : Error()
+                val fault = object : ForwardingFileSystem(rig.fs) {
+                    override fun atomicMove(source: Path, target: Path) {
+                        super.atomicMove(source, target)
+                        if (target.name == "journal" && receipts.read("journal")?.imported == 1) throw Termination()
+                    }
+                }
+                try { rig.admission(fault).open(true); fail("Expected interruption after the first board") }
+                catch (_: Termination) { }
+                assertEquals(1, receipts.read("journal")!!.imported)
+                assertFalse(rig.fs.exists(root / "active"))
+                val opened = rig.admission().open(true).ok()
+                assertEquals(total, opened.report.total)
+                assertEquals(total, opened.report.imported)
+                assertEquals(0, opened.report.retained)
+                assertEquals(initial.entries.map { it.name }.toSet(), opened.runtime.library.listing.value.items.map { it.name }.toSet())
+                opened.runtime.close()
+                // A stale unknown journal must not override a confirmed active library.
+                rig.fs.write(root / "journal") { writeUtf8("corrupt stale journal") }
+                rig.forbidPreferences = true
+                val reopened = rig.admission().open(false).ok()
+                assertEquals(total, reopened.runtime.library.listing.value.items.size)
+                reopened.runtime.close()
+            } finally { rig.close() }
+        }
+    }
+
+    @Test fun unknownBundledJournalTotalIsNotReinterpretedAsFreshStarterData() = runBlocking {
+        val rig = Rig()
+        try {
+            val root = rig.context.filesDir.path.toPath() / "pokazhi-v1"
+            rig.fs.createDirectories(root)
+            AdmissionFiles(root, rig.fs, rig.ids).write("journal", AdmissionRecord(migrationId = "unknown-source",
+                sourceDigest = "0".repeat(64), phase = MigrationPhase.INVENTORY, total = 6, sourceKind = MigrationSourceKind.BUNDLED))
+            val before = rig.fs.read(root / "journal") { readByteArray() }
+            val failure = rig.admission().open(true) as OperationResult.Failed
+            assertEquals(ProblemCode.CONFLICT, failure.problem.code)
+            assertArrayEquals(before, rig.fs.read(root / "journal") { readByteArray() })
+            assertFalse(rig.fs.exists(root / "active"))
+            assertFalse(rig.fs.exists(root / "libraries"))
         } finally { rig.close() }
     }
 

@@ -47,10 +47,6 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     onLibraryReplaced: (Long) -> Unit,
     onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null, identity: IdentitySession) {
     val registration by identity.view.collectAsState()
-    if (registration.phase != RegistrationPhase.REGISTERED) {
-        RegistrationScreen(identity)
-        return
-    }
     val newBoardName = stringResource(Res.string.new_board)
     val textScaleIsNotSupportedLabel = stringResource(Res.string.text_scale_is_not_supported)
     val couldNotOpenTheBoardReturnToLabel = stringResource(Res.string.could_not_open_the_board_return_to)
@@ -194,7 +190,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
         if (started && route == null && boardLayout == null) navigation.open(ProductPage.LIBRARY)
     }
     LinkaTheme(dark, settings.highContrast, settings.textScale) {
-        if (registration.consent == "unknown") ProductDialog(stringResource(Res.string.telemetry_title), {}, actions = {
+        if (registration.phase == RegistrationPhase.REGISTERED && registration.deletionStatus == null && registration.consent == "unknown") ProductDialog(stringResource(Res.string.telemetry_title), {}, actions = {
             Action(stringResource(Res.string.telemetry_off)) { identity.telemetry.setConsent(false) }
             Action(stringResource(Res.string.telemetry_on)) { identity.telemetry.setConsent(true) }
         }) { Text(stringResource(Res.string.telemetry_explanation)) }

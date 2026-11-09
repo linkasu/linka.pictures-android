@@ -38,7 +38,7 @@ internal class ProductTelemetry(private val identity: IdentitySession) {
             catch (_: Exception) { identity.publish(problem = true); return }
         identity.scope.launch(failures) {
             identity.lock.withLock {
-                if (!identity.usable || !identity.registered) return@withLock
+                if (!identity.usable || !identity.registered || identity.saved.deletion != null) return@withLock
                 try {
                     val state = identity.saved
                     val command = ConsentCommand(requestId, if (allowed) "allowed" else "denied", recordedAt)
@@ -61,7 +61,7 @@ internal class ProductTelemetry(private val identity: IdentitySession) {
             repeat(4) { attempt ->
                 try {
                     val more = identity.lock.withLock {
-                        if (!identity.usable || !identity.registered) return@withLock false
+                        if (!identity.usable || !identity.registered || identity.saved.deletion != null) return@withLock false
                         if (identity.saved.consentConflict) return@withLock false
                         val generation = intentGeneration
                         var command = identity.saved.commands.firstOrNull()
@@ -201,7 +201,7 @@ internal class ProductTelemetry(private val identity: IdentitySession) {
     internal fun transfer(import: Boolean, completed: Boolean) = enqueue("outcome", "transfer_completed",
         mapOf("result" to if (completed) "completed" else "failed", "source" to if (import) "import" else "export"))
 
-    private fun canCollect() = !stopped && activeEpoch > 0u && identity.usable && identity.registered && sessionId != null &&
+    private fun canCollect() = !stopped && activeEpoch > 0u && identity.usable && identity.registered && identity.saved.deletion == null && sessionId != null &&
         !identity.saved.metricsAccess.isNullOrBlank() && identity.saved.metricsExpires?.let { timeMillis(it) > device.nowMillis() } == true
 
     private fun enqueue(stream: String, kind: String, fields: Map<String, String>) {

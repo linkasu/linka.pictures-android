@@ -25,14 +25,18 @@ import su.linka.pictures.platform.audio.*
 import su.linka.pictures.platform.capabilities.*
 import su.linka.pictures.platform.files.IosPlatformFilesPort
 import su.linka.pictures.storage.StorageRuntime
+import su.linka.pictures.storage.attempt
 import su.linka.pictures.ui.images.ThumbnailLoader
 import org.jetbrains.compose.resources.getString
 import su.linka.pictures.resources.Res
 import su.linka.pictures.resources.ios_owner_verification_reason
 import su.linka.pictures.identity.*
+import su.linka.pictures.migration.*
+import su.linka.pictures.portability.linka.LinkaCodec
 
 internal sealed interface RootState {
     data object Loading : RootState
+    data object StartupResume : RootState
     data class Ready(val graph: IosProductRoot.Graph) : RootState
     data class Failed(val problem: Problem) : RootState
 }
@@ -56,6 +60,7 @@ internal class IosProductRoot {
     private val recovery = RootRecovery()
     private var storage: StorageRuntime? = null
     private var temporaryRoot: Path? = null
+    private var rawFiles: Pair<Path, PlatformFilesPort>? = null
     private var access: LocalAssistantAccess? = null
     private var files: OwnedFiles? = null
     private var audio: AudioPort? = null
@@ -128,11 +133,22 @@ internal class IosProductRoot {
         observe(UIWindowDidBecomeVisibleNotification) { updateWindows(); notifyForeground() }
         observe(UIApplicationWillTerminateNotification) { close() }
         scope.launch {
-            try { open() }
-            catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: RootFailure) { fail(failure.problem) }
-            catch (_: Throwable) { fail(Problem(ProblemCode.IO_FAILURE)) }
+            start(false)
         }
+    }
+
+    fun resumeStartup() {
+        check(NSThread.isMainThread)
+        if (closed || mutableState.value != RootState.StartupResume) return
+        mutableState.value = RootState.Loading
+        scope.launch { start(true) }
+    }
+
+    private suspend fun start(resume: Boolean) {
+        try { open(resume) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: RootFailure) { fail(failure.problem) }
+        catch (_: Throwable) { fail(Problem(ProblemCode.IO_FAILURE)) }
     }
 
     fun openWindow(controller: UIViewController): Window {
@@ -228,25 +244,63 @@ internal class IosProductRoot {
         }
     }
 
-    private suspend fun open() {
+    private suspend fun open(resume: Boolean) {
         val fs = FileSystem.SYSTEM
         val paths = withContext(Dispatchers.IO) {
             val application = directory(NSApplicationSupportDirectory) / "LINKa"
             fs.createDirectories(application)
             val canonical = fs.canonicalize(application)
-            val root = canonical / "library-v1"
-            val existed = fs.exists(root)
-            val cacheParent = directory(NSCachesDirectory) / "LINKa"
-            fs.createDirectories(cacheParent)
-            val cache = fs.canonicalize(cacheParent) / ids.next()
-            fs.createDirectory(cache, mustCreate = true)
-            temporaryRoot = cache
-            Paths(root, cache, existed)
+            val root = startupRoot(canonical, fs)
+            val cache = temporaryRoot ?: run {
+                val cacheParent = directory(NSCachesDirectory) / "LINKa"
+                fs.createDirectories(cacheParent)
+                val next = fs.canonicalize(cacheParent) / ids.next()
+                fs.createDirectory(next, mustCreate = true)
+                temporaryRoot = next
+                next
+            }
+            Paths(root, cache, root == canonical / "library-v1")
         }
         val credentials = KeychainCredentialStore()
-        admitRootCredentials(credentials, paths.existed) {
+        val guard: CommitGuard = {
             if (job.isActive && !closed) OperationResult.Completed(Unit) else OperationResult.Cancelled
-        }.required()
+        }
+        val store: StorageRuntime
+        val nativeFiles: PlatformFilesPort
+        if (paths.direct) {
+            admitRootCredentials(credentials, true, guard).required()
+            // Assignment must survive cancellation of startup: cleanup must see every opened writer.
+            store = withContext(NonCancellable) {
+                StorageRuntime.open(paths.root, fs, BundledSQLiteDriver()).required().also { storage = it }
+            }
+            nativeFiles = platformFiles(paths.root, paths.temporary, fs)
+        } else {
+            val receipts = AdmissionFiles(paths.root, fs, ids)
+            val (active, journal) = withContext(Dispatchers.IO) { attempt {
+                val active = receipts.read("active")
+                active to if (active == null) receipts.read("journal") else null
+            }.required() }
+            if (startupNeedsResume(active, journal) && !resume) {
+                mutableState.value = RootState.StartupResume
+                return
+            }
+            val importer = LegacyCredentialImporter(credentials)
+            val upgrade = LegacyUpgrade(paths.root, StarterMigrationSource(), fs, BundledSQLiteDriver(),
+                { generation -> platformFiles(generation, paths.temporary, fs) }, ids,
+                readSettings = { LegacyUpgradeSettings(emptyMap(), false) },
+                prepareCredentials = { importer.prepare(false, null, guard) },
+                validateCredentials = importer::validate,
+                readBoard = { file, name, media, registered ->
+                    val decoder = IosAudioDecoder(registered)
+                    LinkaCodec(media, registered, IosMediaInspectionPort(decoder::inspect), ids).readLegacyUpgrade(file, name)
+                })
+            val opened = withContext(NonCancellable) {
+                upgrade.open(resume).required().also { storage = it.runtime }
+            }
+            store = opened.runtime
+            nativeFiles = opened.files
+        }
+        currentCoroutineContext().ensureActive()
         val verification = IosDeviceOwnerVerifier(getString(Res.string.ios_owner_verification_reason),
             { request, owner -> access?.isVerificationCurrent(request, owner) == true },
             ::ownerForeground, { access?.suspendForSystemPrompt() }, scope)
@@ -254,19 +308,6 @@ internal class IosProductRoot {
         val assistant = LocalAssistantAccess.open(credentials, verification, ids).required()
         access = assistant
         assistant.refreshPrerequisites()
-        // Assignment must survive cancellation of startup: cleanup must see every opened writer.
-        val store = withContext(NonCancellable) {
-            StorageRuntime.open(paths.root, fs, BundledSQLiteDriver()).required().also { storage = it }
-        }
-        currentCoroutineContext().ensureActive()
-        val nativeFiles = IosPlatformFilesPort(paths.temporary, paths.root / "media", fs,
-            { owner ->
-                if (!ownerForeground(owner)) null else {
-                    val controller = owners.window(owner)?.let { windows[it]?.controller }
-                    if (controller != null && controller.presentedViewController == null) assistant.suspendForSystemPrompt()
-                    controller
-                }
-            }, { owner -> recovery.denied() == null && owners.active(owner) }, scope)
         val ownedFiles = OwnedFiles(nativeFiles, owners)
         files = ownedFiles
         val decoder = IosAudioDecoder(ownedFiles)
@@ -297,6 +338,23 @@ internal class IosProductRoot {
             catch (failure: RootFailure) { fail(failure.problem) }
             catch (_: Throwable) { fail(Problem(ProblemCode.IO_FAILURE)) }
         }
+    }
+
+    private fun platformFiles(root: Path, temporary: Path, fs: FileSystem): PlatformFilesPort {
+        rawFiles?.let {
+            if (it.first != root) throw RootFailure(Problem(ProblemCode.CONFLICT))
+            return it.second
+        }
+        return IosPlatformFilesPort(temporary, root / "media", fs,
+            { owner ->
+                val assistant = access
+                if (assistant == null || !ownerForeground(owner)) null else {
+                    val controller = owners.window(owner)?.let { windows[it]?.controller }
+                    if (controller != null && controller.presentedViewController == null) assistant.suspendForSystemPrompt()
+                    controller
+                }
+            }, { owner -> recovery.denied() == null && owners.active(owner) }, scope)
+            .also { rawFiles = root to it }
     }
 
     private fun createSession(store: StorageRuntime, port: AudioPort) {
@@ -429,7 +487,25 @@ internal class IosProductRoot {
         }
     }
 
-    private data class Paths(val root: Path, val temporary: Path, val existed: Boolean)
+    private data class Paths(val root: Path, val temporary: Path, val direct: Boolean)
+
+    internal companion object {
+        fun startupRoot(application: Path, fs: FileSystem): Path {
+            val direct = application / "library-v1"
+            val starter = application / "starter-v1"
+            val existing = fs.exists(direct)
+            if (existing && fs.exists(starter) && fs.list(starter).isNotEmpty()) throw RootFailure(Problem(ProblemCode.CONFLICT))
+            return if (existing) direct else starter
+        }
+
+        fun startupNeedsResume(active: AdmissionRecord?, journal: AdmissionRecord?): Boolean {
+            if (active != null || journal == null) return false
+            if (journal.phase == MigrationPhase.UNCONFIRMED) throw RootFailure(Problem(ProblemCode.COMMIT_OUTCOME_UNKNOWN))
+            if (journal.sourceKind != MigrationSourceKind.BUNDLED || journal.total != 5 || journal.phase == MigrationPhase.COMMITTED)
+                throw RootFailure(Problem(ProblemCode.CONFLICT))
+            return true
+        }
+    }
     private fun directory(kind: NSSearchPathDirectory): Path =
         (NSSearchPathForDirectoriesInDomains(kind, NSUserDomainMask, true).firstOrNull() as? String
             ?: throw RootFailure(Problem(ProblemCode.IO_FAILURE))).toPath(normalize = true)

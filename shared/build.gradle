@@ -203,10 +203,12 @@ kotlin {
 
 android {
     namespace 'su.linka.pictures.shared'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         minSdk 21
+        // Library-only instrumentation host retains its existing compatibility behavior;
+        // the shipping application's targetSdk is 36 in app/build.gradle.
         targetSdk 34
         testInstrumentationRunner 'su.linka.pictures.bootstrap.LibraryTestRunner'
     }

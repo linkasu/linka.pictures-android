@@ -2,7 +2,7 @@
 <Scheme LastUpgradeVersion="2720" version="1.3">
   <BuildAction parallelizeBuildables="NO" buildImplicitDependencies="YES">
     <BuildActionEntries>
-      <BuildActionEntry buildForTesting="NO" buildForRunning="YES" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">
+      <BuildActionEntry buildForTesting="NO" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
         <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="B00000000000000000000005" BuildableName="LinkaPokazhi.app" BlueprintName="LinkaPokazhi" ReferencedContainer="container:LinkaPokazhi.xcodeproj" />
       </BuildActionEntry>
     </BuildActionEntries>
@@ -12,4 +12,5 @@
       <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="B00000000000000000000005" BuildableName="LinkaPokazhi.app" BlueprintName="LinkaPokazhi" ReferencedContainer="container:LinkaPokazhi.xcodeproj" />
     </BuildableProductRunnable>
   </LaunchAction>
+  <ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="YES" />
 </Scheme>
