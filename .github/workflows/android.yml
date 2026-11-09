@@ -161,14 +161,7 @@ jobs:
             --num-flaky-test-attempts=0 \
             --timeout 15m
 
-      - name: Run Firebase Robo exploration of the shared UI
-        run: |
-          gcloud firebase test android run \
-            --type robo \
-            --app artifacts/debug/app-debug.apk \
-            --device model=MediumPhone_ps16k.arm,version=36,locale=en,orientation=portrait \
-            --num-flaky-test-attempts=0 \
-            --timeout 5m
+      # Unscripted Robo could submit signup/OTP to production Identity; use deterministic tests only.
   bundle-release:
     runs-on: ubuntu-latest
     needs: [build, firebase-test]

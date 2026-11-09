@@ -75,13 +75,14 @@ def check():
     assert '--test-targets "class su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest"' in jobs['firebase-test']
     assert '--test-targets "class su.linka.pictures.activity.DevelopmentStartupTest"' in jobs['firebase-test']
     cloud_runs = jobs['firebase-test'].split('gcloud firebase test android run')[1:]
-    assert len(cloud_runs) == 3, 'One bounded execution per approved lane'
-    for run, minutes in zip(cloud_runs, (10, 15, 5)):
+    assert len(cloud_runs) == 2, 'One bounded execution per approved deterministic lane'
+    assert '--type robo' not in workflow, 'Unscripted exploration must not submit production signup/OTP'
+    for run, minutes in zip(cloud_runs, (10, 15)):
         assert f'--timeout {minutes}m' in run and '--num-flaky-test-attempts=0' in run
         assert run.count('--timeout ') == 1 and run.count('--num-flaky-test-attempts') == 1
         assert run.count('--device ') == 1 and '--num-shards' not in run and '--device-ids' not in run
     assert '--environment-variables expected_page_size=16384' in cloud_runs[0]
-    assert all('--device model=MediumPhone_ps16k.arm,version=36,' in cloud_runs[i] for i in (0, 2))
+    assert '--device model=MediumPhone_ps16k.arm,version=36,' in cloud_runs[0]
     assert '--device model=redfin,version=30,' in cloud_runs[1]
     assert re.search(r'- name: Clean up keystore\n        if: always\(\)\n'
                      r'        run: rm -f -- "\$\{GITHUB_WORKSPACE\}/ci-release\.jks"', release)
