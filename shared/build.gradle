@@ -81,6 +81,10 @@ kotlin {
             isStatic = true
         }
         if (target.name == 'iosSimulatorArm64') {
+            tasks.withType(org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest).configureEach {
+                // Native file coordination and UTType need the booted Simulator's system services.
+                standalone.set(false)
+            }
             def appHostTests = target.compilations.create('appHostTest') {
                 associateWith(target.compilations.main)
                 defaultSourceSet.kotlin.srcDir('src/iosAppHostTest/kotlin')
