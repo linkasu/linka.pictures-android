@@ -1,0 +1,53 @@
+{
+  "scope": "Session-only dark theme and six-type unfiltered native audit; restore light throughUI, no SaveSettings/prefs/data reset",
+  "cases": [
+    {
+      "name": "dark-theme-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 58.446,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/dark-theme-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "dark-theme-phone-dark-theme-original-light-restored.png",
+          "sha256": "719aac0e25435605d9398381f55c888b0aedf64b9e2f14df307bc50776d73dfa"
+        },
+        {
+          "file": "dark-theme-phone-dark-theme-board-audit.png",
+          "sha256": "afe40439110c57b44a7d607af9278b6995a914c4977603f9ea121ada9b711190"
+        },
+        {
+          "file": "dark-theme-phone-dark-theme-original-light.png",
+          "sha256": "e422689fc082803f3e1e3d7b1f9fc789bec9212d6fcd18bf95387d97a89ae6bc"
+        }
+      ]
+    },
+    {
+      "name": "dark-theme-ipad",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 55.305,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/dark-theme-ipad.xcresult",
+      "screenshots": [
+        {
+          "file": "dark-theme-ipad-dark-theme-original-light-restored.png",
+          "sha256": "4e5ed3973bd0a34973a497f7cc781537053c52f7aefec652482abb300900c444"
+        },
+        {
+          "file": "dark-theme-ipad-dark-theme-board-audit.png",
+          "sha256": "66de14a9927bf08f7ba5f0894daa0c06231577f2380c2d627b28e704db1546ed"
+        },
+        {
+          "file": "dark-theme-ipad-dark-theme-original-light.png",
+          "sha256": "9f8f329f78232088d6a8f476ac4f199a3cff7c44db91398265dc495df632093d"
+        }
+      ]
+    }
+  ],
+  "persisted_settings_changed": false,
+  "message_and_nine_cards_preserved": true,
+  "physical_acceptance": false,
+  "whole_u14_approved": false
+}

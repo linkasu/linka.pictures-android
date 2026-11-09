@@ -1,0 +1,96 @@
+{
+  "date": "2026-11-06",
+  "verdict": "PASS_BOUNDED_RESUMED_NATIVE_SCENARIO",
+  "scope": "Resume the SAME preserved synthetic draft on the parent-installed fixed runtime; no second board created",
+  "runtime": {
+    "package": "su.linka.pictures.development",
+    "apkSha256ProvidedByParent": "bb73c51df6082c553244a1dc7e822b6ba8d0997f79adce74ed72a9baabd7acf3",
+    "testApkSha256ProvidedByParent": "172dd98b0e279482909aa43451d7d11f11baf934520a24dc2d3da65261b9d381",
+    "hashesIndependentlyRecomputedInLane": false,
+    "sourceOfProof": "Installed runtime, not compilation of this older worktree",
+    "parentReportedFixCommits": ["12d938f", "83b2af1", "b243476", "4f"]
+  },
+  "device": {
+    "serial": "emulator-5556",
+    "verifiedAvdName": "linka_audit_tablet",
+    "verifiedApi": "35",
+    "identityMethod": "ADB MCP list_devices followed by read-only getprop through MCP",
+    "exclusiveLeaseReleased": true,
+    "otherDevicesOperated": false
+  },
+  "stages": [
+    {
+      "stage": "Resume corrected title",
+      "verdict": "PASS",
+      "observations": "Initial target-app dialog hierarchy already contained exact LINKa-EDITOR-6F9C. Did not type title again. Back hid IME; tapped Готово once. Native editor heading then exactly LINKa-EDITOR-6F9C."
+    },
+    {
+      "stage": "Compact grid inputs and explicit SaveGrid",
+      "verdict": "PASS",
+      "observations": "Selected rows using native Ctrl+A (keycombination 113 29), typed 2 once, hid IME, and verified rows 2 / columns 3. Repeated once for columns, verified 2 / 2. Tapped ИЗМЕНИТЬ РАЗМЕР СЕТКИ once. Accessibility exposed exactly four create-card positions: (1,1), (1,2), (2,1), (2,2)."
+    },
+    {
+      "stage": "Native content card input, speech NONE, and built-in image preparation",
+      "verdict": "PASS",
+      "observations": "Tapped own empty cell (1,1). Standard content-card radio was selected. One native type_text call entered NATIVE-CARD-35; after hiding IME hierarchy showed the exact label. Opened Локальный TTS ▾ and chose Без звука once; hierarchy confirmed Без звука ▾. Tapped Из текста once only after exact label verification. Hierarchy exposed Изображение карточки and Убрать изображение; real PNG visually confirmed the generated NATIVE-CARD-35 thumbnail. No preview, synthesis, recording, microphone, picker, or network action."
+    },
+    {
+      "stage": "SaveCard draft acceptance boundary",
+      "verdict": "PASS_VISIBLE_BOUNDARY",
+      "observations": "Tapped card Готово once. Modal closed and editor remained foreground with exact board heading, grid 2 / 2, NATIVE-CARD-35 at (1,1), and three create-card positions. Separate Сохранить доску action remained available. No direct storage inspection was used; publication absence before SaveBoard is not independently DB-asserted."
+    },
+    {
+      "stage": "SaveBoard and reopen",
+      "verdict": "PASS",
+      "observations": "Tapped Сохранить доску once. Returned to library with own LINKa-EDITOR-6F9C tile beside untouched ХОЧУ. Opened own tile without selecting a communication card. Heading and NATIVE-CARD-35 accessibility label matched; actual PNG showed generated image and four grid cells."
+    },
+    {
+      "stage": "Rename the same board",
+      "verdict": "PASS",
+      "observations": "Returned via Открыть библиотеку. Opened only own board menu, selected Переименовать, replaced native input once with LINKa-EDITOR-6F9C-SAVED using Ctrl+A and type_text. Verified exact input; tapped Сохранить название «LINKa-EDITOR-6F9C» once. Library tile and own contextual-menu label showed the exact new name."
+    },
+    {
+      "stage": "Cold development-app relaunch",
+      "verdict": "PASS",
+      "observations": "After successful publication/rename and no open form/media, force-stopped and started ONLY su.linka.pictures.development via MCP once. Library retained renamed tile. Reopened own board: exact renamed heading, NATIVE-CARD-35 accessibility label, actual generated image, and 2 by 2 layout persisted in real PNG."
+    },
+    {
+      "stage": "Existing phrase and fixture preservation",
+      "verdict": "PASS_OBSERVED",
+      "observations": "Own-board hierarchy before and after cold launch explicitly exposed Общее сообщение: ХОЧУ КУШАТЬ. Then opened existing ХОЧУ board read-only from library. Hierarchy again exposed that exact common message and nine card labels: КУШАТЬ, ПИТЬ, СПАТЬ, КУПАТЬСЯ, ХОЧУ, ПИСАТЬ КАКАТЬ, ГУЛЯТЬ, ИГРАТЬ, ОБНИМАТЬСЯ. Captured actual PNG; no communication card or message control was tapped. Returned to library."
+    },
+    {
+      "stage": "Draft leftovers inspection",
+      "verdict": "PASS_READ_ONLY",
+      "observations": "Opened Сохранённые черновики through library menu. Complete visible non-scrolling dialog listed only ХОЧУ · версия 6 and ХОЧУ · версия 3, plus their continue/delete actions. No own LINKa editor draft remained listed. Did not resume, delete, or modify either existing draft; tapped Закрыть."
+    }
+  ],
+  "leftover": {
+    "publishedOwnBoardTitle": "LINKa-EDITOR-6F9C-SAVED",
+    "ownCardLabel": "NATIVE-CARD-35",
+    "ownCardPosition": [1, 1],
+    "ownBoardGrid": [2, 2],
+    "ownCardImage": "Built-in Из текста image, visibly persisted after cold relaunch",
+    "ownCardSpeechChoiceSelected": "NONE / Без звука",
+    "ownDraftListedAtEnd": false,
+    "existingDraftsObservedAndUntouched": ["ХОЧУ · версия 6", "ХОЧУ · версия 3"],
+    "currentMessageActuallyObserved": "ХОЧУ КУШАТЬ",
+    "finalForeground": "Ваши наборы library with ХОЧУ and LINKa-EDITOR-6F9C-SAVED tiles; no modal or IME",
+    "newBoardCreatedInResume": false
+  },
+  "screenshots": [
+    {"file": "5556-postfix-grid-2x2.png", "sha256": "4991bd631d0f386e505a5b23b0907b27c57fe0cbced2262c9b8ff3517b0559ae"},
+    {"file": "5556-postfix-native-card-image.png", "sha256": "a835da1e7969bbb53e4bcdd2a700ab1d0605e22f16a0720244420aa35caf6b49"},
+    {"file": "5556-postfix-savecard-editor.png", "sha256": "4bfad9bde2e1d4b8cfa72859bbf45d5732f373bf5862bc085c4ad7e64e48dcea"},
+    {"file": "5556-postfix-published-board.png", "sha256": "b18ae6431d6e5aafe945db196b7efa26b0d8ca917932e2f657a0007c81157b69"},
+    {"file": "5556-postfix-renamed-library.png", "sha256": "fde492f2adc00c907eef892fe11cf591664e35c504274d07a3e44b30d8d76153"},
+    {"file": "5556-postfix-cold-reopen.png", "sha256": "afe9c8615901339b4befbf9ea2e21317543328cf8418805e97a8d725d5d11c35"},
+    {"file": "5556-postfix-preserved-phrase-fixture.png", "sha256": "289317ba83c9aca1520516a806568a41dc986e36fdf437e05618561b897fef2d"},
+    {"file": "5556-postfix-draft-leftovers.png", "sha256": "4d8dde989480d0dc7a9a391012094f4ec653dbfa665477a47874ecd8a8582b8d"}
+  ],
+  "evidenceDirectory": "docs/development/evidence/editor-native-2026-11-06/",
+  "priorRedEvidence": "5556-native-editor-report.json and 5556-board-title-input-mismatch.png left unchanged",
+  "notChecked": ["Optional existing own-card edit/cancel", "Independent canonical storage state before SaveBoard", "Contextual helper unlock was not requested by resumed foreground UI", "Physical devices", "Full release or U1.4 acceptance"],
+  "errorsObserved": [],
+  "safety": "Only native app taps, native keyboard text/key events, hierarchy, screenshots, identity properties, and one authorized development-app stop/start. No source/config/test edits, builds, installs, permission acceptance, global settings changes, backend/database/preference calls, data deletion, draft discard, playback, network action, or operation on another device/package. No repeated stage attempts."
+}

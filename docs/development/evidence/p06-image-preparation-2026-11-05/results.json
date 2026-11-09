@@ -1,0 +1,284 @@
+{
+  "base": "5c41929bd9d150161b80b1bc032b45282a182e43",
+  "freeze": {
+    "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-image-c61ce9fc-cf6a-4842-8e2c-2b414897a8cb/frozen-image-test.apk",
+    "sha256": "3474531b710bc8f781da086029d15c6b4d36f570e227dc4629820113cb0c0604",
+    "bytes": 16047420,
+    "package": "su.linka.pictures.shared.test",
+    "targetPackage": "su.linka.pictures.shared.test",
+    "minSdk": 21,
+    "targetSdk": 34,
+    "total_compiled": 52,
+    "focused": 15
+  },
+  "devices": [
+    {
+      "serial": "emulator-5554",
+      "avd": "linka_platform_probe_api21_arm64",
+      "sdk": 21,
+      "abi": "arm64-v8a",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "assumptions": 0,
+      "seconds": 0.265,
+      "sha256": "cb6d4b4b834c43b6e9265c12a77b249a44675b6f47a26550c5f251f6b55521ee",
+      "results": [
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "pngEncodeWriteAndCloseErrorsNeverReturnPartialCompletedFile",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "1"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "emptyAndWhitespaceRequestsRemainExplicitValidImagesAndArgbEndpointsAreAllowed",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "2"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "deliveredImageRemainsCallerOwnedAfterSubsequentCancellationAndPreparation",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "3"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "discardFailureDoesNotMaskPrimaryValidationFailureCancelOrUnknown",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "4"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancelledCallerDispatchAfterValidatedIoResultStillDiscardsTemp",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "5"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "malformedUtf16NulAndOutOfRangeColoursAreRefusedBeforeCreatingMedia",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "6"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "streamingCopyBudgetUsesBoundedBuffersAndClosesControlledStreams",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "7"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "unicodeAndExplicitSpacesWrapWithoutTextChangesShrinkOrEllipsisAndRenderActualPng",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "8"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "nonemptyFactoryResultsAndSourceAliasAreNotOverwrittenOrDiscarded",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "9"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "lateInspectionResultAfterCancellationDoesNotTransferOwnedTemp",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "10"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "invalidSourceIsNotCopiedOrDeleted",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "11"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "textLengthAndComputedHeightLimitsFailWithoutTruncationOrFileCreation",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "12"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "readOnlyPngAndExifJpegAreCopiedExactlyWithoutReencodingOrSourceMutation",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "13"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "cancellationDuringCopyClosesBothHandlesAndKeepsOriginal",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "14"
+        },
+        {
+          "numtests": "15",
+          "stream": ".",
+          "id": "AndroidJUnitRunner",
+          "test": "sourceSinkReadWriteAndCloseFailuresCloseAllHandlesAndDiscardOnlyOutput",
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "15"
+        }
+      ]
+    },
+    {
+      "serial": "emulator-5556",
+      "avd": "linka_audit_tablet",
+      "sdk": 35,
+      "abi": "arm64-v8a",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "assumptions": 0,
+      "seconds": 0.336,
+      "sha256": "eaf3ae6368dd708c51540b2b1c3e94ead3f925e4cee924334dd2c6baf1cc2dff",
+      "results": [
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "1",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "pngEncodeWriteAndCloseErrorsNeverReturnPartialCompletedFile"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "2",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "emptyAndWhitespaceRequestsRemainExplicitValidImagesAndArgbEndpointsAreAllowed"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "3",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "deliveredImageRemainsCallerOwnedAfterSubsequentCancellationAndPreparation"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "4",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "discardFailureDoesNotMaskPrimaryValidationFailureCancelOrUnknown"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "5",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "cancelledCallerDispatchAfterValidatedIoResultStillDiscardsTemp"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "6",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "malformedUtf16NulAndOutOfRangeColoursAreRefusedBeforeCreatingMedia"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "7",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "streamingCopyBudgetUsesBoundedBuffersAndClosesControlledStreams"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "8",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "unicodeAndExplicitSpacesWrapWithoutTextChangesShrinkOrEllipsisAndRenderActualPng"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "9",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "nonemptyFactoryResultsAndSourceAliasAreNotOverwrittenOrDiscarded"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "10",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "lateInspectionResultAfterCancellationDoesNotTransferOwnedTemp"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "11",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "invalidSourceIsNotCopiedOrDeleted"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "12",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "textLengthAndComputedHeightLimitsFailWithoutTruncationOrFileCreation"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "13",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "readOnlyPngAndExifJpegAreCopiedExactlyWithoutReencodingOrSourceMutation"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "14",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "cancellationDuringCopyClosesBothHandlesAndKeepsOriginal"
+        },
+        {
+          "class": "su.linka.pictures.platform.capabilities.AndroidImagePreparationPortTest",
+          "current": "15",
+          "id": "AndroidJUnitRunner",
+          "numtests": "15",
+          "stream": ".",
+          "test": "sourceSinkReadWriteAndCloseFailuresCloseAllHandlesAndDiscardOnlyOutput"
+        }
+      ]
+    }
+  ]
+}

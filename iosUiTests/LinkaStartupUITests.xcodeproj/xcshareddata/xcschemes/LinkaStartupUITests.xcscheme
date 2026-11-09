@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="2720" version="1.7">
+   <BuildAction parallelizeBuildables="NO" buildImplicitDependencies="NO">
+      <BuildActionEntries>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="NO">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="D00000000000000000000005" BuildableName="LinkaStartupUITests.xctest" BlueprintName="LinkaStartupUITests" ReferencedContainer="container:LinkaStartupUITests.xcodeproj"/>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="NO">
+      <Testables>
+         <TestableReference skipped="NO" parallelizable="NO">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="D00000000000000000000005" BuildableName="LinkaStartupUITests.xctest" BlueprintName="LinkaStartupUITests" ReferencedContainer="container:LinkaStartupUITests.xcodeproj"/>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+</Scheme>

@@ -1,0 +1,19 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-dref-ab0055fe-ba75-46ee-9ae1-be3a85ad4481/frozen-dref-test.apk",
+  "sha256": "1c9d835cdcd98ffedcd853ded375445c659f8206c35d68599dec30c7d4f0faae",
+  "package": "su.linka.pictures.shared.test",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "counts": {
+    "PasswordCryptoAndroidTest": 2,
+    "AndroidMediaInspectionPortTest": 9,
+    "ThreeGpDataReferencesTest": 9,
+    "DecodedFloatPcmTest": 4,
+    "LegacyCodecDecodeTest": 5,
+    "RawAmrPacketsTest": 6,
+    "AndroidImagePreparationPortTest": 15,
+    "PcmWaveFileTest": 2,
+    "AndroidAudioBackendTest": 11
+  },
+  "total": 63
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.005">
+  <properties/>
+  <testcase name="platformMinimumStillLeavesPixelsAndCaptionInsideTheRealMeasurePolicy[jvm]" classname="su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest" time="0.004"/>
+  <testcase name="unboundedHeightStillRespectsTheParentMinimum[jvm]" classname="su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest" time="0.0"/>
+  <testcase name="loadingPixelsCannotChangeParentGeometry[jvm]" classname="su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest" time="0.001"/>
+  <testcase name="unboundedLegacyCallerGetsAnImageSquareWithoutTheOld160Cap[jvm]" classname="su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest" time="0.0"/>
+  <testcase name="boundedGridOwnsBothDimensionsAndWrappedCaptionBorrowsImageSpace[jvm]" classname="su.linka.pictures.ui.components.CommunicationCardMeasurePolicyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-07",
+  "scope": "One resumed native full backup using app-proposed default filename; evidence-only",
+  "device": {"serial": "emulator-5556", "avdObserved": "linka_audit_tablet", "sdkObserved": "35", "package": "su.linka.pictures.development"},
+  "apk": {"sha256ParentVerified": "d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558", "installedOrRebootedByThisLane": false},
+  "backup": {
+    "outcome": "TERMINAL_SUCCESS_STRICT_DEFAULT_FILENAME_AND_ARCHIVE_VERIFIED",
+    "prepareAction": "Подготовить резервную копию всей библиотеки tapped once from completed export screen",
+    "providerPackageObserved": "com.google.android.documentsui",
+    "providerActivityObserved": "com.android.documentsui.picker.PickActivity",
+    "destinationObserved": "Downloads",
+    "proposalObserved": "library.linkabackup",
+    "filenameTypingOrEditing": false,
+    "exactPathAbsentChecks": ["Before preparation", "Immediately before Save"],
+    "overwritePrompt": "None observed; Save pressed once only after exact output absence and filename/provider observation",
+    "save": "Actual native SAVE button tapped once at [2356,1440][2532,1536]",
+    "pickerReturnReadiness": "Bounded MCP dumpsys activity polling without fixed sleep; app topResumedActivity observed before hierarchy",
+    "freshAccessObserved": "После выбора файла войдите повторно / разрешите команды выше. Старый доступ мог быть отозван; выбор файла не предоставляет доступ.",
+    "freshAccessAction": "After picker return scrolled to top, tapped unprotected Разрешить команды в этом экране once; fresh-access warning then absent from preview",
+    "unencryptedWarningObserved": "Файлы .linka и резервные копии — открытые архивы, не зашифрованные; Файл будет открыт для получателя без пароля",
+    "previewObserved": {"boards": 2, "drafts": 2, "retained": 0, "assets": 19, "assetBytes": 3170713, "archiveEntries": 25, "archiveUncompressedBytes": 3191417},
+    "writeConfirmation": "Подтверждаю запись открытого архива всей библиотеки fully revealed at [24,1188][2536,1284] and tapped once",
+    "terminalObservedInHierarchy": "Операция завершена.",
+    "createdPublicFile": "/sdcard/Download/library.linkabackup",
+    "exactExtension": ".linkabackup; no .zip or .bin suffix",
+    "bytes": 3196647,
+    "deviceSha256BeforePull": "a87a9c98d3555179d3e9e8c11b8ce7f8d43ada6aae170091ad656d56cac7a523",
+    "hostSha256AfterPullAndInspection": "a87a9c98d3555179d3e9e8c11b8ce7f8d43ada6aae170091ad656d56cac7a523",
+    "archive": {"entries": 25, "crcError": null, "encryptedEntries": 0, "format": "su.linka.pictures.backup", "version": "1.0", "revision": 73, "boards": 2, "drafts": 2, "assets": 19, "assetBytes": 3170713, "allAssetSha256AndByteCountsMatchMetadata": true},
+    "structuralInspection": "Inspected all ZIP paths, parsed JSON keys including extensionsJson, and assets.jsonl metadata keys without extracting or executing archive paths. Roots: manifest.json, boards/, drafts/, assets.jsonl, assets/. Settings keys: textScale, highContrast, languageTag, boards. No current-message or credential structural entries observed. This is not raw phrase-grep or comprehensive privacy certification.",
+    "evidence": ["android5556-backup-resumed-provider.png", "android5556-backup-resumed-fresh-preview.png", "android5556-backup-resumed-warning-grant.png", "android5556-backup-resumed-confirm.png", "android5556-backup-resumed-terminal.png", "android5556-backup-resumed-artifact-manifest.json"]
+  },
+  "exportParentHandoffOnly": {
+    "notRepeatedByThisLane": true,
+    "pathParentVerified": "/sdcard/Download/board.linka",
+    "bytesParentVerified": 11576,
+    "sha256ParentVerified": "e382a3190165fabf7dc4dcf54bb42770a3c76bd2cd375dd0d5828f36c4d6d722",
+    "observedByThisLane": "Initial completed export preview showed own LINKa-EDITOR-6F9C-SAVED, one page/card/image, zero recordings; board.linka later visible in real Downloads picker",
+    "independentArchiveReinspectionByThisLane": false
+  },
+  "preservation": {
+    "boardsObservedAfterBackupInRealLibrary": ["ХОЧУ", "LINKa-EDITOR-6F9C-SAVED"],
+    "draftsObservedInBackupArchive": ["ХОЧУ version 6, form null", "ХОЧУ version 3, form null"],
+    "draftsFinalUiVerification": "Requested Сохранённые черновики from real library menu; immediately following hierarchy timed out. STOPPED with no additional device actions, as instructed. Final dialog contents not observed.",
+    "messageFinalUiVerification": "Not reached due to stop-on-timeout rule; parent supplied prior preserved ХОЧУ КУШАТЬ observation, not reobserved in this resumed lane",
+    "noMutationsAttempted": ["board/card/draft edits", "communication-card selection", "message clear", "draft resume/discard", "rename", "delete", "restore", "import", "recovery", "settings", "permissions", "credentials"],
+    "oldNonceOutputs": "Both visible in actual Downloads picker; never selected, overwritten, renamed, deleted or pulled in this lane",
+    "publicOutputsRetained": true,
+    "historicalReportsAndPngs": "Not modified"
+  },
+  "diagnostics": [
+    "After one prepare action, immediate activity polls initially still showed app and hierarchy returned transient null root. No duplicate prepare action. Bounded native readiness poll then observed DocumentsUI PickActivity and actual provider screenshot/hierarchy succeeded.",
+    "Immediate post-confirm hierarchy returned transient null root. Read-only native readiness observed app resumed; screenshot and hierarchy then proved terminal success. No duplicate confirmation.",
+    "Final preservation check hierarchy after opening saved-drafts menu timed out at MCP request level. No further device call, screenshot, retry, navigation, stop, reboot or installation performed."
+  ],
+  "finalForeground": "Last successfully observed library and library menu; then tapped saved-drafts item. Likely draft dialog, but final foreground/dialog contents not observed because hierarchy timed out. Did not claim final library or close dialog after stop condition.",
+  "remainingGaps": ["Final draft versions and message not actually reobserved through UI after this backup due to final hierarchy timeout", "No post-timeout device rehash; device-before-pull and host-after-inspection SHA match", "Previous custom filename attempts remain historical BLOCKED", "No restore round trip, physical device, U1.4 or full-release claim"],
+  "deviceLease": "FREED; terminal backup complete, public file retained, final UI caveat documented"
+}

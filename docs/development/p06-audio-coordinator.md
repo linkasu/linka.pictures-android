@@ -1,0 +1,60 @@
+# P06/P07 prerequisite: общий AudioCoordinator
+
+База: `08b7e64fa598f575de440f92319c01ea93850a61`; ветка `implementation/p06-audio-coordinator`. Реализован frozen `class AudioCoordinator internal constructor(backend, media, files, scope) : AudioPort`. Ports, модели, text, communication, storage, Gradle и native implementations не изменялись. Это общий координатор, **не native P06/P07 acceptance**, не доказательство codec/physical/G1. G0/G1/G4 и выпускные gates остаются OPEN.
+
+## Арбитр и ограничение ресурсов
+
+- Один actor владеет наблюдаемым состоянием и запуском native worker. Admission использует CAS immutable Control, wake-channel conflated и не содержит requests/resources. Один native job и один latest intent: отменённые pending requests немедленно освобождаются, очередь снимков/leases/jobs не растёт.
+- Новый explicit запрос отменяет прежний. Actor вызывает `backend.stop(oldId)` и cancellation до нового preflight. Пока некооперативный старый primitive не завершится, следующий native job не запускается: ресурсы ограничены одним active и одним pending, без наложения звука и без бесконечного spawn/cancel jobs.
+- `stop(owner,id)` проверяет текущего владельца и ID, не затрагивает чужой/новый запрос. Явный stop — CANCELLED/Cancelled, interrupt — INTERRUPTED/Failed(INTERRUPTED); autoreplay/retry нет. Record/synthesize проходят того же арбитра, не отдельную очередь.
+- Duplicate RequestId отбрасывается в bounded окне последних 1024 принятых запросов. Каждая доставленная playback lease потребляется даже при duplicate/empty/replacement/preflight error. File-generating duplicate получает Cancelled, не повторно выданный чужой temp.
+- Отмена parent scope закрывает admission даже до старта actor, отменяет/останавливает active, освобождает pending и завершает ожидающих callers. Native job completion освобождает active lease и при отмене до старта coroutine. Некооперативный поздний terminal result также имеет cleanup после закрытия actor.
+
+## Preflight и текст
+
+- Список segments копируется при play. Весь plan разрешает clips через открытую входную lease, проверяет membership assets и inspectClip всех записей до первого playClip/speak. Ошибка в позднем фрагменте не запускает ранний. Никаких silence/TTS replacements для записи.
+- Порядок recording/text сохраняется, TTS не дублирует запись. Recording-only и исходные blank-only text segments не требуют голоса; blank-only исходный segment не вызывает speak.
+- `voices` — исходный backend StateFlow, не optimistic копия capability. Нужен LOCAL_VOICE_READY для текста; explicit preferredVoiceId должен существовать. Явный language tag сверяется с объявленными local tags без учёта регистра, без угадывания alias/сетевого fallback. Null locale/voice передаются backend для его фактического локального default. Окончательную OS/local-only проверку выполняет native backend.
+- Для playback положительный maxTextLength проверяется до речи. `speechChunks` использует существующие Unicode16 graphemeBoundaries; каждый chunk не больше max UTF16 units, одна слишком большая графема даёт LIMIT_EXCEEDED всему plan. Небланковый исходный text сохраняет все символы/whitespace, без trim. Числа 0/negative/Int.MIN_VALUE не оборачиваются в допустимый budget.
+- Prepared chunk list копируется до исполнения. Изменение capabilities при preflight даёт отказ до первого звука; во время playback — interruption без повторения. SynthesisRequest передаётся native synthesize без изменения текста/locale/voice только при длине не выше подтверждённого maxTextLength (UTF16); превышение даёт LIMIT_EXCEEDED до backend call. Exact max допустим, trim/substring и объединения нескольких synthesized файлов нет.
+
+## TemporaryFile и callbacks
+
+- Record показывает REQUESTING_PERMISSION, затем только разрешённые RECORDING/FINISHING transitions от актуального backend callback; callback READY не выдаёт файл. finishRecording действует только для точных active owner/id и RECORDING, не чужого/new request.
+- Completed temp coordinator сначала владеет сам, затем inspectClip проверяет фактический результат. Только current generation после проверки становится READY и получает Completed. Failed/Cancelled/Interrupted, inspect exception и поздний old Completed удаляют только TemporaryFile через files.discard. Immutable clip LocalFile не передаётся discard.
+- Передача caller-у использует cancellation-safe continuation resume: cancellation после проверки/authorization, но до возобновления caller, удаляет недоставленный temp. После фактического await result файл принадлежит caller, последующее закрытие coordinator/cancellation caller его не удаляет. Отдельный completion token не даёт отмене rejected duplicate изменить READY старого результата с тем же RequestId.
+- UnconfirmedCommit запрещён штатным audio/read контрактом. Защитные branches сохраняют этот OperationResult и COMMIT_OUTCOME_UNKNOWN, не объявляя Completed/Cancelled/известный rollback; нового AudioPhase enum не добавлено, диагностика доступна в FAILED + problem. Автоматического повтора нет.
+- Native backend по-прежнему обязан корректно останавливать OS primitives и удалять собственные incomplete/non-delivered результаты; shared может очистить только полученный handle. Без terminal response некооперативного backend следующий запрос остаётся pending, а не запускается параллельно.
+- Исключения stop/finishRecording/lease.close/files.discard изолированы на границе primitive. Wake, ответы ожидающим callers и cancellation остальных owned resources не пропускаются; primary Completed/Failed/Cancelled/UnconfirmedCommit не заменяется ошибкой cleanup. Дополнительная IO_FAILURE-диагностика привязана к актуальному owner/generation и не затирает первичную проблему. Известный finishRecording fault даёт Failed(IO_FAILURE), stop/cancel старого native и запрещает передачу позднего файла как READY. При исключении delete/close выполнена только best-effort попытка: физическое удаление/освобождение после ошибки не доказано, оно остаётся ответственностью будущих native/media adapters и их recovery; shared не делает скрытых retry и не пишет paths/исключения в logs.
+
+## Focused checks и correctness review
+
+25 common audio tests используют реальный coordinator и контролируемые backend/media/file fakes. Проверяются mixed order, entire preflight refusal, missing clip/lease asset/voice/language, recording-only/empty/blank, Unicode combining/Indic/flags/emoji и max budgets; immutable plan snapshot; voice change; exact stop/finish; stop vs interrupt; permission refusal; failure/exception/cancellation/unknown; valid synth/record transfer; поздние phases/temp; 500 replacements при некооперативном native; parent cancellation и pre-start cleanup; cancellation между validated resume и caller dispatch; rejected duplicate не изменяет предыдущий READY.
+
+Focused JVM audio tests: **25/25 PASS**, 0 skipped. Coherent-diff review проверил single-worker ownership, bounded pending, cancellation cleanup и handoff linearization; добавлены asset membership preflight, cleanup при отмене actor до старта и уникальный completion token для duplicate/cancellation race.
+
+Финальный gate после review, 5 ноября 2026: `./gradlew :shared:jvmTest :shared:compileKotlinIosSimulatorArm64 --console=plain` — BUILD SUCCESSFUL (4s). JVM **66/66 PASS**, 0 skipped (25 audio + все исходные 41, включая Unicode16 corpus 1093 vectors); Native simulator-arm64 compilation **PASS**, без запуска simulator. Окружение: JAVA_HOME `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`, ANDROID_HOME `/Users/aacidov/Library/Android/sdk`, DEVELOPER_DIR `/Applications/Xcode.app/Contents/Developer`.
+
+## COORD review corrections после db767de
+
+База review-fix: `db767de772d11eb4fea54f4f06c66d4b5ee2b3f5`. Изменения ограничены двумя принятыми corrections: exception-safe cleanup/wakeup/cancellation и synthesis UTF16 cap. Существующие 25 audio matrix tests сохранены. Fakes теперь различают попытку discard и фактический успех; close-fault fake освобождает собственный test ref до throw, что не доказывает физический cleanup реального adapter.
+
+Регрессии проверяют throwing stop с cooperative/noncooperative terminal wait и прежними Cancelled/Interrupted; throwing finishRecording с failed caller и поздним temp без READY; throwing lease.close в worker completion/admission/duplicate, сохранение wake и unknown; simultaneous shutdown faults и отдельный прямой shutdown; late outcome/continuation cancellation discard failure; primary inspect failure/cancel/unknown при неудачном delete; exact max/one-over synthesis с surrogate pair и без backend/temp при отказе. CoroutineExceptionHandler assertions подтверждают отсутствие escaped exceptions. Focused checks прошли до coherent-diff review.
+
+Финальный повтор после review: та же команда и окружение, BUILD SUCCESSFUL (4s). `:shared:jvmTest` без filters — **77/77 PASS**, 0 skipped (36 audio, включая прежние 25, + неизменённые 41). `:shared:compileKotlinIosSimulatorArm64` — **PASS**; `git diff --check` чистый. Native runtime/реальные OS/delete faults этим не доказываются, выполнение Native tests после integration остаётся COORD.
+
+Не выполнялись устройства/simulators, native audio/permissions/codecs/OS sessions, реальный storage IO, сеть, CI/push/signing или установка приложения. Существующие 41 тест не редактировались; последующий Native runtime/integration gate выполняет COORD.
+
+## COORD integration verification
+
+После просмотра production implementation и exact review delta интегрированы
+`db767de7` → `a8d857c`, `b4b172cb` → `0d5e8ba`. Main gate с P03/P05:
+**102/102 JVM**, Native test link, оба Shared.framework, Android debug assembly;
+BUILD SUCCESSFUL in47s. Состав — прежние66 main tests +36 audio regressions.
+На подтверждённом owned iOS17.0/21A328 через public simctl spawn:
+**102/102 PASS**,24073ms, без filters/skips. Raw log только в approved temp:
+`p06-shared-audio-integrated-native-ios17.log`.
+
+Это реальное Native выполнение **общего** кода с controlled backend fakes,
+а не работа AVFoundation/Android audio, permission/mic или legacy codecs.
+Physical cleanup при OS refusal остаётся best-effort; этот gate его не доказывает.

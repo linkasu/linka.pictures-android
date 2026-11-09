@@ -1,0 +1,25 @@
+{
+  "scope": "Historical real app-hosted clip/TTS callbacks on owned iOS26.5 simulator, not minimum iOS17 or physical acceptance",
+  "device": "1074CF6C-3AF6-4DF3-A330-5F9013437F3E",
+  "native": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 2.48,
+    "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/audio-ios26-callbacks.xcresult"
+  },
+  "native_case_results": [
+    "Test Case '-[LinkaKeychainHostTests.AudioTests testClipCompletesThroughNativePlayerCallback]' started.",
+    "Test Case '-[LinkaKeychainHostTests.AudioTests testClipCompletesThroughNativePlayerCallback]' passed (0.605 seconds).",
+    "Test Case '-[LinkaKeychainHostTests.AudioTests testInstalledVoiceSpeechCompletesThroughNativeCallback]' started.",
+    "Test Case '-[LinkaKeychainHostTests.AudioTests testInstalledVoiceSpeechCompletesThroughNativeCallback]' passed (1.875 seconds).",
+    "\t Executed 2 tests, with 0 failures (0 unexpected) in 2.480 (2.482) seconds",
+    "\t Executed 2 tests, with 0 failures (0 unexpected) in 2.480 (2.482) seconds",
+    "\t Executed 2 tests, with 0 failures (0 unexpected) in 2.480 (2.483) seconds"
+  ],
+  "log_sha256": "68b812f5277a3f1f160b5367cbe1ec739b4e8b420e06a694246ea76e1720d681",
+  "voices_installed_or_network_volume_changed": false,
+  "ios17_environment_red_retained": true,
+  "minimum_offline_russian_tts_accepted": false,
+  "physical_aac_accepted": false
+}

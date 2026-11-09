@@ -1,0 +1,58 @@
+{
+  "scope": "Same owned iPhone draft/card edited then cancelled, no new board/import/publish/delete",
+  "cases": [
+    {
+      "case": "editor-cancel-existing-phone",
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "seconds": 34.595,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/editor-cancel-existing-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "editor-cancel-existing-phone-editor-existing-card-cancel-input-C60D65E1-D05F-48BB-BD34-B01FBF21C04B.png",
+          "sha256": "6522ce2a11c5b0dad9c1b9aeb0c8549739799f772287925f3bed53bf9daa46db"
+        },
+        {
+          "file": "editor-cancel-existing-phone-editor-existing-published-edit-52DD1E46-C704-4194-81D4-232ED4E2491C.png",
+          "sha256": "478a4a3ddaa536ded5a7b475ce498c2bfb8a83e93ee3d5319267aee3796cc5ac"
+        },
+        {
+          "file": "editor-cancel-existing-phone-editor-existing-published-edit-1C45D1D7-FC9C-4FE2-BCEC-748A7B3F0ADF.png",
+          "sha256": "33b8df41433f8d7ea57ed3e3c40858418ea6b647022aceeee80a3a3def8135bf"
+        }
+      ]
+    },
+    {
+      "case": "editor-cancel-resume-phone",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 30.349,
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/editor-cancel-resume-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "editor-cancel-resume-phone-editor-cancel-published-card-and-message-unchanged-F43D2F12-7588-4F67-9FC5-B935036F987E.png",
+          "sha256": "a8cc707978c896feb89a0aacdcaff82cf96852460c1254520ecda3b85e0c6112"
+        },
+        {
+          "file": "editor-cancel-resume-phone-editor-cancel-restored-original-draft-card-5DD08883-EA64-40BD-9F53-970F6CCF6829.png",
+          "sha256": "5727a3643f5695955947f7f6250bcd88ef0e28d6a9c1969f8b9dc5adf665e196"
+        },
+        {
+          "file": "editor-cancel-resume-phone-editor-resume-own-changed-card-form-804F2765-02BD-44EB-9B54-97AF94D04D34.png",
+          "sha256": "df81123bf2057240c1872551235ae849dd32972d282fcadb5dfa66384ad360a5"
+        },
+        {
+          "file": "editor-cancel-resume-phone-editor-resume-own-changed-card-form-26C2C99C-DAB5-46C7-A195-0F1A190487EA.png",
+          "sha256": "3e32c474317a41b022caa0403664023e57535af6338a7ffb31f862435854de20"
+        }
+      ]
+    }
+  ],
+  "whole_text_replacement": "RED: expectedCANCEL-CHECK-17, actualNANCEL-CHECK-17ATIVE-CARD-17; rootcause still UNKNOWN(selection shortcut vs input)",
+  "cancellation": "Resume SAME stored changed form, actualCancel restored originaldraftcard, SAVED status observed; publishedNATIVE-CARD-17 andglobalХОЧУКУШАТЬ unchanged",
+  "own_saved_draft_left": true,
+  "native_selection_probe_status": "Separate bounded diagnostic wave; no result inferred from cancellation",
+  "full_editor_accepted": false
+}

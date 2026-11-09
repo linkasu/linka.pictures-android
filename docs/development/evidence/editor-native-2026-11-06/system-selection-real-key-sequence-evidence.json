@@ -1,0 +1,42 @@
+{
+  "scope": "Same owned iPhone17 draft: visible Select All -> real native keys ф/ы/в -> exact prefixes -> Cancel/SAVED/published original and message",
+  "passed": 1,
+  "failed": 0,
+  "skipped": 0,
+  "seconds": 45.529,
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "actual_text_after_each_native_key": [
+    "ф",
+    "фы",
+    "фыв"
+  ],
+  "primary_reviewed_final_replacement": true,
+  "original_card_after_cancel": "NATIVE-CARD-17",
+  "global_message_after_cancel": "ХОЧУ КУШАТЬ",
+  "product_changed": false,
+  "clipboard_or_private_input_used": false,
+  "injected_input_red_preserved": true,
+  "external_hardware_keyboard_accepted": false,
+  "screenshots": [
+    {
+      "file": "system-selection-keyboard-sequence-phone-988912D2-02D5-494E-8130-4E601765A32E.png",
+      "sha256": "fec49898a2fa9c8aedd487f115347b95d167b574ea986d54e31a4ccd53ae3e5a"
+    },
+    {
+      "file": "system-selection-keyboard-sequence-phone-87E7375C-158D-4B2B-96A0-3607E05022C3.png",
+      "sha256": "139eceb40d4ac4d1e85ed81deb565ade1caf37ca9457b57ecfcb87f77a73b4c6"
+    },
+    {
+      "file": "system-selection-keyboard-sequence-phone-4A667067-9FCF-4A6B-893F-E370F4FF2CBC.png",
+      "sha256": "909e79b98cfc69d97997370287311e81c48dab91979bfce36574a481989cb3f0"
+    },
+    {
+      "file": "system-selection-keyboard-sequence-phone-BA68B24A-D419-4A86-9190-B473EB068EC7.png",
+      "sha256": "821305fb91cd4fbb12ad7c273a98c0eb5937daa25f704ea140bcdd6f8772327b"
+    },
+    {
+      "file": "system-selection-keyboard-sequence-phone-13CBCBFF-7082-4941-A06A-370C1143C4EE.png",
+      "sha256": "690276c7bbf2ab01e35aa710f3fdc4365a0bdba5f793b77462e3e85856e32095"
+    }
+  ]
+}

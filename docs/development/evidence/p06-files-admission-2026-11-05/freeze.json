@@ -1,0 +1,10 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-files-admission-bf732b9a-1b57-45da-a529-52973870ba67/frozen-admission-test.apk",
+  "sha256": "5dff891cad6e254a8d6232c7143e2a18d5e70b05e083d113b595cb4ec08f8cfc",
+  "package": "su.linka.pictures.shared.test",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "focused": 19,
+  "total": 82,
+  "api35": "runtime OPEN"
+}

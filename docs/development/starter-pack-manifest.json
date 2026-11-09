@@ -1,0 +1,47 @@
+{
+  "schema": "linka-starter-pack-authoring-v2",
+  "authoringCsv": "docs/development/starter-pack-recordings.csv",
+  "authoringRule": "CSV is the sole card/label/placement/speech source; proposal holds board metadata/pageCount only, acquisition JSON binds actual media bytes",
+  "date": "2026-11-08",
+  "status": "blocked",
+  "shippingResources": [],
+  "contentApproval": {"status":"approved","date":"2026-11-08","userStatement":"Да, состав подходит","sets":5,"pages":10,"slots":90,"scope":"vocabulary and layout, not image style or audio validation"},
+  "audioDecisionHistory": [
+    {"source":"user_own_recordings","userStatement":"Предоставлю свои записи","status":"superseded; no recordings received"},
+    {"source":"user_directed_linka_tts","sourceUrl":"https://tts.linka.su/tts","voice":"anton","status":"selected by user; initially GET contract supplied by primary"},
+    {"userStatement":"tts POST","method":"POST","contentType":"application/json","bodyFields":["text","voice"],"status":"current; no further GET requests; preserve earlier primary GET pilot honestly"}
+  ],
+  "audioDecision": {"source":"user_directed_linka_tts","sourceUrl":"https://tts.linka.su/tts","voice":"anton","method":"POST","contentType":"application/json","recordsManifest":"assets/starter-pack/audio/manifest.json","license":null,"provenance":"User-directed synthesis LINKa TTS anton; no legacy copyrighted media transferred; no external license inferred","template":"starter-pack-recordings.csv","uniqueRecordings":74,"silentActions":["SPACE",".","?"],"coreCapabilities":{"sets":["ru.core.v1","ru.food.v1","ru.activities.v1","ru.feelings.v1"],"speech":"prerecorded offline per-card clips; no runtime network or native TTS required for these four sets"},"optionalLettersCapability":{"seedKey":"ru.letters.v1","runtimeCells":"existing LITERAL semantics","wholeMessageSpeech":"existing native TTS; requires an available suitable Russian voice","recordedLetters":"33 named-letter reference recordings; not arbitrary-word speech; must not replace LITERAL cells with audio cards","blocksCoreSets":false}},
+  "previewManifest": "starter-pack-preview/manifest.json",
+  "audioReadiness": {"status":"source_audio_complete_not_shipping","records":74,"totalBytes":567426,"postJsonRequests":73,"reusedGetPilots":1,"coreUniqueRecords":41,"coreSpeakingSlots":54,"coreBytes":340533,"optionalLetterReferenceRecords":33,"validation":"All 74 pass ffprobe MP3 and strict ffmpeg decode/non-silent checks; offline hash/receipt reuse verified","format":{"codec":"mp3","sampleRate":48000,"channels":1,"minDurationSeconds":0.624,"maxDurationSeconds":1.44},"recordsManifestSize":72376,"recordsManifestSha256":"2e8b6a4dfa9613edc6fa0553ae7008957027fe8b82d0b855d7071ed2a7a0e885","listeningReview":"pending","nativeMediaInspection":"pending"},
+  "imageReadiness": {"status":"technical_sources_ready","source":"codex.generate_image / Codex CLI builtin image_gen via ChatGPT subscription","modelId":null,"sheetsCsv":"assets/starter-pack/sheets.csv","acquisitionReceipt":"assets/starter-pack/source-manifest.json","sourceSheets":5,"crops":41,"rescaled":false,"approvalActor":"primary_assistant","humanVisualApproval":false,"approvalScope":"technical asset review for archive construction only","license":null},
+  "archiveCandidates": {"pathRelativeToOutputDir":"files/starter/catalog.json","workDir":"sibling <output-dir>-work/images","shipping":false,"nativeCodecReview":"pending","note":"Offline build outputs only; generated crops/archives are not source-controlled or release approval"},
+  "blockers": ["human_visual_and_usability_approval_pending", "listening_review_pending", "archive_codec_and_native_media_validation_pending"],
+  "proposal": [
+    {"seedKey":"ru.core.v1","displayName":"Общаюсь","pageCount":3,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.food.v1","displayName":"Еда и питьё","pageCount":1,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.activities.v1","displayName":"Занятия","pageCount":1,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.feelings.v1","displayName":"Самочувствие","pageCount":1,"rows":3,"columns":3,"optional":false},
+    {"seedKey":"ru.letters.v1","displayName":"Буквы","pageCount":4,"rows":3,"columns":3,"optional":true}
+  ],
+  "inventory": {
+    "electronRoot": "/Volumes/data/linka/linka.looks-electron/extraResources/defaultSets",
+    "electronArchivesInspected": 33,
+    "androidArchivesInspected": 7,
+    "scope": "All config.json files and reference existence; candidate SHA256, byte size and ZIP CRC. Not audio transcription, image review, codec or native inspection.",
+    "licenseEvidence": "linka.looks-electron/README.md:96-102 explicitly excludes media from the code GPL declaration; THIRD_PARTY_NOTICES.md supplies no rights for these archives.",
+    "sources": [
+      {"displayName":"Фраза (Ануровой)","file":"Наборы от Ануровой/Фраза.linka","size":6410611,"sha256":"ea95ece0ed1b9555f6c4be61f89c8775523a5a9490ce183045d81ed1cc9616b5","source":"electronRoot","license":null,"provenance":"Existing archive; folder attribution only, media rights unconfirmed","version":"2.0","rows":3,"columns":3,"slots":18,"audioFileReferences":18,"zipCrcPassed":true},
+      {"displayName":"Фраза (Смирновой)","file":"Наборы от Смирновой/Фраза.linka","size":6410611,"sha256":"ea95ece0ed1b9555f6c4be61f89c8775523a5a9490ce183045d81ed1cc9616b5","source":"electronRoot","license":null,"provenance":"Byte-identical duplicate of Ануровой/Фраза; not separate artwork","version":"2.0","rows":3,"columns":3,"slots":18,"audioFileReferences":18,"zipCrcPassed":true},
+      {"displayName":"Азбука","file":"Наборы от Смирновой/Азбука.linka","size":2258005,"sha256":"0c4e1bd65e216f17e3fd63120cc9aa858edc948df4245c45e4b96fa609624c65","source":"electronRoot","license":null,"provenance":"Existing archive; media rights unconfirmed","version":"2.0","rows":2,"columns":2,"slots":20,"audioFileReferences":20,"zipCrcPassed":true},
+      {"displayName":"звуки2 (повреждённый оригинал)","file":"Наборы от Смирновой/Звуки/звуки2.linka","size":8101501,"sha256":"442ca5eb2a6381d63488547e82d957f541a416e04ffea2e56705b861cd24227b","source":"electronRoot","license":null,"provenance":"Known malformed MP3/JPEG documented by prior native verification; never ship this original","version":"2.0","rows":2,"columns":3,"slots":60,"audioFileReferences":40,"zipCrcPassed":true,"excluded":true},
+      {"displayName":"Крупная клавиатура 3×3","file":"Крупная клавиатура/3x3.linka","size":1001672,"sha256":"04a9b92ea6a33d727e5d7044bbde0ff690ff96539d8efe67be35ac4bf17070b0","source":"electronRoot","license":null,"provenance":"Existing archive; media rights unconfirmed; no Ё","version":"1.2","rows":3,"columns":3,"slots":43,"audioFileReferences":43,"zipCrcPassed":true},
+      {"displayName":"Клавиатура 4×12","file":"Клавиатура.linka","size":56563,"sha256":"c7b1d07cf4c3e926dbf7256d5c3f10acb1de329df70a4753f834128b1320e3b8","source":"electronRoot","license":null,"provenance":"Existing archive; no embedded audio; inactive image references must retain legacy handling","version":"1.0","rows":4,"columns":12,"slots":96,"audioFileReferences":0,"zipCrcPassed":true},
+      {"displayName":"Старый Android Хочу","file":"app/src/main/assets/bundled/want.linka","size":2866142,"sha256":"a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b","source":"current Android repository","license":null,"provenance":"Existing shipping asset is not proof of media rights","version":"1.2","rows":3,"columns":3,"slots":9,"audioFileReferences":9},
+      {"displayName":"Старый Android Боль","file":"app/src/main/assets/bundled/pain.linka","size":226268,"sha256":"ae6f1e58f2d7e7a3826e3586aab3d862f38a43d9cecf59168766dc536ca95985","source":"current Android repository","license":null,"provenance":"Existing private legacy 1.3 asset; not a new public .linka export or rights grant","version":"1.3","rows":3,"columns":4,"slots":12,"audioFileReferences":12}
+    ],
+    "repairedSoundsDocumentaryReference": {"file":"sounds2-validated-v2.linka","size":null,"sha256":"a67647676804d4e016d06af694fb04b300abcb5511ea3243a3ee65c02681afcd","source":"docs/development/smotri-originals-visual-verification.md:100-114","license":null,"provenance":"Prior approved repair, not copied or revalidated in this work; not a shipping resource"},
+    "exactLabelsMissingAcrossElectronArchives": ["нет","не хочу","помоги","больно","мне плохо","плохо","хорошо","ещё","хватит","не понимаю"],
+    "labelSearchNormalization": "Unicode NFC, trim, casefold over title/audioText; not transcription of unlabeled audio"
+  }
+}

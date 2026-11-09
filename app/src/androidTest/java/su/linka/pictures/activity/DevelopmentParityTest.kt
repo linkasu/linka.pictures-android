@@ -1,0 +1,714 @@
+package su.linka.pictures.activity
+
+import android.content.Intent
+import android.net.Uri
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.graphics.Rect
+import android.os.Bundle
+import android.os.Process
+import android.os.SystemClock
+import android.view.KeyEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import androidx.core.content.FileProvider
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** Owned synthetic fixture only. UI readiness is not screenshot parity or user approval. */
+@RunWith(AndroidJUnit4::class)
+class DevelopmentParityTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val target = instrumentation.targetContext
+    private val fixture = "u14/ХОЧУ.linka"
+    private val expectedSha = "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b"
+    private val titles = listOf("КУШАТЬ", "ПИТЬ", "СПАТЬ", "КУПАТЬСЯ", "ХОЧУ",
+        "ПИСАТЬ КАКАТЬ", "ГУЛЯТЬ", "ИГРАТЬ", "ОБНИМАТЬСЯ")
+    private val fixtureName = "LINKa-U14-HOCHU-cfb199d.linka"
+    private val pickerPackages = setOf("com.android.documentsui", "com.google.android.documentsui")
+    private val libraryTitles = UiText.YourBoards.labels
+    private val libraryMenu = UiText.LibraryMenu.labels
+
+    @Test fun electronVisualAtlasExistingLibraryWithoutWrites() {
+        assertFixtureIdentity()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitLibrary()
+            electronScreenshot("library")
+            clickNamed(listOf("ХОЧУ"), scroll = true)
+            awaitNineCards(); awaitFilledMessage()
+            electronScreenshot("board")
+            clickNamed(UiText.BoardSettings.labels)
+            awaitNamed(UiText.BoardOptions)
+            electronScreenshot("board-settings")
+            clickNamed(UiText.Close.labels)
+            clickNamed(UiText.OpenLibrary.labels)
+            awaitLibrary()
+            clickNamed(libraryMenu); clickNamed(UiText.Settings.labels)
+            awaitNamed(UiText.TextScale)
+            electronScreenshot("settings")
+            clickNamed(UiText.TextScale.labels)
+            awaitNamed(UiText.TextScaleDialog)
+            val automation = instrumentation.uiAutomation
+            automation.serviceInfo = automation.serviceInfo.apply {
+                flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            }
+            await("dialog actions above the actual keyboard, not merely AX-clickable") { root ->
+                val keyboard = automation.windows.firstOrNull {
+                    it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
+                }?.let { Rect().also(it::getBoundsInScreen) }
+                val cancel = namedHitBounds(root, UiText.Cancel.labels)
+                keyboard != null && cancel != null && cancel.bottom <= keyboard.top
+            }
+            electronScreenshot("scale-dialog")
+            clickNamed(UiText.Cancel.labels)
+            clickNamed(UiText.Back.labels); awaitLibrary()
+            clickNamed(listOf("ХОЧУ"), scroll = true)
+            awaitNineCards(); awaitFilledMessage()
+            electronScreenshot("restored-board")
+        }
+    }
+
+    private fun electronScreenshot(name: String) {
+        require(name.matches(Regex("[a-z-]+")))
+        stableIdleScreenshot().recycle()
+        val path = "/data/local/tmp/linka-electron-$name.png"
+        instrumentation.uiAutomation.executeShellCommand("screencap -p $path").use { descriptor ->
+            java.io.FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
+        }
+        instrumentation.sendStatus(0, Bundle().apply { putString("electronScreenshot", path) })
+    }
+
+    @Test fun filledBoardThroughRealSafImport() {
+        assertFixtureIdentity()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            assertEmptyLibraryAndMessage()
+            prepareNamedImport()
+            selectOwnedSafFixture()
+            confirmImportAndCompose()
+            evidenceReady("real-saf")
+        }
+    }
+
+    /** API21 visual fixture path only: does NOT exercise SAF picker or an OS cross-UID grant. */
+    @Test fun filledBoardThroughOwnedIncomingContent() {
+        assertFixtureIdentity()
+        val authority = "${target.packageName}.parity-fixtures"
+        val provider = target.packageManager.resolveContentProvider(authority, PackageManager.GET_META_DATA)
+            ?: error("Missing approved debug target FileProvider; integrate primary manifest/XML first")
+        assertEquals(authority, provider.authority)
+        assertEquals(target.packageName, provider.packageName)
+        assertEquals(target.applicationInfo.uid, provider.applicationInfo.uid)
+        assertEquals("androidx.core.content.FileProvider", provider.name)
+        assertFalse("Fixture provider must not be exported", provider.exported)
+        assertTrue("Fixture provider must support scoped URI grants", provider.grantUriPermissions)
+        assertTrue("Fixture provider must be enabled", provider.enabled)
+        val directory = File(target.cacheDir, "u14-fixtures")
+        assertEquals("Fixture directory must stay directly under target cache", target.cacheDir.canonicalFile,
+            directory.canonicalFile.parentFile)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            assertEmptyLibraryAndMessage()
+            assertTrue("Cannot create owned fixture cache directory", directory.isDirectory || directory.mkdir())
+            withOwnedCopy(directory) { copy ->
+                try {
+                    val uri = FileProvider.getUriForFile(target, authority, copy)
+                    assertEquals("content", uri.scheme)
+                    assertEquals(authority, uri.authority)
+                    assertEquals("Only the approved cache subtree may be published",
+                        listOf("u14-fixtures", copy.name), uri.pathSegments)
+                    val source = target.contentResolver.openInputStream(uri)
+                        ?: error("Owned fixture content URI is not readable")
+                    assertEquals(expectedSha, source.use { sha(it.readBytes()) })
+                    stage("owned-content-read-verified")
+                    val intent = Intent(target, MainActivity::class.java)
+                        .setAction(Intent.ACTION_VIEW).setDataAndType(uri, "application/octet-stream")
+                    // Actual same-UID native delivery; no external URI grant or substituted reader.
+                    stage("before-native-content-intent")
+                    withIncomingIntent(scenario, intent) {
+                        await("owned incoming notice without auto-import") { root -> find(root) { node ->
+                            UiText.IncomingFile.matches(node.text)
+                        } && emptyLibrary(root) }
+                        prepareNamedImport()
+                        // Every following wait permits only target package: unexpected DocumentsUI fails.
+                        confirmImportAndCompose()
+                        evidenceReady("owned-incoming-content; SAF-picker/OS-grant NOT evaluated")
+                    }
+                } catch (failure: Throwable) {
+                    // Revoke/close the activity owner before deleting its own source on a failed import.
+                    try { scenario.close() }
+                    catch (cleanupFailure: Throwable) {
+                        if (cleanupFailure !== failure) failure.addSuppressed(cleanupFailure)
+                    }
+                    throw failure
+                }
+            }
+        }
+    }
+
+    @Test fun warmRejectedIntentStillClosesTheScenarioWithoutWritingLibraryData() {
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        scenario.use {
+            awaitLibrary()
+            val rejected = Intent(target, MainActivity::class.java).setAction(Intent.ACTION_VIEW)
+                .setDataAndType(Uri.parse("file:///u14-rejected-input.linka"), "application/octet-stream")
+            withIncomingIntent(scenario, rejected) {
+                await("unsupported URI rejected without reading") { root -> find(root) { node ->
+                    node.text?.toString() in UiText.IncomingFailed.labels("UNSAFE_ARCHIVE")
+                } }
+            }
+        }
+        assertEquals(androidx.lifecycle.Lifecycle.State.DESTROYED, scenario.state)
+    }
+
+    private fun withIncomingIntent(scenario: ActivityScenario<MainActivity>, intent: Intent, block: () -> Unit) {
+        var original: Intent? = null
+        var failure: Throwable? = null
+        try {
+            scenario.onActivity {
+                original = Intent(it.intent)
+                instrumentation.callActivityOnNewIntent(it, intent)
+            }
+            block()
+        } catch (primary: Throwable) { failure = primary }
+        // ActivityScenario matches lifecycle events by the original Intent's action/data/type.
+        original?.let { launch ->
+            try { scenario.onActivity { it.intent = launch } }
+            catch (cleanup: Throwable) {
+                val primary = failure
+                if (primary == null) failure = cleanup else if (cleanup !== primary) primary.addSuppressed(cleanup)
+            }
+        }
+        failure?.let { throw it }
+    }
+
+    @Test fun reopenFilledBoardWithoutImportOrMessageEdits() {
+        assertFixtureIdentity()
+        assertTrue("No existing owned library to reopen", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitLibrary()
+            clickNamed(listOf("ХОЧУ"), scroll = true)
+            awaitNineCards()
+            awaitFilledMessage()
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            awaitLibrary()
+            clickNamed(listOf("ХОЧУ"), scroll = true)
+            awaitNineCards()
+            awaitFilledMessage()
+            evidenceReady("reopen-native-back-regression")
+        }
+    }
+
+    @Test fun existingPhrasePlaybackStopAndReplayWithoutMessageEdits() {
+        assertFixtureIdentity()
+        assertTrue("No existing owned library to play", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitLibrary()
+            clickNamed(listOf("ХОЧУ"), scroll = true)
+            awaitNineCards()
+            awaitFilledMessage()
+            clickNamed(UiText.Speak.labels)
+            awaitAudio(UiText.Speak, UiText.PlaybackCompleted)
+            clickNamed(UiText.Speak.labels)
+            awaitAudio(UiText.StopSpeaking, UiText.SpeakingMessage)
+            clickNamed(UiText.StopSpeaking.labels)
+            awaitAudio(UiText.Speak, UiText.PlaybackStopped)
+            clickNamed(UiText.Speak.labels)
+            awaitAudio(UiText.Speak, UiText.PlaybackCompleted)
+            awaitFilledMessage()
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            awaitLibrary()
+            clickNamed(listOf("ХОЧУ"), scroll = true)
+            awaitFilledMessage()
+            stage("recordings-completed-stop-replay-reopened; physical-audio-quality-not-evaluated")
+        }
+    }
+
+    @Test fun existingBoardLandscapeWithoutMessageEdits() {
+        assertFixtureIdentity()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            awaitLibrary()
+            var original = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            scenario.onActivity { original = it.requestedOrientation }
+            try {
+                scenario.onActivity { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                await("native landscape window") { root ->
+                    Rect().also(root::getBoundsInScreen).let { it.width() > it.height() }
+                }
+                awaitLibrary()
+                clickNamed(listOf("ХОЧУ"), scroll = true)
+                awaitNineCards()
+                awaitFilledMessage()
+                val image = stableIdleScreenshot()
+                try {
+                    assertTrue("Native screenshot must be landscape", image.width > image.height)
+                    val file = File.createTempFile("u14-landscape-", ".png", target.cacheDir)
+                    file.outputStream().use { check(image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
+                    instrumentation.sendStatus(0, Bundle().apply { putString("u14LandscapeScreenshot", file.name) })
+                } finally { image.recycle() }
+                instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                awaitLibrary()
+            } finally { scenario.onActivity { it.requestedOrientation = original } }
+        }
+    }
+
+    private fun awaitAudio(label: UiText, status: UiText) {
+        var lastState: String? = null
+        try {
+            await("$label: $status") { root ->
+                withNamedAction(root, label.labels, false, null) { node, _ ->
+                    val state = AccessibilityNodeInfoCompat.wrap(node).stateDescription?.toString()
+                    if (state != lastState) {
+                        lastState = state
+                        instrumentation.sendStatus(0, Bundle().apply { putString("u14AudioState", state?.take(256)) })
+                    }
+                    status.matches(state)
+                }
+            }
+        } catch (failure: Throwable) {
+            instrumentation.sendStatus(0, Bundle().apply { putString("u14LastAudioState", lastState?.take(256)) })
+            throw failure
+        }
+    }
+
+    private fun stableIdleScreenshot(): android.graphics.Bitmap {
+        val deadline = SystemClock.uptimeMillis() + 20_000
+        var previous: android.graphics.Bitmap? = null
+        var unchangedSince = SystemClock.uptimeMillis()
+        try {
+            while (SystemClock.uptimeMillis() < deadline) {
+                val next = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+                val same = previous?.sameAs(next) == true
+                previous?.recycle()
+                previous = next
+                if (!same) unchangedSince = SystemClock.uptimeMillis()
+                if (same && SystemClock.uptimeMillis() - unchangedSince >= 250) {
+                    previous = null
+                    return next
+                }
+            }
+            error("Static owned fixture did not produce a stable native screenshot")
+        } finally { previous?.recycle() }
+    }
+
+    @Test fun inspectOwnedFixtureGridSemantics() {
+        assertFixtureIdentity()
+        assertTrue("No existing owned library to inspect", File(target.filesDir, "pokazhi-development/library.sqlite3").exists())
+        ActivityScenario.launch(MainActivity::class.java).use {
+            awaitLibrary()
+            clickNamed(listOf("ХОЧУ"), scroll = true)
+            await("owned public fixture labels for read-only AX inspection") { root ->
+                titles.all { title -> named(root, listOf(title)) }
+            }
+            val root = instrumentation.uiAutomation.rootInActiveWindow ?: error("Missing owned fixture window")
+            try {
+                assertEquals(target.packageName, root.packageName?.toString())
+                var collections = 0
+                find(root) { node ->
+                    node.collectionInfo?.takeIf { collections < 4 }?.let { info ->
+                        collections++
+                        instrumentation.sendStatus(0, Bundle().apply {
+                            putString("u14Collection", "rows=${info.rowCount};columns=${info.columnCount}")
+                        })
+                    }
+                    false
+                }
+                if (collections == 0) instrumentation.sendStatus(0, Bundle().apply { putString("u14Collection", "ABSENT") })
+                for (title in titles) {
+                    var matchCount = 0
+                    find(root) { node ->
+                        if (matchCount < 3 && matches(node, listOf(title))) {
+                            matchCount++
+                            val chain = mutableListOf<String>()
+                            var current: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
+                            try {
+                                while (current != null && chain.size < 16) {
+                                    val item = current.collectionItemInfo
+                                    val bounds = Rect().also(current::getBoundsInScreen)
+                                    val action = current.actionList.firstOrNull { it.id == AccessibilityNodeInfo.ACTION_CLICK }?.label
+                                    chain.add("class=${current.className};clickable=${current.isClickable};enabled=${current.isEnabled};visible=${current.isVisibleToUser};row=${item?.rowIndex};col=${item?.columnIndex};action=${action?.take(80)};bounds=${bounds.toShortString()}")
+                                    if (current.isClickable) break
+                                    val parent = current.parent
+                                    current.recycle()
+                                    current = parent
+                                }
+                            } finally { current?.recycle() }
+                            instrumentation.sendStatus(0, Bundle().apply {
+                                putString("u14FixtureLabel", title)
+                                putString("u14NamedActionChain", chain.joinToString(" | "))
+                            })
+                        }
+                        false
+                    }
+                }
+            } finally { root.recycle() }
+        }
+    }
+
+    private fun assertFixtureIdentity() {
+        assertSandbox()
+        val args = InstrumentationRegistry.getArguments()
+        assertEquals("Primary must identify the exact owned fixture", fixtureName, args.getString("u14FixtureName"))
+        assertEquals("Primary must verify the source SHA", expectedSha, args.getString("u14FixtureSha256"))
+        assertEquals(expectedSha, instrumentation.context.assets.open(fixture).use { sha(it.readBytes()) })
+    }
+
+    private fun assertEmptyLibraryAndMessage() {
+        awaitLibrary()
+        await("fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate", predicate = ::emptyLibrary)
+        clickNamed(libraryMenu)
+        clickNamed(UiText.GoToMessage.labels)
+        await("message not empty: use reopen-only verification; never clear existing parts") { root ->
+            named(root, UiText.EmptyMessage.labels)
+        }
+        clickNamed(UiText.OpenLibrary.labels)
+        awaitLibrary()
+    }
+
+    private fun prepareNamedImport() {
+        stage("prepare-import-enter")
+        val importLabels = UiText.ImportBackupRestore.labels
+        if (!visibleNamed(importLabels)) clickNamed(libraryMenu)
+        clickNamed(importLabels)
+        awaitNamed(UiText.FilesRestore)
+        setField(UiText.ImportedBoardName, UiText.ImportedBoard, "ХОЧУ")
+        stage("prepare-import-before-click")
+        clickNamed(UiText.ChooseImport.labels, scroll = true)
+        stage("prepare-import-click-delivered")
+    }
+
+    private fun confirmImportAndCompose() {
+        await("real imported media preview", scrollAction = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) { root ->
+            find(root) { node -> UiText.PreviewCounts.labels(1, 9, 9, 9).any {
+                node.text?.startsWith(it) == true
+            } }
+        }
+        stage("import-preview-observed")
+        // New owner capability comes only from the actual foreground UI, never a direct access API.
+        clickNamed(UiText.AllowCommands.labels, scroll = true, backwards = true)
+        clickNamed(UiText.ConfirmImport.labels("ХОЧУ"), scroll = true)
+        awaitNamed(UiText.OperationCompleted, scroll = true)
+        clickNamed(UiText.Back.labels)
+        awaitLibrary()
+        clickNamed(listOf("ХОЧУ"), scroll = true)
+        awaitNineCards()
+        await("empty composed message") { root -> named(root, UiText.EmptyMessage.labels) }
+        clickNamed(listOf("ХОЧУ"), cardOnly = true)
+        await("first composed part without playback") { root ->
+            named(root, UiText.Speak.labels) && !named(root, UiText.StopSpeaking.labels) &&
+                named(root, UiText.SharedMessage.labels("ХОЧУ"))
+        }
+        clickNamed(listOf("КУШАТЬ"), cardOnly = true)
+        awaitFilledMessage()
+    }
+
+    private fun selectOwnedSafFixture() {
+        val automation = instrumentation.uiAutomation
+        automation.serviceInfo = automation.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
+        await("real DocumentsUI", packages = pickerPackages + target.packageName) { root ->
+            root.packageName?.toString() in pickerPackages
+        }
+        if (!visibleNamed(listOf(fixtureName), pickerPackages, requiredViewId = "android:id/title")) {
+            clickNamed(listOf("Show roots", "Показать корневые папки", "Открыть панель навигации"), packages = pickerPackages)
+            clickNamed(listOf("Downloads", "Загрузки"), packages = pickerPackages)
+        }
+        if (!visibleNamed(listOf(fixtureName), pickerPackages, requiredViewId = "android:id/title")) {
+            clickNamed(listOf("Search", "Найти", "Поиск"), packages = pickerPackages)
+            await("DocumentsUI search field", packages = pickerPackages) { root -> find(root) { node ->
+                if (!node.isEditable) false else {
+                    node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                    replaceText(node, fixtureName)
+                }
+            } }
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_ENTER)
+        }
+        // Availability is checked in the real provider UI before selecting; there is no filesystem/URI guess.
+        clickNamed(listOf(fixtureName), packages = pickerPackages, requiredViewId = "android:id/title")
+        await("SAF returned to target", packages = pickerPackages + target.packageName) { root ->
+            root.packageName?.toString() == target.packageName && named(root, UiText.FilesRestore.labels)
+        }
+    }
+
+    private fun awaitNineCards() = await("nine visible named cards with explicit 3x3 AX metadata; if absent run inspectOwnedFixtureGridSemantics") { root ->
+        titles.all { title -> namedHitBounds(root, listOf(title), cardOnly = true) != null } &&
+            find(root) { node -> node.collectionInfo?.let { it.rowCount == 3 && it.columnCount == 3 } == true }
+    }
+
+    private fun awaitFilledMessage() = await("ХОЧУ КУШАТЬ composed; no displayed autoplay") { root ->
+        named(root, UiText.SharedMessage.labels("ХОЧУ КУШАТЬ")) && named(root, UiText.Speak.labels) && !named(root, UiText.StopSpeaking.labels)
+    }
+
+    private fun awaitLibrary() = await("Ваши наборы / library") { named(it, libraryTitles) }
+
+    private fun emptyLibrary(root: AccessibilityNodeInfo) = find(root) { node ->
+        UiText.EmptyLibrary.matches(node.text)
+    }
+
+    private fun evidenceReady(inputPath: String) = instrumentation.sendStatus(0, Bundle().apply {
+        putString("u14State", "board-filled")
+        putString("u14InputPath", inputPath)
+        putString("u14FixtureSha256", expectedSha)
+        putString("u14MessageParts", "ХОЧУ|КУШАТЬ")
+        putString("u14Verdict", "UI_STATE_READY_ONLY; pixels/visual parity/user approval NOT evaluated")
+    })
+
+    private fun stage(id: String) = instrumentation.sendStatus(0, Bundle().apply { putString("u14Stage", id) })
+
+    @Test fun baselineFixtureHasUnmodifiedNineCardMedia() = withOwnedCopy(target.cacheDir) { copy ->
+        ZipFile(copy).use { zip ->
+            val config = JSONObject(zip.getInputStream(zip.getEntry("config.json")).bufferedReader().use { it.readText() })
+            assertEquals("1.2", config.getString("version"))
+            assertEquals(3, config.getInt("rows"))
+            assertEquals(3, config.getInt("columns"))
+            assertFalse(config.getBoolean("directSet"))
+            val cards = config.getJSONArray("cards")
+            assertEquals(9, cards.length())
+            for (index in titles.indices) {
+                val card = cards.getJSONObject(index)
+                assertEquals(titles[index], card.getString("title"))
+                assertEquals(0, card.getInt("cardType"))
+                for (key in listOf("imagePath", "audioPath")) {
+                    val entry = zip.getEntry(card.getString(key))
+                    assertNotNull("Missing $key for fixture card $index", entry)
+                    assertTrue("Empty $key for fixture card $index", entry.size > 0)
+                    zip.getInputStream(entry).use { assertTrue(it.read() >= 0) }
+                }
+            }
+        }
+    }
+
+    private fun withOwnedCopy(directory: File, check: (File) -> Unit) {
+        assertSandbox()
+        fun source() = instrumentation.context.assets.open(fixture).use { it.readBytes() }
+        val original = source()
+        assertEquals(expectedSha, sha(original))
+        val copy = File.createTempFile("u14-owned-", ".linka", directory)
+        var failure: Throwable? = null
+        try {
+            assertEquals(directory.canonicalFile, copy.canonicalFile.parentFile)
+            copy.writeBytes(original)
+            check(copy)
+        } catch (primaryFailure: Throwable) {
+            failure = primaryFailure
+        } finally {
+            for (cleanup in listOf<() -> Unit>(
+                { assertEquals("Packaged fixture changed", expectedSha, sha(source())) },
+                { assertEquals("Transport changed fixture bytes", expectedSha, sha(copy.readBytes())) },
+                { assertTrue("Could not remove this test's own cache copy", copy.delete()) },
+            )) {
+                try { cleanup() }
+                catch (cleanupFailure: Throwable) {
+                    val primary = failure
+                    if (primary == null) failure = cleanupFailure
+                    else if (cleanupFailure !== primary) primary.addSuppressed(cleanupFailure)
+                }
+            }
+        }
+        failure?.let { throw it }
+    }
+
+    @Test fun ownedCopyKeepsPrimaryFailureWhenShaCleanupFails() {
+        val primary = AssertionError("Synthetic primary failure")
+        var ownCopy: File? = null
+        try {
+            withOwnedCopy(target.cacheDir) { copy ->
+                ownCopy = copy
+                copy.writeBytes(byteArrayOf(0))
+                throw primary
+            }
+            fail("Expected the original synthetic failure")
+        } catch (actual: Throwable) {
+            assertSame(primary, actual)
+            assertEquals(1, actual.suppressed.size)
+            assertTrue(actual.suppressed.single() is AssertionError)
+        }
+        assertNotNull(ownCopy)
+        assertFalse("Own cache copy must be deleted even when SHA cleanup fails", ownCopy!!.exists())
+    }
+
+    private fun assertSandbox() {
+        assertEquals("su.linka.pictures.development", target.packageName)
+        assertEquals("Instrumentation must run in the target sandbox", target.applicationInfo.uid, Process.myUid())
+        assertTrue("Parity fixture instrumentation requires a debuggable target",
+            target.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
+    }
+
+    private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
+        .joinToString("") { "%02x".format(it) }
+
+    private fun find(node: AccessibilityNodeInfo, predicate: (AccessibilityNodeInfo) -> Boolean): Boolean {
+        if (node.isVisibleToUser && !node.isPassword && predicate(node)) return true
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            try { if (find(child, predicate)) return true } finally { child.recycle() }
+        }
+        return false
+    }
+
+    private fun await(state: String, packages: Set<String> = setOf(target.packageName),
+        scrollAction: Int? = null, predicate: (AccessibilityNodeInfo) -> Boolean) {
+        instrumentation.sendStatus(0, Bundle().apply { putString("u14Await", state) })
+        val deadline = SystemClock.uptimeMillis() + 20_000
+        var lastPackage: String? = null
+        var scrolls = 0
+        while (SystemClock.uptimeMillis() < deadline) {
+            instrumentation.waitForIdleSync()
+            val root = instrumentation.uiAutomation.rootInActiveWindow ?: continue
+            try {
+                lastPackage = root.packageName?.toString()
+                assertTrue("Unexpected package at $state: $lastPackage; no auth/settings/permission automation", lastPackage in packages)
+                if (predicate(root)) return
+                if (scrollAction != null && scrolls < 12 && find(root) { node ->
+                    node.isScrollable && node.performAction(scrollAction)
+                }) {
+                    scrolls++
+                    // Compose scroll is asynchronous: do not exhaust attempts before the viewport settles.
+                    instrumentation.uiAutomation.waitForIdle(100, 2000)
+                }
+            } finally { root.recycle() }
+        }
+        val failure = AssertionError("Timed out at $state; activePackage=$lastPackage (no text/password dump)")
+        try {
+            val image = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+            try {
+                val file = File.createTempFile("u14-timeout-", ".png", target.cacheDir)
+                file.outputStream().use { check(image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
+                instrumentation.sendStatus(0, Bundle().apply { putString("u14FailureScreenshot", file.name) })
+            } finally { image.recycle() }
+        } catch (captureFailure: Throwable) { failure.addSuppressed(captureFailure) }
+        throw failure
+    }
+
+    private fun matches(node: AccessibilityNodeInfo, labels: List<String>) =
+        node.text?.toString() in labels || node.contentDescription?.toString() in labels
+
+    private fun named(root: AccessibilityNodeInfo, labels: List<String>) = find(root) { matches(it, labels) }
+
+    private fun visibleNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName), requiredViewId: String? = null): Boolean {
+        val root = instrumentation.uiAutomation.rootInActiveWindow ?: return false
+        return try { root.packageName?.toString() in packages && namedHitBounds(root, labels, requiredViewId = requiredViewId) != null }
+        finally { root.recycle() }
+    }
+
+    private fun awaitNamed(label: UiText, scroll: Boolean = false) = await(label.name,
+        scrollAction = if (scroll) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else null) { named(it, label.labels) }
+
+    @Test fun namedHitRectangleUsesVisibleLabelNotWideRowCenter() {
+        val label = Rect(160, 554, 1017, 597)
+        val row = Rect(0, 512, 2560, 640)
+        val window = Rect(0, 0, 2560, 1600)
+        val hit = requireNotNull(visibleNamedBounds(label, row, window))
+        assertEquals(label, hit)
+        assertTrue(label.contains(hit.centerX(), hit.centerY()))
+        assertFalse(label.contains(row.centerX(), row.centerY()))
+        assertEquals(Rect(160, 554, 900, 597), visibleNamedBounds(label, row, Rect(0, 0, 900, 1600)))
+        assertNull(visibleNamedBounds(label, Rect(0, 0, 100, 100), window))
+        assertNull(visibleNamedBounds(Rect(), row, window))
+    }
+
+    private fun visibleNamedBounds(named: Rect, clickable: Rect, window: Rect): Rect? =
+        Rect(named).takeIf { it.intersect(clickable) && it.intersect(window) }
+
+    @Test fun namedClickCandidateRejectsSearchQueryButAcceptsResultWithSameName() {
+        assertFalse(isNamedClickCandidate(named = true, enabled = true, editable = true))
+        assertTrue(isNamedClickCandidate(named = true, enabled = true, editable = false))
+        assertFalse(isNamedClickCandidate(named = true, enabled = false, editable = false))
+        assertFalse(isNamedClickCandidate(named = false, enabled = true, editable = false))
+        assertFalse(isNamedClickCandidate(true, true, false, "com.google.android.documentsui:id/search_src_text", "android:id/title"))
+        assertFalse(isNamedClickCandidate(true, true, false, null, "android:id/title"))
+        assertTrue(isNamedClickCandidate(true, true, false, "android:id/title", "android:id/title"))
+    }
+
+    private fun isNamedClickCandidate(named: Boolean, enabled: Boolean, editable: Boolean,
+        viewId: String? = null, requiredViewId: String? = null) =
+        named && enabled && !editable && (requiredViewId == null || viewId == requiredViewId)
+
+    @Test fun fixtureCellRequiresExplicitMatchingRowAndColumn() {
+        assertTrue(matchesFixtureCell(4, 1, 1))
+        assertFalse(matchesFixtureCell(4, null, null))
+        assertFalse(matchesFixtureCell(4, 0, 4))
+        assertFalse(matchesFixtureCell(-1, 0, 0))
+    }
+
+    private fun matchesFixtureCell(position: Int, row: Int?, column: Int?) =
+        position >= 0 && row == position / 3 && column == position % 3
+
+    private fun namedHitBounds(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean = false,
+        requiredViewId: String? = null): Rect? {
+        var bounds: Rect? = null
+        withNamedAction(root, labels, cardOnly, requiredViewId) { _, rect -> bounds = rect; true }
+        return bounds
+    }
+
+    private fun withNamedAction(root: AccessibilityNodeInfo, labels: List<String>, cardOnly: Boolean,
+        requiredViewId: String?, action: (AccessibilityNodeInfo, Rect) -> Boolean): Boolean =
+        find(root) { node ->
+            if (!isNamedClickCandidate(matches(node, labels), node.isEnabled, node.isEditable, node.viewIdResourceName, requiredViewId)) false else {
+                var candidate: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
+                var row: Int? = null
+                var column: Int? = null
+                try {
+                    while (candidate != null) {
+                        candidate.collectionItemInfo?.takeIf { row == null }?.let {
+                            row = it.rowIndex
+                            column = it.columnIndex
+                        }
+                        if (candidate.isClickable) break
+                        val parent = candidate.parent
+                        candidate.recycle()
+                        candidate = parent
+                    }
+                    val position = titles.indexOfFirst { matches(node, listOf(it)) }
+                    candidate?.takeIf { it.isEnabled && it.isVisibleToUser && (!cardOnly || matchesFixtureCell(position, row, column)) }?.let {
+                        // Keep the named hotspot for inspection; activate the actual clickable ancestor.
+                        visibleNamedBounds(Rect().also(node::getBoundsInScreen),
+                            Rect().also(it::getBoundsInScreen), Rect().also(root::getBoundsInScreen))
+                            ?.let { rect -> action(it, rect) }
+                    } ?: false
+                } finally { candidate?.recycle() }
+            }
+        }
+
+    private fun clickNamed(labels: List<String>, packages: Set<String> = setOf(target.packageName),
+        scroll: Boolean = false, backwards: Boolean = false, cardOnly: Boolean = false, requiredViewId: String? = null) {
+        var lastReportedTarget: String? = null
+        val direction = if (backwards) AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+        await("click ${labels.joinToString(" / ")}", packages, if (scroll) direction else null) { root ->
+            withNamedAction(root, labels, cardOnly, requiredViewId) { node, rect ->
+                val target = "${node.className}|${node.actionList.map { it.id }}|${rect.toShortString()}"
+                if (target != lastReportedTarget) {
+                    lastReportedTarget = target
+                    instrumentation.sendStatus(0, Bundle().apply {
+                        putString("u14Tap", labels.first())
+                        putString("u14TapBounds", rect.toShortString())
+                        putString("u14NodeClass", node.className?.toString())
+                        putBoolean("u14ClickSupported", node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK })
+                        putString("u14InputMethod", "native-accessibility-click")
+                    })
+                }
+                node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+        }
+    }
+
+    private fun replaceText(node: AccessibilityNodeInfo, value: String) = node.performAction(
+        AccessibilityNodeInfo.ACTION_SET_TEXT, Bundle().apply {
+            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value)
+        })
+
+    private fun setField(label: UiText, oldValue: UiText, value: String) {
+        await("set named field $label") { root -> find(root) { node ->
+            node.isEditable && (matches(node, label.labels + oldValue.labels) || label.containedIn(node.text)) && replaceText(node, value)
+        } }
+        await("verify field $label") { root -> find(root) { node -> node.isEditable && node.text?.contains(value) == true } }
+    }
+
+}

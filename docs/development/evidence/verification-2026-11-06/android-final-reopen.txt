@@ -1,0 +1,45 @@
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+su.linka.pictures.activity.DevelopmentParityTest:
+INSTRUMENTATION_STATUS: test=reopenFilledBoardWithoutImportOrMessageEdits
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Открыть «ХОЧУ» / ХОЧУ
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=nine visible named cards with explicit 3x3 AX metadata; if absent run inspectOwnedFixtureGridSemantics
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=ХОЧУ КУШАТЬ composed; no displayed autoplay
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Открыть «ХОЧУ» / ХОЧУ
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=nine visible named cards with explicit 3x3 AX metadata; if absent run inspectOwnedFixtureGridSemantics
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=ХОЧУ КУШАТЬ composed; no displayed autoplay
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14FixtureSha256=a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b
+INSTRUMENTATION_STATUS: u14InputPath=reopen-native-back-regression
+INSTRUMENTATION_STATUS: u14MessageParts=ХОЧУ|КУШАТЬ
+INSTRUMENTATION_STATUS: u14State=board-filled
+INSTRUMENTATION_STATUS: u14Verdict=UI_STATE_READY_ONLY; pixels/visual parity/user approval NOT evaluated
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=reopenFilledBoardWithoutImportOrMessageEdits
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 30.448
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

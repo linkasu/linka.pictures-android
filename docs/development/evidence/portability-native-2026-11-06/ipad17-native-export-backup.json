@@ -1,0 +1,347 @@
+{
+  "scope": "Actual owned iPad17 local Files folder selection, fresh foreground authorization, explicit write confirmations, terminal success and preserved board/message",
+  "device": {
+    "udid": "D46F4A13-2815-41C6-B093-0548B56AFD9E",
+    "name": "linka_ui14_ipad17_67846f",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-17-0",
+    "device_type": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-11-inch-4th-generation-8GB",
+    "ownership": "created by this task; synthetic development data only; no old device reset"
+  },
+  "product_executable_sha256": "ef1cba85d8bc96c9088c9ac1c6653e3b93bb13b1f2f6aeefc5d578d244a83a16",
+  "native": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 102.57,
+    "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/ipad17-native-export-backup.xcresult"
+  },
+  "outputs": [
+    {
+      "name": "board.linka",
+      "path": "/Users/aacidov/Library/Developer/CoreSimulator/Devices/D46F4A13-2815-41C6-B093-0548B56AFD9E/data/Containers/Data/Application/B54C16D4-3BF5-434F-8897-30BB934C44B9/Documents/u14-fixtures/board.linka",
+      "bytes": 3168615,
+      "sha256": "a8dca172b5c09183583b540d569b8ced9ffd74165ae19ceff4298f96b0a61211",
+      "unchanged_by_inspection": true,
+      "facts": {
+        "format": "linka pages 3.0",
+        "pages": 1,
+        "rows": 3,
+        "columns": 3,
+        "cards": 9,
+        "images": 9,
+        "recordings": 9
+      },
+      "entries": [
+        {
+          "path": "config.json",
+          "bytes": 4447,
+          "crc32": "53a02612",
+          "sha256": "f3a7e14a442bff9cb4e9e450f2453918961c330a23bec22a2a4ae40c41966338"
+        },
+        {
+          "path": "media/03842ecfb8e9ce1a763bab7afef2e3c95ecf434684d2144593777fd4fe1651d1",
+          "bytes": 898956,
+          "crc32": "cd4f6c56",
+          "sha256": "03842ecfb8e9ce1a763bab7afef2e3c95ecf434684d2144593777fd4fe1651d1"
+        },
+        {
+          "path": "media/81ebe4d978f98df6d58fa74a520af2c61324df5bc5c494674a13a8466e91e6d4",
+          "bytes": 76844,
+          "crc32": "ed46cd9b",
+          "sha256": "81ebe4d978f98df6d58fa74a520af2c61324df5bc5c494674a13a8466e91e6d4"
+        },
+        {
+          "path": "media/4b375bda0d7096a1c43488ac2ad34552505e3c5e62c27df25477da7bbed2fa4a",
+          "bytes": 225056,
+          "crc32": "852d48a7",
+          "sha256": "4b375bda0d7096a1c43488ac2ad34552505e3c5e62c27df25477da7bbed2fa4a"
+        },
+        {
+          "path": "media/9872be60de1c007a3faf15264d4f204bc1ffdb824e578a38874c84b29563773f",
+          "bytes": 67724,
+          "crc32": "bba66152",
+          "sha256": "9872be60de1c007a3faf15264d4f204bc1ffdb824e578a38874c84b29563773f"
+        },
+        {
+          "path": "media/9debe32d7c1cd7ef113b1c92b85f5d3c283e6a87a2cd97844024674e4fc660b5",
+          "bytes": 114586,
+          "crc32": "204dd48c",
+          "sha256": "9debe32d7c1cd7ef113b1c92b85f5d3c283e6a87a2cd97844024674e4fc660b5"
+        },
+        {
+          "path": "media/a4b140c0e2a94c4cefe3ce4a2e7f2773155e0fa1d9f20afc68df04e0ae1e8894",
+          "bytes": 77324,
+          "crc32": "3bc8f351",
+          "sha256": "a4b140c0e2a94c4cefe3ce4a2e7f2773155e0fa1d9f20afc68df04e0ae1e8894"
+        },
+        {
+          "path": "media/1f2276c01675e7942c872936927c4fc6fb31f1318ac2362b141a1966995e3e02",
+          "bytes": 9184,
+          "crc32": "a948a43f",
+          "sha256": "1f2276c01675e7942c872936927c4fc6fb31f1318ac2362b141a1966995e3e02"
+        },
+        {
+          "path": "media/a9559a6a65cf6d5df5353111e56e622d8e3ac4fb4fbabd1ead15fc2a8c1f0521",
+          "bytes": 105164,
+          "crc32": "65b28225",
+          "sha256": "a9559a6a65cf6d5df5353111e56e622d8e3ac4fb4fbabd1ead15fc2a8c1f0521"
+        },
+        {
+          "path": "media/c4dc9294f81882a0cc5aa7a48053b4b8505d75d0cc2bfdaa0abd86cc9831b661",
+          "bytes": 1727,
+          "crc32": "c427b46a",
+          "sha256": "c4dc9294f81882a0cc5aa7a48053b4b8505d75d0cc2bfdaa0abd86cc9831b661"
+        },
+        {
+          "path": "media/e49fcd0dbf54b1ab45c0094be54625fc8eb9d58b7499de52661b06e31c8499fa",
+          "bytes": 70604,
+          "crc32": "2e24f698",
+          "sha256": "e49fcd0dbf54b1ab45c0094be54625fc8eb9d58b7499de52661b06e31c8499fa"
+        },
+        {
+          "path": "media/a4a85053e8d9ed8c02f40703a7647e689826f820e8ed59f87dd1e006e094def4",
+          "bytes": 26259,
+          "crc32": "c2690d55",
+          "sha256": "a4a85053e8d9ed8c02f40703a7647e689826f820e8ed59f87dd1e006e094def4"
+        },
+        {
+          "path": "media/91756a7779012825ac3e08ee0dcccab6c7447a0842cbda2985c7e165d11f332d",
+          "bytes": 114284,
+          "crc32": "c210755a",
+          "sha256": "91756a7779012825ac3e08ee0dcccab6c7447a0842cbda2985c7e165d11f332d"
+        },
+        {
+          "path": "media/4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb",
+          "bytes": 528975,
+          "crc32": "f03feea6",
+          "sha256": "4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb"
+        },
+        {
+          "path": "media/1c65479cc6b3fd16252c7cbc4a04a98d0b227fa7da8f84d112951697dc3111bd",
+          "bytes": 100844,
+          "crc32": "6316f2ec",
+          "sha256": "1c65479cc6b3fd16252c7cbc4a04a98d0b227fa7da8f84d112951697dc3111bd"
+        },
+        {
+          "path": "media/18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396",
+          "bytes": 326240,
+          "crc32": "5797cc0b",
+          "sha256": "18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396"
+        },
+        {
+          "path": "media/711eb7dec5ccfc67365eb6748a2478dd4a9aea95e8a4e0f1ff02bc235e57b4f0",
+          "bytes": 73964,
+          "crc32": "d993785e",
+          "sha256": "711eb7dec5ccfc67365eb6748a2478dd4a9aea95e8a4e0f1ff02bc235e57b4f0"
+        },
+        {
+          "path": "media/b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6",
+          "bytes": 213437,
+          "crc32": "607f0817",
+          "sha256": "b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6"
+        },
+        {
+          "path": "media/20d332a6520ac0eba7bc01c2471b7f72616bad729b2b2fcc575c3ac54eca01e7",
+          "bytes": 128684,
+          "crc32": "917e9c82",
+          "sha256": "20d332a6520ac0eba7bc01c2471b7f72616bad729b2b2fcc575c3ac54eca01e7"
+        }
+      ]
+    },
+    {
+      "name": "library.linkabackup",
+      "path": "/Users/aacidov/Library/Developer/CoreSimulator/Devices/D46F4A13-2815-41C6-B093-0548B56AFD9E/data/Containers/Data/Application/B54C16D4-3BF5-434F-8897-30BB934C44B9/Documents/u14-fixtures/library.linkabackup",
+      "bytes": 3172801,
+      "sha256": "1c198000ed5be181f8d8102b8f800ec69cb94adc7af3d40c279f383f8ad0baed",
+      "unchanged_by_inspection": true,
+      "facts": {
+        "format": "su.linka.pictures.backup",
+        "version": "1.0",
+        "counts": {
+          "boards": 1,
+          "drafts": 0,
+          "retained": 0,
+          "assets": 18,
+          "assetBytes": 3159856
+        },
+        "settings_keys": [
+          "textScale",
+          "highContrast",
+          "languageTag",
+          "boards"
+        ],
+        "privacy_scope": "No structural credential/current-message fields in manifest/settings; not a guarantee about user content in boards/assets"
+      },
+      "entries": [
+        {
+          "path": "manifest.json",
+          "bytes": 229,
+          "crc32": "88d2c211",
+          "sha256": "7e08645c5a82e166e8cf99f28575521454def059247d7672122ce7821f946dab"
+        },
+        {
+          "path": "boards/00000000.json",
+          "bytes": 5749,
+          "crc32": "0ddf24bb",
+          "sha256": "cf61bae1e669e1867148c2844976a9dc5b97941b2510c009b4194b65a4fe9201"
+        },
+        {
+          "path": "assets.jsonl",
+          "bytes": 2367,
+          "crc32": "598330b6",
+          "sha256": "8665ce1f0876d78c4756b1c30a64c9ce82954c45de43ea7fedbbc37ce392cfc2"
+        },
+        {
+          "path": "assets/03842ecfb8e9ce1a763bab7afef2e3c95ecf434684d2144593777fd4fe1651d1",
+          "bytes": 898956,
+          "crc32": "cd4f6c56",
+          "sha256": "03842ecfb8e9ce1a763bab7afef2e3c95ecf434684d2144593777fd4fe1651d1"
+        },
+        {
+          "path": "assets/18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396",
+          "bytes": 326240,
+          "crc32": "5797cc0b",
+          "sha256": "18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396"
+        },
+        {
+          "path": "assets/1c65479cc6b3fd16252c7cbc4a04a98d0b227fa7da8f84d112951697dc3111bd",
+          "bytes": 100844,
+          "crc32": "6316f2ec",
+          "sha256": "1c65479cc6b3fd16252c7cbc4a04a98d0b227fa7da8f84d112951697dc3111bd"
+        },
+        {
+          "path": "assets/1f2276c01675e7942c872936927c4fc6fb31f1318ac2362b141a1966995e3e02",
+          "bytes": 9184,
+          "crc32": "a948a43f",
+          "sha256": "1f2276c01675e7942c872936927c4fc6fb31f1318ac2362b141a1966995e3e02"
+        },
+        {
+          "path": "assets/20d332a6520ac0eba7bc01c2471b7f72616bad729b2b2fcc575c3ac54eca01e7",
+          "bytes": 128684,
+          "crc32": "917e9c82",
+          "sha256": "20d332a6520ac0eba7bc01c2471b7f72616bad729b2b2fcc575c3ac54eca01e7"
+        },
+        {
+          "path": "assets/4b375bda0d7096a1c43488ac2ad34552505e3c5e62c27df25477da7bbed2fa4a",
+          "bytes": 225056,
+          "crc32": "852d48a7",
+          "sha256": "4b375bda0d7096a1c43488ac2ad34552505e3c5e62c27df25477da7bbed2fa4a"
+        },
+        {
+          "path": "assets/4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb",
+          "bytes": 528975,
+          "crc32": "f03feea6",
+          "sha256": "4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb"
+        },
+        {
+          "path": "assets/711eb7dec5ccfc67365eb6748a2478dd4a9aea95e8a4e0f1ff02bc235e57b4f0",
+          "bytes": 73964,
+          "crc32": "d993785e",
+          "sha256": "711eb7dec5ccfc67365eb6748a2478dd4a9aea95e8a4e0f1ff02bc235e57b4f0"
+        },
+        {
+          "path": "assets/81ebe4d978f98df6d58fa74a520af2c61324df5bc5c494674a13a8466e91e6d4",
+          "bytes": 76844,
+          "crc32": "ed46cd9b",
+          "sha256": "81ebe4d978f98df6d58fa74a520af2c61324df5bc5c494674a13a8466e91e6d4"
+        },
+        {
+          "path": "assets/91756a7779012825ac3e08ee0dcccab6c7447a0842cbda2985c7e165d11f332d",
+          "bytes": 114284,
+          "crc32": "c210755a",
+          "sha256": "91756a7779012825ac3e08ee0dcccab6c7447a0842cbda2985c7e165d11f332d"
+        },
+        {
+          "path": "assets/9872be60de1c007a3faf15264d4f204bc1ffdb824e578a38874c84b29563773f",
+          "bytes": 67724,
+          "crc32": "bba66152",
+          "sha256": "9872be60de1c007a3faf15264d4f204bc1ffdb824e578a38874c84b29563773f"
+        },
+        {
+          "path": "assets/9debe32d7c1cd7ef113b1c92b85f5d3c283e6a87a2cd97844024674e4fc660b5",
+          "bytes": 114586,
+          "crc32": "204dd48c",
+          "sha256": "9debe32d7c1cd7ef113b1c92b85f5d3c283e6a87a2cd97844024674e4fc660b5"
+        },
+        {
+          "path": "assets/a4a85053e8d9ed8c02f40703a7647e689826f820e8ed59f87dd1e006e094def4",
+          "bytes": 26259,
+          "crc32": "c2690d55",
+          "sha256": "a4a85053e8d9ed8c02f40703a7647e689826f820e8ed59f87dd1e006e094def4"
+        },
+        {
+          "path": "assets/a4b140c0e2a94c4cefe3ce4a2e7f2773155e0fa1d9f20afc68df04e0ae1e8894",
+          "bytes": 77324,
+          "crc32": "3bc8f351",
+          "sha256": "a4b140c0e2a94c4cefe3ce4a2e7f2773155e0fa1d9f20afc68df04e0ae1e8894"
+        },
+        {
+          "path": "assets/a9559a6a65cf6d5df5353111e56e622d8e3ac4fb4fbabd1ead15fc2a8c1f0521",
+          "bytes": 105164,
+          "crc32": "65b28225",
+          "sha256": "a9559a6a65cf6d5df5353111e56e622d8e3ac4fb4fbabd1ead15fc2a8c1f0521"
+        },
+        {
+          "path": "assets/b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6",
+          "bytes": 213437,
+          "crc32": "607f0817",
+          "sha256": "b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6"
+        },
+        {
+          "path": "assets/c4dc9294f81882a0cc5aa7a48053b4b8505d75d0cc2bfdaa0abd86cc9831b661",
+          "bytes": 1727,
+          "crc32": "c427b46a",
+          "sha256": "c4dc9294f81882a0cc5aa7a48053b4b8505d75d0cc2bfdaa0abd86cc9831b661"
+        },
+        {
+          "path": "assets/e49fcd0dbf54b1ab45c0094be54625fc8eb9d58b7499de52661b06e31c8499fa",
+          "bytes": 70604,
+          "crc32": "2e24f698",
+          "sha256": "e49fcd0dbf54b1ab45c0094be54625fc8eb9d58b7499de52661b06e31c8499fa"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "ipad17-export-backup-preserved-board-message.png",
+      "sha256": "2c03c6a96b7881a5e83cc97e9364e0e7be911ab9951a80b11fd2d82c32a08ca6",
+      "native_attachment": "DF367889-3C5E-4488-934F-0765D5743F20.png"
+    },
+    {
+      "file": "ipad17-backup-completed.png",
+      "sha256": "ad442486a5b4a36ee9b257b0297ff345e4a5cdadd8086098a63bff393dfd169a",
+      "native_attachment": "6D076A7F-4D50-42F7-A59C-D3CFA5F87BAC.png"
+    },
+    {
+      "file": "ipad17-backup-fresh-confirmation.png",
+      "sha256": "fcc0394a1c17ed3e5db2af482e6d0614c94680dc6f045723f06108394dbaf6ff",
+      "native_attachment": "6C5290D8-0FEE-41E9-901B-B88DFCD83C8C.png"
+    },
+    {
+      "file": "ipad17-backup-local-folder.png",
+      "sha256": "5e36a5755e5d1e051268dc781f6121706525ecef6d1ff1a058790285b9a66cc0",
+      "native_attachment": "40666651-8929-4761-A38F-E9E842F808DD.png"
+    },
+    {
+      "file": "ipad17-export-completed.png",
+      "sha256": "2e6693d558386e4f037bff63482246712ead531ece727d06ffac9562c2b66df7",
+      "native_attachment": "5F0AF6E3-2ED4-48CA-8276-F2601EDC82CB.png"
+    },
+    {
+      "file": "ipad17-export-fresh-confirmation.png",
+      "sha256": "876e63e6d391b09ad2471cf3fb693a02d3df1b2f1c33a8132795e408bc04bab4",
+      "native_attachment": "6DB10370-EC9F-438B-B4C4-C385CC71DD73.png"
+    },
+    {
+      "file": "ipad17-export-local-folder.png",
+      "sha256": "a3040ac7c3c5e2c78523520b8dc4c5001e4b0addd7273f00953e17dd0fac1b91",
+      "native_attachment": "8981F616-E3A7-4A2B-96A7-A7B930D348E9.png"
+    }
+  ],
+  "original_message_observed_afterwards": "ХОЧУ КУШАТЬ",
+  "restore_recovery_tested": false,
+  "android_provider_acceptance": false,
+  "physical_acceptance": false,
+  "full_release_ready": false
+}

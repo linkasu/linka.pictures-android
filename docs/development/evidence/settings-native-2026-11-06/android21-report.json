@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-06",
+  "device": "emulator-5554",
+  "avdObserved": "linka_platform_probe_api21_arm64",
+  "apiObserved": 21,
+  "package": "su.linka.pictures.development",
+  "candidateApkSha256HostVerified": "bf4c969ec1e91be059753d6f4f670cbb75a9b972db62a88c7dcae6aae76bc45c",
+  "installation": "adb MCP install_app, reinstall=true, allowDowngrade=false; Success; no data clear",
+  "verdict": "PASS_NATIVE_SETTINGS_ROUNDTRIP_AND_CAPTION_SCROLL_PORTRAIT; original PNGs available for parent pixel review, not a full-product acceptance claim",
+  "steps": [
+    "Listed devices, verified API and AVD through adb MCP; all device calls explicitly targeted emulator-5554.",
+    "Verified immutable candidate APK host SHA256, installed preserving app data, launched app.",
+    "Library top-right menu -> Настройки; actually observed scale 1.0, high contrast Off, dark theme Off. Initial values matched the authorized original state.",
+    "Enabled high contrast; opened text scale dialog. Used native MOVE_END, three DEL keys, ASCII text 2. Actual PNG confirmed exactly 2 before Apply.",
+    "Applied scale. Settings form showed scale 2 and contrast On. Top-right menu contained only reload; dismissed without selecting. Scrolled to actual Сохранить настройки button, tapped once. No password or authorization prompt appeared. Screen immediately used larger font/high contrast and showed canonical 2.0.",
+    "Left settings for library; reopened via actual library menu; scrolled to appearance. Actual readback showed canonical 2.0 and enabled high contrast.",
+    "Returned to library and opened existing ХОЧУ by tapping its board tile, not a communication card. Captured board at 2.0/contrast On.",
+    "Inside ПИСАТЬ КАКАТЬ caption only: native swipe (860,1548)->(860,1432), duration 450ms, twice. First PNG displayed ТЬ / КАКА; second displayed КАКА / ТЬ. Picture viewport stayed visible and fixed. No communication-card tap.",
+    "Grid-gutter native swipe (375,1670)->(375,1120), duration 450ms, reached lower row. Combined initial and bottom PNGs demonstrate all nine original cards reachable, without requiring all to fit simultaneously.",
+    "Board back -> library menu -> Settings. Scrolled to controls, disabled contrast, opened scale dialog. Native MOVE_END, three DEL keys, ASCII 1.0. Actual PNG confirmed exactly 1.0 before Apply.",
+    "Applied scale 1.0; scrolled through settings without selecting voice/language/page preferences. Tapped actual Сохранить настройки once. Screen returned to original ordinary typography/colors, indicating commit.",
+    "Left settings, reopened Settings through library menu. Actual canonical readback: scale 1.0, contrast Off, dark theme still Off.",
+    "Left settings for library before cold stop. Force-stopped only this app using MCP, then launched app using MCP. Opened existing ХОЧУ board. Final actual PNG shows nine cards and original message ХОЧУ КУШАТЬ."
+  ],
+  "messageObservations": {
+    "beforeSettings": "Parent supplied original ХОЧУ КУШАТЬ; this lane initially observed library, not full message.",
+    "boardAt2": "Exactly two phrase tiles observed: ХОЧУ and food-image tile with visible КУ / ША caption. Full second word is clipped in current viewport, not claimed fully pixel-observed.",
+    "afterCaptionPan1": "Same two phrase tiles, same images and visible ХО / ЧУ and КУ / ША; no additional tile observed. Full phrase preservation inferred at this stage, not fully readable pixels.",
+    "afterCaptionPan2": "Same two phrase tiles and visible caption fragments; no additional tile observed. Full phrase preservation inferred at this stage, not fully readable pixels.",
+    "afterGridGutterPan": "Same two phrase tiles and caption fragments; no additional tile observed. Full phrase preservation inferred at this stage.",
+    "afterRestoreAndColdRestart": "Actually observed complete ХОЧУ КУШАТЬ in android21-cold-board.png; nine original board cards visible."
+  },
+  "captionResult": {
+    "nativePans": 2,
+    "startWithinCardHeightFraction": 0.80,
+    "endWithinCardHeightFraction": 0.48,
+    "suffixActuallyPixelObserved": "КАКА / ТЬ",
+    "pictureViewport": "Same toilet-boy image remains visible in same position across both caption pans.",
+    "newPhraseTileObserved": false
+  },
+  "finalState": {
+    "foreground": "su.linka.pictures.development, existing ХОЧУ board, portrait",
+    "savedScale": "1.0",
+    "savedContrast": false,
+    "theme": "Original light theme; no theme changes",
+    "openSettingsForm": false,
+    "openDialogOrPicker": false,
+    "messageActuallyObserved": "ХОЧУ КУШАТЬ",
+    "boardCardsActuallyObserved": 9,
+    "leaseReleased": true
+  },
+  "keyEvidenceSha256": {
+    "android21-canonical2.png": "7213c4d650cd7c07ead83af3dcbfe9ffeb57a5329539982885d186454867ef6f",
+    "android21-caption-pan2.png": "ee0e118662f5b234df4ff163a564ca49cb4f0d8096213d76aa9f6bc7b0465dc2",
+    "android21-grid-bottom2.png": "5fc8b1116686e2f49d02437d3351360974af9eab3bfda67de957d81a15af7744",
+    "android21-restored-canonical.png": "0c97568a8108a4708448113005b765da1ca388d4dbdd55b35290a65a22dcfbb9",
+    "android21-cold-board.png": "7153342728ce5ba118ab3bd5e28ed455dd5186e1bcabd7b9ae6d5c8d0df12b36"
+  },
+  "safety": {
+    "sourceProductionSigningChanges": false,
+    "buildsInstrumentationTestApk": false,
+    "privateDataBackendPrefsClipboardInjection": false,
+    "systemSettingsChanged": false,
+    "speechPreviewMicVoiceChanges": false,
+    "libraryDraftMessageCardEdits": false,
+    "providerDownloadsOperations": false,
+    "otherDevicesOrIosTouched": false,
+    "commitsStaging": false
+  },
+  "limitations": [
+    "Portrait lane only; no orientation/system settings changes. Landscape not exercised in this run.",
+    "No claim for all five toolbars, full-title scrolling, full product, physical device, U1.4 or release acceptance.",
+    "No private database verification of drafts or assets; preservation supported by absence of mutating actions and final actual board/message screenshot.",
+    "Native screenshots are unmodified. Parent should independently review pixels rather than treating hierarchy content as visual acceptance."
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "scope": "XCTest simulated hardware key-event diagnostics on owned iPhone17, physical keyboard not connected",
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "cases": [
+    {
+      "name": "hardware-key-events-phone",
+      "passed": 0,
+      "failed": 1,
+      "seconds": 40.109,
+      "observed": "Raw1/2 produce1 then12; XCTest delete key leaves12, expected1. Cmd+A stage not reached.",
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/hardware-key-events-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "hardware-key-events-phone-3A6D45B4-E64C-4100-B7A3-03D3A18A972E.png",
+          "sha256": "71a550068e8d9d9a3fff4a5806cdacd22eb3e224577539d4388a72f3ed7ae0ca"
+        },
+        {
+          "file": "hardware-key-events-phone-941D2344-986D-4F29-B143-28E58C5BFE11.png",
+          "sha256": "6716da227d29d98478c42cd29fd0f268af983fc5024f08fcf422fde90baa0f9d"
+        },
+        {
+          "file": "hardware-key-events-phone-686767B0-0FCA-4A89-BF6C-4365BBE35C78.png",
+          "sha256": "aaff644283b96514250c6b7af24ff83c1eff30f6b76203b27f4a9358551780e4"
+        },
+        {
+          "file": "hardware-key-events-phone-6916E5D2-33C2-4AEC-A05D-096EC6B3E9C8.png",
+          "sha256": "53e0f084685bca5737d51fea55bebbaa711363bdc4934da134dc9e9d5937d515"
+        }
+      ]
+    },
+    {
+      "name": "native-backspace-hardware-select-phone",
+      "passed": 0,
+      "failed": 1,
+      "seconds": 45.765,
+      "observed": "Raw1/2 produce1 then12; actual on-screen delete key yields1. XCTest Cmd+A followed by raw3 yields13, expected3.",
+      "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/native-backspace-hardware-select-phone.xcresult",
+      "screenshots": [
+        {
+          "file": "native-backspace-hardware-select-phone-5C20960E-8FE0-47F2-A759-53633BE483FD.png",
+          "sha256": "2968c16183ae43001772f46a30829eac0bed7292d6c4ae9b032fbe30b7e8da62"
+        },
+        {
+          "file": "native-backspace-hardware-select-phone-8EEB3350-787B-415E-B1C3-1B953A6DC4CA.png",
+          "sha256": "a856f0a7441b3155473afff54667bd03f0acc074c6e7cbb856652097c37fed61"
+        },
+        {
+          "file": "native-backspace-hardware-select-phone-859346BF-F870-42D8-907C-A0981945889F.png",
+          "sha256": "316dd87a01ca73841b411bb8a30db1307f69d0058bfe22d89af797c64671d402"
+        },
+        {
+          "file": "native-backspace-hardware-select-phone-C49CC34F-9B82-45A3-BA5E-EBB4D5479BA8.png",
+          "sha256": "2a37733255a0704c30257953b9e1f9fbaee9867d86e8414e4bc35f4d092f9d2c"
+        }
+      ]
+    }
+  ],
+  "primary_reviewed_actual12_and13_screens": true,
+  "native_on_screen_backspace_succeeded": true,
+  "hardware_delete_and_command_a_accepted": false,
+  "product_code_changed": false,
+  "original_published_card_changed": false,
+  "exact_internal_cause": "Unconfirmed; differing native touch and XCTest key-event paths are demonstrated, not a full external keyboard acceptance or product fix",
+  "followup": "Explicit Cancel/SAVED/published-card/message verification runs separately; do not infer cleanup from these failed probes"
+}

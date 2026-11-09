@@ -1,0 +1,68 @@
+{
+  "status": "PROGRESS_ONLY; U1.4 OPEN; user approval absent",
+  "android_device": "linka_audit_tablet / emulator-5556 / API35 flagged",
+  "viewport_px": [
+    2560,
+    1600
+  ],
+  "density_dpi": 320,
+  "font_scale": 1.0,
+  "fixture_sha256": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+  "baseline_apk_sha256": "8f33a33449645b94733839bac058e48759f6069c7fe7513fcabb423520882f04",
+  "baseline_source": "v1.4 / 2073d912f6c70ab0165823f37e4b5704cf72e953; original build cleanliness not reverified; not Play provenance",
+  "new_apk_sha256": "3700456b8e5ab931d73a15a073881daf57265ba2a0904f2ae9cd92415deae1f2",
+  "new_build_source": "d61796043c23acde7357c83c87ecf44405f2a923 + WIP; full artifact record in android-freeze.json",
+  "manual_state": {
+    "message_parts": [
+      "ХОЧУ",
+      "КУШАТЬ"
+    ],
+    "visible_cards": 9,
+    "native_back_return": "message preserved",
+    "automatic_speech": "not observed"
+  },
+  "automation_status": "Native reopen/Back 1/1 PASS (22.919s); import/SAF remain RED/not accepted; visual/user approval separate",
+  "ios_status": "plist startup crash fixed; actual UI blocked on Keychain -34018; no bypass",
+  "files": {
+    "android-api35-baseline-compose-empty.png": {
+      "sha256": "58ac2add8581ad6ff91c0e67debb9a8ab8cf33b838d4cc3eb44ee505306c0dbd",
+      "visually_reviewed": true,
+      "user_approved": false
+    },
+    "android-api35-baseline-compose-filled.png": {
+      "sha256": "a62db35756518bd4165714f25364617ae19c40de53a34a33583de74429e2bd27",
+      "visually_reviewed": true,
+      "user_approved": false
+    },
+    "android-api35-baseline-empty.png": {
+      "sha256": "10eca45bb614c3710028d66d9a89367375ca5d96c17d0aa6f3395e85dd2c5c4f",
+      "visually_reviewed": true,
+      "user_approved": false
+    },
+    "android-api35-development-compose-current.png": {
+      "sha256": "57c5e9b84b037f7b995465e32b0097bc22141a181bd942624ee232cdf55d0b47",
+      "visually_reviewed": true,
+      "user_approved": false
+    },
+    "android-api35-development-compose-filled.png": {
+      "sha256": "358acb881b29c665d662ff43dfbfcdf25d3b188873134f097e8cd0c17f680347",
+      "visually_reviewed": true,
+      "user_approved": false
+    },
+    "android-api35-development-library.png": {
+      "sha256": "89537c6ef5f90c744255dba79833d5e0e53880aefba46fae7a93b65fca8c6aa6",
+      "visually_reviewed": true,
+      "user_approved": false
+    },
+    "ios17-plist-fixed-startup.png": {
+      "sha256": "83ffdda3d5fba84b8697aef74a1acaa362808cb681e11268ec7b1cf37ba4026a",
+      "visually_reviewed": true,
+      "user_approved": false
+    },
+    "ios17-startup-crash-springboard.png": {
+      "sha256": "4fbd9e21fdebe6ab7ef5aa844c4bb34f4596b73246944f8b1b5136d8b14612c5",
+      "visually_reviewed": true,
+      "user_approved": false
+    }
+  }
+}

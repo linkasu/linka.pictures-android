@@ -1,0 +1,45 @@
+[==========] Running 17 tests from 31 test cases.
+[----------] Global test environment set-up.
+[----------] 14 tests from su.linka.pictures.access.LocalAssistantAccessTest
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.unprotectedCommandsStillHaveOwnerBoundRevocableGuards
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.unprotectedCommandsStillHaveOwnerBoundRevocableGuards (9 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.modernPasswordIsExactAndCapabilitiesCannotMoveBetweenOwnersOrSurviveChanges
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.modernPasswordIsExactAndCapabilitiesCannotMoveBetweenOwnersOrSurviveChanges (1192 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.legacyInputTrimDoesNotNormalizeStoredUnicodeOrUnlockUnreachablePasswords
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.legacyInputTrimDoesNotNormalizeStoredUnicodeOrUnlockUnreachablePasswords (2970 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.newLockRequiresActualAvailablePrerequisiteAndDoesNotWriteOnFailure
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.newLockRequiresActualAvailablePrerequisiteAndDoesNotWriteOnFailure (0 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.unavailableOsVerificationPreservesLegacyUnlockAndCannotResetOrReplaceItsPassword
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.unavailableOsVerificationPreservesLegacyUnlockAndCannotResetOrReplaceItsPassword (1991 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.ownerResetNeedsFreshProofAndRevokeDefeatsLateSuccess
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.ownerResetNeedsFreshProofAndRevokeDefeatsLateSuccess (1447 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.revokeAtLastCredentialGuardDoesNotPublishAndFailedWriteKeepsOldProtection
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.revokeAtLastCredentialGuardDoesNotPublishAndFailedWriteKeepsOldProtection (974 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.unknownCredentialCommitQuarantinesRatherThanPretendingTheLockIsOff
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.unknownCredentialCommitQuarantinesRatherThanPretendingTheLockIsOff (498 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.malformedUnknownSchemaAndStoreReadErrorsCannotBecomeUnprotected
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.malformedUnknownSchemaAndStoreReadErrorsCannotBecomeUnprotected (1 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.ownerContextsAreBoundedAndRevokingOneDoesNotInvalidateAnother
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.ownerContextsAreBoundedAndRevokingOneDoesNotInvalidateAnother (3 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.cancelledOwnerPromptCannotPublishEvenWhenItsNativeCallbackIgnoresCancellation
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.cancelledOwnerPromptCannotPublishEvenWhenItsNativeCallbackIgnoresCancellation (0 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.cancellationAfterKnownPublishCannotLeaveRuntimePretendingThePasswordIsUnset
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.cancellationAfterKnownPublishCannotLeaveRuntimePretendingThePasswordIsUnset (484 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.systemPromptSuspensionRevokesCapabilitiesAndGuardsWithoutCancellingItsOwnRequest
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.systemPromptSuspensionRevokesCapabilitiesAndGuardsWithoutCancellingItsOwnRequest (460 ms)
+[ RUN      ] su.linka.pictures.access.LocalAssistantAccessTest.replacingAnOwnerContextCancelsItsPreviousNativeRequest
+[       OK ] su.linka.pictures.access.LocalAssistantAccessTest.replacingAnOwnerContextCancelsItsPreviousNativeRequest (0 ms)
+[----------] 14 tests from su.linka.pictures.access.LocalAssistantAccessTest (10034 ms total)
+
+[----------] 3 tests from su.linka.pictures.access.OwnerVerificationRequestTest
+[ RUN      ] su.linka.pictures.access.OwnerVerificationRequestTest.successWaitsForForegroundAndCancellationCannotResurrectIt
+[       OK ] su.linka.pictures.access.OwnerVerificationRequestTest.successWaitsForForegroundAndCancellationCannotResurrectIt (0 ms)
+[ RUN      ] su.linka.pictures.access.OwnerVerificationRequestTest.onlyTheFirstProofIsAcceptedAndForegroundConsumesItOnce
+[       OK ] su.linka.pictures.access.OwnerVerificationRequestTest.onlyTheFirstProofIsAcceptedAndForegroundConsumesItOnce (0 ms)
+[ RUN      ] su.linka.pictures.access.OwnerVerificationRequestTest.failureIsTerminalWithoutForegroundAndUnknownCommitIsNeverAProof
+[       OK ] su.linka.pictures.access.OwnerVerificationRequestTest.failureIsTerminalWithoutForegroundAndUnknownCommitIsNeverAProof (0 ms)
+[----------] 3 tests from su.linka.pictures.access.OwnerVerificationRequestTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 17 tests from 2 test cases ran. (10035 ms total)
+[  PASSED  ] 17 tests.

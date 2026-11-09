@@ -1,0 +1,25 @@
+{
+  "device": "DD0F9A3F-DC32-4373-BA08-400FECE3A1CC",
+  "test": "testOwnedSavedDraftNativeKeyboardSelectionProbe",
+  "runs": 1,
+  "passed": 0,
+  "failed": 1,
+  "duration_seconds": 14.742,
+  "commands_sent": 0,
+  "payload_typed": false,
+  "clipboard_accessed": false,
+  "selection_visual_result": "not reached; original field has no selection and keyboard is hidden",
+  "confirmed_probe_failure": "Initial guard expected field.value == NATIVE-CARD-17, but AX value is empty and label is NATIVE-CARD-17; PNG shows original text. Local guard corrected afterward; no native rerun.",
+  "original_replacement_root_cause": "UNKNOWN; selection commands were not reached",
+  "cancel_and_library_checks": "not reached; stopped to preserve actual form",
+  "leftover": {
+    "draft": "existing named owned draft, original card shown, open card form",
+    "keyboard": "hidden",
+    "foreground": "su.linka.pictures.development",
+    "published_changes": false,
+    "saved_card": false,
+    "saved_board": false,
+    "device_lease": "released to parent"
+  },
+  "result_bundle": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/ios17-selection-20261107-1.xcresult"
+}

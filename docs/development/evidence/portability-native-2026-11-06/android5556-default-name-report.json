@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-06",
+  "scope": "Minimal app-proposed default filename verification; no native filename typing",
+  "device": "emulator-5556",
+  "apkSha256ParentVerified": "d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558",
+  "outcome": "STOPPED_ON_FIRST_UI_HIERARCHY_TIMEOUT",
+  "observations": [
+    "adb MCP list_devices reported emulator-5556 device; emulator-5554 not targeted.",
+    "Sent exactly one native Back using adb MCP execute_shell_command input keyevent 4 to hide the existing DocumentsUI IME. Tool completed without error.",
+    "Immediately following adb MCP dump_ui_hierarchy timed out: Request timed out.",
+    "Stopped immediately as instructed; no screenshot retry or further UI/device commands attempted."
+  ],
+  "priorUnsubmittedPicker": {
+    "previouslyObservedFilename": "L",
+    "hideImeAttempted": true,
+    "hideImeOutcomeObserved": false,
+    "cancelBackToAppAttempted": false,
+    "appCancellationOrReadyObserved": false
+  },
+  "export": {"defaultNameExpectedFromParent": "board.linka", "proposalObservedThisAttempt": false, "savePressed": false, "outcome": "NOT_STARTED", "actualFinalFilename": null, "sha256": null},
+  "backup": {"defaultNameExpectedFromParent": "library.linkabackup", "proposalObservedThisAttempt": false, "savePressed": false, "outcome": "NOT_STARTED", "actualFinalFilename": null, "sha256": null},
+  "newPublicFilesCreated": [],
+  "nativeFilenameKeystrokes": 0,
+  "existingFileMutationsAttempted": false,
+  "sourceOrHistoricalEvidenceChanges": false,
+  "rebootInstallSettingsPermissionsBackendDatabaseActions": false,
+  "finalForeground": "Not observable after hierarchy timeout; no claim that prior DocumentsUI picker was cancelled or library restored",
+  "preservation": "Only one Back was sent to the previously observed unsaved native output picker. No Save, app draft discard, card selection, import, restore, delete, rename or clear action performed. Existing boards/drafts/message not reobserved this attempt.",
+  "remainingGaps": ["Default filename MIME preservation not verified", "No fresh authorization, write confirmation or terminal success reached", "No new output ZIP/hash/CRC/asset evidence", "Custom native filename input remains separate OPEN", "No full-release claim"],
+  "deviceLease": "FREED; no further retries performed"
+}

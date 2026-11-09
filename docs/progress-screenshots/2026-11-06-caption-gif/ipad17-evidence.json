@@ -1,0 +1,22 @@
+{
+  "scope": "new owned iPad17 real Files/import/compose/reopen; no old device reset",
+  "device": {
+    "udid": "D46F4A13-2815-41C6-B093-0548B56AFD9E",
+    "name": "linka_ui14_ipad17_67846f",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-17-0",
+    "device_type": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-11-inch-4th-generation-8GB",
+    "ownership": "created by this task; synthetic development data only; no old device reset"
+  },
+  "fixture_sha256": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+  "passed": 1,
+  "failed": 0,
+  "skipped": 0,
+  "duration_seconds": 85.94,
+  "xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/ipad17-host-cell-import.xcresult",
+  "screenshots": {
+    "ipad17-reopened.png": "10b88044758741c3a75d8dc496c20bc77c741bb4a15c80979d4f39fa298ca978",
+    "ipad17-real-preview.png": "1553d026c67c3c219bbf4ed1540a8c456577df38a1ba5206916d208c142e2f6f"
+  },
+  "user_visual_approval": false,
+  "physical_acceptance": false
+}

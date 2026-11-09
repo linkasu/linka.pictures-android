@@ -1,0 +1,414 @@
+{
+  "export": {
+    "filename": "LINKa-native-5556-export-20261106-a73f91e2.linka.zip",
+    "devicePath": "/sdcard/Download/LINKa-native-5556-export-20261106-a73f91e2.linka.zip",
+    "bytes": 11576,
+    "sha256": "e382a3190165fabf7dc4dcf54bb42770a3c76bd2cd375dd0d5828f36c4d6d722",
+    "entryCount": 2,
+    "crcError": null,
+    "entries": [
+      {
+        "path": "config.json",
+        "bytes": 351,
+        "sha256": "6c8063d078469d18aa71d289387b97a72ffec005e263099ea1c8a1210f0f922d",
+        "encrypted": false
+      },
+      {
+        "path": "media/b01e42872cd92225f46e07e61330a992e854929177da5a3ccde94bb0faf714a8",
+        "bytes": 10857,
+        "sha256": "b01e42872cd92225f46e07e61330a992e854929177da5a3ccde94bb0faf714a8",
+        "encrypted": false
+      }
+    ],
+    "schemaKeys": {
+      "config.json": [
+        "directSet",
+        "pages",
+        "version",
+        "withoutSpace"
+      ],
+      "config.json/pages[]": [
+        "cards",
+        "columns",
+        "id",
+        "mode",
+        "rows"
+      ],
+      "config.json/pages[]/cards[]": [
+        "cardType",
+        "height",
+        "id",
+        "imagePath",
+        "title",
+        "width"
+      ]
+    },
+    "config": {
+      "version": "3.0",
+      "withoutSpace": false,
+      "directSet": false,
+      "pages": [
+        {
+          "id": "dd4e7803-61f2-42dc-911d-c5b1b291a413",
+          "mode": "standard",
+          "rows": 2,
+          "columns": 2,
+          "cards": [
+            {
+              "id": "eaa0ca05-8fc5-42dc-be67-681be1028f29",
+              "cardType": 0,
+              "width": 1,
+              "height": 1,
+              "title": "NATIVE-CARD-35",
+              "imagePath": "media/b01e42872cd92225f46e07e61330a992e854929177da5a3ccde94bb0faf714a8"
+            }
+          ]
+        }
+      ]
+    },
+    "mediaPathHashesMatch": true
+  },
+  "backup": {
+    "filename": "LINKa-native-5556-backup-20261106-b82e40d6.linkabackup.zip",
+    "devicePath": "/sdcard/Download/LINKa-native-5556-backup-20261106-b82e40d6.linkabackup.zip",
+    "bytes": 3196647,
+    "sha256": "a87a9c98d3555179d3e9e8c11b8ce7f8d43ada6aae170091ad656d56cac7a523",
+    "entryCount": 25,
+    "crcError": null,
+    "entries": [
+      {
+        "path": "manifest.json",
+        "bytes": 230,
+        "sha256": "640c4dae64005836ddd327a0421c9e8ed3cf838b7653634ac90b31aa5d1c5009",
+        "encrypted": false
+      },
+      {
+        "path": "boards/00000000.json",
+        "bytes": 5716,
+        "sha256": "bad1a005873a56ac32298ea0fcdde5215c041b728295267400f59faedb61105f",
+        "encrypted": false
+      },
+      {
+        "path": "boards/00000001.json",
+        "bytes": 566,
+        "sha256": "bb42a5a4bab4c87698462d48ed2ba864435d4700e4df5bf69fd9656ad4156781",
+        "encrypted": false
+      },
+      {
+        "path": "drafts/00000000.json",
+        "bytes": 5847,
+        "sha256": "c90923233cd3deb94c89a12929df63c77fd5f4d1d01abc7b1f1f10271c016b7a",
+        "encrypted": false
+      },
+      {
+        "path": "drafts/00000001.json",
+        "bytes": 5847,
+        "sha256": "ea57de4820a75af8ff940bc82d7747ad768f50da0b78fbf0827e0851f5e8af8f",
+        "encrypted": false
+      },
+      {
+        "path": "assets.jsonl",
+        "bytes": 2498,
+        "sha256": "eb422480e99130857d893721745dfbde02e9de112cbee996318995ba29f726c1",
+        "encrypted": false
+      },
+      {
+        "path": "assets/03842ecfb8e9ce1a763bab7afef2e3c95ecf434684d2144593777fd4fe1651d1",
+        "bytes": 898956,
+        "sha256": "03842ecfb8e9ce1a763bab7afef2e3c95ecf434684d2144593777fd4fe1651d1",
+        "encrypted": false
+      },
+      {
+        "path": "assets/18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396",
+        "bytes": 326240,
+        "sha256": "18cfd53a71a7c1881a60bb43314106d2cff1c7505ac88ab56502208ba9d0a396",
+        "encrypted": false
+      },
+      {
+        "path": "assets/1c65479cc6b3fd16252c7cbc4a04a98d0b227fa7da8f84d112951697dc3111bd",
+        "bytes": 100844,
+        "sha256": "1c65479cc6b3fd16252c7cbc4a04a98d0b227fa7da8f84d112951697dc3111bd",
+        "encrypted": false
+      },
+      {
+        "path": "assets/1f2276c01675e7942c872936927c4fc6fb31f1318ac2362b141a1966995e3e02",
+        "bytes": 9184,
+        "sha256": "1f2276c01675e7942c872936927c4fc6fb31f1318ac2362b141a1966995e3e02",
+        "encrypted": false
+      },
+      {
+        "path": "assets/20d332a6520ac0eba7bc01c2471b7f72616bad729b2b2fcc575c3ac54eca01e7",
+        "bytes": 128684,
+        "sha256": "20d332a6520ac0eba7bc01c2471b7f72616bad729b2b2fcc575c3ac54eca01e7",
+        "encrypted": false
+      },
+      {
+        "path": "assets/4b375bda0d7096a1c43488ac2ad34552505e3c5e62c27df25477da7bbed2fa4a",
+        "bytes": 225056,
+        "sha256": "4b375bda0d7096a1c43488ac2ad34552505e3c5e62c27df25477da7bbed2fa4a",
+        "encrypted": false
+      },
+      {
+        "path": "assets/4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb",
+        "bytes": 528975,
+        "sha256": "4bbd53973ea39c9df2dc14bee3a8e45bc36e79414efd204225d1688f009a6aeb",
+        "encrypted": false
+      },
+      {
+        "path": "assets/711eb7dec5ccfc67365eb6748a2478dd4a9aea95e8a4e0f1ff02bc235e57b4f0",
+        "bytes": 73964,
+        "sha256": "711eb7dec5ccfc67365eb6748a2478dd4a9aea95e8a4e0f1ff02bc235e57b4f0",
+        "encrypted": false
+      },
+      {
+        "path": "assets/81ebe4d978f98df6d58fa74a520af2c61324df5bc5c494674a13a8466e91e6d4",
+        "bytes": 76844,
+        "sha256": "81ebe4d978f98df6d58fa74a520af2c61324df5bc5c494674a13a8466e91e6d4",
+        "encrypted": false
+      },
+      {
+        "path": "assets/91756a7779012825ac3e08ee0dcccab6c7447a0842cbda2985c7e165d11f332d",
+        "bytes": 114284,
+        "sha256": "91756a7779012825ac3e08ee0dcccab6c7447a0842cbda2985c7e165d11f332d",
+        "encrypted": false
+      },
+      {
+        "path": "assets/9872be60de1c007a3faf15264d4f204bc1ffdb824e578a38874c84b29563773f",
+        "bytes": 67724,
+        "sha256": "9872be60de1c007a3faf15264d4f204bc1ffdb824e578a38874c84b29563773f",
+        "encrypted": false
+      },
+      {
+        "path": "assets/9debe32d7c1cd7ef113b1c92b85f5d3c283e6a87a2cd97844024674e4fc660b5",
+        "bytes": 114586,
+        "sha256": "9debe32d7c1cd7ef113b1c92b85f5d3c283e6a87a2cd97844024674e4fc660b5",
+        "encrypted": false
+      },
+      {
+        "path": "assets/a4a85053e8d9ed8c02f40703a7647e689826f820e8ed59f87dd1e006e094def4",
+        "bytes": 26259,
+        "sha256": "a4a85053e8d9ed8c02f40703a7647e689826f820e8ed59f87dd1e006e094def4",
+        "encrypted": false
+      },
+      {
+        "path": "assets/a4b140c0e2a94c4cefe3ce4a2e7f2773155e0fa1d9f20afc68df04e0ae1e8894",
+        "bytes": 77324,
+        "sha256": "a4b140c0e2a94c4cefe3ce4a2e7f2773155e0fa1d9f20afc68df04e0ae1e8894",
+        "encrypted": false
+      },
+      {
+        "path": "assets/a9559a6a65cf6d5df5353111e56e622d8e3ac4fb4fbabd1ead15fc2a8c1f0521",
+        "bytes": 105164,
+        "sha256": "a9559a6a65cf6d5df5353111e56e622d8e3ac4fb4fbabd1ead15fc2a8c1f0521",
+        "encrypted": false
+      },
+      {
+        "path": "assets/b01e42872cd92225f46e07e61330a992e854929177da5a3ccde94bb0faf714a8",
+        "bytes": 10857,
+        "sha256": "b01e42872cd92225f46e07e61330a992e854929177da5a3ccde94bb0faf714a8",
+        "encrypted": false
+      },
+      {
+        "path": "assets/b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6",
+        "bytes": 213437,
+        "sha256": "b98b30f483099c0f132c2245dfeec98fb5ac53284ad2495c121cccf8e6ee53c6",
+        "encrypted": false
+      },
+      {
+        "path": "assets/c4dc9294f81882a0cc5aa7a48053b4b8505d75d0cc2bfdaa0abd86cc9831b661",
+        "bytes": 1727,
+        "sha256": "c4dc9294f81882a0cc5aa7a48053b4b8505d75d0cc2bfdaa0abd86cc9831b661",
+        "encrypted": false
+      },
+      {
+        "path": "assets/e49fcd0dbf54b1ab45c0094be54625fc8eb9d58b7499de52661b06e31c8499fa",
+        "bytes": 70604,
+        "sha256": "e49fcd0dbf54b1ab45c0094be54625fc8eb9d58b7499de52661b06e31c8499fa",
+        "encrypted": false
+      }
+    ],
+    "schemaKeys": {
+      "manifest.json": [
+        "counts",
+        "format",
+        "revision",
+        "settings",
+        "version"
+      ],
+      "manifest.json/settings": [
+        "boards",
+        "highContrast",
+        "languageTag",
+        "textScale"
+      ],
+      "manifest.json/settings/boards": [],
+      "manifest.json/counts": [
+        "assetBytes",
+        "assets",
+        "boards",
+        "drafts",
+        "retained"
+      ],
+      "boards": [
+        "document",
+        "revision"
+      ],
+      "boards/document": [
+        "behavior",
+        "description",
+        "extensionsJson",
+        "id",
+        "name",
+        "pages"
+      ],
+      "boards/document/pages[]": [
+        "cells",
+        "columns",
+        "extensionsJson",
+        "id",
+        "rows"
+      ],
+      "boards/document/pages[]/cells[]": [
+        "card",
+        "extensionsJson",
+        "kind",
+        "position"
+      ],
+      "boards/document/pages[]/cells[]/card": [
+        "extensionsJson",
+        "id",
+        "image",
+        "label",
+        "speech"
+      ],
+      "boards/document/pages[]/cells[]/card/speech": [
+        "assetId",
+        "audioText",
+        "audioVoice",
+        "type"
+      ],
+      "boards/document/pages[]/cells[]/card/extensionsJson(parsed)": [
+        "id"
+      ],
+      "boards/document/pages[]/cells[]/extensionsJson(parsed)": [
+        "height",
+        "width"
+      ],
+      "boards/document/pages[]/extensionsJson(parsed)": [],
+      "boards/document/behavior": [
+        "defaultMode",
+        "inputStyle"
+      ],
+      "boards/document/extensionsJson(parsed)": [],
+      "drafts": [
+        "draft",
+        "version"
+      ],
+      "drafts/draft": [
+        "baseRevision",
+        "boardId",
+        "document",
+        "form",
+        "id"
+      ],
+      "drafts/draft/document": [
+        "behavior",
+        "description",
+        "extensionsJson",
+        "id",
+        "name",
+        "pages"
+      ],
+      "drafts/draft/document/pages[]": [
+        "cells",
+        "columns",
+        "extensionsJson",
+        "id",
+        "rows"
+      ],
+      "drafts/draft/document/pages[]/cells[]": [
+        "card",
+        "extensionsJson",
+        "kind",
+        "position"
+      ],
+      "drafts/draft/document/pages[]/cells[]/card": [
+        "extensionsJson",
+        "id",
+        "image",
+        "label",
+        "speech"
+      ],
+      "drafts/draft/document/pages[]/cells[]/card/speech": [
+        "assetId",
+        "audioText",
+        "audioVoice",
+        "type"
+      ],
+      "drafts/draft/document/pages[]/cells[]/card/extensionsJson(parsed)": [
+        "id"
+      ],
+      "drafts/draft/document/pages[]/cells[]/extensionsJson(parsed)": [
+        "height",
+        "width"
+      ],
+      "drafts/draft/document/pages[]/extensionsJson(parsed)": [],
+      "drafts/draft/document/behavior": [
+        "defaultMode",
+        "inputStyle"
+      ],
+      "drafts/draft/document/extensionsJson(parsed)": []
+    },
+    "manifest": {
+      "revision": 73,
+      "settings": {
+        "textScale": 1.0,
+        "highContrast": false,
+        "languageTag": "ru-RU",
+        "boards": {}
+      },
+      "counts": {
+        "boards": 2,
+        "drafts": 2,
+        "retained": 0,
+        "assets": 19,
+        "assetBytes": 3170713
+      },
+      "format": "su.linka.pictures.backup",
+      "version": "1.0"
+    },
+    "assetMetadataKeys": [
+      "byteCount",
+      "id",
+      "kind",
+      "mediaType"
+    ],
+    "assetKinds": [
+      "AUDIO",
+      "IMAGE"
+    ],
+    "assetsAllMatchMetadata": true,
+    "boards": [
+      {
+        "name": "ХОЧУ",
+        "revision": 1
+      },
+      {
+        "name": "LINKa-EDITOR-6F9C-SAVED",
+        "revision": 2
+      }
+    ],
+    "drafts": [
+      {
+        "name": "ХОЧУ",
+        "version": 6,
+        "form": null
+      },
+      {
+        "name": "ХОЧУ",
+        "version": 3,
+        "form": null
+      }
+    ]
+  }
+}

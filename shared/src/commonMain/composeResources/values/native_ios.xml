@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ios_owner_verification_reason">Confirm device ownership to change assistant protection</string>
+    <string name="ios_opening_library">Opening the library…</string>
+    <string name="ios_access_closed_error">Error: %1$s. Access is closed; restart the app after resolving the cause.</string>
+    <string name="ios_image_load_error">Could not load the image: %1$s</string>
+    <string name="ios_replaced_library_restart">The library was replaced and the previous message cleared. Restart required.</string>
+    <string name="ios_replaced_library_opening_message">The library was replaced. Opening a new message…</string>
+    <string name="ios_opening_message">Opening the message…</string>
+    <string name="ios_read_only_message">Current message (read-only): %1$s</string>
+    <string name="ios_library_open_error">Could not safely open the library</string>
+    <string name="ios_access_not_opened">Access was not opened. Restart the app after resolving the cause; protection has not been disabled.</string>
+</resources>

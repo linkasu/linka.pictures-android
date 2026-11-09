@@ -1,0 +1,212 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {};
+    objectVersion = 56;
+    objects = {
+        B00000000000000000000001 = {
+            isa = PBXProject;
+            attributes = { LastUpgradeCheck = 2720; };
+            buildConfigurationList = B00000000000000000000002;
+            compatibilityVersion = "Xcode 14.0";
+            developmentRegion = en;
+            knownRegions = (en, ru, Base);
+            mainGroup = B00000000000000000000003;
+            productRefGroup = B00000000000000000000004;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (B00000000000000000000005);
+        };
+        B00000000000000000000002 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (B00000000000000000000006, B00000000000000000000016);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        B00000000000000000000003 = {
+            isa = PBXGroup;
+            children = (B00000000000000000000007, B0000000000000000000000D, B0000000000000000000000E, B0000000000000000000000F, B00000000000000000000014, B00000000000000000000018, B0000000000000000000001A, B00000000000000000000004);
+            sourceTree = "<group>";
+        };
+        B00000000000000000000004 = {
+            isa = PBXGroup;
+            children = (B00000000000000000000008);
+            name = Products;
+            sourceTree = "<group>";
+        };
+        B00000000000000000000005 = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = B00000000000000000000009;
+            buildPhases = (B0000000000000000000001C, B0000000000000000000000A, B00000000000000000000012);
+            buildRules = ();
+            dependencies = ();
+            name = LinkaPokazhi;
+            productName = LinkaPokazhi;
+            productReference = B00000000000000000000008;
+            productType = "com.apple.product-type.application";
+        };
+        B00000000000000000000006 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CLANG_ENABLE_MODULES = YES;
+                CODE_SIGNING_ALLOWED = NO;
+                DEAD_CODE_STRIPPING = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+                SDKROOT = iphoneos;
+                SWIFT_VERSION = 5.0;
+            };
+            name = Debug;
+        };
+        B00000000000000000000007 = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.swift;
+            path = main.swift;
+            sourceTree = "<group>";
+        };
+        B00000000000000000000008 = {
+            isa = PBXFileReference;
+            explicitFileType = wrapper.application;
+            includeInIndex = 0;
+            path = LinkaPokazhi.app;
+            sourceTree = BUILT_PRODUCTS_DIR;
+        };
+        B00000000000000000000009 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (B0000000000000000000000B, B00000000000000000000017);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        B0000000000000000000000A = {
+            isa = PBXSourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (B0000000000000000000000C);
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+        B0000000000000000000000B = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = DevelopmentSimulator.entitlements;
+                FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/$(KOTLIN_FRAMEWORK_TARGET)/debugFramework");
+                INFOPLIST_FILE = Info.plist;
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+                MARKETING_VERSION = 1.4;
+                CURRENT_PROJECT_VERSION = 5;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphoneos*]" = iosArm64;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphonesimulator*]" = iosSimulatorArm64;
+                OTHER_LDFLAGS = ("$(inherited)", "-framework", Shared, "-lsqlite3");
+                PRODUCT_BUNDLE_IDENTIFIER = su.linka.pictures.development;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+        B0000000000000000000000C = {
+            isa = PBXBuildFile;
+            fileRef = B00000000000000000000007;
+        };
+        B0000000000000000000000D = {
+            isa = PBXFileReference;
+            lastKnownFileType = text.plist.xml;
+            path = Info.plist;
+            sourceTree = "<group>";
+        };
+        B0000000000000000000000E = {
+            isa = PBXFileReference;
+            lastKnownFileType = text.plist.entitlements;
+            path = DevelopmentSimulator.entitlements;
+            sourceTree = "<group>";
+        };
+        B0000000000000000000000F = {
+            isa = PBXVariantGroup;
+            children = (B00000000000000000000010, B00000000000000000000011);
+            name = InfoPlist.strings;
+            sourceTree = "<group>";
+        };
+        B00000000000000000000010 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text.plist.strings;
+            name = en;
+            path = en.lproj/InfoPlist.strings;
+            sourceTree = "<group>";
+        };
+        B00000000000000000000011 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text.plist.strings;
+            name = ru;
+            path = ru.lproj/InfoPlist.strings;
+            sourceTree = "<group>";
+        };
+        B00000000000000000000012 = {
+            isa = PBXResourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (B00000000000000000000013, B00000000000000000000015, B00000000000000000000019, B0000000000000000000001B);
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+        B00000000000000000000013 = { isa = PBXBuildFile; fileRef = B0000000000000000000000F; };
+        // Like the manually linked framework, stage resources before xcodebuild, outside its script sandbox:
+        // PLATFORM_NAME=iphonesimulator ARCHS=arm64 BUILT_PRODUCTS_DIR="$PWD/shared/build/compose/ios/iosSimulatorArm64" UNLOCALIZED_RESOURCES_FOLDER_PATH=. ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 :shared:syncComposeResourcesForIos
+        // For devices use PLATFORM_NAME=iphoneos, iosArm64 in BUILT_PRODUCTS_DIR, and :shared:linkDebugFrameworkIosArm64.
+        B00000000000000000000014 = {
+            isa = PBXFileReference;
+            lastKnownFileType = folder;
+            name = "compose-resources";
+            path = "../shared/build/compose/ios/$(KOTLIN_FRAMEWORK_TARGET)/compose-resources";
+            sourceTree = SOURCE_ROOT;
+        };
+        B00000000000000000000015 = { isa = PBXBuildFile; fileRef = B00000000000000000000014; };
+        B00000000000000000000016 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CLANG_ENABLE_MODULES = YES;
+                DEAD_CODE_STRIPPING = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+                SDKROOT = iphoneos;
+                SWIFT_VERSION = 5.0;
+                SWIFT_OPTIMIZATION_LEVEL = "-O";
+                DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+            };
+            name = Release;
+        };
+        B00000000000000000000017 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+                FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/$(KOTLIN_FRAMEWORK_TARGET)/releaseFramework");
+                INFOPLIST_FILE = Info.plist;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphoneos*]" = iosArm64;
+                "KOTLIN_FRAMEWORK_TARGET[sdk=iphonesimulator*]" = iosSimulatorArm64;
+                OTHER_LDFLAGS = ("$(inherited)", "-framework", Shared, "-lsqlite3");
+                PRODUCT_BUNDLE_IDENTIFIER = "$(IOS_BUNDLE_ID)";
+                IOS_BUNDLE_ID = su.linka.pictures;
+                RELEASE_VERSION = 2.0.0;
+                RELEASE_BUILD_NUMBER = 1;
+                MARKETING_VERSION = "$(RELEASE_VERSION)";
+                CURRENT_PROJECT_VERSION = "$(RELEASE_BUILD_NUMBER)";
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                TARGETED_DEVICE_FAMILY = "1,2";
+                SKIP_INSTALL = NO;
+            };
+            name = Release;
+        };
+        B00000000000000000000018 = { isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+        B00000000000000000000019 = { isa = PBXBuildFile; fileRef = B00000000000000000000018; };
+        B0000000000000000000001A = { isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+        B0000000000000000000001B = { isa = PBXBuildFile; fileRef = B0000000000000000000001A; };
+        B0000000000000000000001C = {
+            isa = PBXShellScriptBuildPhase;
+            buildActionMask = 2147483647;
+            files = ();
+            inputPaths = ("$(SRCROOT)/../scripts/check-prerelease.py");
+            outputPaths = ();
+            name = "Validate explicit release metadata";
+            runOnlyForDeploymentPostprocessing = 0;
+            shellPath = /bin/sh;
+            shellScript = "if [ \"$CONFIGURATION\" = Release ]; then python3 -B \"$SRCROOT/../scripts/check-prerelease.py\" --ios-settings; fi\n";
+        };
+    };
+    rootObject = B00000000000000000000001;
+}

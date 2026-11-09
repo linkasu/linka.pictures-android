@@ -1,0 +1,54 @@
+{
+  "source": "https://github.com/linkasu/linka.pictures-android/releases/download/v1.4/app-release.aab",
+  "source_kind": "publisher release AAB, NOT Play-delivered APK",
+  "sha256": "ea8e689cdb152a8b2c75e6388cc1fed162cb08a400ea939a13368a56a94d93f9",
+  "jar_signature_verified": true,
+  "certificate_sha256": "c2a14bc75f908f620540e1035699c61abe2d634470ed4f41490ea5cd72e1c814",
+  "local_file": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-v1.4-release.aab",
+  "assets": [
+    {
+      "path": "base/assets/sets/Болит.linka",
+      "bytes": 226268,
+      "sha256": "ae6f1e58f2d7e7a3826e3586aab3d862f38a43d9cecf59168766dc536ca95985",
+      "exact_tag_blob": true
+    },
+    {
+      "path": "base/assets/sets/Еда.linka",
+      "bytes": 239661,
+      "sha256": "d77a113a5be5bf2773b5ebc70bc1757a4ab48761203c538504a6dabbbb08b14d",
+      "exact_tag_blob": true
+    },
+    {
+      "path": "base/assets/sets/Клавиатура.linka",
+      "bytes": 56563,
+      "sha256": "c7b1d07cf4c3e926dbf7256d5c3f10acb1de329df70a4753f834128b1320e3b8",
+      "exact_tag_blob": true
+    },
+    {
+      "path": "base/assets/sets/ХОЧУ.linka",
+      "bytes": 2866142,
+      "sha256": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+      "exact_tag_blob": true
+    },
+    {
+      "path": "base/assets/sets/Цифры.linka",
+      "bytes": 593343,
+      "sha256": "4e2a43a6b62ff34a8675fb9e02a3998a0c4db09558044b611bb40c81115c798c",
+      "exact_tag_blob": true
+    },
+    {
+      "path": "base/assets/sets/ШУМЫ ДОМА.linka",
+      "bytes": 1586614,
+      "sha256": "04b37130e6c10e0806951c503a0916042c38bd41a601bfa134c98d8f0646dcf1",
+      "exact_tag_blob": true
+    },
+    {
+      "path": "base/assets/sets/цифры.linka",
+      "bytes": 593343,
+      "sha256": "4e2a43a6b62ff34a8675fb9e02a3998a0c4db09558044b611bb40c81115c798c",
+      "exact_tag_blob": true
+    }
+  ],
+  "play_provenance": false,
+  "play_signing_certificate_verified": false
+}

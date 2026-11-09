@@ -1,0 +1,51 @@
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+su.linka.pictures.activity.DevelopmentParityTest:
+INSTRUMENTATION_STATUS: test=filledBoardThroughOwnedIncomingContent
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Timed out at fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate; activePackage=su.linka.pictures.development (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:341)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:323)
+	at su.linka.pictures.activity.DevelopmentParityTest.assertEmptyLibraryAndMessage(DevelopmentParityTest.kt:133)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:69)
+
+INSTRUMENTATION_STATUS: stream=
+Error in filledBoardThroughOwnedIncomingContent(su.linka.pictures.activity.DevelopmentParityTest):
+java.lang.AssertionError: Timed out at fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate; activePackage=su.linka.pictures.development (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:341)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:323)
+	at su.linka.pictures.activity.DevelopmentParityTest.assertEmptyLibraryAndMessage(DevelopmentParityTest.kt:133)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:69)
+
+INSTRUMENTATION_STATUS: test=filledBoardThroughOwnedIncomingContent
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 42.951
+There was 1 failure:
+1) filledBoardThroughOwnedIncomingContent(su.linka.pictures.activity.DevelopmentParityTest)
+java.lang.AssertionError: Timed out at fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate; activePackage=su.linka.pictures.development (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:341)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:323)
+	at su.linka.pictures.activity.DevelopmentParityTest.assertEmptyLibraryAndMessage(DevelopmentParityTest.kt:133)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:69)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

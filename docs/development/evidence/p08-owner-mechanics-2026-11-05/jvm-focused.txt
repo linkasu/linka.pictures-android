@@ -1,0 +1,44 @@
+> Task :shared:kmpPartiallyResolvedDependenciesChecker
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonMain SKIPPED
+> Task :shared:convertXmlValueResourcesForJvmMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForJvmMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForJvmMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForJvmMain SKIPPED
+> Task :shared:generateActualResourceCollectorsForJvmMain SKIPPED
+> Task :shared:generateComposeResClass SKIPPED
+> Task :shared:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :shared:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonTest SKIPPED
+> Task :shared:convertXmlValueResourcesForJvmTest NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForJvmTest NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForJvmTest NO-SOURCE
+> Task :shared:generateResourceAccessorsForJvmTest SKIPPED
+> Task :shared:assembleJvmMainResources UP-TO-DATE
+> Task :shared:jvmProcessResources UP-TO-DATE
+> Task :shared:processJvmMainResources SKIPPED
+> Task :shared:assembleJvmTestResources UP-TO-DATE
+> Task :shared:jvmTestProcessResources UP-TO-DATE
+> Task :shared:processJvmTestResources SKIPPED
+
+> Task :shared:compileKotlinJvm
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/commonMain/kotlin/su/linka/pictures/access/PasswordCrypto.kt:3:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/commonMain/kotlin/su/linka/pictures/storage/StoragePinsLock.kt:3:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/javaMain/kotlin/su/linka/pictures/access/PasswordCrypto.kt:8:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Volumes/data/linka/linka.pictures-android/shared/src/jvmMain/kotlin/su/linka/pictures/storage/StoragePinsLock.kt:5:10 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+
+> Task :shared:compileJvmMainJava NO-SOURCE
+> Task :shared:jvmMainClasses
+> Task :shared:jvmJar
+> Task :shared:compileTestKotlinJvm
+> Task :shared:compileJvmTestJava NO-SOURCE
+> Task :shared:jvmTestClasses
+> Task :shared:jvmTest
+
+BUILD SUCCESSFUL in 44s
+9 actionable tasks: 5 executed, 4 up-to-date

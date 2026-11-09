@@ -1,0 +1,11 @@
+{
+  "frame" : {
+    "height" : 64,
+    "width" : 319,
+    "x" : 28,
+    "y" : 192
+  },
+  "label" : "NATIVE-CARD-17",
+  "stage" : "selection-probe-v2-command-down",
+  "value" : ""
+}

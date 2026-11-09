@@ -1,52 +1,220 @@
 plugins {
+    id 'com.android.library'
     id 'org.jetbrains.kotlin.multiplatform'
-    id 'com.android.kotlin.multiplatform.library'
-    id 'org.jetbrains.compose'
     id 'org.jetbrains.kotlin.plugin.compose'
     id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'org.jetbrains.compose'
+}
+
+def starterResources = layout.buildDirectory.dir('generated/starter-resources')
+def starterWork = layout.buildDirectory.dir('generated/starter-resources-work')
+def buildStarterResources = tasks.register('buildStarterResources', Exec) {
+    group = 'build'
+    description = 'Crop and package the editable starter content offline.'
+    workingDir rootProject.projectDir
+    commandLine 'python3', '-B', rootProject.file('scripts/build-starter-resources.py').absolutePath,
+        '--output-dir', starterResources.get().asFile.absolutePath
+    inputs.files(rootProject.files(
+        'docs/development/starter-pack-manifest.json',
+        'docs/development/starter-pack-recordings.csv',
+        'assets/starter-pack/sheets.csv',
+        'assets/starter-pack/source-manifest.json',
+        'assets/starter-pack/audio/manifest.json',
+        'scripts/build-starter-resources.py',
+        'scripts/prepare-starter-images.py',
+        'scripts/pack-starter-sets.py',
+        'scripts/prepare-starter-audio.py',
+        'scripts/starter_png.py'),
+        rootProject.fileTree('assets/starter-pack/previews') { include '*.png' },
+        rootProject.fileTree('assets/starter-pack/audio') { include '*.mp3' }
+    ).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dirs(starterResources, starterWork)
+}
+
+// Compose's customDirectory replaces the default directory, including UI translations.
+def commonMainResources = layout.buildDirectory.dir('generated/commonMain-resources')
+def mergeCommonMainResources = tasks.register('mergeCommonMainResources', Sync) {
+    from('src/commonMain/composeResources')
+    from(buildStarterResources.map { starterResources.get() })
+    into(commonMainResources)
+    duplicatesStrategy = DuplicatesStrategy.FAIL
 }
 
 compose.resources {
-    packageOfResClass = 'su.linka.pictures.shared.generated.resources'
+    packageOfResClass = 'su.linka.pictures.resources'
+    customDirectory('commonMain', mergeCommonMainResources.map { commonMainResources.get() })
+}
+
+def decoderOutputs = layout.buildDirectory.dir('ios-audio-decoder')
+def prepareIosAudioDecoder = tasks.register('prepareIosAudioDecoder', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'python3', '-B', rootProject.file('scripts/build-ios-audio-decoder.py').absolutePath,
+        '--gradle-output-root', decoderOutputs.get().asFile.absolutePath
+    inputs.files(rootProject.file('scripts/build-ios-audio-decoder.py'),
+        rootProject.file('scripts/ios_audio_decoder_outputs.py'),
+        rootProject.file('scripts/preflight-ios-ffmpeg.py'),
+        file('src/nativeInterop/c/linka_audio_decoder.c'),
+        file('src/nativeInterop/cinterop/include/linka_audio_decoder.h'))
+    // The producer owns its seeded manifest/cache; Gradle must not delete it as stale task output.
+    // No Gradle outputs: always verify provenance, with the producer's no-build fast path.
 }
 
 kotlin {
-    jvmToolchain(17)
-    android {
-        namespace = 'su.linka.pictures.shared'
-        compileSdk = 36
-        minSdk = 24
-        androidResources {
-            enable = true
+    jvm {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
-        withHostTestBuilder {}.configure {}
-        withDeviceTestBuilder { sourceSetTreeName = 'test' }
     }
-    jvm()
+    [iosArm64(), iosSimulatorArm64()].each { target ->
+        def minimum = "-Xoverride-konan-properties=osVersionMin.${target.konanTarget.name}=17.0".toString()
+        target.compilerOptions { freeCompilerArgs.add(minimum) }
+        target.binaries.all { freeCompilerArgs += [minimum] }
+        def decoderInterop = target.compilations.main.cinterops.create('linkaAudioDecoder') {
+            definitionFile.set(layout.buildDirectory.file("ios-audio-decoder/${target.name}/linka_audio_decoder.def"))
+        }
+        tasks.named(decoderInterop.interopProcessingTaskName).configure {
+            dependsOn prepareIosAudioDecoder
+            inputs.files(fileTree("${buildDir}/ios-audio-decoder/${target.name}/lib") { include '*.a' })
+        }
+        target.binaries.framework {
+            baseName = 'Shared'
+            isStatic = true
+        }
+        if (target.name == 'iosSimulatorArm64') {
+            tasks.withType(org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest).configureEach {
+                // Native file coordination and UTType need the booted Simulator's system services.
+                standalone.set(false)
+            }
+            def appHostTests = target.compilations.create('appHostTest') {
+                associateWith(target.compilations.main)
+                defaultSourceSet.kotlin.srcDir('src/iosAppHostTest/kotlin')
+                defaultSourceSet.dependencies {
+                    implementation kotlin('test')
+                    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+                    // associateWith exposes main internals but does not inherit its CInterop library.
+                    implementation files(tasks.named(decoderInterop.interopProcessingTaskName).map { it.outputFile })
+                }
+            }
+            target.binaries.test('appHost', [org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG]) {
+                compilation = appHostTests
+                baseName = 'AppHostTests'
+            }
+            tasks.named('copyTestComposeResourcesForIosSimulatorArm64', Copy).configure {
+                // Compose 1.9.3 reuses one task for both executables, repeating main inputs and overwriting its destination.
+                duplicatesStrategy = DuplicatesStrategy.FAIL
+                def copied = [:]
+                doFirst { copied.clear() }
+                eachFile { entry ->
+                    def previous = copied.putIfAbsent(entry.path, entry.file)
+                    if (previous != null) {
+                        if (!java.util.Arrays.equals(previous.bytes, entry.file.bytes)) {
+                            throw new GradleException("Conflicting iOS test resource: ${entry.path}")
+                        }
+                        entry.exclude()
+                    }
+                }
+                def destinations = providers.provider {
+                    target.binaries.withType(org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable).collect {
+                        new File(it.outputDirectory, 'compose-resources')
+                    }.unique()
+                }
+                outputs.dirs(destinations)
+                doLast {
+                    def assembled = destinationDir
+                    destinations.get().findAll { it != assembled }.each { destination ->
+                        project.copy { from assembled; into destination }
+                    }
+                }
+            }
+            // Native link inputs are frozen at construction, before a later compilation assignment.
+            def appHostFramework = new org.jetbrains.kotlin.gradle.plugin.mpp.Framework(
+                'appHostDebugFramework', 'SharedAppHostTests',
+                org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG, appHostTests)
+            appHostFramework.isStatic = true
+            target.binaries.add(appHostFramework)
+            appHostFramework.freeCompilerArgs += ['-Xpartial-linkage-loglevel=ERROR']
+            tasks.register('verifyAppHostTestFramework') {
+                group = 'verification'
+                dependsOn appHostFramework.linkTaskProvider
+                doLast {
+                    def decoder = tasks.named(decoderInterop.interopProcessingTaskName).get().outputFile
+                    if (!appHostFramework.linkTaskProvider.get().libraries.files.contains(decoder)) {
+                        throw new GradleException('Missing XCTest audio decoder CInterop dependency')
+                    }
+                    def header = layout.buildDirectory.file(
+                        'bin/iosSimulatorArm64/appHostDebugFramework/SharedAppHostTests.framework/Headers/SharedAppHostTests.h').get().asFile.text
+                    ['KeychainAppHostChecks', 'bytesReopenUpdateAndRevocation', 'boundsAndServiceValidation',
+                     'AudioAppHostChecks', 'clipCompletes', 'installedVoiceSpeechCompletes'].each { method ->
+                        if (!header.contains(method)) throw new GradleException("Missing XCTest bridge export: ${method}")
+                    }
+                }
+            }
+        }
+    }
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = '17'
+            }
+        }
+    }
 
     sourceSets {
         commonMain {
             dependencies {
                 implementation compose.runtime
                 implementation compose.foundation
-                implementation compose.material3
-                api compose.ui
+                implementation compose.material
                 implementation compose.components.resources
-                implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0'
+                implementation 'androidx.sqlite:sqlite-bundled:2.5.2'
+                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
+                implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+                implementation 'com.squareup.okio:okio:3.10.2'
             }
         }
         commonTest {
             dependencies {
-                implementation 'org.jetbrains.kotlin:kotlin-test:2.4.21'
+                implementation kotlin('test')
+                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
             }
         }
         androidMain {
+            kotlin.srcDir('src/javaMain/kotlin')
             dependencies {
                 implementation 'androidx.annotation:annotation:1.8.1'
-                implementation 'net.lingala.zip4j:zip4j:2.11.5'
-                implementation project.dependencies.platform('com.google.firebase:firebase-bom:33.5.1')
-                implementation 'com.google.firebase:firebase-analytics'
+                implementation 'androidx.core:core-ktx:1.15.0'
+                implementation 'com.github.bumptech.glide:gifdecoder:4.16.0'
+                implementation 'org.bouncycastle:bcprov-jdk15to18:1.86'
+            }
+        }
+        jvmMain {
+            kotlin.srcDir('src/javaMain/kotlin')
+        }
+        androidInstrumentedTest {
+            dependencies {
+                implementation 'junit:junit:4.13.2'
+                implementation 'androidx.test:core:1.6.1'
+                implementation 'androidx.test:runner:1.6.2'
+                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
             }
         }
     }
+}
+
+android {
+    namespace 'su.linka.pictures.shared'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 21
+        // Library-only instrumentation host retains its existing compatibility behavior;
+        // the shipping application's targetSdk is 36 in app/build.gradle.
+        targetSdk 34
+        testInstrumentationRunner 'su.linka.pictures.bootstrap.LibraryTestRunner'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets.androidTest.assets.srcDir(rootProject.file('app/src/main/assets'))
 }

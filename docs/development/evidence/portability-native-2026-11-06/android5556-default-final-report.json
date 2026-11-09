@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-06",
+  "scope": "Single bounded default-name export and backup attempt after parent supplied responsive UI evidence; evidence-only",
+  "device": "emulator-5556",
+  "apkSha256ParentVerified": "d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558",
+  "outcome": "STOPPED_ON_UI_HIERARCHY_NULL_ROOT_AFTER_EXPORT_PREPARE",
+  "initialObservedState": "TransferScreen Файлы и восстановление; Операция отменена.; no picker or IME in initial successful hierarchy",
+  "targetSelection": {
+    "method": "Navigated back to library, observed both board names, opened own board menu at own board action bounds, selected Экспортировать, returned to TransferScreen",
+    "boardSelectedByMenu": "LINKa-EDITOR-6F9C-SAVED",
+    "otherBoardObserved": "ХОЧУ",
+    "previewTargetName": "Not reached; no write confirmation attempted"
+  },
+  "actions": [
+    "Native Back button from TransferScreen to library",
+    "Own LINKa-EDITOR-6F9C-SAVED action menu",
+    "Экспортировать",
+    "Разрешить команды в этом экране",
+    "Подготовить экспорт выбранной доски .linka at observed bounds [24,928][2536,1024]"
+  ],
+  "capture": {
+    "png": "android5556-default-final-export-picker.png",
+    "actualImageContent": "Despite anticipatory filename, successful screenshot shows TransferScreen with preparation controls disabled; it does NOT show DocumentsUI, a proposed filename, Save or terminal status",
+    "nextHierarchyFailure": "uiautomator failed to dump screen: ERROR: null root node returned by UiTestAutomationBridge.",
+    "followupUiCommands": "None: stopped on first hierarchy failure as instructed"
+  },
+  "export": {"outcome": "PREPARE_REQUESTED_ONLY", "defaultProposalObserved": false, "localProviderObservedThisAttempt": false, "savePressed": false, "freshAuthorizationAfterPicker": false, "writeConfirmationPressed": false, "terminalSuccessObserved": false, "actualCreatedFile": null, "sha256": null, "zipInspection": "Not reached"},
+  "backup": {"outcome": "NOT_STARTED", "defaultProposalObserved": false, "savePressed": false, "actualCreatedFile": null, "sha256": null},
+  "nativeFilenameTypingOrEditing": false,
+  "newPublicFilesCreatedBySave": [],
+  "existingPublicFileMutationsAttempted": false,
+  "preservation": "Both boards directly observed before preparation; no communication-card selection, editing, clearing, draft discard/resume, restore, import, recovery, delete, rename, settings or permission changes performed. Drafts and message not reobserved in this attempt.",
+  "finalForeground": "Last screenshot shows TransferScreen preparing; actual foreground after null-root failure unknown, picker transition possible but unconfirmed. No cancellation/navigation attempted after failure.",
+  "historicalEvidenceModified": false,
+  "remainingGaps": ["Corrected MIME default .linka/.linkabackup names remain unverified", "No Save/fresh-after-picker authorization/write confirmation/terminal success", "No new output hashes, CRC or asset evidence", "Prior custom filename attempts remain BLOCKED", "No physical-device, U1.4 or full-release claim"],
+  "deviceLease": "FREED; no further native retry attempted"
+}

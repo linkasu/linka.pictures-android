@@ -1,0 +1,15 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/r2-thumbnails-native-rmbenllo/frozen-thumbnail-owner-test.apk",
+  "sha256": "fc6c36dd281711f5befd0cb28c4bf6c73d05ca9f0c8f5d5dce1de10950bcb75b",
+  "expectedTests": 4,
+  "classes": [
+    "su.linka.pictures.bootstrap.AndroidThumbnailDecoderTest",
+    "su.linka.pictures.access.AndroidDeviceOwnerVerifierTest"
+  ],
+  "sourceHashes": {
+    "shared/src/androidMain/kotlin/su/linka/pictures/bootstrap/AndroidThumbnailDecoder.kt": "ef0a71e153d0eab6ba986d9bf82de8bd58acfad8d3dfc17fc50e472c46b863ab",
+    "shared/src/androidInstrumentedTest/kotlin/su/linka/pictures/bootstrap/AndroidThumbnailDecoderTest.kt": "4ebfb4382b46ec1d73699700112e1c725178a8c4dcf3bac83e083680ca706a8a",
+    "shared/src/androidMain/kotlin/su/linka/pictures/access/AndroidDeviceOwnerVerifier.kt": "c177a11cac6bdf1bc3478beded94dea690547961fe5537c2e91aefaf9457c861",
+    "shared/src/androidInstrumentedTest/kotlin/su/linka/pictures/access/AndroidDeviceOwnerVerifierTest.kt": "b13b35b6ae3a0fa7853285a9d5b0f74ddecbc7695ef39a978e6b3fdfa2466c34"
+  }
+}

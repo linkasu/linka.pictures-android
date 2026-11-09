@@ -1,0 +1,130 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {};
+    objectVersion = 56;
+    objects = {
+        C00000000000000000000001 = {
+            isa = PBXProject;
+            attributes = { LastUpgradeCheck = 2720; TargetAttributes = {
+                C00000000000000000000005 = { ProvisioningStyle = Manual; };
+                C00000000000000000000015 = { ProvisioningStyle = Manual; TestTargetID = C00000000000000000000005; };
+            }; };
+            buildConfigurationList = C00000000000000000000002;
+            compatibilityVersion = "Xcode 14.0";
+            developmentRegion = en;
+            knownRegions = (en, Base);
+            mainGroup = C00000000000000000000003;
+            productRefGroup = C00000000000000000000004;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (C00000000000000000000005, C00000000000000000000015);
+        };
+        C00000000000000000000002 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (C00000000000000000000006);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        C00000000000000000000003 = {
+            isa = PBXGroup;
+            children = (C00000000000000000000007, C0000000000000000000000D, C00000000000000000000017, C00000000000000000000020, C00000000000000000000004);
+            sourceTree = "<group>";
+        };
+        C00000000000000000000004 = {
+            isa = PBXGroup;
+            children = (C00000000000000000000008, C00000000000000000000018);
+            name = Products;
+            sourceTree = "<group>";
+        };
+        C00000000000000000000005 = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = C00000000000000000000009;
+            buildPhases = (C0000000000000000000000A);
+            buildRules = ();
+            dependencies = ();
+            name = LinkaKeychainHost;
+            productName = LinkaKeychainHost;
+            productReference = C00000000000000000000008;
+            productType = "com.apple.product-type.application";
+        };
+        C00000000000000000000006 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CLANG_ENABLE_MODULES = YES;
+                CODE_SIGNING_ALLOWED = NO;
+                CODE_SIGN_STYLE = Manual;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+                LINKA_HOST_BUNDLE_ID = su.linka.pictures.keychainhost;
+                SDKROOT = iphonesimulator;
+                SUPPORTED_PLATFORMS = iphonesimulator;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+        C00000000000000000000007 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaKeychainHost/AppDelegate.swift; sourceTree = "<group>"; };
+        C00000000000000000000008 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LinkaKeychainHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
+        C00000000000000000000009 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (C0000000000000000000000B);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        C0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0000000000000000000000C); runOnlyForDeploymentPostprocessing = 0; };
+        C0000000000000000000000B = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGN_ENTITLEMENTS = LinkaKeychainHost/LinkaKeychainHost.entitlements;
+                INFOPLIST_FILE = LinkaKeychainHost/Info.plist;
+                INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+                PRODUCT_BUNDLE_IDENTIFIER = "$(LINKA_HOST_BUNDLE_ID)";
+                PRODUCT_NAME = "$(TARGET_NAME)";
+            };
+            name = Debug;
+        };
+        C0000000000000000000000C = { isa = PBXBuildFile; fileRef = C00000000000000000000007; };
+        C0000000000000000000000D = { isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LinkaKeychainHost/LinkaKeychainHost.entitlements; sourceTree = "<group>"; };
+        C00000000000000000000015 = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = C00000000000000000000019;
+            buildPhases = (C0000000000000000000001A);
+            buildRules = ();
+            dependencies = (C0000000000000000000001D);
+            name = LinkaKeychainHostTests;
+            productName = LinkaKeychainHostTests;
+            productReference = C00000000000000000000018;
+            productType = "com.apple.product-type.bundle.unit-test";
+        };
+        C00000000000000000000017 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaKeychainHostTests/KeychainTests.swift; sourceTree = "<group>"; };
+        C00000000000000000000018 = { isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LinkaKeychainHostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+        C00000000000000000000019 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (C0000000000000000000001B);
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        C0000000000000000000001A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0000000000000000000001C, C00000000000000000000021); runOnlyForDeploymentPostprocessing = 0; };
+        C0000000000000000000001B = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                BUNDLE_LOADER = "$(TEST_HOST)";
+                FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/../shared/build/bin/iosSimulatorArm64/appHostDebugFramework");
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+                OTHER_LDFLAGS = ("$(inherited)", "-framework", SharedAppHostTests, "-lsqlite3");
+                PRODUCT_BUNDLE_IDENTIFIER = "$(LINKA_HOST_BUNDLE_ID).tests";
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LinkaKeychainHost.app/LinkaKeychainHost";
+            };
+            name = Debug;
+        };
+        C0000000000000000000001C = { isa = PBXBuildFile; fileRef = C00000000000000000000017; };
+        C0000000000000000000001D = { isa = PBXTargetDependency; target = C00000000000000000000005; targetProxy = C0000000000000000000001E; };
+        C0000000000000000000001E = { isa = PBXContainerItemProxy; containerPortal = C00000000000000000000001; proxyType = 1; remoteGlobalIDString = C00000000000000000000005; remoteInfo = LinkaKeychainHost; };
+        C00000000000000000000020 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaKeychainHostTests/AudioTests.swift; sourceTree = "<group>"; };
+        C00000000000000000000021 = { isa = PBXBuildFile; fileRef = C00000000000000000000020; };
+    };
+    rootObject = C00000000000000000000001;
+}

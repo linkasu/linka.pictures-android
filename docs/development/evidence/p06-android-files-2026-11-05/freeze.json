@@ -1,0 +1,10 @@
+{
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-files-green-26b159a3-a12e-49d4-a7cc-2238d55d99da/frozen-files-test.apk",
+  "sha256": "0ae8a430a7a3b5c95ca1875c572df11200d6e19783800657c3f28f92cfc352f3",
+  "package": "su.linka.pictures.shared.test",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "focused": 17,
+  "total": 80,
+  "api35": "compile-only/runtime OPEN"
+}

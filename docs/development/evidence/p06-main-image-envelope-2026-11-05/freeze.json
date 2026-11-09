@@ -1,0 +1,34 @@
+{
+  "main_head": "81ff8f088bcb15b13702c2fcaec8e26772359864",
+  "source_artifact": "/Volumes/data/linka/linka.pictures-android/shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk",
+  "apk": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/p06-image-envelope-97404afa-1fb5-45bd-abd9-7670bb0df227/frozen-main-image-test.apk",
+  "sha256": "683787ceaaba3969b926edcd745d07a8b725e85a7b301cd8ed7e875ffd2785be",
+  "bytes": 16092266,
+  "sources": {
+    "shared/src/androidMain/kotlin/su/linka/pictures/platform/capabilities/MediaContainer.kt": {
+      "sha256": "b5ec111eca393192d1e88d30f72f6948236dee8d9fda405c41e95da98deab65b",
+      "bytes": 9342
+    },
+    "shared/src/commonMain/kotlin/su/linka/pictures/media/ImageEnvelope.kt": {
+      "sha256": "068710efca4676cc5b6848723a9157777abf767dbea6adc722b4af79b0b790b4",
+      "bytes": 3762
+    },
+    "shared/src/commonMain/kotlin/su/linka/pictures/binary/Crc32.kt": {
+      "sha256": "fcab57f2d2f9bdfe471d1f487f3805ff34ef19cb1aabf10fdcbcc48a374f3e99",
+      "bytes": 726
+    }
+  },
+  "source_git_status": " M shared/src/androidMain/kotlin/su/linka/pictures/platform/capabilities/MediaContainer.kt\n",
+  "source_snapshot_stable_during_copy": true,
+  "package": "su.linka.pictures.shared.test",
+  "targetPackage": "su.linka.pictures.shared.test",
+  "minSdk": 21,
+  "targetSdk": 34,
+  "focused_counts": {
+    "AndroidMediaInspectionPortTest": 9,
+    "AndroidImagePreparationPortTest": 15
+  },
+  "focused_total": 24,
+  "api35": "parent-approved -feature -WiFiPacketStream; not default stability/network proof",
+  "build": "existing primary artifact, no build performed in this lane"
+}

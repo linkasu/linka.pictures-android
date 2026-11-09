@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.communication.CommunicationLayoutTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.032">
+  <properties/>
+  <testcase name="everyActionGlyphParsesWithoutPlatformResources[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.02"/>
+  <testcase name="readOnlyPreviewsUseHouseGradientOnlyInDefaultLightTheme[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.004"/>
+  <testcase name="baselinePhoneLandscapeFitsNineWithoutChangingBoardDimensions[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.002"/>
+  <testcase name="tabletAndPortraitUseAllAvailableSpace[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.001"/>
+  <testcase name="toolbarFollowsAppCompatWindowClassesRatherThanDeviceOrFixture[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.0"/>
+  <testcase name="fixedMarginsAndDividerAreRemovedBeforeOneToFourWeights[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.001"/>
+  <testcase name="phraseActionGrayIsMeasuredLightChromeNotADarkOrHighContrastFallback[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.001"/>
+  <testcase name="largeTextDensePagesAndNarrowWindowsScrollRatherThanShrinkTargets[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.0"/>
+  <testcase name="visibleInsetsDoNotConsumeMinimumTouchTargetOrLargeTextBudget[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.0"/>
+  <testcase name="phraseKeepsOneFifthAndShortLargeTextWindowsCanScrollToGrid[jvm]" classname="su.linka.pictures.ui.communication.CommunicationLayoutTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

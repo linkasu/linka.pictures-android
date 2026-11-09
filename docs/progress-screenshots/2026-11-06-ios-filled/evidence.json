@@ -1,0 +1,32 @@
+{
+  "status": "actual UI progress; full U1.4 OPEN",
+  "fixture_sha256": "a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b",
+  "board_name": "Импортированная доска",
+  "native_source": "real UIDocumentPicker/NSFileCoordinator/TransferCoordinator; no direct SQL or fake capability",
+  "compose_reopen_actual_pass": 1,
+  "full_import_macro": "RED after publish; not rerun to avoid duplicate",
+  "userApproved": false,
+  "images": {
+    "compose-filled.png": {
+      "sha256": "9652e3e1056365a35dbbfc6e5fe356aa9458f7c07ec64a769fd023253c77bfaa",
+      "reviewed_by": "primary or runtime evidence lane; no automatic visual verdict"
+    },
+    "reopened-filled.png": {
+      "sha256": "9652e3e1056365a35dbbfc6e5fe356aa9458f7c07ec64a769fd023253c77bfaa",
+      "reviewed_by": "primary or runtime evidence lane; no automatic visual verdict"
+    },
+    "library-after-compose.png": {
+      "sha256": "4bd91753acdc1246cfa362f6496671bde094673f3751393410de116d6d6daaab",
+      "reviewed_by": "primary or runtime evidence lane; no automatic visual verdict"
+    },
+    "native-preview.png": {
+      "sha256": "42979bea4b544d8905adef5e32d6f9b965c33a8a9197d3481653d5e433e0f8f3",
+      "reviewed_by": "primary or runtime evidence lane; no automatic visual verdict"
+    },
+    "published-import.png": {
+      "sha256": "9fd315007df0cf33a0cc69eb98ff92ade300e5ad3a7f8b9c57f3af21a12e20e0",
+      "reviewed_by": "primary or runtime evidence lane; no automatic visual verdict"
+    }
+  },
+  "local_xcresult": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/linka-keychain-xctest-ukmzlfyb/existing-board-compose.xcresult"
+}

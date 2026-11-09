@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.app.ProductNavigationTest" tests="14" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.43">
+  <properties/>
+  <testcase name="disposalRevokesOldGuardBeforeThrowingAudioStopAndStillCleansOwner[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.048"/>
+  <testcase name="unconfirmedOutcomeAllowsCommunicationButNoNewProtectedSession[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.005"/>
+  <testcase name="confirmedRestoreEpochSurvivesSecondaryStopFailureDuringClose[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.116"/>
+  <testcase name="concurrentStartOpensLibraryOnceAndNeverReopensAfterCommunication[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.011"/>
+  <testcase name="failingCoreRevokeIsNotTreatedAsSuccessfulLifecycleOrAuthorization[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.009"/>
+  <testcase name="disposedNavigationCannotStartAndDisposalDuringOwnerOpenLeavesNoOrphan[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.021"/>
+  <testcase name="authoringRevokeAudioFailureCannotSkipNativeCloseOrChildCancellation[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.015"/>
+  <testcase name="disposalDuringSlowTransferCleanupCannotOpenAnOrphanOwner[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.02"/>
+  <testcase name="failedRootReloadNeverClaimsDeliveredEpochOrAutomaticallyRetries[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.034"/>
+  <testcase name="composePlaybackSurvivesBrowsingAndBoardNavigationButProtectedEntryStopsIt[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.062"/>
+  <testcase name="throwingNativeCloseStillAwaitsTransferCleanupAndNeverOpensANewOwner[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.008"/>
+  <testcase name="actualRestoreEpochIsDeliveredOnceAndNeverReplayedFromTransferHistory[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.058"/>
+  <testcase name="leavingTransferRevokesPendingAndAwaitsPickerCancellationBeforeScopeCancellation[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.009"/>
+  <testcase name="editorOwnersAreUniqueBackgroundPausesAndResumeIsExplicit[jvm]" classname="su.linka.pictures.ui.app.ProductNavigationTest" time="0.014"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

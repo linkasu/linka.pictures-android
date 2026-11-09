@@ -1,0 +1,28 @@
+{
+  "scope": "Existing owned draft native Select All probe, no typing until a real menu command is observed",
+  "device": "DD0F9A3F-DC32-4373-BA08-400FECE3A1CC",
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "passed": 0,
+  "failed": 1,
+  "seconds": 33.853,
+  "stage": "system-selection-context-menu",
+  "observed": "Long press at90percent field width landed on blank area after unchanged NATIVE-CARD-17; no context menu/selection highlight visible",
+  "replacement_payload_typed": false,
+  "save_or_publish_performed": false,
+  "next_probe": "Only long-press x-coordinate changes to35percent, inside actual word; same original form",
+  "rootcause_of_original_malformed_replacement": "UNKNOWN",
+  "screenshots": [
+    {
+      "file": "system-selection-phone-219C497F-F475-4F95-9DE0-A4629F740646.png",
+      "sha256": "8aba29f778c1c5084718ee6604c41a30df9214dcaf8cad2283eacca157a975ee"
+    },
+    {
+      "file": "system-selection-phone-86D52149-ADC2-48FF-B3FD-752652B1C3C5.png",
+      "sha256": "3c31039835649b680a4f5ab323cf7c99948e95b4d43041ea6ac7fe8574e8b5cc"
+    },
+    {
+      "file": "system-selection-phone-ECC3FC13-6FA2-4232-BAE6-0BEEEF3E8DE8.png",
+      "sha256": "98eb4ff85bf3b7abf2370c235c5da1742ddb4fb07425372ba5a139af2025782a"
+    }
+  ]
+}

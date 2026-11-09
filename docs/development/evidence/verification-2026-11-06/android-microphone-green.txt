@@ -1,0 +1,51 @@
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.audio.AndroidAudioBackendTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+su.linka.pictures.platform.audio.AndroidAudioBackendTest:
+INSTRUMENTATION_STATUS: test=permissionDeniedAndCancelledNeverCreateRecordingOrEmitReady
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.audio.AndroidAudioBackendTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=permissionDeniedAndCancelledNeverCreateRecordingOrEmitReady
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.audio.AndroidAudioBackendTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=syntheticPermissionSuccessDoesNotBypassActualOsPermission
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.audio.AndroidAudioBackendTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=syntheticPermissionSuccessDoesNotBypassActualOsPermission
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.audio.AndroidAudioBackendTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=permissionRevokedBeforeRecorderConstructionNeverStartsMicAndDiscardsItsTemporary
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=su.linka.pictures.platform.audio.AndroidAudioBackendTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=permissionRevokedBeforeRecorderConstructionNeverStartsMicAndDiscardsItsTemporary
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 0.568
+
+OK (3 tests)
+
+
+INSTRUMENTATION_CODE: -1

@@ -1,0 +1,29 @@
+{
+  "commit": "d61796043c23acde7357c83c87ecf44405f2a923",
+  "dirty": true,
+  "jvm": {
+    "tests": 140,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "artifacts": {
+    "app": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-visual-artifacts-8se7fno1/app.apk",
+      "sha256": "3700456b8e5ab931d73a15a073881daf57265ba2a0904f2ae9cd92415deae1f2"
+    },
+    "appTest": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-visual-artifacts-8se7fno1/appTest.apk",
+      "sha256": "19d431f7f8d0002b0227ccd5ef7a7aff3be6462c96c2b2b75409c20ecf249edd"
+    },
+    "sharedTest": {
+      "path": "/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode/u14-visual-artifacts-8se7fno1/sharedTest.apk",
+      "sha256": "af2856e2414250f9214d9e1e804f934671cbdef7fb9dd449da0062290e1f7bfd"
+    }
+  },
+  "wip_diff_sha256": "d3021cc93054eadfc0b52447f722f18a4dd6d137f96d88d479ddf07f671d2089",
+  "untracked_sources": {
+    "shared/src/androidMain/kotlin/su/linka/pictures/bootstrap/AndroidIncomingDocument.kt": "d0292a701aee1a5d754ef6a4c7da98080e2f9c220951ea2db000f7a68588793a",
+    "app/src/debug/res/xml/parity_fixture_paths.xml": "80d9daa169ae684d3c141502b57d5d46116d57827f5911749d522e8d1c8f44a8"
+  }
+}

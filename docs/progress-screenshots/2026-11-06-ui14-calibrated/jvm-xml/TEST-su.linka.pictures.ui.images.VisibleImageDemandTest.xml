@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.images.VisibleImageDemandTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.007">
+  <properties/>
+  <testcase name="nullCallbackKeepsManualBorrowedMapCompatibility[jvm]" classname="su.linka.pictures.ui.images.VisibleImageDemandTest" time="0.0"/>
+  <testcase name="onlyTheComposedContentRowOfTheSelectedPageIsDemanded[jvm]" classname="su.linka.pictures.ui.images.VisibleImageDemandTest" time="0.006"/>
+  <testcase name="composedSourcesUnionDeduplicatesAndRetainsOtherOwners[jvm]" classname="su.linka.pictures.ui.images.VisibleImageDemandTest" time="0.0"/>
+  <testcase name="closedScreenRejectsOrphanEffectsAndCanBeReplacedByANewGeneration[jvm]" classname="su.linka.pictures.ui.images.VisibleImageDemandTest" time="0.001"/>
+  <testcase name="callbackReplacementPublishesCurrentUnionAndDisposalUsesCurrentCallback[jvm]" classname="su.linka.pictures.ui.images.VisibleImageDemandTest" time="0.0"/>
+  <testcase name="disposingAnOldPageOrEffectCannotRemoveItsReplacement[jvm]" classname="su.linka.pictures.ui.images.VisibleImageDemandTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

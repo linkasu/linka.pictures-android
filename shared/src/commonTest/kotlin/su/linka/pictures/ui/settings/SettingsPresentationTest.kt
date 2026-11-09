@@ -1,0 +1,50 @@
+package su.linka.pictures.ui.settings
+
+import su.linka.pictures.resources.*
+import su.linka.pictures.domain.*
+import kotlin.test.*
+import su.linka.pictures.application.ports.VoiceStatus
+
+class SettingsPresentationTest {
+    @Test fun pageButtonTogglePreservesOtherBoardOptionsAndAnEnabledSideLayout() {
+        val side = BoardPresentation(PageNavigation.SIDE, dragToCompose = true)
+        assertEquals(side, boardPageButtons(side, true))
+        assertEquals(side.copy(navigation = PageNavigation.NONE), boardPageButtons(side, false))
+        val hidden = side.copy(navigation = PageNavigation.NONE)
+        assertEquals(side.copy(navigation = PageNavigation.BOTTOM), boardPageButtons(hidden, true))
+    }
+
+    @Test fun previewUsesDraftScaleWithoutApplyingSavedScaleTwice() {
+        assertEquals(1.5f, settingsPreviewFontScale(current = 2f, saved = 2f, draft = 1.5f))
+        assertEquals(1.8f, settingsPreviewFontScale(current = 2.4f, saved = 2f, draft = 1.5f), 0.0001f)
+        assertEquals(0.5f, settingsPreviewFontScale(current = 3f, saved = 3f, draft = 0.5f))
+    }
+
+    @Test fun portableScaleKeepsExistingRangeAndRejectsNonFiniteInput() {
+        assertTrue(settingsInputValid(0.5f, "ru-RU"))
+        assertTrue(settingsInputValid(3f, "ru-RU"))
+        listOf(null, Float.NaN, Float.POSITIVE_INFINITY, 0.49f, 3.01f).forEach {
+            assertFalse(settingsInputValid(it, "ru-RU"))
+        }
+    }
+
+    @Test fun languageRemainsPortableAndDoesNotRequireAnInstalledVoiceIdentifier() {
+        assertTrue(settingsInputValid(1f, "xx-Unknown"))
+        assertTrue(settingsInputValid(1f, "x".repeat(128)))
+        assertFalse(settingsInputValid(1f, "x".repeat(129)))
+        assertFalse(settingsInputValid(1f, "  "))
+    }
+
+    @Test fun actualVoiceReadinessRemainsDistinguishable() {
+        assertEquals(VoiceStatus.entries.size, VoiceStatus.entries.map(::voiceStatusLabel).toSet().size)
+        assertEquals(Res.string.install_a_local_voice_using_the_os, voiceStatusLabel(VoiceStatus.MISSING_VOICE))
+        assertEquals(Res.string.local_voice_ready, voiceStatusLabel(VoiceStatus.LOCAL_VOICE_READY))
+    }
+
+    @Test fun languageRejectsNulAndIllFormedUtf16BeforeNativeTts() {
+        listOf("ru\u0000RU", "ru\uD800", "\uDC00ru", "\uD800x\uDC00").forEach {
+            assertFalse(settingsInputValid(1f, it))
+        }
+        assertTrue(settingsInputValid(1f, "xx-\uD83D\uDE00"))
+    }
+}

@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-06",
+  "scope": "Native read-only board export and full backup through actual local DocumentsUI; no implementation changes",
+  "device": {"serial": "emulator-5556", "avdObserved": "linka_audit_tablet", "sdkObserved": "35", "packageObserved": "su.linka.pictures.development"},
+  "runtime": {"apkSha256ParentSupplied": "bb73c51df6082c553244a1dc7e822b6ba8d0997f79adce74ed72a9baabd7acf3", "independentlyRehashed": false, "note": "Installed runtime includes parent uncommitted fixes; older worktree source is not runtime proof."},
+  "provider": {"packageObserved": "com.google.android.documentsui", "destinationObserved": "Downloads", "cloudOrShareUsed": false, "uri": "Not collected or invented"},
+  "export": {
+    "outcome": "TERMINAL_SUCCESS_CONTENT_VERIFIED_EXTENSION_DEVIATION",
+    "board": "LINKa-EDITOR-6F9C-SAVED",
+    "typedFilename": "LINKa-native-5556-export-20261106-a73f91e2.linka",
+    "actualFilenameObservedInNextDocumentsUI": "LINKa-native-5556-export-20261106-a73f91e2.linka.zip",
+    "createdPublicFile": "/sdcard/Download/LINKa-native-5556-export-20261106-a73f91e2.linka.zip",
+    "sha256BeforeAndAfterInspection": "e382a3190165fabf7dc4dcf54bb42770a3c76bd2cd375dd0d5828f36c4d6d722",
+    "freshAccess": "After returning from picker, observed explicit fresh-access warning; tapped Разрешить команды в этом экране and then separate Подтверждаю запись открытого файла доски",
+    "terminalObserved": "Операция завершена.",
+    "zip": {"entries": 2, "configVersion": "3.0", "pages": 1, "grid": "2x2", "cards": 1, "card": "NATIVE-CARD-35", "images": 1, "recordings": 0, "assetBytes": 10857, "assetSha256MatchesPath": true},
+    "evidence": ["android5556-export-provider.png", "android5556-export-fresh-guard.png", "android5556-export-confirm.png", "android5556-export-success.png", "android5556-provider-appended-zip.png"]
+  },
+  "backup": {
+    "outcome": "TERMINAL_SUCCESS_ARCHIVE_VERIFIED_EXTENSION_DEVIATION",
+    "typedFilename": "LINKa-native-5556-backup-20261106-b82e40d6.linkabackup",
+    "actualFilenameResolvedByExactPublicPath": "LINKa-native-5556-backup-20261106-b82e40d6.linkabackup.zip",
+    "createdPublicFile": "/sdcard/Download/LINKa-native-5556-backup-20261106-b82e40d6.linkabackup.zip",
+    "sha256BeforeAndAfterInspection": "a87a9c98d3555179d3e9e8c11b8ce7f8d43ada6aae170091ad656d56cac7a523",
+    "freshAccess": "After returning from picker, observed explicit fresh-access warning; tapped Разрешить команды в этом экране and then separate Подтверждаю запись открытого архива всей библиотеки",
+    "warningObserved": "Файлы .linka и резервные копии — открытые архивы, не зашифрованные; Файл будет открыт для получателя без пароля",
+    "terminalObserved": "Операция завершена.",
+    "zip": {"entries": 25, "boards": 2, "drafts": 2, "retained": 0, "assets": 19, "assetBytes": 3170713, "format": "su.linka.pictures.backup", "version": "1.0", "allAssetHashesAndSizesMatch": true, "encryptedEntries": 0},
+    "structuralExclusionEvidence": "All ZIP paths and JSON keys inspected, including parsed extensionsJson and assets.jsonl metadata keys. Roots are manifest.json, boards/, drafts/, assets.jsonl, assets/. Manifest keys are counts, format, revision, settings, version. Settings keys are boards, highContrast, languageTag, textScale. No current-message or credential structural entries found. This is a schema/path observation, not phrase-grep or proof that arbitrary text/media cannot contain sensitive content.",
+    "evidence": ["android5556-backup-provider.png", "android5556-backup-fresh-guard.png", "android5556-backup-confirm.png", "android5556-backup-success.png"]
+  },
+  "preservation": {
+    "finalForeground": "Library Ваши наборы, both ХОЧУ and LINKa-EDITOR-6F9C-SAVED observed; no form, media dialog or picker open",
+    "draftsObservedAfter": ["ХОЧУ · версия 6", "ХОЧУ · версия 3"],
+    "globalMessageObservedAfter": "Общее сообщение: ХОЧУ КУШАТЬ",
+    "actionsNotPerformed": ["card selection", "editing", "rename", "delete", "draft resume", "restore", "import", "recovery", "settings change", "app stop", "install", "build", "permission or credential operations"],
+    "existingBinaryIdentity": "Not independently snapshotted; preservation supported by read-only action scope, final UI, archive contents and draft versions, not a full pre/post database comparison",
+    "evidence": ["android5556-existing-drafts-preserved.png", "android5556-message-preserved.png", "android5556-final-library.png"]
+  },
+  "diagnostics": [
+    "First hierarchy immediately after export preparation returned null root during picker transition; later hierarchy showed actual DocumentsUI without repeating preparation.",
+    "Expected exact .linka public path absent; next real DocumentsUI visibly showed .linka.zip. No export retry, rename or deletion.",
+    "One hierarchy request and one screenshot request timed out after backup picker return; list_devices still showed device. Subsequent hierarchy showed awaiting confirmation, not failure. No duplicate prepare/write.",
+    "Expected exact .linkabackup public path absent; exact .linkabackup.zip hash/pull succeeded. No broad user-storage scan."
+  ],
+  "artifacts": {"details": "android5556-artifact-manifest.json", "publicOutputsRetained": true, "archiveCopies": "Pulled only the two created exact public files to approved session temporary storage for read-only ZIP inspection; archives not added to repository."},
+  "gaps": ["DocumentsUI appends .zip to both requested product extensions; strict .linka/.linkabackup filename acceptance is NOT PASS", "No import/restore round trip in this lane", "No credential sentinel fixture: structural exclusion observed, not comprehensive privacy/security certification", "APK hash parent-supplied only", "No physical-device, full-release or U1.4 claim"],
+  "deviceLease": "FREED; emulator-5556 left foreground library"
+}

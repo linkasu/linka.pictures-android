@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.ui.library.LibraryPresentationTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:39" hostname="mini" time="0.002">
+  <properties/>
+  <testcase name="firstImageIsCoverAndRecordingIsNeverAnImageDemand[jvm]" classname="su.linka.pictures.ui.library.LibraryPresentationTest" time="0.002"/>
+  <testcase name="unreadableAndUnknownCountsNeverBecomeAnEmptyBoard[jvm]" classname="su.linka.pictures.ui.library.LibraryPresentationTest" time="0.0"/>
+  <testcase name="authorizationReadinessDoesNotTreatNullCapabilityOrUnprotectedAsLocked[jvm]" classname="su.linka.pictures.ui.library.LibraryPresentationTest" time="0.0"/>
+  <testcase name="baselineUsesThreeColumnsWithoutOrientationOrTabletRedesign[jvm]" classname="su.linka.pictures.ui.library.LibraryPresentationTest" time="0.0"/>
+  <testcase name="failedDecisionsStayCapturedWithoutRefreshOrAutomaticReplay[jvm]" classname="su.linka.pictures.ui.library.LibraryPresentationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

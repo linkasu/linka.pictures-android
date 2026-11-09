@@ -1,0 +1,26 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "DD0F9A3F-DC32-4373-BA08-400FECE3A1CC",
+        "deviceName" : "linka_platform_probe_ios17",
+        "exportedFileName" : "592E7F90-1211-4251-80FF-431B6C64F003.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Relaunch_0_ECCABA6D-5CEF-41D9-B93A-A1C12F60FE4B.png",
+        "timestamp" : 1793960278.325
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "DD0F9A3F-DC32-4373-BA08-400FECE3A1CC",
+        "deviceName" : "linka_platform_probe_ios17",
+        "exportedFileName" : "34ED753D-98B0-45AC-87C4-238FE87FFC54.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Initial launch_0_D0238E44-076D-44C0-88C9-FB36944FFB1F.png",
+        "timestamp" : 1793960271.776
+      }
+    ],
+    "testIdentifier" : "DevelopmentLibraryTests/testDevelopmentLibrarySurvivesRelaunch()",
+    "testIdentifierURL" : "test://com.apple.xcode/LinkaStartupUITests/LinkaStartupUITests/DevelopmentLibraryTests/testDevelopmentLibrarySurvivesRelaunch"
+  }
+]

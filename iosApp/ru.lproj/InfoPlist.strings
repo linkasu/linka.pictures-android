@@ -1,0 +1,3 @@
+"NSMicrophoneUsageDescription" = "Микрофон нужен только по вашей команде для записи звука карточки.";
+"NSFaceIDUsageDescription" = "Face ID подтверждает владельца устройства при явном изменении защиты помощника.";
+"CFBundleDisplayName" = "LINKa Покажи";

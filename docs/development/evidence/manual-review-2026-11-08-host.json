@@ -1,0 +1,127 @@
+{
+  "sourceCommit": "1bbb8f4",
+  "status": "HOST_PASS_RUNTIME_UI_BLOCKED",
+  "checks": [
+    "jvmTest",
+    "Android debug/release unit",
+    "app/shared lint",
+    "verifyReleaseSafety",
+    "50 RU/EN selectors",
+    "debug/androidTest APK",
+    "iOS simulator/device frameworks",
+    "localization",
+    "384 workflow combinations",
+    "iOS compose test resources"
+  ],
+  "results": {
+    "jvm": {
+      "tests": 559,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "androidDebug": {
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "androidRelease": {
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "nativeGestures": "not yet verified",
+  "scope": "Before the subsequently approved compact card selector",
+  "subsequentChecks": {
+    "compactSelector": {
+      "codeCommit": "f753d63",
+      "cardEditorJvm": "PASS",
+      "androidLintAndApk": "PASS",
+      "iosSimulatorAndDeviceFrameworks": "PASS"
+    },
+    "globalSettingsWriterFix": {
+      "codeCommit": "c594686",
+      "regression": "RED then GREEN; global toggles preserve drag and enabled SIDE",
+      "settingsJvm": "PASS",
+      "rebuild": "PASS: Android lint/APK, both iOS frameworks, native test binary, Xcode app",
+      "nativeSettingsTests": 10,
+      "nativeSettingsFailures": 0
+    }
+  },
+  "nativeIos": {
+    "device": "EA356A64-6182-404B-B78A-54E9791129DB",
+    "runtime": "iOS 17",
+    "codeCommit": "f753d63",
+    "tests": 358,
+    "failures": 0,
+    "errors": 0,
+    "scope": "storage, backup, integration, authoring, communication, library, presentation; not native touch gestures"
+  },
+  "iosApplication": {
+    "codeCommit": "f753d63",
+    "xcodebuild": "PASS",
+    "launch": "launched; UI BLOCKED",
+    "blocker": "Keychain IO_FAILURE OSStatus -34018; no entitlements returned by codesign inspection",
+    "dataAfterRefusal": {
+      "schema": 1,
+      "entries": 1,
+      "drafts": 0,
+      "assets": 18,
+      "integrity": "ok"
+    },
+    "backup": "host SQLite backup with media; protected credentials not exported",
+    "latestBuildCodeCommit": "c594686",
+    "linkerWarning": "Existing ICU object targets iOS Simulator 17.2 while app minimum is 17.0; no release approval inferred"
+  },
+  "androidUpgrade": {
+    "serial": "emulator-5556",
+    "avd": "linka_audit_tablet",
+    "codeCommit": "f753d63",
+    "oldApkSha256": "a903bc27ebe4e353dc3f2b0e02e6a01d7db7728d68437835bb65e5c50f9f5c43",
+    "apkSha256": "24aaf4683c14d134dc5ee748fadabbec8d9625329e745683f83d083dc9987c78",
+    "schemaBefore": 1,
+    "schemaAfter": 2,
+    "boardsBefore": 9,
+    "boardsAfter": 9,
+    "draftsBefore": 1,
+    "draftsAfter": 1,
+    "draftVersionAfter": 4,
+    "assetsBefore": 169,
+    "assetsAfter": 169,
+    "assetBytesBefore": 6425872,
+    "assetBytesAfter": 6425872,
+    "message": "two original card snapshots preserved; message version advanced on session reopening",
+    "integrity": "ok",
+    "backup": "device-local consistent schema1 SQLite backup, integrity_check=ok; host pull denied and not bypassed",
+    "ui": "BLOCKED: long-press menu observed, then HWUI/RenderThread ANR; guest reboot did not finish, cold restart without wipe completed; no new ANR since cold boot but UI dump/screenshot automation still timed out/returned null root",
+    "otherAndroidDevice": "untouched"
+  },
+  "starterPack": {
+    "dictionaryApproved": true,
+    "sets": 5,
+    "pages": 10,
+    "positions": 90,
+    "userSuppliesAudio": true,
+    "recordingsRequested": 74,
+    "shippingResources": 0,
+    "imagePreview": "BLOCKED: image API authentication failure; no image returned, no retry"
+  },
+  "releaseApproved": false,
+  "latestCodeCommit": "c594686",
+  "androidFinalInstall": {
+    "codeCommit": "c594686",
+    "sha256": "348863d71899c31e9a367849533ac46aed0a9c51ce9c9b5080cb4842e3325e65",
+    "installToolReported": "timeout",
+    "installationConfirmed": "installed base.apk SHA256 matches the final artifact; no retry",
+    "launchToolReported": "timeout; UI readiness not confirmed",
+    "schema": 2,
+    "entries": 9,
+    "drafts": 1,
+    "assets": 169,
+    "assetBytes": 6425872,
+    "integrity": "ok"
+  }
+}

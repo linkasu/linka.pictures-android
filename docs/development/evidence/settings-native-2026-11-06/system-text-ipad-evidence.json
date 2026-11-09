@@ -1,0 +1,96 @@
+{
+  "scope": "Real iPad17 system Dynamic Type baseline -> maximum -> restored, app portable scale unchanged1.0",
+  "device": "D46F4A13-2815-41C6-B093-0548B56AFD9E",
+  "product_executable_sha256": "24a43aa0dd56da77a41df06b995764cc011ea464a9592be9a9cd9ab7ca495688",
+  "cases": [
+    {
+      "name": "system-text-ipad-baseline",
+      "category": "large",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 21.821,
+      "attachments": [
+        {
+          "file": "system-text-ipad-baseline-D18D11A2-EAA0-4CFA-B6F6-D4872A874F92.png",
+          "sha256": "69e98923a7fd84d95e680e441acf924edb7cbab2eead9b840773d992026967fc",
+          "stage": "system-text-all-nine-cards-reachable"
+        },
+        {
+          "file": "system-text-ipad-baseline-E72DE555-B969-4B7C-AEC7-52DE2B9ACBC2.png",
+          "sha256": "69e98923a7fd84d95e680e441acf924edb7cbab2eead9b840773d992026967fc",
+          "stage": "system-text-existing-board-initial"
+        },
+        {
+          "file": "system-text-ipad-baseline-A543F77A-A5FD-4D38-8A5B-D2F5404B44E5.txt",
+          "sha256": "50c3946606370166c48244392eefa300585ca458d086c08c7bf5c34fdca88425",
+          "stage": "system-text-public-geometry",
+          "public_geometry": "runnerPreferredCategory=UICTContentSizeCategoryL; runnerBodyPointSize=17.0; appFrame=(0.0, 0.0, 834.0, 1194.0); firstCardFrame=(20.0, 325.0, 259.5, 273.5)"
+        }
+      ]
+    },
+    {
+      "name": "system-text-ipad-maximum",
+      "category": "accessibility-extra-extra-extra-large",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 21.474,
+      "attachments": [
+        {
+          "file": "system-text-ipad-maximum-3AB2785E-98B8-406B-A52B-EE1BC5387DD7.png",
+          "sha256": "b3c0b3e818b09d0b5604b52b4f0eacc23bc5d949b9832b6f3c1870a07084a462",
+          "stage": "system-text-all-nine-cards-reachable"
+        },
+        {
+          "file": "system-text-ipad-maximum-E5A7D711-46A3-4259-9EE8-11CE6BB9D900.png",
+          "sha256": "b3c0b3e818b09d0b5604b52b4f0eacc23bc5d949b9832b6f3c1870a07084a462",
+          "stage": "system-text-existing-board-initial"
+        },
+        {
+          "file": "system-text-ipad-maximum-642AC398-3F5C-48D7-961F-AF259FA37004.txt",
+          "sha256": "da91dc213020cdfe78e98cfeb67d83a7674c166dbb81c07aeee2f7cc9800aa25",
+          "stage": "system-text-public-geometry",
+          "public_geometry": "runnerPreferredCategory=UICTContentSizeCategoryAccessibilityXXXL; runnerBodyPointSize=53.0; appFrame=(0.0, 0.0, 834.0, 1194.0); firstCardFrame=(20.0, 366.0, 259.5, 259.5)"
+        }
+      ]
+    },
+    {
+      "name": "system-text-ipad-restored",
+      "category": "large",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 20.443,
+      "attachments": [
+        {
+          "file": "system-text-ipad-restored-07848A90-D96F-41C3-BC1F-5E8770DC9E47.png",
+          "sha256": "80c20e985ae896baf6e6de2d3ab7c3b135e4dcfc4aed48310cf4df68cc12ba6d",
+          "stage": "system-text-all-nine-cards-reachable"
+        },
+        {
+          "file": "system-text-ipad-restored-B49DAD97-800B-41C5-906C-D26D14E0EC20.png",
+          "sha256": "80c20e985ae896baf6e6de2d3ab7c3b135e4dcfc4aed48310cf4df68cc12ba6d",
+          "stage": "system-text-existing-board-initial"
+        },
+        {
+          "file": "system-text-ipad-restored-26A30F9F-9E42-4B94-B5DC-0E337ED4874B.txt",
+          "sha256": "50c3946606370166c48244392eefa300585ca458d086c08c7bf5c34fdca88425",
+          "stage": "system-text-public-geometry",
+          "public_geometry": "runnerPreferredCategory=UICTContentSizeCategoryL; runnerBodyPointSize=17.0; appFrame=(0.0, 0.0, 834.0, 1194.0); firstCardFrame=(20.0, 325.0, 259.5, 273.5)"
+        }
+      ]
+    }
+  ],
+  "original_system_category_restored": "large",
+  "native_body_font_in_test_runner_points": [
+    17,
+    53,
+    17
+  ],
+  "native_body_font_is_not_product_font_measurement": true,
+  "actual_product_pixels_reviewed": true,
+  "all_nine_cards_and_original_message_preserved": true,
+  "maximum_caption_scroll_acceptance": "Separate follow-up required: access alone does not prove reading a clipped suffix",
+  "portable2_times_system_maximum_tested": false,
+  "whole_font_matrix_accepted": false,
+  "physical_aac_accepted": false,
+  "publication_authorized": false
+}

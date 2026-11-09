@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-06",
+  "scope": "Post-MIME-fix native export/backup verification; evidence-only",
+  "device": {"serial": "emulator-5556", "avdObserved": "linka_audit_tablet", "sdkObserved": "35"},
+  "apk": {"sha256ParentIndependentlyVerified": "d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558", "reinstalledByThisLane": false, "independentlyRehashedByThisLane": false},
+  "outcome": "BLOCKED_BEFORE_FIRST_UI_ACTION",
+  "lastStage": "Initial read-only device/foreground verification",
+  "observations": [
+    "adb MCP list_devices reports emulator-5556 device; emulator-5554 also connected and not targeted.",
+    "AVD name observed linka_audit_tablet; getprop ro.build.version.sdk observed 35.",
+    "Initial dump_ui_hierarchy failed: ERROR: null root node returned by UiTestAutomationBridge.",
+    "Second dump_ui_hierarchy timed out at MCP request level.",
+    "take_screenshot with new android5556-postfix-MIME-initial.png target timed out at MCP request level; no successful screenshot evidence claimed.",
+    "Read-only dumpsys window windows filtered to mCurrentFocus/mFocusedApp failed without foreground evidence.",
+    "Read-only dumpsys activity activities bounded to first 55 lines returned SERVICE activity DUMP TIMEOUT (10000ms) EXPIRED twice."
+  ],
+  "export": {"outcome": "NOT_STARTED", "strictExtensionAcceptance": "NOT_VERIFIED"},
+  "backup": {"outcome": "NOT_STARTED", "strictExtensionAcceptance": "NOT_VERIFIED"},
+  "newPublicFilesCreated": [],
+  "archivePulls": [],
+  "stateChangingActions": [],
+  "preservation": {"existingFiles": "No file mutations attempted", "boardsDraftsMessage": "No UI or backend changes attempted; contents not reobserved because initial UI access failed", "finalForeground": "Unknown; no navigation or launch attempted", "historicalEvidence": "Earlier reports and PNGs not modified"},
+  "diagnosis": "Device-side activity service is unresponsive to bounded read-only diagnostics; cause not established. No reinstall, reboot, app stop, reset, permission/settings changes or raw-shell UI fallback attempted.",
+  "remainingProofGaps": ["No real picker/authorization/confirmation/terminal verification on new APK", "No actual new output filename or archive inspected", "No current foreground/library/message observation", "No full-release claim"],
+  "deviceLease": "FREED; no device state changes attempted"
+}

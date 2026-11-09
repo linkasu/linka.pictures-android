@@ -1,0 +1,31 @@
+{
+  "scope": "Native double tap -> public Select All -> app.typeText replacement on same owned draft",
+  "passed": 0,
+  "failed": 1,
+  "seconds": 35.264,
+  "actual_selection_before_typing": "Full NATIVE-CARD-17 visibly highlighted with start/end handles after public Select All",
+  "payload": "CANCEL-CHECK-17",
+  "actual_after_typing": "NANCEL-CHECK-17ATIVE-CARD-17",
+  "rootcause_narrowed": "Not merely an unproven keyboard shortcut selection: visible full selection is confirmed. XCTest injected typing vs product native input still requires differentiation.",
+  "save_or_publish_performed": false,
+  "leftover": "Changed card form remains open; original published card not changed",
+  "next_probe": "Same visible Select All followed by one real on-screen keyboard key, not app.typeText",
+  "screenshots": [
+    {
+      "file": "system-selection-double-tap-phone-5F1BA1A5-2D02-4975-8364-6E11E7CEA611.png",
+      "sha256": "fc2f5cde221f0008750a20692cd7d9a19ed8ba0174a783922f984427e2f0b85d"
+    },
+    {
+      "file": "system-selection-double-tap-phone-84D08CA2-C470-405E-9B1B-4CFB402E1E93.png",
+      "sha256": "4f284e392f062d76d0ca78d434f5b5b1d415f770d736583368a120d9381fe3f4"
+    },
+    {
+      "file": "system-selection-double-tap-phone-625CD90D-7901-4B00-B026-1ACE32CCCEDF.png",
+      "sha256": "ac22e1a21bc7deab5bacc866bd104cf7798c2c9d18545a17d2925139cd638f93"
+    },
+    {
+      "file": "system-selection-double-tap-phone-9249BCEF-47ED-4A7A-8FAF-4658585C284B.png",
+      "sha256": "1a315bc97014825e5683e4ff541b53da4f22e36fce13d745685771ccf2766315"
+    }
+  ]
+}

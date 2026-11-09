@@ -1,0 +1,87 @@
+{
+  "rawPNGs": [
+    {
+      "path": "board-settings-observation.png",
+      "sha256": "4bd14d29038ed4e916a53da063e677dd497c737062fd9af64e9cb659aacd68c4",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "card-modal-content.png",
+      "sha256": "3e4cf18f8a3c6d7416ec96d76814c216872d891e261fd5e772a9cf1253542779",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "compose-filled.png",
+      "sha256": "7496c248d831ebc11608fc0fff8dc83b32c8286f8bf8c00c1b8435b16ed93545",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "editor-entry.png",
+      "sha256": "430ba7a979b5d7e9a582d47cd5ca27e1f01555703be8327c35bd2bf49c7afea9",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "editor-exit-observation.png",
+      "sha256": "c85552eab1c5a59c64a2af3a3778faebc946657b88fd760e010fdc86485688ac",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "editor-focus-settled.png",
+      "sha256": "18a09524849f66c9e23ab7ddfd63ef4db412eb37f38bdcf3fdaeafb6b3a37a33",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "editor-numeric-ime.png",
+      "sha256": "4d3824ddd440bb92108521710ac8e87dd0c4ded84f1616798ca9f2259c0d1371",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "final-compose-preserved.png",
+      "sha256": "3a860049c58133e7b86add3624442b0527522ef49d687c3547e05e745a4ca37e",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "instrumentation-observation.png",
+      "sha256": "e29ace8ef6c50fb6dab63b1c6244a48da16b9488272c198c2abddc30ba455c9d",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    },
+    {
+      "path": "library-fab.png",
+      "sha256": "d9f0442fa3a76d55c43b6b8800afa17a41d61c6c7d52b1545756d132f3088fe0",
+      "width": 2560,
+      "height": 1600,
+      "read": true,
+      "userApproved": false
+    }
+  ],
+  "newPngRead": true,
+  "baselineRead": true,
+  "userApproved": false
+}

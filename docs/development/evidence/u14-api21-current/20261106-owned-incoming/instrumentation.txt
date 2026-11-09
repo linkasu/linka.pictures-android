@@ -1,0 +1,112 @@
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+su.linka.pictures.activity.DevelopmentParityTest:
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: test=filledBoardThroughOwnedIncomingContent
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=fixturealreadyimported / library not empty: use reopen-only verification; never reset or duplicate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Меню библиотеки / Меню / Ещё
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click К сообщению
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=message not empty: use reopen-only verification; never clear existing parts
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Открыть библиотеку
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=Ваши наборы / library
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=owned-content-read-verified
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=before-native-content-intent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=owned incoming notice without auto-import
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=prepare-import-enter
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Меню библиотеки / Меню / Ещё
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Импорт / Импорт, резервная копия и восстановление
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=Файлы и восстановление
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=set named field Название импортируемой доски
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=verify field Название импортируемой доски
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=prepare-import-before-click
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=click Выбрать .linka для импорта (без записи в библиотеку)
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Stage=prepare-import-click-delivered
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: u14Await=real imported media preview
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+Error in filledBoardThroughOwnedIncomingContent(su.linka.pictures.activity.DevelopmentParityTest):
+java.lang.AssertionError: Timed out at real imported media preview; activePackage=su.linka.pictures.development (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:395)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:377)
+	at su.linka.pictures.activity.DevelopmentParityTest.confirmImportAndCompose(DevelopmentParityTest.kt:211)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent$lambda$0$0(DevelopmentParityTest.kt:93)
+	at su.linka.pictures.activity.DevelopmentParityTest.$r8$lambda$nwdwEfzGvGgjFo3eYh_GFFGmXhk(DevelopmentParityTest.kt)
+	at su.linka.pictures.activity.DevelopmentParityTest$$ExternalSyntheticLambda2.invoke(D8$$SyntheticClass:0)
+	at su.linka.pictures.activity.DevelopmentParityTest.withOwnedCopy(DevelopmentParityTest.kt:319)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:72)
+
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: test=filledBoardThroughOwnedIncomingContent
+INSTRUMENTATION_STATUS: class=su.linka.pictures.activity.DevelopmentParityTest
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Timed out at real imported media preview; activePackage=su.linka.pictures.development (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:395)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:377)
+	at su.linka.pictures.activity.DevelopmentParityTest.confirmImportAndCompose(DevelopmentParityTest.kt:211)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent$lambda$0$0(DevelopmentParityTest.kt:93)
+	at su.linka.pictures.activity.DevelopmentParityTest.$r8$lambda$nwdwEfzGvGgjFo3eYh_GFFGmXhk(DevelopmentParityTest.kt)
+	at su.linka.pictures.activity.DevelopmentParityTest$$ExternalSyntheticLambda2.invoke(D8$$SyntheticClass:0)
+	at su.linka.pictures.activity.DevelopmentParityTest.withOwnedCopy(DevelopmentParityTest.kt:319)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:72)
+
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 111.17
+There was 1 failure:
+1) filledBoardThroughOwnedIncomingContent(su.linka.pictures.activity.DevelopmentParityTest)
+java.lang.AssertionError: Timed out at real imported media preview; activePackage=su.linka.pictures.development (no text/password dump)
+	at org.junit.Assert.fail(Assert.java:89)
+	at su.linka.pictures.activity.DevelopmentParityTest.await(DevelopmentParityTest.kt:395)
+	at su.linka.pictures.activity.DevelopmentParityTest.await$default(DevelopmentParityTest.kt:377)
+	at su.linka.pictures.activity.DevelopmentParityTest.confirmImportAndCompose(DevelopmentParityTest.kt:211)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent$lambda$0$0(DevelopmentParityTest.kt:93)
+	at su.linka.pictures.activity.DevelopmentParityTest.$r8$lambda$nwdwEfzGvGgjFo3eYh_GFFGmXhk(DevelopmentParityTest.kt)
+	at su.linka.pictures.activity.DevelopmentParityTest$$ExternalSyntheticLambda2.invoke(D8$$SyntheticClass:0)
+	at su.linka.pictures.activity.DevelopmentParityTest.withOwnedCopy(DevelopmentParityTest.kt:319)
+	at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:72)
+	Suppressed: java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+		at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+		at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+		at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+		at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent$lambda$0$0(DevelopmentParityTest.kt:97)
+		... 38 more
+	Suppressed: java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+		at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+		at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+		at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+		at kotlin.io.CloseableKt.closeFinally(Closeable.kt:49)
+		at su.linka.pictures.activity.DevelopmentParityTest.filledBoardThroughOwnedIncomingContent(DevelopmentParityTest.kt:69)
+		... 34 more
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

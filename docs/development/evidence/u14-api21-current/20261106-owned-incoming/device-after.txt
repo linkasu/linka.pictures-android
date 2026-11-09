@@ -1,0 +1,20 @@
+Fri Nov  6 10:34:18 GMT 2026
+1
+21
+arm64-v8a
+Physical size: 1080x1920
+Physical density: 480
+null
+    mResumedActivity: ActivityRecord{22740779 u0 com.android.launcher/com.android.launcher2.Launcher t19}
+  mFocusedActivity: ActivityRecord{22740779 u0 com.android.launcher/com.android.launcher2.Launcher t19}
+  mConfiguration: {1.0 310mcc260mnc en_US ldltr sw360dp w360dp h567dp 480dpi nrml port finger -keyb/v/h -nav/h s.6}
+  mWakefulness=Awake
+Display Power: state=ON
+package:su.linka.pictures.platformprobe.codecs
+package:su.linka.pictures.development
+package:su.linka.pictures.shared.test
+package:su.linka.pictures.development.test
+package:su.linka.pictures.platformprobe
+    versionCode=5 targetSdk=35
+    versionName=1.4
+    dataDir=/data/data/su.linka.pictures.development

@@ -1,0 +1,81 @@
+{
+  "date": "2026-11-06",
+  "device": "emulator-5554",
+  "avdObserved": "linka_platform_probe_api21_arm64",
+  "apiObserved": 21,
+  "installedApkSha256ProvidedByParentNotRecomputed": "d7a0eedaaa4c790da221c46d468f52ac7babc23331cde690448bf5b7b1988558",
+  "scope": "Native DocumentsUI default filenames, zero typing, board export then full backup",
+  "result": "STOPPED_ON_NATIVE_DOCUMENTS_UI_SAVE_ERROR",
+  "steps": [
+    "Listed devices through adb MCP; every subsequent device operation explicitly targeted emulator-5554.",
+    "Verified ro.build.version.sdk=21 and ro.kernel.qemu.avd_name=linka_platform_probe_api21_arm64.",
+    "Observed existing ХОЧУ board, visible 3x3 grid of nine cards, message tiles ХОЧУ then КУШАТЬ.",
+    "Opened top-right board-screen overflow at (996,159); observed message-mode menu rather than export. Dismissed using Back without selecting a command.",
+    "Tapped board-screen back arrow to Ваши наборы; opened owned ХОЧУ tile overflow at (292,340).",
+    "Selected Экспортировать at (460,943), entering Файлы и восстановление.",
+    "Observed Пароль помощника не установлен.; tapped Разрешить команды в этом экране at (520,448), observed Готово.",
+    "Tapped Подготовить экспорт выбранной доски .LINKA at (540,1735). Native Save to picker opened with provider drawer.",
+    "Selected local Downloads at (325,481). Observed No items and unchanged default filename board.linka; no text entry, extension change, conflict, or overwrite prompt.",
+    "Tapped SAVE once at (985,1706). Observed native Failed to save document toast, remaining in Downloads picker with board.linka unchanged.",
+    "Stopped immediately; no retries, dismissal, backup attempt, or subsequent device operations."
+  ],
+  "provider": {
+    "ui": "Android DocumentsUI",
+    "selectedRoot": "Downloads",
+    "cloudSelected": false,
+    "beforeSaveListing": "No items",
+    "proposedFilename": "board.linka",
+    "filenameEdited": false,
+    "saveTapCount": 1,
+    "observedError": "Failed to save document"
+  },
+  "authorization": {
+    "unprotectedScreenAuthorizationObserved": true,
+    "systemVerificationAttempted": false,
+    "freshAuthorizationAfterPickerReturn": "NOT_REACHED",
+    "explicitFinalConfirmation": "NOT_REACHED"
+  },
+  "exportPreview": {
+    "nameAndOnePageNineCardsNineImagesNineRecordings": "NOT_REACHED; picker failed before return and preview confirmation",
+    "terminalSuccess": false
+  },
+  "outputs": {
+    "actualCreatedFilename": null,
+    "creationOrPartialFileState": "UNKNOWN; no file read or inspection after UI error under stop-on-first-error rule",
+    "sha256": null,
+    "zipInspection": "NOT_PERFORMED; no successful native output",
+    "pulledArchives": [],
+    "deletions": []
+  },
+  "backup": {
+    "expectedDefaultFilename": "library.linkabackup",
+    "attempted": false,
+    "reason": "Stopped on board export DocumentsUI error"
+  },
+  "preservation": {
+    "initialMessageActuallyObserved": "ХОЧУ КУШАТЬ",
+    "finalMessageObserved": false,
+    "noMessageEditsCardSelectionsDraftEditsOrLibraryMutations": true,
+    "finalPreservationAssessment": "No mutating board/message actions performed; final board state not re-opened because immediate stop required."
+  },
+  "evidence": {
+    "initialBoard": "android21-default-initial.png",
+    "messageOverflow": "android21-default-menu.png",
+    "library": "android21-default-library.png",
+    "boardMenu": "android21-default-board-menu-visible.png",
+    "unprotectedTransferScreen": "android21-default-transfer.png",
+    "authorizedTransferScreen": "android21-default-authorized.png",
+    "pickerProviderDrawer": "android21-default-preview.png",
+    "downloadsBeforeSave": "android21-default-downloads.png",
+    "nativeSaveError": "android21-default-after-save.png",
+    "captureTimingNote": "android21-default-board-menu.png captured before menu animation completed; subsequent hierarchy was valid, and board-menu-visible records actual open menu. Other picker screenshots were captured after successful hierarchy dumps."
+  },
+  "lastState": "DocumentsUI Downloads save picker open, board.linka default retained; Failed to save document toast observed. No terminal operation or app return observed.",
+  "deviceLeaseReleased": true,
+  "limitations": [
+    "No positive native export or backup proof.",
+    "No post-error device inspection; a possible partial public file is unverified and was not deleted.",
+    "No source edits, builds, installs, instrumentation, settings, permissions, credentials, microphone, voice, snapshot, restore, import, staging, commits, or pushes.",
+    "No emulator-5556 or iOS operations; no physical-device, full-release, or U1.4 claim."
+  ]
+}

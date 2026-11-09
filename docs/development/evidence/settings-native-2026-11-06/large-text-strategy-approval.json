@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-07",
+  "user_answer": "Прокрутка (Recommended)",
+  "approved_scope": "Keep the shown adaptation strategy: full large-text labels scroll inside cards, image and inherited font scale remain; do not enlarge the persisted grid structure",
+  "caption_commit": "5830be2",
+  "toolbar_commit": "2cceba7",
+  "shown_files": [
+    "large-font-precise-gestures-phone-settings-large-text-contrast-cold-board.png",
+    "large-font-precise-gestures-phone-settings-large-text-caption-scroll.png"
+  ],
+  "ordinary_1_0_geometry_changed": false,
+  "whole_font_matrix_approved": false,
+  "whole_u14_approved": false,
+  "voiceover_talkback_approved": false,
+  "physical_aac_approved": false,
+  "publication_authorized": false
+}

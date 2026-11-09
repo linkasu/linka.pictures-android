@@ -1,0 +1,1 @@
+appFrame=(0.0, 0.0, 834.0, 1194.0); screenImage=(834.0, 1194.0); imageOrientation=0

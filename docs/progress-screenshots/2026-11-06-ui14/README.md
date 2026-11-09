@@ -1,0 +1,37 @@
+# U1.4: реальные снимки visual slice
+
+Промежуточное evidence, **не закрытый U1.4 и не пользовательское одобрение**.
+Baseline — уже установленная 1.4 на owned `linka_audit_tablet` (API35), SHA APK
+`8f33a33449645b94733839bac058e48759f6069c7fe7513fcabb423520882f04`.
+Она не обновляется новым production APK и её библиотека не сбрасывается.
+
+Новый пакет — только `su.linka.pictures.development`. Общая фикстура — неизменённая
+«ХОЧУ.linka» из `v1.4` (3×3,9 карточек), SHA
+`a0589a029f77bfff7307d6ee3c4dbd41e1b2badd52ca90896ca5c835ccfb293b`.
+Сравниваются пустая/заполненная фраза «ХОЧУ КУШАТЬ», одинаковые viewport/ориентация/
+fontScale. Новые снимки считаются просмотренными только после фактического read;
+integrity checker не даёт visual verdict. Состав файлов/результаты заполняются по
+факту получения; отсутствующие изображения не объявляются выполненными.
+
+Baseline API35: raw2560×1600, density320/fontScale1.0. У исходной доски просмотр
+строки вывода был выключен (pager включён): для двух COMPOSE кадров он временно
+включён через штатный диалог и затем возвращён в прежнее состояние. Архив доски
+проверен только SHA256 по точному пути own audit fixture; совпал с packaged fixture
+выше. Никакого обновления/сброса baseline не было.
+
+Просмотрены реальные baseline кадры `android-api35-baseline-empty.png` (строка
+вывода скрыта), `android-api35-baseline-compose-empty.png` и
+`android-api35-baseline-compose-filled.png` (фраза ХОЧУ→КУШАТЬ). Первый не является
+парой для нового COMPOSE.
+
+Новые `android-api35-development-library.png`, `...-compose-current.png` (empty)
+и `...-compose-filled.png` получены из normal development app после реального
+импорта и просмотрены. Фраза ХОЧУ→КУШАТЬ и все9 карточек видимы; ручной и затем
+отдельный автоматический native Back/reopen сохранили сообщение (1/1 PASS).
+Golden comparison ещё не одобрен пользователем. Точный контур/миниатюры/отступы
+не объявляются побитовой копией1.4 по одной картинке.
+
+`ios17-startup-crash-springboard.png` — **не UI приложения**, кадр после startup
+crash. `ios17-plist-fixed-startup.png` — исправленный crash, но actual fail-closed
+Keychain error−34018, **не принятая библиотека iOS**. Легитимная development identity
+повторно проверена:0. Защита/entitlements не обходились.

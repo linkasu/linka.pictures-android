@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="su.linka.pictures.application.authoring.AuthoringSessionTest" tests="59" skipped="0" failures="0" errors="0" timestamp="2026-11-06T09:48:36" hostname="mini" time="2.201">
+  <properties/>
+  <testcase name="coalescingKeepsImmediateStateAndApplyWaitsForLatestDurableSnapshot[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.516"/>
+  <testcase name="unknownCommitIsNotReplacedByCleanupFailure[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.052"/>
+  <testcase name="uniformOneByOneOverflowPreservesEveryCellAndOpaqueMetadata[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.056"/>
+  <testcase name="boundsRejectMediaAndKeepExistingFormUnchanged[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.023"/>
+  <testcase name="kindsAutosaveHiddenMediaBackupAndResumeAfterActualRuntimeReopen[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.255"/>
+  <testcase name="inlineGridDoesNotReplaceAnotherPageOrCardFormAndLegacyNoFormIsNoop[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.07"/>
+  <testcase name="ownerCleanupAttemptsLivePendingAndActivePinsEvenWhenAllClosesAndStopThrow[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.025"/>
+  <testcase name="pickerGateInvalidationWaitsForNewCapabilityAndExplicitResumeBeforePublishingAssetRefs[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.02"/>
+  <testcase name="stopFailureCannotPreventMediaCancellationOrStrandPausedActor[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.014"/>
+  <testcase name="inlineGridRejectsUnsafeTextBeforeSavingButAllowsUnfinishedNumericInput[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.018"/>
+  <testcase name="kindSwitchCancelsRecordingAndDoesNotResumeItOnReturnToContent[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.013"/>
+  <testcase name="cancellingEveryChangedFormKindLeavesOriginalDocumentExact[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.042"/>
+  <testcase name="kindSwitchCancelsPendingPickerAndDiscardsLateOwnedTemporaryWithoutAdoption[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.038"/>
+  <testcase name="ioFailureCloseAndRetryNeverClaimUnsavedChangesAreDurable[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.013"/>
+  <testcase name="deliveredLoadedLeaseIsAdoptedUntilOwnerExitAndNeverClosedTwice[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.013"/>
+  <testcase name="conflictAllowsKindEditsButCannotApplyAndUnknownCommitIgnoresKindCommands[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.02"/>
+  <testcase name="nonContentCommandsRejectBeforeAnyMediaOrAudioIoAndFinishCannotRestartRecording[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.027"/>
+  <testcase name="discardCleanupFailurePreservesPrimaryErrorAndBothImageHandlesAreAttempted[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.015"/>
+  <testcase name="forceDiscardDropsFailedLocalEditsButKeepsLastDurableDraft[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.01"/>
+  <testcase name="realBackgroundDuringReauthenticationDiscardsPreparedPinAndResumeCannotAdoptIt[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.018"/>
+  <testcase name="changedLibraryEpochRejectsPendingAdoptionAndReleasesItsPin[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.018"/>
+  <testcase name="resumedLatestSnapshotSurvivesLateUnauthorizedCompletionFromOldGeneration[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.016"/>
+  <testcase name="inlineGridPageOverflowLimitRejectsWholeSaveWithoutTruncation[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.068"/>
+  <testcase name="recordFinishSynthesisPreviewAndSourceIoFailureUseExistingPorts[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.036"/>
+  <testcase name="lateCancelledPickerCannotOverwriteChangedFormAndOwnTemporaryIsDiscarded[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.011"/>
+  <testcase name="deletedSourceBoardCannotBeResurrectedByApply[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.014"/>
+  <testcase name="backgroundBetweenMediaAuthorizationAndWorkerRegistrationCannotStartRecording[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.01"/>
+  <testcase name="kindCommandDropsPendingReauthenticationAdoptionButDoesNotBypassPausedGate[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.017"/>
+  <testcase name="unknownCommitQuarantinesWithoutRetryOrApply[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.009"/>
+  <testcase name="pageLimitRejectsOverflowWithoutTruncation[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.022"/>
+  <testcase name="saveEveryKindIsAtomicPreservesMetadataAndDoesNotPublishOrChangeMessageBeforeApply[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.099"/>
+  <testcase name="dedupRetainsRecentCommandsButEvictsIdsBeyond1024UserIntents[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.025"/>
+  <testcase name="inlineGridCancelAndAtomicSavePreserveCellsMetadataAndPublishedDocument[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.02"/>
+  <testcase name="inlineGridSaveValidatesBoundsAndOverflowWithoutDroppingForm[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.031"/>
+  <testcase name="gridFormIsDurableAndValidationDoesNotDropUnappliedText[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.014"/>
+  <testcase name="completedRecordingAfterPermissionGateInvalidationAdoptsWithoutRestartingRecording[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.016"/>
+  <testcase name="inlineGridValidAndInvalidTextResumeAfterActualSqliteCloseReopen[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.09"/>
+  <testcase name="ownerCancellationDuringReauthenticationReleasesPendingAssetEvenIfCloseThrows[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.049"/>
+  <testcase name="inlineGridFirstKeystrokeCreatesOnlyOneSnapshotWithoutResizing[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.021"/>
+  <testcase name="unconfirmedPublishCannotBeRepeatedAndKeepsDraftForRecovery[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.012"/>
+  <testcase name="ownerCancellationDrainsBufferedPreparedMediaAndReleasesGcPin[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.029"/>
+  <testcase name="resumeDraftRetainsOpenFormAndDoesNotUseSourceCardAsTypedSnapshot[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.023"/>
+  <testcase name="backgroundInvalidatesAlreadyQueuedWritesAndRequiresExplicitResume[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.01"/>
+  <testcase name="pageReorderingAndCrossPageCellSwapPreserveIdentitiesAndEmptyMetadata[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.019"/>
+  <testcase name="throwingSaveLeaseCleanupStillWakesNextSaveAndAllowsClose[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.018"/>
+  <testcase name="everySourceKindOpensExactlyAndExplicitSetContentHasOneCorrectSnapshot[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.047"/>
+  <testcase name="createFormSaveAndApplyUseRealSqliteAndDistinctLabelSpeech[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.022"/>
+  <testcase name="inlineGridCannotStartOrSaveWithoutApplicationAuthorization[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.012"/>
+  <testcase name="closeDuringReauthenticationReleasesOnlyPendingOwnedAsset[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.014"/>
+  <testcase name="sourceCardFormStartsFromActualSourceAndKeepsLanguageAndPassiveFields[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.012"/>
+  <testcase name="authorizationFailurePermanentlyInvalidatesOldPermitEvenIfGateLaterOpens[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.012"/>
+  <testcase name="discardIsExplicitWhileDeletingRemovesOnlyNamedDraft[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.018"/>
+  <testcase name="inlineGridBlocksStructuralCommandsAndApplyUntilExplicitCompletion[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.009"/>
+  <testcase name="ownerCancellationDrainsBufferedLoadedLeaseBeforeActorCanAdoptIt[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.011"/>
+  <testcase name="revokeCancelsRecordingAndForeignOwnerCannotInvalidateSession[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.015"/>
+  <testcase name="realBackgroundSentAfterQueuedResumeWinsBeforePendingResultCanBeAdopted[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.024"/>
+  <testcase name="inlineGridSaveStillChecksApplicationPermitAtDurableBoundary[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.011"/>
+  <testcase name="ownedMediaSurvivesGarbageCollectionAndCancelRemovesOnlyFormReference[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.012"/>
+  <testcase name="changedAndDeletedBoardsConflictWithoutLosingDurableDraft[jvm]" classname="su.linka.pictures.application.authoring.AuthoringSessionTest" time="0.017"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
