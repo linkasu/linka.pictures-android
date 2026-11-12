@@ -150,6 +150,15 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Download this successful build's exact APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apks
+          path: artifacts/apks
+
+      - name: Check instrumentation result parser
+        run: python3 -B scripts/run-android-ci-e2e.py --self-test
+
       # This is a 4 KB runtime smoke, not proof of 16 KB runtime compatibility.
       # Unscripted exploration must not submit signup/OTP to production Identity.
       - name: Run deterministic startup, message layout and isolated migration tests
@@ -161,15 +170,7 @@ jobs:
           profile: pixel_2
           force-avd-creation: true
           emulator-boot-timeout: 600
-          # Fold into one shell so the EXIT trap runs before the action stops the emulator.
-          script: >-
-            trap 'status=$?; trap - EXIT;
-            if adb shell test -d /sdcard/Android/data/su.linka.pictures.development/files/message-row-layout/; then
-            mkdir -p artifacts/e2e && adb pull /sdcard/Android/data/su.linka.pictures.development/files/message-row-layout/ artifacts/e2e/;
-            capture_status=$?; if [ "$status" -eq 0 ]; then status=$capture_status; fi;
-            fi; exit "$status"' EXIT;
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&
-            ./gradlew :shared:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest
+          script: python3 -B scripts/run-android-ci-e2e.py
 
       - name: Upload instrumentation reports
         if: always()

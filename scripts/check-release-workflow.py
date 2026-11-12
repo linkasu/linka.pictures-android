@@ -84,18 +84,14 @@ def check():
                     'profile: pixel_2', 'force-avd-creation: true', 'emulator-boot-timeout: 600'):
         assert f'          {setting}\n' in e2e_job
     assert 'sudo udevadm trigger --name-match=kvm' in e2e_job
-    commands = re.findall(r'^            (\./gradlew .+)$', e2e_job, re.M)
-    assert commands == [
-        './gradlew :app:connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&',
-        './gradlew :shared:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest',
-    ], 'Exactly three deterministic classes in two sequential tasks; Gradle propagates failures'
-    assert '          script: >-\n' in e2e_job, 'The EXIT trap and tests must share one shell'
-    assert "trap 'status=$?; trap - EXIT;" in e2e_job
-    screenshot_dir = '/sdcard/Android/data/su.linka.pictures.development/files/message-row-layout/'
-    assert f'if adb shell test -d {screenshot_dir}; then' in e2e_job
-    assert f'mkdir -p artifacts/e2e && adb pull {screenshot_dir} artifacts/e2e/;' in e2e_job
-    assert 'capture_status=$?; if [ "$status" -eq 0 ]; then status=$capture_status; fi;' in e2e_job
-    assert 'fi; exit "$status"\' EXIT;' in e2e_job, 'Screenshot collection must preserve test failures'
+    assert 'uses: actions/download-artifact@v4' in e2e_job and 'name: android-apks' in e2e_job
+    assert '          script: python3 -B scripts/run-android-ci-e2e.py\n' in e2e_job
+    runner = Path(__file__).with_name('run-android-ci-e2e.py').read_text()
+    for test in ('DevelopmentStartupTest', 'MessageRowLayoutTest', 'AndroidLibraryAdmissionTest'):
+        assert runner.count('su.linka.pictures.' + ('bootstrap.' if test == 'AndroidLibraryAdmissionTest' else 'activity.') + test) == 1
+    assert 'verify_result(text, count)' in runner and 'finally:' in runner
+    assert "'INSTRUMENTATION_CODE: -1'" in runner and "'expected_page_size', '4096'" in runner
+    assert 'subprocess.check_output' in runner and 'shell=True' not in runner
     assert '            artifacts/e2e/\n' in e2e_job
     assert 'name: android-e2e-reports' in e2e_job and 'if: always()' in e2e_job
     assert 'secrets.' not in e2e_job, 'Emulator tests do not need cloud/account credentials'
