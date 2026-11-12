@@ -23,22 +23,38 @@ class DevelopmentStartupTest {
         }
         ActivityScenario.launch(MainActivity::class.java).use {
             val deadline = SystemClock.uptimeMillis() + 20_000
+            var lastTexts = emptyList<String>()
             while (SystemClock.uptimeMillis() < deadline) {
                 instrumentation.waitForIdleSync()
                 val root = instrumentation.uiAutomation.rootInActiveWindow
                 if (root != null) {
                     val texts = mutableListOf<String>()
-                    try { collect(root, texts) } finally { root.recycle() }
+                    try {
+                        collect(root, texts)
+                        if (texts != lastTexts) {
+                            android.util.Log.i("StartupEvidence", "package=${root.packageName};texts=$texts")
+                            lastTexts = texts
+                        }
+                    } finally { root.recycle() }
                     assertFalse("Startup refused its own fresh storage: $texts",
                         texts.any { text -> text.contains("Не удалось безопасно открыть приложение") })
                     if (texts.any { text -> text == "Ваши наборы" || text == "Your boards" }) return
                 }
             }
-            fail("Shared launcher did not reach the library screen")
+            val directory = java.io.File(context.getExternalFilesDir(null), "message-row-layout").apply { mkdirs() }
+            instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
+                try {
+                    java.io.File(directory, "startup-timeout.png").outputStream().use {
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                    }
+                } finally { bitmap.recycle() }
+            }
+            fail("Shared launcher did not reach the library screen; last texts=$lastTexts")
         }
     }
 
     private fun collect(node: AccessibilityNodeInfo, texts: MutableList<String>) {
+        if (node.isPassword) return
         node.text?.toString()?.let(texts::add)
         for (index in 0 until node.childCount) node.getChild(index)?.let { collect(it, texts); it.recycle() }
     }
