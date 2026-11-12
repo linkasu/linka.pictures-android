@@ -180,6 +180,11 @@ class MessageRowLayoutTest {
             })
             true
         }
+        capture(name)
+        return messageHeight
+    }
+
+    private fun capture(name: String) {
         // CI can pull /sdcard/Android/data/<development package>/files/message-row-layout/.
         val directory = File(checkNotNull(target.getExternalFilesDir(null)), "message-row-layout")
         check(directory.isDirectory || directory.mkdirs())
@@ -189,7 +194,6 @@ class MessageRowLayoutTest {
             file.outputStream().use { check(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }
             instrumentation.sendStatus(0, Bundle().apply { putString("messageRowScreenshot", file.absolutePath) })
         } finally { image.recycle() }
-        return messageHeight
     }
 
     private fun click(labels: List<String>, scroll: Boolean = false, backwards: Boolean = false) =
@@ -245,6 +249,26 @@ class MessageRowLayoutTest {
                 }
             } finally { root.recycle() }
         }
+        capture("timeout")
+        val root = instrumentation.uiAutomation.rootInActiveWindow
+        if (root != null) try {
+            if (root.packageName?.toString() == target.packageName) {
+                val tree = buildString {
+                    fun appendNode(node: AccessibilityNodeInfo, depth: Int) {
+                        if (node.isPassword) return
+                        val bounds = Rect().also(node::getBoundsInScreen)
+                        appendLine("${" ".repeat(depth)}text=${node.text};desc=${node.contentDescription};state=${AccessibilityNodeInfoCompat.wrap(node).stateDescription};click=${node.isClickable};visible=${node.isVisibleToUser};bounds=$bounds")
+                        for (index in 0 until node.childCount) {
+                            val child = node.getChild(index) ?: continue
+                            try { appendNode(child, depth + 1) } finally { child.recycle() }
+                        }
+                    }
+                    appendNode(root, 0)
+                }
+                File(target.getExternalFilesDir(null), "message-row-layout/timeout-tree.txt").writeText(tree)
+                instrumentation.sendStatus(0, Bundle().apply { putString("messageRowTimeoutTree", tree) })
+            }
+        } finally { root.recycle() }
         fail("Timed out waiting for $state; requires fresh bundled CI boards, no storage reset is performed")
     }
 }
