@@ -2,6 +2,7 @@ package su.linka.pictures.activity
 
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
@@ -10,6 +11,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import org.json.JSONObject
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import org.junit.Assert.*
@@ -37,9 +39,10 @@ class MessageRowLayoutTest {
             openSettings()
             click(UiText.MessageRowHeight.labels, scroll = true)
             click(listOf("28%"))
+            awaitPercent(28)
             click(UiText.SaveSettings.labels, scroll = true)
             await("save completed and reloaded form is editable") { root -> find(root) { node ->
-                matches(node, UiText.SaveSettings.labels) && withEnabledAction(node) { true }
+                matches(node, UiText.SaveSettings.labels) && withEnabledAction(node) { persistedPercent() == 28 }
             } }
             // Re-entering reads a new SettingsSnapshot instead of trusting the edited form.
             click(UiText.Back.labels)
@@ -76,6 +79,21 @@ class MessageRowLayoutTest {
     private fun awaitPercent(percent: Int) = await("message row $percent%", scroll = true) { root ->
         find(root) { node -> matches(node, UiText.MessageRowHeight.labels) } &&
             find(root) { node -> matches(node, listOf("$percent%")) }
+    }
+
+    private fun persistedPercent(): Int {
+        val home = File(target.filesDir, "pokazhi-v1")
+        val generation = JSONObject(File(home, "active").readText()).getString("migrationId")
+        check(generation.matches(Regex("[A-Za-z0-9-]+")))
+        val database = File(home, "libraries/$generation/library.sqlite3")
+        return SQLiteDatabase.openDatabase(database.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
+            db.rawQuery("SELECT settings_json FROM library_meta WHERE singleton=1", null).use { rows ->
+                check(rows.moveToFirst())
+                val settings = JSONObject(rows.getString(0))
+                check(settings.getInt("schema") == 1)
+                settings.getJSONObject("value").optInt("messageRowPercent", 20)
+            }
+        }
     }
 
     private fun openFood() = openBoard(food, cards)
