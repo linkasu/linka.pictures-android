@@ -11,7 +11,15 @@ def verify_result(text, count):
     assert re.search(rf'^OK \({count} tests?\)\s*$', text, re.M), 'Missing exact passing test count'
     assert not re.search(r'FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|shortMsg=', text), 'Instrumentation failed'
     assert 'INSTRUMENTATION_CODE: -1' in text, 'Instrumentation did not finish normally'
-    completed = re.findall(r'^INSTRUMENTATION_STATUS_CODE: (-?\d+)\s*$', text, re.M)
+    completed = []
+    test_result = False
+    for line in text.splitlines():
+        if line.startswith('INSTRUMENTATION_STATUS: test='):
+            test_result = True
+        elif line.startswith('INSTRUMENTATION_STATUS_CODE: '):
+            if test_result:
+                completed.append(line.split(': ', 1)[1].strip())
+            test_result = False
     assert completed.count('0') == count and set(completed) <= {'0', '1'}, 'Failed, skipped or missing test result'
 
 
@@ -56,8 +64,11 @@ def main():
 
 if __name__ == '__main__':
     if '--self-test' in sys.argv:
-        verify_result('INSTRUMENTATION_STATUS_CODE: 0\nOK (1 test)\nINSTRUMENTATION_CODE: -1', 1)
-        verify_result('INSTRUMENTATION_STATUS_CODE: 0\n' * 7 + 'OK (7 tests)\nINSTRUMENTATION_CODE: -1', 7)
+        passed = 'INSTRUMENTATION_STATUS: test=example\nINSTRUMENTATION_STATUS_CODE: 0\n'
+        verify_result(passed + 'OK (1 test)\nINSTRUMENTATION_CODE: -1', 1)
+        verify_result(passed * 7 + 'OK (7 tests)\nINSTRUMENTATION_CODE: -1', 7)
+        verify_result('INSTRUMENTATION_STATUS: coldStartupMillis=32675\nINSTRUMENTATION_STATUS_CODE: 0\n'
+                      + passed + 'OK (1 test)\nINSTRUMENTATION_CODE: -1', 1)
         for bad in ('OK (0 tests)\nINSTRUMENTATION_CODE: -1', 'FAILURES!!!',
                     'OK (1 test)\nINSTRUMENTATION_FAILED', 'OK (1 test)\nINSTRUMENTATION_CODE: 0',
                     'INSTRUMENTATION_STATUS_CODE: -3\nOK (1 test)\nINSTRUMENTATION_CODE: -1'):
