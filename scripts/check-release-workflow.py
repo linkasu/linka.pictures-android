@@ -86,7 +86,7 @@ def check():
     assert 'sudo udevadm trigger --name-match=kvm' in e2e_job
     commands = re.findall(r'^            (\./gradlew .+)$', e2e_job, re.M)
     assert commands == [
-        './gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&',
+        './gradlew :app:connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&',
         './gradlew :shared:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest',
     ], 'Exactly three deterministic classes in two sequential tasks; Gradle propagates failures'
     assert '          script: >-\n' in e2e_job, 'The EXIT trap and tests must share one shell'

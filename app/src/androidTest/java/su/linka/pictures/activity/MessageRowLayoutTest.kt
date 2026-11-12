@@ -266,6 +266,7 @@ class MessageRowLayoutTest {
                     appendNode(root, 0)
                 }
                 File(target.getExternalFilesDir(null), "message-row-layout/timeout-tree.txt").writeText(tree)
+                tree.lineSequence().forEach { android.util.Log.i("MessageRowLayoutEvidence", it) }
                 instrumentation.sendStatus(0, Bundle().apply { putString("messageRowTimeoutTree", tree) })
             }
         } finally { root.recycle() }

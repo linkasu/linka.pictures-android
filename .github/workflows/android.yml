@@ -168,7 +168,7 @@ jobs:
             mkdir -p artifacts/e2e && adb pull /sdcard/Android/data/su.linka.pictures.development/files/message-row-layout/ artifacts/e2e/;
             capture_status=$?; if [ "$status" -eq 0 ]; then status=$capture_status; fi;
             fi; exit "$status"' EXIT;
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&
             ./gradlew :shared:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest
 
       - name: Upload instrumentation reports
