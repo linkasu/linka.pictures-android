@@ -85,8 +85,9 @@ class MessageRowLayoutTest {
         click(listOf(board), scroll = true, backwards = backwards)
         await("$board and all decoded images") { root ->
             labels.all { label -> find(root) { node ->
-                matches(node, listOf(label)) && node.isClickable &&
-                    UiText.ImageDisplayed.matches(AccessibilityNodeInfoCompat.wrap(node).stateDescription)
+                matches(node, listOf(label)) && withEnabledAction(node) { card ->
+                    UiText.ImageDisplayed.matches(AccessibilityNodeInfoCompat.wrap(card).stateDescription)
+                }
             } } && find(root) { node -> UiText.SharedMessage.starts(node.contentDescription) }
         }
     }
@@ -98,12 +99,12 @@ class MessageRowLayoutTest {
             val bounds = labels.mapIndexed { index, label ->
                 var result: Rect? = null
                 find(root) { node ->
-                    if (node.isClickable && matches(node, listOf(label))) {
-                        assertEquals("Native row for $label", index / 3, node.collectionItemInfo?.rowIndex)
-                        assertEquals("Native column for $label", index % 3, node.collectionItemInfo?.columnIndex)
-                        result = Rect().also(node::getBoundsInScreen)
+                    matches(node, listOf(label)) && withEnabledAction(node) { card ->
+                        assertEquals("Native row for $label", index / 3, card.collectionItemInfo?.rowIndex)
+                        assertEquals("Native column for $label", index % 3, card.collectionItemInfo?.columnIndex)
+                        result = Rect().also(card::getBoundsInScreen)
                         true
-                    } else false
+                    }
                 }
                 checkNotNull(result) { "Missing card: $label" }
             }

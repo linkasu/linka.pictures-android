@@ -47,10 +47,7 @@ def target(task, sdk, triple, cached=None, build_tests=False):
     build.mkdir()
     prefix = build / "install"
     _, sysroot = task.run(["xcrun", "--sdk", sdk, "--show-sdk-path"])
-    tools = {}
-    for tool in ("clang", "ar", "ranlib", "nm"):
-        _, text = task.run(["xcrun", "--sdk", sdk, "--find", tool])
-        tools[tool] = text.strip()
+    tools = task.resolve_tools(sdk, ("clang", "ar", "ranlib", "nm", "lipo", "otool"))
     flags = FLAGS + [f"--prefix={prefix}", f"--cc={tools['clang']}", f"--ar={tools['ar']}",
         f"--ranlib={tools['ranlib']}", f"--nm={tools['nm']}", "--pkg-config=/usr/bin/false",
         f"--sysroot={sysroot.strip()}", f"--extra-cflags=-target {triple}", f"--extra-ldflags=-target {triple}"]
@@ -113,7 +110,7 @@ def target(task, sdk, triple, cached=None, build_tests=False):
     with (prefix / "include/linka_audio_decoder.h").open("xb") as output:
         output.write(header.read_bytes())
     platform = {"7", "IOSSIMULATOR"} if sdk == "iphonesimulator" else {"2", "IOS"}
-    libraries = {p.name: task.macho(p, platform) for p in sorted((prefix / "lib").glob("*.a"))}
+    libraries = {p.name: task.macho(p, platform, tools) for p in sorted((prefix / "lib").glob("*.a"))}
     require(set(libraries) == {"liblinka_audio_decoder.a", "libavformat.a", "libavcodec.a", "libswresample.a", "libavutil.a"}, "unexpected libraries")
     task.result.setdefault("development_targets", {})[sdk] = dict(prefix=str(prefix), configure=flags,
         config_sha256=sha(build / "config.h"), components_sha256=sha(build / "config_components.h"),
@@ -138,15 +135,15 @@ def target(task, sdk, triple, cached=None, build_tests=False):
         task.run([*compile_flags, task.project / "scripts/test-ios-audio-decoder.c", "-L", prefix / "lib",
             "-llinka_audio_decoder", *runtime_link, "-lm",
             "-framework", "CoreFoundation", "-framework", "CoreVideo", "-framework", "CoreMedia", "-framework", "AudioToolbox", "-o", executable], timeout=120)
-        task.result["bridge_test_binary"] = task.macho(executable, platform)
+        task.result["bridge_test_binary"] = task.macho(executable, platform, tools)
         unit = build / 'bridge-unit'
         # Native inspection is in the same bridge TU; do not link a second bridge archive.
         task.run([*compile_flags, task.project / 'scripts/test-ios-audio-decoder-unit.c', '-L', prefix / 'lib',
             *runtime_link, '-lm',
             '-framework', 'CoreFoundation', '-framework', 'CoreVideo', '-framework', 'CoreMedia', '-framework', 'AudioToolbox', '-o', unit], timeout=120)
-        task.result['bridge_unit_binary'] = task.macho(unit, platform)
+        task.result['bridge_unit_binary'] = task.macho(unit, platform, tools)
         for binary in (executable, unit):
-            _, linked = task.run(['xcrun', 'otool', '-L', binary])
+            _, linked = task.run([tools['otool'], '-L', binary])
             require(OUTPUTS['INSTALL_NAME'] in linked, 'proof executable must use final dynamic runtime')
     return prefix, executable
 

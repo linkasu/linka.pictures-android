@@ -9,6 +9,7 @@ import math
 import os
 from pathlib import Path, PurePosixPath
 import re
+import resource
 import runpy
 import signal
 import shlex
@@ -167,9 +168,17 @@ class Preflight:
             try:
                 record["returncode"] = process.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)  # Only this command's freshly owned process group.
-                process.wait()
                 record["timed_out"] = True
+                try:
+                    self.timeout_diagnostics(process.pid, log, record)
+                except Exception as error:
+                    record["diagnostic_error"] = type(error).__name__
+                finally:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)  # Only this command's freshly owned process group.
+                    except ProcessLookupError:
+                        pass
+                    process.wait()
                 raise RuntimeError(f"process deadline: {record['command']}; log={log}")
             finally:
                 record["seconds"] = time.monotonic() - begin
@@ -179,6 +188,33 @@ class Preflight:
         if success:
             require(record["returncode"] == 0, f"command failed: {record['command']}; log={log}\n{text[-6000:]}")
         return record["returncode"], text
+
+    def timeout_diagnostics(self, pid, log, record):
+        diagnostic = log.with_suffix(".timeout.log")
+        record["timeout_diagnostic"] = str(diagnostic)
+
+        def cap_output():
+            resource.setrlimit(resource.RLIMIT_FSIZE, (16 * 1024 * 1024, 16 * 1024 * 1024))
+
+        with diagnostic.open("xb") as output:
+            for command in (["/bin/ps", "-p", str(pid), "-o", "pid=,ppid=,pgid=,stat=,etime=,comm="],
+                            ["/usr/bin/sample", str(pid), "1"]):
+                try:
+                    subprocess.run(command, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
+                                   env=self.env, timeout=3, check=False, preexec_fn=cap_output)
+                except Exception as error:
+                    record.setdefault("diagnostic_errors", []).append(type(error).__name__)
+
+    def resolve_tools(self, sdk, names):
+        tools = {}
+        for tool in names:
+            _, text = self.run(["xcrun", "--sdk", sdk, "--find", tool])
+            tools[tool] = text.strip()
+            require(Path(tools[tool]).is_absolute(), f"nonabsolute selected tool: {tool}")
+        self.result.setdefault("inspection_toolchains", {})[sdk] = dict(
+            developer_dir=self.env["DEVELOPER_DIR"], tools=tools)
+        self.save()
+        return tools
 
     def download(self, url, name, limit, optional=False):
         record = dict(url=url)
@@ -316,14 +352,14 @@ class Preflight:
         self.result["runtime"] = dict(device={k: devices[0][k] for k in ("udid", "name", "state", "runtime_id")},
                                       version=matches[0]["version"], build=matches[0]["buildversion"])
 
-    def macho(self, file, platform):
-        _, arch = self.run(["xcrun", "lipo", "-archs", file])
+    def macho(self, file, platform, tools):
+        _, arch = self.run([tools["lipo"], "-archs", file])
         require(arch.strip() == "arm64", f"wrong architecture {file}: {arch}")
-        _, load = self.run(["xcrun", "otool", "-l", file])
+        _, load = self.run([tools["otool"], "-l", file])
         builds = re.findall(r"cmd LC_BUILD_VERSION\s+cmdsize \d+\s+platform (\S+)\s+minos (\S+)", load)
         require(builds, f"missing Mach-O platform/minimum: {file}")
         if file.suffix == ".a":
-            _, members = self.run(["xcrun", "ar", "-t", file])
+            _, members = self.run([tools["ar"], "-t", file])
             require(len(builds) == sum(name.endswith(".o") for name in members.splitlines()), "object missing Mach-O minimum")
         require(all(p in platform and tuple(map(int, v.split('.'))) in ((17, 0), (17, 0, 0)) for p, v in builds), f"wrong Mach-O minimum/platform {file}")
         return dict(bytes=file.stat().st_size, sha256=sha(file), architecture="arm64", build_commands=len(builds), platforms=sorted(set(p for p, _ in builds)), minimums=sorted(set(v for _, v in builds)))
@@ -348,12 +384,13 @@ class Preflight:
         require(set(enabled["FILTER"]) <= {"ABUFFER", "ABUFFERSINK", "ARESAMPLE", "AFORMAT", "ANULL"}, "unexpected filters")
         require(cli and cli.group(1) == "0", "audio-only harness requires no FFmpeg CLI/video-filter expansion")
 
-    def libraries(self, build, sdk):
+    def libraries(self, build, sdk, tools=None):
         prefix = build / "install"
         libraries = sorted((prefix / "lib").glob("*.a"))
         require({p.name for p in libraries} == {"libavcodec.a", "libavformat.a", "libavutil.a", "libavfilter.a", "libswresample.a"}, "unexpected library set")
         platform = {"7", "IOSSIMULATOR"} if sdk == "iphonesimulator" else {"2", "IOS"}
-        self.result["targets"][sdk]["libraries"] = {file.name: self.macho(file, platform) for file in libraries}
+        tools = tools or self.resolve_tools(sdk, ("ar", "lipo", "otool"))
+        self.result["targets"][sdk]["libraries"] = {file.name: self.macho(file, platform, tools) for file in libraries}
         self.save()
         return prefix
 
@@ -376,17 +413,14 @@ class Preflight:
         build.mkdir()
         prefix = build / "install"
         _, sysroot = self.run(["xcrun", "--sdk", sdk, "--show-sdk-path"])
-        tools = {}
-        for tool in ("clang", "ar", "ranlib", "nm"):
-            _, output = self.run(["xcrun", "--sdk", sdk, "--find", tool])
-            tools[tool] = output.strip()
+        tools = self.resolve_tools(sdk, ("clang", "ar", "ranlib", "nm", "lipo", "otool"))
         flags = FLAGS + [f"--prefix={prefix}", f"--cc={tools['clang']}", f"--ar={tools['ar']}",
                          f"--ranlib={tools['ranlib']}", f"--nm={tools['nm']}", "--pkg-config=/usr/bin/false",
                          f"--sysroot={sysroot.strip()}", f"--extra-cflags=-target {triple}", f"--extra-ldflags=-target {triple}"]
         self.run([self.source / "configure", *flags], cwd=build, timeout=180)
         self.configuration(build, sdk, triple, flags)
         self.run(["make", "-j4", "install-libs", "install-headers"], cwd=build, timeout=600)
-        return self.libraries(build, sdk)
+        return self.libraries(build, sdk, tools)
 
     def harness(self, prefix):
         self.result["stage"] = "compile-audio-only-harness"
@@ -404,7 +438,8 @@ class Preflight:
             "-std=c17", "-O2", "-Wall", "-Wextra", "-Werror", "-Werror=partial-availability",
             "-I", prefix / "include", source, "-L", prefix / "lib", "-lavformat", "-lavcodec", "-lswresample", "-lavutil",
             *extra, "-o", binary], timeout=120)
-        self.result["harness"] = dict(source_sha256=sha(source), binary=self.macho(binary, {"7", "IOSSIMULATOR"}),
+        tools = self.resolve_tools("iphonesimulator", ("ar", "lipo", "otool"))
+        self.result["harness"] = dict(source_sha256=sha(source), binary=self.macho(binary, {"7", "IOSSIMULATOR"}, tools),
                                       linked_libraries=["avformat", "avcodec", "swresample", "avutil"], system_libraries=extra)
         self.save()
         return binary

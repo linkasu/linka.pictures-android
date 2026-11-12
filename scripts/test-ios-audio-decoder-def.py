@@ -5,6 +5,7 @@ import os
 import runpy
 import subprocess
 import sys
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -87,3 +88,61 @@ assert task.result['status'] == 'BUILD_ONLY' and task.result['toolchain'] == pre
 assert task.result['original_fixture_files_verified'] == 0
 assert [call.args[1] for call in build_target.call_args_list] == ['iphonesimulator', 'iphoneos']
 print('decoder producer portability/build-only checks PASS')
+
+# Resolve with the selected environment/SDK once; every archive uses those exact paths.
+with tempfile.TemporaryDirectory() as directory:
+    task = preflight['Preflight'].__new__(preflight['Preflight'])
+    task.root = Path(directory)
+    (task.root / 'logs').mkdir()
+    task.env = {'DEVELOPER_DIR': '/selected/Xcode/Contents/Developer'}
+    task.result = {'commands': []}
+    task.started = preflight['time'].monotonic()
+    process = Mock(pid=12345)
+    process.wait.return_value = 0
+    def selected_tool(args, **kwargs):
+        assert kwargs['env'] == task.env
+        assert args[:2] == ['xcrun', '--sdk'] and args[3] == '--find'
+        kwargs['stdout'].write(f"/selected/{args[2]}/{args[4]}\n".encode())
+        return process
+    archive = task.root / 'library.a'
+    archive.write_bytes(b'owned synthetic archive')
+    for sdk, platform in (('iphonesimulator', '7'), ('iphoneos', '2')):
+        with patch.object(subprocess, 'Popen', side_effect=selected_tool):
+            tools = task.resolve_tools(sdk, ('ar', 'lipo', 'otool'))
+        assert task.result['inspection_toolchains'][sdk] == dict(developer_dir=task.env['DEVELOPER_DIR'], tools=tools)
+        def inspect(args, **kwargs):
+            assert args[0] in tools.values() and kwargs['env'] == task.env
+            text = {'lipo': 'arm64', 'otool': f'cmd LC_BUILD_VERSION\ncmdsize 24\nplatform {platform}\nminos 17.0', 'ar': 'one.o\n'}
+            kwargs['stdout'].write(text[Path(args[0]).name].encode())
+            return process
+        with patch.object(subprocess, 'Popen', side_effect=inspect) as commands:
+            assert task.macho(archive, {platform}, tools)['build_commands'] == 1
+        assert [c.args[0][0] for c in commands.call_args_list] == [tools['lipo'], tools['otool'], tools['ar']]
+
+    # Deadline evidence must precede kill; a diagnostic failure must not replace the deadline.
+    events = []
+    process.wait.side_effect = [subprocess.TimeoutExpired(['owned-tool'], 30), 0]
+    def diagnostic(args, **kwargs):
+        events.append('diagnostic')
+        assert str(process.pid) in args and kwargs['timeout'] == 3
+        assert kwargs['stdin'] == subprocess.DEVNULL and kwargs['env'] == task.env
+        assert 'preexec_fn' in kwargs and 'capture_output' not in kwargs
+        with patch.object(preflight['resource'], 'setrlimit') as cap:
+            kwargs['preexec_fn']()
+            cap.assert_called_once_with(preflight['resource'].RLIMIT_FSIZE, (16 * 1024 * 1024, 16 * 1024 * 1024))
+        raise PermissionError('native sampling denied')
+    with patch.object(subprocess, 'Popen', return_value=process), \
+            patch.object(subprocess, 'run', side_effect=diagnostic), \
+            patch.object(os, 'killpg', side_effect=lambda pid, sig: events.append(('kill', pid, sig))):
+        try:
+            task.run(['owned-tool'])
+        except RuntimeError as error:
+            assert str(error).startswith('process deadline:')
+        else:
+            raise AssertionError('timeout was hidden')
+    assert events == ['diagnostic', 'diagnostic', ('kill', process.pid, preflight['signal'].SIGKILL)]
+    assert task.result['commands'][-1]['timed_out']
+    assert task.result['commands'][-1]['timeout'] == 30
+    assert task.result['commands'][-1]['diagnostic_errors'] == ['PermissionError', 'PermissionError']
+    assert (task.root / 'result.json').is_file()
+print('decoder selected-tool inspection/deadline diagnostics checks PASS')

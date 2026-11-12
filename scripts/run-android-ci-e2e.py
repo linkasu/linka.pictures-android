@@ -11,6 +11,8 @@ def verify_result(text, count):
     assert re.search(rf'^OK \({count} tests?\)\s*$', text, re.M), 'Missing exact passing test count'
     assert not re.search(r'FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|shortMsg=', text), 'Instrumentation failed'
     assert 'INSTRUMENTATION_CODE: -1' in text, 'Instrumentation did not finish normally'
+    completed = re.findall(r'^INSTRUMENTATION_STATUS_CODE: (-?\d+)\s*$', text, re.M)
+    assert completed.count('0') == count and set(completed) <= {'0', '1'}, 'Failed, skipped or missing test result'
 
 
 def main():
@@ -54,10 +56,11 @@ def main():
 
 if __name__ == '__main__':
     if '--self-test' in sys.argv:
-        verify_result('OK (1 test)\nINSTRUMENTATION_CODE: -1', 1)
-        verify_result('OK (7 tests)\nINSTRUMENTATION_CODE: -1', 7)
+        verify_result('INSTRUMENTATION_STATUS_CODE: 0\nOK (1 test)\nINSTRUMENTATION_CODE: -1', 1)
+        verify_result('INSTRUMENTATION_STATUS_CODE: 0\n' * 7 + 'OK (7 tests)\nINSTRUMENTATION_CODE: -1', 7)
         for bad in ('OK (0 tests)\nINSTRUMENTATION_CODE: -1', 'FAILURES!!!',
-                    'OK (1 test)\nINSTRUMENTATION_FAILED', 'OK (1 test)\nINSTRUMENTATION_CODE: 0'):
+                    'OK (1 test)\nINSTRUMENTATION_FAILED', 'OK (1 test)\nINSTRUMENTATION_CODE: 0',
+                    'INSTRUMENTATION_STATUS_CODE: -3\nOK (1 test)\nINSTRUMENTATION_CODE: -1'):
             try:
                 verify_result(bad, 1)
             except AssertionError:

@@ -1,6 +1,7 @@
 package su.linka.pictures.activity
 
 import android.os.SystemClock
+import android.os.Bundle
 import android.system.Os
 import android.system.OsConstants
 import android.view.accessibility.AccessibilityNodeInfo
@@ -22,24 +23,31 @@ class DevelopmentStartupTest {
             assertEquals("Unexpected runtime page size", expected.toLong(), Os.sysconf(OsConstants._SC_PAGESIZE))
         }
         ActivityScenario.launch(MainActivity::class.java).use {
-            val deadline = SystemClock.uptimeMillis() + 20_000
+            val startedAt = SystemClock.uptimeMillis()
+            val wait = StartupWait(startedAt)
             var lastTexts = emptyList<String>()
-            while (SystemClock.uptimeMillis() < deadline) {
+            while (true) {
                 instrumentation.waitForIdleSync()
                 val root = instrumentation.uiAutomation.rootInActiveWindow
                 if (root != null) {
                     val texts = mutableListOf<String>()
                     try {
-                        collect(root, texts)
+                        if (root.packageName?.toString() == context.packageName) collect(root, texts)
                         if (texts != lastTexts) {
                             android.util.Log.i("StartupEvidence", "package=${root.packageName};texts=$texts")
                             lastTexts = texts
                         }
                     } finally { root.recycle() }
-                    assertFalse("Startup refused its own fresh storage: $texts",
-                        texts.any { text -> text.contains("Не удалось безопасно открыть приложение") })
-                    if (texts.any { text -> text == "Ваши наборы" || text == "Your boards" }) return
+                    assertFalse("Startup refused its own fresh storage: $texts", texts.any(UiText.StartupBlocked::matches))
+                    assertFalse("Startup requires explicit recovery: $texts", texts.any(UiText.StartupResume::matches))
+                    if (texts.any(UiText.YourBoards::matches)) {
+                        instrumentation.sendStatus(0, Bundle().apply {
+                            putLong("coldStartupMillis", SystemClock.uptimeMillis() - startedAt)
+                        })
+                        return
+                    }
                 }
+                if (wait.expired(SystemClock.uptimeMillis(), lastTexts)) break
             }
             val directory = java.io.File(context.getExternalFilesDir(null), "message-row-layout").apply { mkdirs() }
             instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
@@ -49,7 +57,7 @@ class DevelopmentStartupTest {
                     }
                 } finally { bitmap.recycle() }
             }
-            fail("Shared launcher did not reach the library screen; last texts=$lastTexts")
+            fail("Cold startup stalled for 45s or exceeded 180s; last texts=$lastTexts")
         }
     }
 

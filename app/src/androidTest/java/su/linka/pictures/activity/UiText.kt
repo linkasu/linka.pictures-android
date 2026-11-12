@@ -27,6 +27,8 @@ internal enum class UiText(private val ru: String, private val en: String) {
     NextPage("Следующая страница", "Next page"),
     ImagePending("Изображение ещё не показано", "Image not yet displayed"),
     YourBoards("Ваши наборы", "Your boards"),
+    StartupBlocked("Не удалось безопасно открыть приложение.", "The application could not be opened safely."),
+    StartupResume("Продолжить прерванный перенос", "Continue the interrupted migration"),
     LibraryMenu("Меню библиотеки", "Library menu"),
     Settings("Настройки", "Settings"),
     ImportBackupRestore("Импорт, резервная копия и восстановление", "Import, backup and restore"),
