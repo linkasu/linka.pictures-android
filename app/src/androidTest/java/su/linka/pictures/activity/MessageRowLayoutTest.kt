@@ -159,10 +159,10 @@ class MessageRowLayoutTest {
                 fun namedBounds(text: UiText): Rect {
                     var result: Rect? = null
                     find(root) { node ->
-                        if (matches(node, text.labels)) {
-                            result = Rect().also(node::getBoundsInScreen)
+                        matches(node, text.labels) && withButtonNode(node) { button ->
+                            result = Rect().also(button::getBoundsInScreen)
                             true
-                        } else false
+                        }
                     }
                     return checkNotNull(result) { "Missing $text geometry" }
                 }
@@ -172,7 +172,7 @@ class MessageRowLayoutTest {
                 assertEquals("Bottom page buttons share the footer top", previous.top, next.top)
                 assertEquals("Bottom page buttons share the footer bottom", previous.bottom, next.bottom)
                 assertTrue("Previous page button is disabled on page 1", find(root) {
-                    matches(it, UiText.PreviousPage.labels) && !it.isEnabled
+                    matches(it, UiText.PreviousPage.labels) && withButtonNode(it) { button -> !button.isEnabled }
                 })
                 // Speech spans the full message row; the message AX node itself has 2dp padding.
                 val divider = target.resources.displayMetrics.density.roundToInt()
@@ -219,15 +219,18 @@ class MessageRowLayoutTest {
         }
     }
 
-    private fun withEnabledAction(node: AccessibilityNodeInfo, action: (AccessibilityNodeInfo) -> Boolean): Boolean {
+    private fun withEnabledAction(node: AccessibilityNodeInfo, action: (AccessibilityNodeInfo) -> Boolean) =
+        withButtonNode(node) { it.isVisibleToUser && it.isEnabled && action(it) }
+
+    private fun withButtonNode(node: AccessibilityNodeInfo, action: (AccessibilityNodeInfo) -> Boolean): Boolean {
         var candidate: AccessibilityNodeInfo? = AccessibilityNodeInfo.obtain(node)
         try {
-            while (candidate != null && !candidate.isClickable) {
+            while (candidate != null && !candidate.isClickable && candidate.className?.toString() != "android.widget.Button") {
                 val parent = candidate.parent
                 candidate.recycle()
                 candidate = parent
             }
-            return candidate?.let { it.isVisibleToUser && it.isEnabled && action(it) } ?: false
+            return candidate?.let(action) ?: false
         } finally { candidate?.recycle() }
     }
 
@@ -246,7 +249,7 @@ class MessageRowLayoutTest {
     private fun await(state: String, scroll: Boolean = false, backwards: Boolean = false,
         predicate: (AccessibilityNodeInfo) -> Boolean) {
         val deadline = SystemClock.uptimeMillis() + 20_000
-        var scrolls = 0
+        val search = ScrollSearch(backwards)
         while (SystemClock.uptimeMillis() < deadline) {
             instrumentation.waitForIdleSync()
             val root = instrumentation.uiAutomation.rootInActiveWindow ?: continue
@@ -254,12 +257,8 @@ class MessageRowLayoutTest {
                 // Splash/window transitions may briefly expose System UI; never act on it.
                 if (root.packageName?.toString() != target.packageName) continue
                 if (predicate(root)) return
-                if (scroll && scrolls < 12 && find(root) { node ->
-                    node.isScrollable && node.performAction(if (backwards) AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-                        else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
-                }) {
-                    scrolls++
-                    instrumentation.uiAutomation.waitForIdle(100, 2_000)
+                if (scroll) search.advance { direction ->
+                    scrollTestWindow(instrumentation.uiAutomation, root, !direction)
                 }
             } finally { root.recycle() }
         }
