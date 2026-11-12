@@ -410,6 +410,7 @@ class MatrixTests(unittest.TestCase):
                         '--config', 'Debug', '--probe', 'launch', '--device-set', str(root / 'devices')]
                 with patch.object(matrix.sys, 'argv', argv), \
                         patch.object(matrix, 'external_path', side_effect=lambda path, label: path.resolve()), \
+                        patch.object(matrix, 'child_tmpdir', return_value=root / 'child-tmp'), \
                         patch.object(matrix, 'inventory', return_value=[pair, dict(pair, device_type='ipad')]), \
                         patch.object(matrix, 'launch_probe', return_value=dict(status='launch_alive')), \
                         patch.object(matrix, 'launch_console', return_value=matrix.LIFECYCLE), \
@@ -419,6 +420,7 @@ class MatrixTests(unittest.TestCase):
                         patch('builtins.print'):
                     self.assertEqual(matrix.main(), 1)
                 state = json.loads((output / 'matrix.json').read_text())
+                self.assertTrue((root / 'child-tmp').is_dir())
                 self.assertEqual(len(state['records']), expected_records)
                 self.assertEqual((root / 'matrix-stop.json').exists(), phase == 'fixed')
                 if phase == 'fixed':
@@ -514,12 +516,14 @@ class MatrixTests(unittest.TestCase):
                     '--config', 'Debug', '--probe', 'launch', '--device-set', str(root / 'devices')]
             with patch.object(matrix.sys, 'argv', argv), patch.object(matrix, 'DEVICE_SET', None), \
                     patch.object(matrix, 'external_path', side_effect=lambda path, label: path.resolve()), \
+                    patch.object(matrix, 'child_tmpdir', return_value=root / 'child-tmp'), \
                     patch.object(matrix, 'inventory', return_value=[pair, dict(pair, device_type='ipad')]), \
                     patch.object(matrix.shutil, 'disk_usage', return_value=SimpleNamespace(free=1024)), \
                     patch.object(matrix, 'command') as command, patch('builtins.print'):
                 self.assertEqual(matrix.main(), 1)
                 command.assert_not_called()
             state = json.loads((output / 'matrix.json').read_text())
+            self.assertTrue((root / 'child-tmp').is_dir())
             self.assertEqual(len(state['records']), 1)
             self.assertEqual(state['records'][0]['status'], 'disk_space_blocked')
             self.assertIn('blocked_reason', state)
