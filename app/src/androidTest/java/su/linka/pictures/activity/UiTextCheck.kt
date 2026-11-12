@@ -59,5 +59,28 @@ fun main() {
         }
     }
     check(UiText.IncomingFailed.labels("UNSAFE_ARCHIVE").none { it in UiText.IncomingFailed.labels("IO_FAILURE") })
+    val cold = StartupWait(0)
+    check(!cold.expired(0, listOf("0/5")))
+    check(!cold.expired(20_000, listOf("3/5")))
+    check(!cold.expired(64_999, listOf("3/5")))
+    check(cold.expired(65_000, listOf("3/5")))
+    val busy = StartupWait(0)
+    for (now in 0L..160_000L step 20_000L) check(!busy.expired(now, listOf("progress:$now")))
+    check(busy.expired(180_000, listOf("new progress cannot defeat the total bound")))
+    for ((start, target) in listOf(3 to 0, 0 to 3, 2 to 1)) {
+        var position = start
+        val search = ScrollSearch(false)
+        repeat(12) {
+            if (position != target) search.advance { backwards ->
+                val next = (position + if (backwards) -1 else 1).coerceIn(0, 3)
+                (next != position).also { position = next }
+            }
+        }
+        check(position == target) { "Scroll search missed target from $start" }
+    }
+    val bounded = ScrollSearch(false)
+    var moves = 0
+    repeat(100) { bounded.advance { moves++; true } }
+    check(moves == 24) { "Scroll search must stop after both bounded directions" }
     println("UI selector catalog: ${UiText.entries.size} RU/EN mappings verified; user text and outcomes preserved")
 }

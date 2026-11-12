@@ -48,7 +48,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     onBackHandlerChanged: (((() -> Unit)?) -> Unit)? = null, identity: IdentitySession) {
     val registration by identity.view.collectAsState()
     val newBoardName = stringResource(Res.string.new_board)
-    val textScaleIsNotSupportedLabel = stringResource(Res.string.text_scale_is_not_supported)
+    val displaySettingsNotSupportedLabel = stringResource(Res.string.display_settings_not_supported)
     val couldNotOpenTheBoardReturnToLabel = stringResource(Res.string.could_not_open_the_board_return_to)
     val opened by rememberUpdatedState(onOwnerOpened)
     val closed by rememberUpdatedState(onOwnerClosed)
@@ -144,7 +144,8 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
     val boardHeight = maxHeight.value - with(density) { (insets.getTop(this) + insets.getBottom(this)).toDp().value }
     fun measureBoard(document: BoardDocument, value: PortableSettings) = measurer.measure(document,
         boardWidth, boardHeight, value.textScale,
-        navigation = value.boards[document.id]?.navigation ?: PageNavigation.BOTTOM, viewportHeight = maxHeight.value)
+        navigation = value.boards[document.id]?.navigation ?: PageNavigation.BOTTOM, viewportHeight = maxHeight.value,
+        messageRowPercent = value.messageRowPercent)
     val boardLayout = remember(message.board, measurer, boardWidth, boardHeight, maxHeight.value, settings) {
         message.board?.let { measureBoard(it.document, settings) }
     }
@@ -153,12 +154,12 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
         openingJob?.cancel()
     }
     fun returnToCommunication() {
-        if (boardLayout == null) admissionNotice = textScaleIsNotSupportedLabel
+        if (boardLayout == null) admissionNotice = displaySettingsNotSupportedLabel
         else if (!presentation.commandsEnabled) return
         else navigate(ProductPage.COMMUNICATION)
     }
     suspend fun validateSettings(value: PortableSettings): String? =
-        message.board?.let { if (measureBoard(it.document, value) == null) textScaleIsNotSupportedLabel else null }
+        message.board?.let { if (measureBoard(it.document, value) == null) displaySettingsNotSupportedLabel else null }
     fun openBoard(board: BoardId) {
         if (openingBoard || !isForeground || !settingsLoaded) return
         val previousRoute = navigation.route.value
@@ -171,7 +172,7 @@ fun LinkaApp(library: LibraryStore, media: MediaStore, messages: MessageStore, a
                         val supported = try { measureBoard(loaded.board.document, settings) != null }
                             finally { loaded.lease.close() }
                         currentCoroutineContext().ensureActive()
-                        if (!supported) admissionNotice = textScaleIsNotSupportedLabel
+                        if (!supported) admissionNotice = displaySettingsNotSupportedLabel
                         else if (navigation.route.value === previousRoute && isForeground) {
                             when (val openedBoard = communication.openBoard(board, expectedRevision = loaded.board.revision)) {
                                 is OperationResult.Completed -> if (navigation.route.value === previousRoute)

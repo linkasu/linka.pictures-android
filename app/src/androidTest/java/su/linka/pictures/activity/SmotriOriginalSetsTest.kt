@@ -145,7 +145,7 @@ class SmotriOriginalSetsTest {
             } }
             dismissKeyboard()
             click(UiText.Apply, scroll = true)
-            awaitNamed(UiText.UnsupportedScale)
+            awaitNamed(UiText.UnsupportedDisplaySettings)
             assertFalse("Scale rejection must remain adult-only", exists(UiText.CommunicationMenu))
             capture("fixed-scale-unsupported", stable = false)
             click(UiText.Close)
@@ -181,7 +181,7 @@ class SmotriOriginalSetsTest {
             check(findLibraryBoard(dense.name))
             clickAny(UiText.BoardActions.labels(dense.name))
             click(UiText.Open)
-            awaitNamed(UiText.UnsupportedScale)
+            awaitNamed(UiText.UnsupportedDisplaySettings)
             assertFalse("Rejected board must not enter child mode", exists(UiText.CommunicationMenu))
             assertFalse("Rejection must not start playback", exists(UiText.StopSpeaking))
             capture("fixed-rejected-board", stable = false)
@@ -275,9 +275,9 @@ class SmotriOriginalSetsTest {
             clickAny(UiText.BoardActions.labels(fixture.name))
             click(UiText.Open)
             await("adult rejection or admitted child board") { root ->
-                find(root) { matches(it, UiText.UnsupportedScale.labels + UiText.CommunicationMenu.labels) }
+                find(root) { matches(it, UiText.UnsupportedDisplaySettings.labels + UiText.CommunicationMenu.labels) }
             }
-            if (exists(UiText.UnsupportedScale)) {
+            if (exists(UiText.UnsupportedDisplaySettings)) {
                 assertFalse("Rejected board must remain adult-only", exists(UiText.CommunicationMenu))
                 assertFalse("Rejection must not start playback", exists(UiText.StopSpeaking))
                 capture(capturePrefix + "${fixture.slug}-unsupported", stable = false)
@@ -671,23 +671,7 @@ class SmotriOriginalSetsTest {
     }
 
     private fun swipeWindow(root: AccessibilityNodeInfo, forward: Boolean) {
-        val bounds = Rect().also(root::getBoundsInScreen)
-        val keyboardTop = automation.windows.firstOrNull {
-            it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
-        }?.let { Rect().also(it::getBoundsInScreen).top }
-        val top = bounds.top + (bounds.height() * 0.12f).toInt()
-        val bottom = minOf(bounds.bottom, keyboardTop ?: bounds.bottom)
-        val height = bottom - top
-        check(height > 60)
-        // Stay inside the form content; the outer right gutter does not dispatch drags to its scroll container.
-        val x = bounds.left + (bounds.width() * 0.8f).toInt()
-        // Overlap short large-text viewports instead of jumping past a whole setting row.
-        val start = top + (height * (if (forward) 0.65f else 0.35f)).toInt()
-        val end = top + (height * (if (forward) 0.35f else 0.65f)).toInt()
-        automation.executeShellCommand("input swipe $x $start $x $end 250").use { descriptor ->
-            FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
-        }
-        automation.waitForIdle(100, 2000)
+        scrollTestWindow(automation, root, forward)
     }
 
     private fun click(name: String, packages: Set<String> = setOf(target.packageName), scroll: Boolean = false,

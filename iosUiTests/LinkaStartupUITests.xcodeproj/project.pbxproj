@@ -25,7 +25,7 @@
         };
         D00000000000000000000003 = {
             isa = PBXGroup;
-            children = (D00000000000000000000007, D0000000000000000000000D, D0000000000000000000000F, D00000000000000000000011, D00000000000000000000004);
+            children = (D00000000000000000000007, D0000000000000000000000D, D0000000000000000000000F, D00000000000000000000011, D00000000000000000000013, D00000000000000000000015, D00000000000000000000017, D00000000000000000000004);
             sourceTree = "<group>";
         };
         D00000000000000000000004 = {
@@ -70,7 +70,7 @@
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Debug;
         };
-        D0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (D0000000000000000000000C, D0000000000000000000000E, D00000000000000000000010, D00000000000000000000012); runOnlyForDeploymentPostprocessing = 0; };
+        D0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (D0000000000000000000000C, D0000000000000000000000E, D00000000000000000000010, D00000000000000000000012, D00000000000000000000014, D00000000000000000000016, D00000000000000000000018); runOnlyForDeploymentPostprocessing = 0; };
         D0000000000000000000000B = {
             isa = XCBuildConfiguration;
             buildSettings = {
@@ -88,6 +88,12 @@
         D00000000000000000000010 = { isa = PBXBuildFile; fileRef = D0000000000000000000000F; };
         D00000000000000000000011 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaStartupUITests/ProductApplication.swift; sourceTree = "<group>"; };
         D00000000000000000000012 = { isa = PBXBuildFile; fileRef = D00000000000000000000011; };
+        D00000000000000000000013 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaStartupUITests/StoreScreenshotsTests.swift; sourceTree = "<group>"; };
+        D00000000000000000000014 = { isa = PBXBuildFile; fileRef = D00000000000000000000013; };
+        D00000000000000000000015 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaStartupUITests/MatrixSmokeTests.swift; sourceTree = "<group>"; };
+        D00000000000000000000016 = { isa = PBXBuildFile; fileRef = D00000000000000000000015; };
+        D00000000000000000000017 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaStartupUITests/MessageRowLayoutTests.swift; sourceTree = "<group>"; };
+        D00000000000000000000018 = { isa = PBXBuildFile; fileRef = D00000000000000000000017; };
     };
     rootObject = D00000000000000000000001;
 }

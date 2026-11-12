@@ -28,7 +28,7 @@
         };
         C00000000000000000000003 = {
             isa = PBXGroup;
-            children = (C00000000000000000000007, C0000000000000000000000D, C00000000000000000000017, C00000000000000000000020, C00000000000000000000022, C00000000000000000000004);
+            children = (C00000000000000000000007, C00000000000000000000027, C0000000000000000000000D, C00000000000000000000017, C00000000000000000000020, C00000000000000000000022, C00000000000000000000004);
             sourceTree = "<group>";
         };
         C00000000000000000000004 = {
@@ -73,7 +73,7 @@
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Debug;
         };
-        C0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0000000000000000000000C); runOnlyForDeploymentPostprocessing = 0; };
+        C0000000000000000000000A = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C0000000000000000000000C, C00000000000000000000028); runOnlyForDeploymentPostprocessing = 0; };
         C0000000000000000000000B = {
             isa = XCBuildConfiguration;
             buildSettings = {
@@ -131,6 +131,8 @@
         C00000000000000000000024 = { isa = PBXBuildFile; fileRef = C00000000000000000000022; settings = { ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy); }; };
         C00000000000000000000025 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C00000000000000000000023); runOnlyForDeploymentPostprocessing = 0; };
         C00000000000000000000026 = { isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 10; files = (C00000000000000000000024); name = "Embed Frameworks"; runOnlyForDeploymentPostprocessing = 0; };
+        C00000000000000000000027 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkaKeychainHost/SceneDelegate.swift; sourceTree = "<group>"; };
+        C00000000000000000000028 = { isa = PBXBuildFile; fileRef = C00000000000000000000027; };
     };
     rootObject = C00000000000000000000001;
 }

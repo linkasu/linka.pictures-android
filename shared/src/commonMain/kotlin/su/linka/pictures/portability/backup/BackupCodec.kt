@@ -124,7 +124,8 @@ class BackupCodec(
             checkData(rawHeader.string("format") == "su.linka.pictures.backup")
             val manifest = when (rawHeader.string("version")) {
                 "1.0" -> decodeMetadata<LegacyBackupManifest>(manifestBytes).current()
-                "1.1" -> decodeMetadata<BackupManifest>(manifestBytes)
+                "1.1" -> decodeMetadata<LegacyBackupManifest11>(manifestBytes).current()
+                "1.2" -> decodeMetadata<BackupManifest>(manifestBytes)
                 else -> fail(ProblemCode.UNSUPPORTED_VERSION)
             }
             checkCounts(manifest.counts)

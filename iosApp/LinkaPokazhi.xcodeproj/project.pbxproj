@@ -25,7 +25,7 @@
         };
         B00000000000000000000003 = {
             isa = PBXGroup;
-            children = (B00000000000000000000007, B0000000000000000000000D, B0000000000000000000000E, B0000000000000000000000F, B00000000000000000000014, B00000000000000000000018, B0000000000000000000001A, B0000000000000000000001D, B00000000000000000000004);
+            children = (B00000000000000000000007, B00000000000000000000022, B0000000000000000000000D, B0000000000000000000000E, B0000000000000000000000F, B00000000000000000000014, B00000000000000000000018, B0000000000000000000001A, B0000000000000000000001D, B00000000000000000000004);
             sourceTree = "<group>";
         };
         B00000000000000000000004 = {
@@ -80,7 +80,7 @@
         B0000000000000000000000A = {
             isa = PBXSourcesBuildPhase;
             buildActionMask = 2147483647;
-            files = (B0000000000000000000000C);
+            files = (B0000000000000000000000C, B00000000000000000000023);
             runOnlyForDeploymentPostprocessing = 0;
         };
         B0000000000000000000000B = {
@@ -184,7 +184,7 @@
                 PRODUCT_BUNDLE_IDENTIFIER = "$(IOS_BUNDLE_ID)";
                 IOS_BUNDLE_ID = su.linka.pictures;
                 RELEASE_VERSION = 2.0.0;
-                RELEASE_BUILD_NUMBER = 1;
+                RELEASE_BUILD_NUMBER = 2;
                 MARKETING_VERSION = "$(RELEASE_VERSION)";
                 CURRENT_PROJECT_VERSION = "$(RELEASE_BUILD_NUMBER)";
                 PRODUCT_NAME = "$(TARGET_NAME)";
@@ -214,6 +214,8 @@
         B0000000000000000000001F = { isa = PBXBuildFile; fileRef = B0000000000000000000001D; settings = { ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy); }; };
         B00000000000000000000020 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (B0000000000000000000001E); runOnlyForDeploymentPostprocessing = 0; };
         B00000000000000000000021 = { isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 10; files = (B0000000000000000000001F); name = "Embed Frameworks"; runOnlyForDeploymentPostprocessing = 0; };
+        B00000000000000000000022 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+        B00000000000000000000023 = { isa = PBXBuildFile; fileRef = B00000000000000000000022; };
     };
     rootObject = B00000000000000000000001;
 }

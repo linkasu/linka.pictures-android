@@ -1,0 +1,152 @@
+name: Submit iOS review
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful Publish iOS run for the exact current main SHA
+        required: true
+        type: string
+      submit:
+        description: Explicitly submit once to App Review (otherwise offline prepare only)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-ios
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ES256 implementation for offline checks and submission
+        run: python3 -m pip install --disable-pip-version-check cryptography==46.0.3
+
+      - name: Offline checks and preparation
+        run: |
+          python3 -B scripts/test-submit-ios-review.py
+          python3 -B scripts/submit-ios-review.py --prepare
+
+      - name: Verify successful exact-main publish and release evidence
+        if: inputs.submit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, re, subprocess, tempfile, zipfile
+          from pathlib import Path
+          def api(path, *flags):
+              return json.loads(subprocess.check_output(['gh', 'api', path, *flags], text=True))
+          def require(value, message):
+              if not value:
+                  raise SystemExit(message)
+          repo, run_id = os.environ['GITHUB_REPOSITORY'], os.environ['SOURCE_RUN_ID']
+          require(re.fullmatch(r'[1-9][0-9]*', run_id), 'Expected numeric publish run ID')
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          require(sha == os.environ['GITHUB_SHA'] == api(f'repos/{repo}/commits/main')['sha'], 'Main changed; publish again')
+          run = api(f'repos/{repo}/actions/runs/{run_id}')
+          require(run['repository']['full_name'] == repo and run['path'] == '.github/workflows/publish-ios.yml', 'Not this repository publish workflow')
+          require(run['event'] == 'workflow_dispatch' and run['head_branch'] == 'main' and run['head_sha'] == sha, 'Publish source mismatch or PR')
+          require(run['status'] == 'completed' and run['conclusion'] == 'success', 'Publish did not succeed')
+          attempt = run['run_attempt']
+          jobs = [j for p in api(f'repos/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100', '--paginate', '--slurp') for j in p['jobs']]
+          require(len(jobs) == 1 and jobs[0]['name'] == 'publish' and jobs[0]['head_sha'] == sha and jobs[0]['conclusion'] == 'success', 'Publish job not successful')
+          uploads = [s for s in jobs[0]['steps'] if s['name'] == 'Upload exact IPA once to App Store Connect']
+          require(len(uploads) == 1 and uploads[0]['conclusion'] == 'success', 'Exact IPA upload step did not succeed')
+          artifacts = [a for p in api(f'repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100', '--paginate', '--slurp') for a in p['artifacts']]
+          receipts = [a for a in artifacts if a['name'] == f'ios-release-{sha}-{attempt}' and not a['expired']]
+          require(len(receipts) == 1, 'Require release artifact from successful publish')
+          artifact = receipts[0]
+          require(0 < artifact['size_in_bytes'] < 10 * 1024**3, 'Unexpected release artifact size')
+          # Existing publish evidence shares an artifact with IPA/archive; never extract or execute them.
+          with tempfile.TemporaryFile() as downloaded:
+              subprocess.run(['gh', 'api', f'repos/{repo}/actions/artifacts/{artifact["id"]}/zip'], stdout=downloaded, check=True)
+              downloaded.seek(0)
+              digest = hashlib.file_digest(downloaded, 'sha256').hexdigest()
+              require(artifact.get('digest') == 'sha256:' + digest, 'Release artifact digest mismatch')
+              downloaded.seek(0)
+              with zipfile.ZipFile(downloaded) as archive:
+                  names = [n for n in archive.namelist() if n == 'release-metadata.json' or n.endswith('/ios-release/release-metadata.json') or n == 'ios-release/release-metadata.json']
+                  require(len(names) == 1, 'Expected exact release metadata')
+                  prefix = names[0][:-len('release-metadata.json')]
+                  require(all(archive.getinfo(prefix + n).file_size < 1048576 for n in ('release-metadata.json', 'source-ci.json', 'upload.log')), 'Oversized release evidence')
+                  metadata = json.loads(archive.read(prefix + 'release-metadata.json'))
+                  source_ci = json.loads(archive.read(prefix + 'source-ci.json'))
+                  require(bool(archive.read(prefix + 'upload.log').strip()), 'Missing upload diagnostics')
+          require((metadata['source_sha'], metadata['bundle'], metadata['version'], metadata['build']) == (sha, 'su.linka.pictures', '2.0.0', '2'), 'Release metadata mismatch')
+          require(re.fullmatch(r'[0-9a-f]{64}', metadata['sha256']), 'Invalid IPA hash')
+          require(str(metadata['source_run_id']).isdigit(), 'Missing original simulator CI run')
+          require(source_ci['sha'] == sha and str(source_ci['run']['id']) == str(metadata['source_run_id']), 'Original simulator CI evidence mismatch')
+          require(source_ci['run']['path'] == '.github/workflows/ios.yml' and source_ci['run']['head_sha'] == sha and source_ci['run']['conclusion'] == 'success', 'Original simulator CI was not successful for exact main')
+          require(len(source_ci['jobs']) == 2 and {j['name'] for j in source_ci['jobs']} == {'simulator-tests (phone)', 'simulator-tests (tablet)'} and all(j['head_sha'] == sha and j['conclusion'] == 'success' for j in source_ci['jobs']), 'Original phone/tablet checks missing')
+          latest = api(f'repos/{repo}/actions/runs/{run_id}')
+          require(latest['run_attempt'] == attempt and latest['conclusion'] == 'success' and latest['status'] == 'completed', 'Publish attempt changed')
+          require(api(f'repos/{repo}/commits/main')['sha'] == sha, 'Main changed during gate')
+          output = Path('build/ios-review')
+          output.mkdir(parents=True, exist_ok=True)
+          (output / 'verified-source.json').write_text(json.dumps(dict(sha=sha, publish_run_id=run_id, attempt=attempt, artifact_id=artifact['id'], artifact_digest=digest, metadata=metadata), indent=2))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('IOS_PUBLISH_RECEIPT_VERIFIED=true\n')
+          PY
+
+      - name: Select exact build and submit once
+        if: inputs.submit
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_PRIVATE_KEY: ${{ secrets.ASC_API_PRIVATE_KEY }}
+        run: |
+          umask 077
+          export ASC_KEY_PATH="$RUNNER_TEMP/ios-review-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/AuthKey.p8"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          path = Path(os.environ['ASC_KEY_PATH'])
+          path.parent.mkdir(mode=0o700)
+          path.write_text(os.environ['ASC_API_PRIVATE_KEY'])
+          path.chmod(0o600)
+          PY
+          unset ASC_API_PRIVATE_KEY
+          python3 -B scripts/submit-ios-review.py --submit
+          echo 'Verified WAITING_FOR_REVIEW for 2.0.0 build 2. This does not mean the app is publicly available.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove only owned API key material
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          path = Path(os.environ['RUNNER_TEMP']) / f'ios-review-{os.environ["GITHUB_RUN_ID"]}-{os.environ["GITHUB_RUN_ATTEMPT"]}'
+          if path.exists():
+              shutil.rmtree(path)
+          PY
+
+      - name: Preserve sanitized preflight and mutation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-review-${{ github.sha }}-${{ github.run_attempt }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: build/ios-review/

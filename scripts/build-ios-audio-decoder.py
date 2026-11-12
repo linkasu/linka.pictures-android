@@ -12,7 +12,7 @@ import struct
 import wave
 
 PREFLIGHT = runpy.run_path(str(Path(__file__).with_name("preflight-ios-ffmpeg.py")))
-OUTPUTS = runpy.run_path(str(Path(__file__).with_name('ios_audio_decoder_outputs.py')))
+OUTPUTS = PREFLIGHT['OUTPUTS']
 Preflight = PREFLIGHT["Preflight"]
 require = PREFLIGHT["require"]
 sha = PREFLIGHT["sha"]
@@ -46,11 +46,9 @@ def target(task, sdk, triple, cached=None, build_tests=False):
     build = task.root / sdk
     build.mkdir()
     prefix = build / "install"
-    _, sysroot = task.run(["xcrun", "--sdk", sdk, "--show-sdk-path"])
-    tools = {}
-    for tool in ("clang", "ar", "ranlib", "nm"):
-        _, text = task.run(["xcrun", "--sdk", sdk, "--find", tool])
-        tools[tool] = text.strip()
+    sdk_record = task.result['toolchain'][sdk]
+    sysroot = sdk_record['path']
+    tools = task.resolve_tools(sdk, ("clang", "ar", "ranlib", "nm", "lipo", "otool"))
     flags = FLAGS + [f"--prefix={prefix}", f"--cc={tools['clang']}", f"--ar={tools['ar']}",
         f"--ranlib={tools['ranlib']}", f"--nm={tools['nm']}", "--pkg-config=/usr/bin/false",
         f"--sysroot={sysroot.strip()}", f"--extra-cflags=-target {triple}", f"--extra-ldflags=-target {triple}"]
@@ -113,7 +111,7 @@ def target(task, sdk, triple, cached=None, build_tests=False):
     with (prefix / "include/linka_audio_decoder.h").open("xb") as output:
         output.write(header.read_bytes())
     platform = {"7", "IOSSIMULATOR"} if sdk == "iphonesimulator" else {"2", "IOS"}
-    libraries = {p.name: task.macho(p, platform) for p in sorted((prefix / "lib").glob("*.a"))}
+    libraries = {p.name: task.macho(p, platform, tools) for p in sorted((prefix / "lib").glob("*.a"))}
     require(set(libraries) == {"liblinka_audio_decoder.a", "libavformat.a", "libavcodec.a", "libswresample.a", "libavutil.a"}, "unexpected libraries")
     task.result.setdefault("development_targets", {})[sdk] = dict(prefix=str(prefix), configure=flags,
         config_sha256=sha(build / "config.h"), components_sha256=sha(build / "config_components.h"),
@@ -127,7 +125,7 @@ def target(task, sdk, triple, cached=None, build_tests=False):
         OUTPUTS['verify_runtime'](old, sdk, task.env)
         shutil.copytree(old / OUTPUTS['RUNTIME'], prefix / OUTPUTS['RUNTIME'])
     else:
-        OUTPUTS['build_runtime'](prefix, sdk, task.env, archive)
+        OUTPUTS['build_runtime'](prefix, sdk, task.env, archive, sdk_record)
     executable = build / "bridge-test"
     if sdk == "iphonesimulator" and build_tests:
         frameworks = build / 'Frameworks'
@@ -138,15 +136,15 @@ def target(task, sdk, triple, cached=None, build_tests=False):
         task.run([*compile_flags, task.project / "scripts/test-ios-audio-decoder.c", "-L", prefix / "lib",
             "-llinka_audio_decoder", *runtime_link, "-lm",
             "-framework", "CoreFoundation", "-framework", "CoreVideo", "-framework", "CoreMedia", "-framework", "AudioToolbox", "-o", executable], timeout=120)
-        task.result["bridge_test_binary"] = task.macho(executable, platform)
+        task.result["bridge_test_binary"] = task.macho(executable, platform, tools)
         unit = build / 'bridge-unit'
         # Native inspection is in the same bridge TU; do not link a second bridge archive.
         task.run([*compile_flags, task.project / 'scripts/test-ios-audio-decoder-unit.c', '-L', prefix / 'lib',
             *runtime_link, '-lm',
             '-framework', 'CoreFoundation', '-framework', 'CoreVideo', '-framework', 'CoreMedia', '-framework', 'AudioToolbox', '-o', unit], timeout=120)
-        task.result['bridge_unit_binary'] = task.macho(unit, platform)
+        task.result['bridge_unit_binary'] = task.macho(unit, platform, tools)
         for binary in (executable, unit):
-            _, linked = task.run(['xcrun', 'otool', '-L', binary])
+            _, linked = task.run([tools['otool'], '-L', binary])
             require(OUTPUTS['INSTALL_NAME'] in linked, 'proof executable must use final dynamic runtime')
     return prefix, executable
 
@@ -434,7 +432,7 @@ def main():
     output_root = OUTPUTS['output_root'](args.gradle_output_root) if args.gradle_output_root else None
     if output_root:
         project = Path(__file__).resolve().parents[1]
-        env = dict(os.environ, DEVELOPER_DIR=PREFLIGHT['DEVELOPER'])
+        env = PREFLIGHT['developer_environment']()
         published, exact = OUTPUTS['inspect'](output_root, project, FLAGS, env)
         if exact and not args.prove and not args.compile_kotlin:
             print(json.dumps(dict(status='VERIFIED_FASTPATH', manifest=str(output_root / OUTPUTS['MANIFEST']))))
@@ -442,11 +440,11 @@ def main():
     task = Preflight()
     print(task.root, flush=True)
     try:
-        _, xcode = task.run(["xcodebuild", "-version"])
-        require(xcode.startswith("Xcode 27.2\n"), "Xcode version")
+        chain = OUTPUTS['toolchain'](task.env)
+        task.result.update(xcode=chain['xcode'], toolchain=chain)
         cached = None
         if (published and not args.reuse_build_run and not args.verified_source_run and
-            published['provenance']['flags'] == FLAGS and published['toolchain'] == OUTPUTS['toolchain'](task.env)):
+            published['provenance']['flags'] == FLAGS and published['toolchain'] == chain):
             cached = dict(development_targets={}, downloads=published['source_downloads'], signature=published['signature'])
             for target_name, (sdk, _) in OUTPUTS['TARGETS'].items():
                 record = dict(published['targets'][target_name])
@@ -465,6 +463,7 @@ def main():
             import uuid
             require(str(uuid.UUID(args.reuse_build_run)) == args.reuse_build_run, 'invalid owned cache UUID')
             cached = json.loads((task.root.parent / args.reuse_build_run / 'result.json').read_text())
+            require(cached.get('toolchain') == chain, 'cached build toolchain mismatch or missing receipt')
             archive_record = next(x for x in cached['downloads'] if x['url'] == PREFLIGHT['SOURCE'])
             require(archive_record['sha256'] == SOURCE_SHA and cached['signature']['verified'] and
                     cached['signature']['fingerprint'] == PREFLIGHT['FINGERPRINT'], 'unverified cached source receipt')

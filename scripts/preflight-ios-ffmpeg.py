@@ -9,6 +9,7 @@ import math
 import os
 from pathlib import Path, PurePosixPath
 import re
+import resource
 import runpy
 import signal
 import shlex
@@ -16,20 +17,20 @@ import struct
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 import uuid
 import wave
 
 VERSION = "8.1.2"
+OUTPUTS = runpy.run_path(str(Path(__file__).with_name('ios_audio_decoder_outputs.py')))
 SOURCE = f"https://ffmpeg.org/releases/ffmpeg-{VERSION}.tar.xz"
 KEY = "https://ffmpeg.org/ffmpeg-devel.asc"
 VERIFICATION = "https://ffmpeg.org/download.html"
 FINGERPRINT = "FCF986EA15E6E293A5644F10B4322F04D67658D8"
-DEVELOPER = "/Applications/Xcode.app/Contents/Developer"
 UDID = "DD0F9A3F-DC32-4373-BA08-400FECE3A1CC"
-TEMP = Path("/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode")
-FIXTURES = TEMP / "p06-legacy-codecs-48acb16b-88d6-49cf-bae0-a1f5bbd35050"
-AMR = TEMP / "p01-amr-fixtures"
+FIXTURES = Path(__file__).resolve().parent / "fixtures/ios-audio"
+AMR = FIXTURES
 EXPECTED = {
     "vorbis": (FIXTURES / "vorbis-first.ogg", 5063, "98305ce0d4bf14c7189c25835e2f87b8a602b462232a4e8e285fae0480cf7208"),
     "mp3": (FIXTURES / "mp3-first.mp3", 2612, "796a8d642760fd8bb1e4e216b5ab2ef02e73dd633bf3a27bfcce6e9450c9b026"),
@@ -57,6 +58,18 @@ FLAGS = [
 def require(condition, message):
     if not condition:
         raise RuntimeError(message)
+
+
+def developer_environment():
+    return OUTPUTS['developer_environment']()
+
+
+def work_root(project):
+    if os.environ.get("LINKA_FFMPEG_WORK_ROOT"):
+        return Path(os.environ["LINKA_FFMPEG_WORK_ROOT"]).resolve()
+    if project.is_relative_to(Path("/Volumes/data")):
+        return project / "build/ios-ffmpeg-preflight"
+    return Path(tempfile.gettempdir()) / "linka-ios-ffmpeg-preflight"
 
 
 def sha(path):
@@ -117,15 +130,16 @@ def self_test():
 class Preflight:
     def __init__(self):
         self.project = Path(__file__).resolve().parents[1]
-        parent = self.project / "build" / "ios-ffmpeg-preflight"
-        ignored = subprocess.run(["git", "check-ignore", str(parent / "probe")], cwd=self.project,
-                                 capture_output=True, timeout=10)
-        require(ignored.returncode == 0, "build outputs must already be ignored")
+        parent = work_root(self.project)
+        if parent.is_relative_to(self.project):
+            ignored = subprocess.run(["git", "check-ignore", str(parent / "probe")], cwd=self.project,
+                                     capture_output=True, timeout=10)
+            require(ignored.returncode == 0, "build outputs must already be ignored")
         parent.mkdir(parents=True, exist_ok=True)
         self.root = parent / str(uuid.uuid4())
         self.root.mkdir()
         (self.root / "logs").mkdir()
-        self.env = dict(os.environ, DEVELOPER_DIR=DEVELOPER)
+        self.env = developer_environment()
         for key in ("CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS", "LIBRARY_PATH", "CPATH", "PKG_CONFIG_PATH"):
             self.env.pop(key, None)
         self.result = dict(version=VERSION, root=str(self.root), status="RUNNING", commands=[], downloads=[])
@@ -149,9 +163,17 @@ class Preflight:
             try:
                 record["returncode"] = process.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)  # Only this command's freshly owned process group.
-                process.wait()
                 record["timed_out"] = True
+                try:
+                    self.timeout_diagnostics(process.pid, log, record)
+                except Exception as error:
+                    record["diagnostic_error"] = type(error).__name__
+                finally:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)  # Only this command's freshly owned process group.
+                    except ProcessLookupError:
+                        pass
+                    process.wait()
                 raise RuntimeError(f"process deadline: {record['command']}; log={log}")
             finally:
                 record["seconds"] = time.monotonic() - begin
@@ -161,6 +183,37 @@ class Preflight:
         if success:
             require(record["returncode"] == 0, f"command failed: {record['command']}; log={log}\n{text[-6000:]}")
         return record["returncode"], text
+
+    def timeout_diagnostics(self, pid, log, record):
+        diagnostic = log.with_suffix(".timeout.log")
+        record["timeout_diagnostic"] = str(diagnostic)
+
+        def cap_output():
+            resource.setrlimit(resource.RLIMIT_FSIZE, (16 * 1024 * 1024, 16 * 1024 * 1024))
+
+        with diagnostic.open("xb") as output:
+            for command in (["/bin/ps", "-p", str(pid), "-o", "pid=,ppid=,pgid=,stat=,etime=,comm="],
+                            ["/usr/bin/sample", str(pid), "1", "-file", "/dev/stdout"]):
+                try:
+                    subprocess.run(command, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
+                                   env=self.env, timeout=3, check=False, preexec_fn=cap_output)
+                except Exception as error:
+                    record.setdefault("diagnostic_errors", []).append(type(error).__name__)
+
+    def resolve_tools(self, sdk, names):
+        tools = {}
+        for tool in names:
+            tools[tool] = OUTPUTS['selected_tool'](self.env, tool)
+        chain = self.result.get('toolchain')
+        if chain:
+            require(chain['developer_dir'] == str(Path(self.env['DEVELOPER_DIR']).resolve(strict=True)),
+                    'selected Xcode/receipt mismatch')
+            require(chain[sdk]['clang'] == OUTPUTS['selected_tool'](self.env, 'clang'),
+                    'selected clang/receipt mismatch')
+        self.result.setdefault("inspection_toolchains", {})[sdk] = dict(
+            developer_dir=self.env["DEVELOPER_DIR"], tools=tools)
+        self.save()
+        return tools
 
     def download(self, url, name, limit, optional=False):
         record = dict(url=url)
@@ -258,31 +311,23 @@ class Preflight:
         require((self.source / "VERSION").read_text().strip() == VERSION, "release VERSION mismatch")
 
     def fixtures(self):
-        manifest = json.loads((FIXTURES / "manifest.json").read_text())
         generator = self.project / "shared/src/androidInstrumentedTest/kotlin/su/linka/pictures/platform/capabilities/generate_legacy_codec_fixtures.py"
         functions = runpy.run_path(str(generator))  # Only definitions; never its host-encoding main().
         samples = array.array("h")
         for frame in range(3200):
             samples.extend(int(6000 * math.sin(2 * math.pi * frequency * frame / 16000)) for frequency in (440, 660))
         require(hashlib.sha256(functions["wav_bytes"](2, samples)).hexdigest() == EXPECTED["wav"][2], "own sine generator mismatch")
-        control = functions["wav_bytes"](1, array.array("h", (100 if n % 2 == 0 else -100 for n in range(1600))))
-        require(hashlib.sha256(control).hexdigest() == manifest["control_wave_sha256"], "independent square-wave control mismatch")
         self.result["wave_generator"] = dict(path=str(generator), sha256=sha(generator),
-            note="tone.wav is stereo sine; manifest control_wave_sha256 is a DIFFERENT mono square-wave control")
-        self.result["fixture_producers"] = {k: manifest[k] for k in ("ffmpeg", "ffprobe", "commands")}
-        manifest_records = {item["name"]: item for item in manifest["fixtures"]}
-        paths = {item for command in manifest["commands"] for item in command if item.startswith(str(TEMP) + "/")}
+            note="pinned repository tone.wav is the independently checked stereo sine")
         target = self.root / "fixtures"
         target.mkdir()
         copied = {}
         for name, (path, size, digest) in EXPECTED.items():
             require(path.is_file() and not path.is_symlink(), f"missing/not-owned fixture: {path}")
-            require(path.resolve().is_relative_to(TEMP.resolve()) and str(path) in paths, "fixture not from approved manifest")
+            require(path.resolve().is_relative_to(FIXTURES), "fixture outside repository fixture directory")
             require(path.stat().st_size <= 65536 and (size is None or path.stat().st_size == size), "fixture size mismatch")
             require(sha(path) == digest, f"fixture SHA mismatch: {name}")
-            if name != "wav":
-                require(manifest_records[name]["sha256"] == digest, "manifest fixture mismatch")
-            else:
+            if name == "wav":
                 with wave.open(str(path)) as wav:
                     require((wav.getnchannels(), wav.getsampwidth(), wav.getframerate(), wav.getnframes()) == (2, 2, 16000, 3200), "WAV generator parameters")
             self.originals[path] = digest
@@ -306,14 +351,14 @@ class Preflight:
         self.result["runtime"] = dict(device={k: devices[0][k] for k in ("udid", "name", "state", "runtime_id")},
                                       version=matches[0]["version"], build=matches[0]["buildversion"])
 
-    def macho(self, file, platform):
-        _, arch = self.run(["xcrun", "lipo", "-archs", file])
+    def macho(self, file, platform, tools):
+        _, arch = self.run([tools["lipo"], "-archs", file])
         require(arch.strip() == "arm64", f"wrong architecture {file}: {arch}")
-        _, load = self.run(["xcrun", "otool", "-l", file])
+        _, load = self.run([tools["otool"], "-l", file])
         builds = re.findall(r"cmd LC_BUILD_VERSION\s+cmdsize \d+\s+platform (\S+)\s+minos (\S+)", load)
         require(builds, f"missing Mach-O platform/minimum: {file}")
         if file.suffix == ".a":
-            _, members = self.run(["xcrun", "ar", "-t", file])
+            _, members = self.run([tools["ar"], "-t", file])
             require(len(builds) == sum(name.endswith(".o") for name in members.splitlines()), "object missing Mach-O minimum")
         require(all(p in platform and tuple(map(int, v.split('.'))) in ((17, 0), (17, 0, 0)) for p, v in builds), f"wrong Mach-O minimum/platform {file}")
         return dict(bytes=file.stat().st_size, sha256=sha(file), architecture="arm64", build_commands=len(builds), platforms=sorted(set(p for p, _ in builds)), minimums=sorted(set(v for _, v in builds)))
@@ -338,12 +383,13 @@ class Preflight:
         require(set(enabled["FILTER"]) <= {"ABUFFER", "ABUFFERSINK", "ARESAMPLE", "AFORMAT", "ANULL"}, "unexpected filters")
         require(cli and cli.group(1) == "0", "audio-only harness requires no FFmpeg CLI/video-filter expansion")
 
-    def libraries(self, build, sdk):
+    def libraries(self, build, sdk, tools=None):
         prefix = build / "install"
         libraries = sorted((prefix / "lib").glob("*.a"))
         require({p.name for p in libraries} == {"libavcodec.a", "libavformat.a", "libavutil.a", "libavfilter.a", "libswresample.a"}, "unexpected library set")
         platform = {"7", "IOSSIMULATOR"} if sdk == "iphonesimulator" else {"2", "IOS"}
-        self.result["targets"][sdk]["libraries"] = {file.name: self.macho(file, platform) for file in libraries}
+        tools = tools or self.resolve_tools(sdk, ("ar", "lipo", "otool"))
+        self.result["targets"][sdk]["libraries"] = {file.name: self.macho(file, platform, tools) for file in libraries}
         self.save()
         return prefix
 
@@ -365,25 +411,23 @@ class Preflight:
         build = self.root / sdk
         build.mkdir()
         prefix = build / "install"
-        _, sysroot = self.run(["xcrun", "--sdk", sdk, "--show-sdk-path"])
-        tools = {}
-        for tool in ("clang", "ar", "ranlib", "nm"):
-            _, output = self.run(["xcrun", "--sdk", sdk, "--find", tool])
-            tools[tool] = output.strip()
+        sysroot = self.result['toolchain'][sdk]['path']
+        tools = self.resolve_tools(sdk, ("clang", "ar", "ranlib", "nm", "lipo", "otool"))
         flags = FLAGS + [f"--prefix={prefix}", f"--cc={tools['clang']}", f"--ar={tools['ar']}",
                          f"--ranlib={tools['ranlib']}", f"--nm={tools['nm']}", "--pkg-config=/usr/bin/false",
                          f"--sysroot={sysroot.strip()}", f"--extra-cflags=-target {triple}", f"--extra-ldflags=-target {triple}"]
         self.run([self.source / "configure", *flags], cwd=build, timeout=180)
         self.configuration(build, sdk, triple, flags)
         self.run(["make", "-j4", "install-libs", "install-headers"], cwd=build, timeout=600)
-        return self.libraries(build, sdk)
+        return self.libraries(build, sdk, tools)
 
     def harness(self, prefix):
         self.result["stage"] = "compile-audio-only-harness"
         source = self.project / "scripts/preflight-ios-ffmpeg-decode.c"
         binary = self.root / "decode-simulator"
-        _, clang = self.run(["xcrun", "--sdk", "iphonesimulator", "--find", "clang"])
-        _, sdk = self.run(["xcrun", "--sdk", "iphonesimulator", "--show-sdk-path"])
+        tools = self.resolve_tools("iphonesimulator", ("clang", "ar", "lipo", "otool"))
+        clang = tools['clang']
+        sdk = self.result['toolchain']['iphonesimulator']['path']
         make_config = (prefix.parent / "ffbuild/config.mak").read_text()
         extra = []
         for library in ("avformat", "avcodec", "swresample", "avutil"):
@@ -394,7 +438,7 @@ class Preflight:
             "-std=c17", "-O2", "-Wall", "-Wextra", "-Werror", "-Werror=partial-availability",
             "-I", prefix / "include", source, "-L", prefix / "lib", "-lavformat", "-lavcodec", "-lswresample", "-lavutil",
             *extra, "-o", binary], timeout=120)
-        self.result["harness"] = dict(source_sha256=sha(source), binary=self.macho(binary, {"7", "IOSSIMULATOR"}),
+        self.result["harness"] = dict(source_sha256=sha(source), binary=self.macho(binary, {"7", "IOSSIMULATOR"}, tools),
                                       linked_libraries=["avformat", "avcodec", "swresample", "avutil"], system_libraries=extra)
         self.save()
         return binary
@@ -478,9 +522,8 @@ def main():
     task = Preflight()
     print(task.root, flush=True)
     try:
-        _, xcode = task.run(["xcodebuild", "-version"])
-        require(xcode.startswith("Xcode 27.2\n"), "stable Xcode27.2 required")
-        task.result["xcode"] = xcode
+        chain = OUTPUTS['toolchain'](task.env)
+        task.result.update(xcode=chain['xcode'], toolchain=chain)
         if args.verified_source_run:
             task.reuse_source(args.verified_source_run)
         else:

@@ -48,7 +48,7 @@ class BoardSettingsTest {
         try {
             val original = PortableSettings(1.5f, true, "ru-RU", mapOf(
                 BoardId("other") to BoardPresentation(false),
-                BoardId("board") to BoardPresentation(PageNavigation.SIDE, dragToCompose = true)))
+                BoardId("board") to BoardPresentation(PageNavigation.SIDE, dragToCompose = true)), messageRowPercent = 28)
             val snapshot = BoardSettingsSnapshot(runtime.library.listing.value, original)
             val controller = LibraryController(runtime.library, gate)
             val modes = mutableListOf<InteractionMode>()
@@ -60,6 +60,7 @@ class BoardSettingsTest {
                 (BoardId("board") to BoardPresentation(PageNavigation.NONE, dragToCompose = true))), saved)
             assertEquals(listOf(InteractionMode.DIRECT), modes)
             assertEquals(saved, assertIs<OperationResult.Completed<PortableSettings>>(runtime.library.settings()).value)
+            assertEquals(28, saved?.messageRowPercent)
 
             // Reusing the captured revision conflicts: neither the snapshot nor mode is silently replayed.
             saved = null
@@ -75,6 +76,7 @@ class BoardSettingsTest {
                 BoardId("board"), current.settings.boards.getValue(BoardId("board")).copy(navigation = PageNavigation.SIDE),
                 null, { saved = it }, { modes += it }))
             assertEquals(BoardPresentation(PageNavigation.SIDE, dragToCompose = true), saved?.boards?.get(BoardId("board")))
+            assertEquals(28, saved?.messageRowPercent)
             assertEquals(listOf(InteractionMode.DIRECT), modes)
 
             val unknownStore = object : LibraryStore by runtime.library {
