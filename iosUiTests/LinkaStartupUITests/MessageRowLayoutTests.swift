@@ -13,6 +13,10 @@ final class MessageRowLayoutTests: XCTestCase {
                 evidence.name = "message-row-layout-failure"
                 evidence.lifetime = .keepAlways
                 add(evidence)
+                let tree = XCTAttachment(string: app.debugDescription)
+                tree.name = "message-row-layout-failure-ax"
+                tree.lifetime = .keepAlways
+                add(tree)
             }
             app.terminate()
             XCUIDevice.shared.orientation = .portrait
@@ -32,6 +36,7 @@ final class MessageRowLayoutTests: XCTestCase {
         }
         try tap(named("28%", in: app))
         try reveal(settingRow("28%", in: app), in: app)
+        attachScreenshot(app, name: "message-row-selected-28-before-save")
         try reveal(app.buttons["Сохранить настройки"], in: app)
         try tap(app.buttons["Сохранить настройки"])
         // LocalAssistantAccess permits CHANGE_SETTINGS for a fresh unprotected guest; never pre-authorize it.
@@ -137,7 +142,7 @@ final class MessageRowLayoutTests: XCTestCase {
     }
 
     private func settingRow(_ percent: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Высота строки сообщения", percent)).firstMatch
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Высота строки сообщения", percent)).element
     }
 
     private func named(_ label: String, in app: XCUIApplication) -> XCUIElement {
@@ -147,6 +152,14 @@ final class MessageRowLayoutTests: XCTestCase {
     private func waitUntil(_ message: String, _ condition: @escaping () -> Bool) throws {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
         guard XCTWaiter.wait(for: [expectation], timeout: 30) == .completed else {
+            let app = productApplication()
+            if app.secureTextFields.count == 0 {
+                attachScreenshot(app, name: "message-row-timeout")
+                let tree = XCTAttachment(string: app.debugDescription)
+                tree.name = "message-row-timeout-ax"
+                tree.lifetime = .keepAlways
+                add(tree)
+            }
             XCTFail(message)
             throw NSError(domain: "MessageRowLayoutTests", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
         }
@@ -161,14 +174,24 @@ final class MessageRowLayoutTests: XCTestCase {
     private func tap(_ element: XCUIElement) throws { try visible(element).tap() }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) throws {
-        for _ in 0..<8 {
-            if element.exists && element.isHittable { return }
-            app.swipeUp()
+        let content = app.frame.insetBy(dx: 0, dy: max(64, app.frame.height * 0.12))
+        let scrollView = app.scrollViews.allElementsBoundByIndex.first {
+            $0.isHittable && !$0.frame.intersection(content).isEmpty
         }
-        for _ in 0..<8 {
-            if element.exists && element.isHittable { return }
-            app.swipeDown()
+        let viewport = scrollView.map { $0.frame.intersection(content) } ?? content
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let upper = origin.withOffset(CGVector(dx: viewport.minX + viewport.width * 0.8 - app.frame.minX,
+                                              dy: viewport.minY + viewport.height * 0.2 - app.frame.minY))
+        let lower = origin.withOffset(CGVector(dx: viewport.minX + viewport.width * 0.8 - app.frame.minX,
+                                              dy: viewport.minY + viewport.height * 0.8 - app.frame.minY))
+        let isVisible = {
+            element.exists && element.isEnabled && element.isHittable && !element.frame.intersection(viewport).isEmpty
         }
-        _ = try visible(element)
+        for attempt in 0..<32 {
+            if isVisible() { return }
+            let above = element.exists ? element.frame.midY < viewport.midY : attempt >= 16
+            (above ? upper : lower).press(forDuration: 0.05, thenDragTo: above ? lower : upper)
+        }
+        try waitUntil("Missing enabled hit target in content viewport: \(element)", isVisible)
     }
 }
