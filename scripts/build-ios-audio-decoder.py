@@ -12,7 +12,7 @@ import struct
 import wave
 
 PREFLIGHT = runpy.run_path(str(Path(__file__).with_name("preflight-ios-ffmpeg.py")))
-OUTPUTS = runpy.run_path(str(Path(__file__).with_name('ios_audio_decoder_outputs.py')))
+OUTPUTS = PREFLIGHT['OUTPUTS']
 Preflight = PREFLIGHT["Preflight"]
 require = PREFLIGHT["require"]
 sha = PREFLIGHT["sha"]
@@ -46,7 +46,8 @@ def target(task, sdk, triple, cached=None, build_tests=False):
     build = task.root / sdk
     build.mkdir()
     prefix = build / "install"
-    _, sysroot = task.run(["xcrun", "--sdk", sdk, "--show-sdk-path"])
+    sdk_record = task.result['toolchain'][sdk]
+    sysroot = sdk_record['path']
     tools = task.resolve_tools(sdk, ("clang", "ar", "ranlib", "nm", "lipo", "otool"))
     flags = FLAGS + [f"--prefix={prefix}", f"--cc={tools['clang']}", f"--ar={tools['ar']}",
         f"--ranlib={tools['ranlib']}", f"--nm={tools['nm']}", "--pkg-config=/usr/bin/false",
@@ -124,7 +125,7 @@ def target(task, sdk, triple, cached=None, build_tests=False):
         OUTPUTS['verify_runtime'](old, sdk, task.env)
         shutil.copytree(old / OUTPUTS['RUNTIME'], prefix / OUTPUTS['RUNTIME'])
     else:
-        OUTPUTS['build_runtime'](prefix, sdk, task.env, archive)
+        OUTPUTS['build_runtime'](prefix, sdk, task.env, archive, sdk_record)
     executable = build / "bridge-test"
     if sdk == "iphonesimulator" and build_tests:
         frameworks = build / 'Frameworks'

@@ -83,12 +83,25 @@ class MessageRowLayoutTest {
     private fun openBoard(board: String, labels: List<String>, backwards: Boolean = false) {
         await("library") { find(it) { node -> matches(node, UiText.YourBoards.labels) } }
         click(listOf(board), scroll = true, backwards = backwards)
+        var previousReadiness = ""
         await("$board and all decoded images") { root ->
-            labels.all { label -> find(root) { node ->
-                matches(node, listOf(label)) && withEnabledAction(node) { card ->
-                    UiText.ImageDisplayed.matches(AccessibilityNodeInfoCompat.wrap(card).stateDescription)
+            val readiness = labels.associateWith { label ->
+                var imageState = "missing actionable card"
+                find(root) { node ->
+                    matches(node, listOf(label)) && withEnabledAction(node) { card ->
+                        imageState = AccessibilityNodeInfoCompat.wrap(card).stateDescription?.toString() ?: "missing image state"
+                        true
+                    }
                 }
-            } } && find(root) { node -> UiText.SharedMessage.starts(node.contentDescription) }
+                imageState
+            }
+            val message = find(root) { node -> UiText.SharedMessage.starts(node.contentDescription) }
+            val detail = "$board;message=$message;cards=$readiness"
+            if (detail != previousReadiness) {
+                previousReadiness = detail
+                android.util.Log.i("MessageRowLayoutEvidence", detail)
+            }
+            message && readiness.values.all(UiText.ImageDisplayed::matches)
         }
     }
 
@@ -238,8 +251,8 @@ class MessageRowLayoutTest {
             instrumentation.waitForIdleSync()
             val root = instrumentation.uiAutomation.rootInActiveWindow ?: continue
             try {
-                assertEquals("Unexpected external UI at $state; never approve permissions or authentication",
-                    target.packageName, root.packageName?.toString())
+                // Splash/window transitions may briefly expose System UI; never act on it.
+                if (root.packageName?.toString() != target.packageName) continue
                 if (predicate(root)) return
                 if (scroll && scrolls < 12 && find(root) { node ->
                     node.isScrollable && node.performAction(if (backwards) AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD

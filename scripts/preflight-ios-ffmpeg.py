@@ -23,6 +23,7 @@ import uuid
 import wave
 
 VERSION = "8.1.2"
+OUTPUTS = runpy.run_path(str(Path(__file__).with_name('ios_audio_decoder_outputs.py')))
 SOURCE = f"https://ffmpeg.org/releases/ffmpeg-{VERSION}.tar.xz"
 KEY = "https://ffmpeg.org/ffmpeg-devel.asc"
 VERIFICATION = "https://ffmpeg.org/download.html"
@@ -60,13 +61,7 @@ def require(condition, message):
 
 
 def developer_environment():
-    env = dict(os.environ)
-    if not env.get("DEVELOPER_DIR"):
-        env["DEVELOPER_DIR"] = subprocess.run(
-            ["xcode-select", "-p"], capture_output=True, text=True, check=True, timeout=10
-        ).stdout.strip()
-    require(env["DEVELOPER_DIR"], "selected Xcode developer directory is empty")
-    return env
+    return OUTPUTS['developer_environment']()
 
 
 def work_root(project):
@@ -198,7 +193,7 @@ class Preflight:
 
         with diagnostic.open("xb") as output:
             for command in (["/bin/ps", "-p", str(pid), "-o", "pid=,ppid=,pgid=,stat=,etime=,comm="],
-                            ["/usr/bin/sample", str(pid), "1"]):
+                            ["/usr/bin/sample", str(pid), "1", "-file", "/dev/stdout"]):
                 try:
                     subprocess.run(command, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
                                    env=self.env, timeout=3, check=False, preexec_fn=cap_output)
@@ -208,9 +203,13 @@ class Preflight:
     def resolve_tools(self, sdk, names):
         tools = {}
         for tool in names:
-            _, text = self.run(["xcrun", "--sdk", sdk, "--find", tool])
-            tools[tool] = text.strip()
-            require(Path(tools[tool]).is_absolute(), f"nonabsolute selected tool: {tool}")
+            tools[tool] = OUTPUTS['selected_tool'](self.env, tool)
+        chain = self.result.get('toolchain')
+        if chain:
+            require(chain['developer_dir'] == str(Path(self.env['DEVELOPER_DIR']).resolve(strict=True)),
+                    'selected Xcode/receipt mismatch')
+            require(chain[sdk]['clang'] == OUTPUTS['selected_tool'](self.env, 'clang'),
+                    'selected clang/receipt mismatch')
         self.result.setdefault("inspection_toolchains", {})[sdk] = dict(
             developer_dir=self.env["DEVELOPER_DIR"], tools=tools)
         self.save()
@@ -412,7 +411,7 @@ class Preflight:
         build = self.root / sdk
         build.mkdir()
         prefix = build / "install"
-        _, sysroot = self.run(["xcrun", "--sdk", sdk, "--show-sdk-path"])
+        sysroot = self.result['toolchain'][sdk]['path']
         tools = self.resolve_tools(sdk, ("clang", "ar", "ranlib", "nm", "lipo", "otool"))
         flags = FLAGS + [f"--prefix={prefix}", f"--cc={tools['clang']}", f"--ar={tools['ar']}",
                          f"--ranlib={tools['ranlib']}", f"--nm={tools['nm']}", "--pkg-config=/usr/bin/false",
@@ -426,8 +425,9 @@ class Preflight:
         self.result["stage"] = "compile-audio-only-harness"
         source = self.project / "scripts/preflight-ios-ffmpeg-decode.c"
         binary = self.root / "decode-simulator"
-        _, clang = self.run(["xcrun", "--sdk", "iphonesimulator", "--find", "clang"])
-        _, sdk = self.run(["xcrun", "--sdk", "iphonesimulator", "--show-sdk-path"])
+        tools = self.resolve_tools("iphonesimulator", ("clang", "ar", "lipo", "otool"))
+        clang = tools['clang']
+        sdk = self.result['toolchain']['iphonesimulator']['path']
         make_config = (prefix.parent / "ffbuild/config.mak").read_text()
         extra = []
         for library in ("avformat", "avcodec", "swresample", "avutil"):
@@ -438,7 +438,6 @@ class Preflight:
             "-std=c17", "-O2", "-Wall", "-Wextra", "-Werror", "-Werror=partial-availability",
             "-I", prefix / "include", source, "-L", prefix / "lib", "-lavformat", "-lavcodec", "-lswresample", "-lavutil",
             *extra, "-o", binary], timeout=120)
-        tools = self.resolve_tools("iphonesimulator", ("ar", "lipo", "otool"))
         self.result["harness"] = dict(source_sha256=sha(source), binary=self.macho(binary, {"7", "IOSSIMULATOR"}, tools),
                                       linked_libraries=["avformat", "avcodec", "swresample", "avutil"], system_libraries=extra)
         self.save()
@@ -523,10 +522,8 @@ def main():
     task = Preflight()
     print(task.root, flush=True)
     try:
-        _, xcode = task.run(["xcodebuild", "-version"])
-        version = re.match(r"Xcode (\d+)(?:\.\d+)*\n", xcode)
-        require(version and int(version[1]) >= 26, "Xcode 26 or newer required")
-        task.result["xcode"] = xcode
+        chain = OUTPUTS['toolchain'](task.env)
+        task.result.update(xcode=chain['xcode'], toolchain=chain)
         if args.verified_source_run:
             task.reuse_source(args.verified_source_run)
         else:

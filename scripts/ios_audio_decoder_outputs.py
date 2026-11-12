@@ -52,14 +52,42 @@ def command(args, env):
     return result.stdout.decode()
 
 
+def developer_environment(env=None):
+    env = dict(os.environ if env is None else env)
+    require(env.get('TOOLCHAINS', '') in ('', 'XcodeDefault', 'com.apple.dt.toolchain.XcodeDefault'),
+            'nondefault TOOLCHAINS is not supported')
+    if not env.get('DEVELOPER_DIR'):
+        env['DEVELOPER_DIR'] = subprocess.run(['xcode-select', '-p'], env=env,
+            capture_output=True, text=True, check=True, timeout=10).stdout.strip()
+    require(env['DEVELOPER_DIR'], 'selected Xcode developer directory is empty')
+    require(Path(env['DEVELOPER_DIR']).is_absolute(), 'absolute selected Xcode developer directory required')
+    return env
+
+
+def selected_tool(env, name):
+    require(name in ('clang', 'ar', 'ranlib', 'nm', 'lipo', 'otool'), 'unsupported Xcode tool')
+    env = developer_environment(env)
+    developer = Path(env['DEVELOPER_DIR']).resolve(strict=True)
+    directory = developer / 'Toolchains/XcodeDefault.xctoolchain/usr/bin'
+    tool = directory / name
+    require(directory.resolve(strict=True).is_relative_to(developer) and
+            tool.resolve(strict=True).is_relative_to(developer) and tool.is_file() and os.access(tool, os.X_OK),
+            f'selected tool is missing, not executable or outside selected Xcode: {name}')
+    return str(tool)
+
+
 def toolchain(env):
-    result = {'xcode': command(['xcodebuild', '-version'], env)}
+    env = developer_environment(env)
+    clang = selected_tool(env, 'clang')
+    result = {'xcode': command(['xcodebuild', '-version'], env), 'developer_dir': str(Path(env['DEVELOPER_DIR']).resolve(strict=True))}
     version = re.match(r'Xcode (\d+)(?:\.\d+)*\n', result['xcode'])
     require(version and int(version[1]) >= 26, 'Xcode 26 or newer required')
     for sdk, _ in TARGETS.values():
         result[sdk] = {key: command(['xcrun', '--sdk', sdk, option], env).strip()
                        for key, option in [('path', '--show-sdk-path'), ('version', '--show-sdk-version')]}
-        result[sdk]['clang'] = command(['xcrun', '--sdk', sdk, '--find', 'clang'], env).strip()
+        require(Path(result[sdk]['path']).resolve(strict=True).is_relative_to(Path(result['developer_dir'])),
+                'SDK is outside selected Xcode')
+        result[sdk]['clang'] = clang
         result[sdk]['clang_version'] = command([result[sdk]['clang'], '--version'], env)
     return result
 
@@ -101,10 +129,10 @@ def runtime_privacy(imports):
 def verify_runtime(prefix, sdk, env):
     framework = prefix / RUNTIME
     binary = framework / 'LinkaFFmpeg'
-    require(command(['xcrun', 'lipo', '-archs', binary], env).strip() == 'arm64', 'runtime architecture')
-    header = command(['xcrun', 'otool', '-hv', binary], env)
+    require(command([selected_tool(env, 'lipo'), '-archs', binary], env).strip() == 'arm64', 'runtime architecture')
+    header = command([selected_tool(env, 'otool'), '-hv', binary], env)
     require('DYLIB' in header, 'runtime is not a dynamic library')
-    load = command(['xcrun', 'otool', '-l', binary], env)
+    load = command([selected_tool(env, 'otool'), '-l', binary], env)
     expected = '2' if sdk == 'iphoneos' else '7'
     builds = re.findall(r'cmd LC_BUILD_VERSION\s+cmdsize \d+\s+platform (\S+)\s+minos (\S+)', load)
     require(len(builds) == 1 and builds[0][0] in (expected, 'IOS' if expected == '2' else 'IOSSIMULATOR') and
@@ -112,7 +140,7 @@ def verify_runtime(prefix, sdk, env):
     require(re.search(r'cmd LC_ID_DYLIB\s+cmdsize \d+\s+name ' + re.escape(INSTALL_NAME) + r' ', load), 'runtime install name')
     require('current version 8.1.2' in load and 'compatibility version 8.1.2' in load, 'runtime ABI/version metadata')
     require('LC_CODE_SIGNATURE' not in load, 'producer must not sign runtime')
-    imports = set(re.findall(r'\b_\w+', command(['xcrun', 'nm', '-u', binary], env)))
+    imports = set(re.findall(r'\b_\w+', command([selected_tool(env, 'nm'), '-u', binary], env)))
     privacy = plistlib.loads((framework / 'PrivacyInfo.xcprivacy').read_bytes())
     require(privacy == runtime_privacy(imports), 'runtime privacy/import mismatch')
     require((framework / 'Source.txt').read_text() == SOURCE_NOTICE, 'runtime source notice')
@@ -123,21 +151,24 @@ def verify_runtime(prefix, sdk, env):
             info['CFBundleSupportedPlatforms'] == ['iPhoneOS' if sdk == 'iphoneos' else 'iPhoneSimulator'], 'runtime bundle metadata')
 
 
-def build_runtime(prefix, sdk, env, archive):
+def build_runtime(prefix, sdk, env, archive, sdk_record=None):
     """Link only the four verified FFmpeg libraries, never the application bridge."""
     require(archive.is_file() and not archive.is_symlink() and digest(archive) == VENDORED_PINS['ffmpeg-8.1.2.tar.xz'], 'runtime base source/notices provenance')
     framework = prefix / RUNTIME
     framework.mkdir()
     triple = 'arm64-apple-ios17.0' + ('-simulator' if sdk == 'iphonesimulator' else '')
-    sysroot = command(['xcrun', '--sdk', sdk, '--show-sdk-path'], env).strip()
-    args = ['xcrun', '--sdk', sdk, 'clang', '-target', triple, '-isysroot', sysroot, '-dynamiclib',
+    env = developer_environment(env)
+    sysroot = sdk_record['path'] if sdk_record else command(['xcrun', '--sdk', sdk, '--show-sdk-path'], env).strip()
+    clang = selected_tool(env, 'clang')
+    require(not sdk_record or sdk_record['clang'] == clang, 'runtime selected clang/receipt mismatch')
+    args = [clang, '-target', triple, '-isysroot', sysroot, '-dynamiclib',
             '-Wl,-install_name,' + INSTALL_NAME, '-Wl,-no_adhoc_codesign', '-Wl,-current_version,8.1.2', '-Wl,-compatibility_version,8.1.2']
     for name in FFMPEG_LIBRARIES:
         args += ['-Xlinker', '-force_load', '-Xlinker', str(prefix / 'lib' / name)]
     args += ['-lm', '-framework', 'CoreFoundation', '-framework', 'CoreVideo', '-framework', 'CoreMedia',
              '-o', str(framework / 'LinkaFFmpeg')]
     command(args, env)
-    imports = set(re.findall(r'\b_\w+', command(['xcrun', 'nm', '-u', framework / 'LinkaFFmpeg'], env)))
+    imports = set(re.findall(r'\b_\w+', command([selected_tool(env, 'nm'), '-u', framework / 'LinkaFFmpeg'], env)))
     info = dict(CFBundleExecutable='LinkaFFmpeg', CFBundleIdentifier='su.linka.pictures.ffmpeg',
                 CFBundleName='LinkaFFmpeg', CFBundlePackageType='FMWK', CFBundleVersion='8.1.2',
                 CFBundleShortVersionString='8.1.2', MinimumOSVersion='17.0',
@@ -161,10 +192,10 @@ def rebuild_compatible_runtime(source, destination, sdk, flags, archive):
     build = destination / 'compile'
     build.mkdir()
     prefix = destination / 'runtime'
-    sysroot = command(['xcrun', '--sdk', sdk, '--show-sdk-path'], os.environ).strip()
-    tools = {name: command(['xcrun', '--sdk', sdk, '--find', name], os.environ).strip() for name in ('clang', 'ar', 'ranlib', 'nm')}
+    env = developer_environment()
+    sysroot = command(['xcrun', '--sdk', sdk, '--show-sdk-path'], env).strip()
+    tools = {name: selected_tool(env, name) for name in ('clang', 'ar', 'ranlib', 'nm')}
     triple = 'arm64-apple-ios17.0' + ('-simulator' if sdk == 'iphonesimulator' else '')
-    env = dict(os.environ)
     for key in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'LIBRARY_PATH', 'CPATH', 'PKG_CONFIG_PATH'):
         env.pop(key, None)
     configure = [source / 'configure', *flags, f'--prefix={prefix}', f"--cc={tools['clang']}",
@@ -179,7 +210,7 @@ def rebuild_compatible_runtime(source, destination, sdk, flags, archive):
         configuration[field] = (build / path).read_text()
         configuration[checksum] = hashlib.sha256(configuration[field].encode()).hexdigest()
     flags_valid(configuration)
-    build_runtime(prefix, sdk, env, archive)
+    build_runtime(prefix, sdk, env, archive, dict(path=sysroot, clang=tools['clang']))
     (destination / 'recipient-build.json').write_text(json.dumps(dict(scope='recipient compatible-source rebuild; not production provenance',
         configure=list(map(str, configure)), sdk=sdk, source=str(source), files=inventory(prefix)), indent=2) + '\n')
     print(f'Unsigned replaceable runtime: {prefix / RUNTIME}; sign with your own permitted identity for device use')
@@ -196,10 +227,10 @@ def inventory(root):
 
 
 def native_metadata(path, platform, env):
-    require(command(['xcrun', 'lipo', '-archs', path], env).strip() == 'arm64', 'published architecture')
-    load = command(['xcrun', 'otool', '-l', path], env)
+    require(command([selected_tool(env, 'lipo'), '-archs', path], env).strip() == 'arm64', 'published architecture')
+    load = command([selected_tool(env, 'otool'), '-l', path], env)
     builds = re.findall(r'cmd LC_BUILD_VERSION\s+cmdsize \d+\s+platform (\S+)\s+minos (\S+)', load)
-    members = command(['xcrun', 'ar', '-t', path], env)
+    members = command([selected_tool(env, 'ar'), '-t', path], env)
     require(builds and len(builds) == sum(x.endswith('.o') for x in members.splitlines()), 'missing object platform/minimum')
     require(all(p == platform and v in ('17.0', '17.0.0') for p, v in builds), 'published platform/minimum')
 
@@ -309,7 +340,7 @@ def publish(task, root, flags, prior):
     staging = root / f'.publish-{uuid.uuid4()}'
     staging.mkdir()
     record = dict(format=FORMAT, schema=2, root=str(root), provenance=current_sources(task.project, flags),
-                  toolchain=toolchain(task.env), targets={}, artifact_run=str(task.root),
+                  toolchain=task.result['toolchain'], targets={}, artifact_run=str(task.root),
                   source_downloads=task.result['downloads'], signature=task.result['signature'])
     try:
         for target, (sdk, _) in TARGETS.items():
