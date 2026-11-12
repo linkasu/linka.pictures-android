@@ -98,7 +98,9 @@ class IosPlatformFilesPortTest {
 
     @Test fun runtimeEvidence() {
         val env = NSProcessInfo.processInfo.environment
-        assertEquals("DD0F9A3F-DC32-4373-BA08-400FECE3A1CC", env["SIMULATOR_UDID"])
+        val udid = assertIs<String>(env["SIMULATOR_UDID"])
+        assertTrue(Regex("[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}").matches(udid))
+        assertTrue(NSTemporaryDirectory().contains("/$udid/"), "Native files must belong to the executing Simulator")
         println("P07-files runtime: ${NSProcessInfo.processInfo.operatingSystemVersionString}; UDID=${env["SIMULATOR_UDID"]}")
     }
 

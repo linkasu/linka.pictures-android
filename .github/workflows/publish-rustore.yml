@@ -1,0 +1,109 @@
+name: Publish Google-signed Android APK to RuStore
+
+on:
+  workflow_dispatch:
+    inputs:
+      google_publish_run_id:
+        description: Successful main publish-android run at current main SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-su.linka.pictures-rustore
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GOOGLE_RUN_ID: ${{ inputs.google_publish_run_id }}
+      SOURCE_SHA: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install RSA protocol dependency
+        run: python3 -m pip install cryptography==46.0.3
+
+      - name: Offline safety tests
+        run: python3 -B scripts/test-publish-rustore.py
+
+      - name: Verify exact successful Google publication source before store credentials
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -B scripts/publish-rustore.py --verify-source-only \
+            --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \
+            --repository "$GITHUB_REPOSITORY" --evidence rustore-source-evidence.json
+
+      - name: Download only the validated Google publication receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: google-play-publish-evidence-${{ inputs.google_publish_run_id }}
+          path: google-receipt
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.google_publish_run_id }}
+
+      - name: Validate committed-for-review receipt before store credentials
+        run: |
+          python3 -B - <<'PY'
+          import importlib.util, json, os
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('rustore', 'scripts/publish-rustore.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          module.validate_receipt(json.loads(Path('google-receipt/publish-evidence.json').read_text()), os.environ['SOURCE_SHA'])
+          PY
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android verification tools (no app build)
+        run: sdkmanager 'build-tools;35.0.0'
+
+      - name: Authenticate Google generated-APK download
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: Download and verify Google APK, stop on existing RuStore moderation, submit once
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          RUSTORE_API_KEY_ID: ${{ secrets.RUSTORE_API_KEY_ID }}
+          RUSTORE_API_PRIVATE_KEY: ${{ secrets.RUSTORE_API_PRIVATE_KEY }}
+        run: |
+          python3 -B scripts/publish-rustore.py --publish \
+            --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \
+            --repository "$GITHUB_REPOSITORY" \
+            --aapt "$ANDROID_HOME/build-tools/35.0.0/aapt" \
+            --apksigner "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+
+      - name: Preserve credential-free evidence including uncertain outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustore-publish-evidence-${{ github.run_id }}
+          path: |
+            rustore-source-evidence.json
+            rustore-publish-evidence.json
+          if-no-files-found: warn

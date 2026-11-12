@@ -1,0 +1,104 @@
+name: Publish Android to Google Play
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful main Android CI run with E2E and signed AAB
+        required: true
+        type: string
+      version_code:
+        description: Approved Google Play versionCode
+        required: true
+        type: string
+        default: '7'
+      release_version:
+        description: Approved release version
+        required: true
+        type: string
+        default: '2.0.1'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-su.linka.pictures-google-play
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      SOURCE_SHA: ${{ github.sha }}
+      VERSION_CODE: ${{ inputs.version_code }}
+      RELEASE_VERSION: ${{ inputs.release_version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Offline publish safety tests
+        run: python3 -B scripts/test-publish-google-play.py
+
+      - name: Verify exact CI source and required jobs before obtaining Play credentials
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -B scripts/publish-google-play.py --verify-source-only \
+            --source-run-id "$SOURCE_RUN_ID" --source-sha "$SOURCE_SHA" \
+            --repository "$GITHUB_REPOSITORY" --version-code "$VERSION_CODE" \
+            --release-version "$RELEASE_VERSION" --evidence source-evidence.json
+
+      - name: Download only the validated run's signed AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-aab
+          path: signed-aab
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify exactly one bundle and its signature
+        run: |
+          test "$(find signed-aab -type f | wc -l)" -eq 1
+          test -f signed-aab/app-release.aab
+          python3 -B scripts/check-prerelease.py --aab signed-aab/app-release.aab
+
+      - name: Authenticate Google Play service account
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Commit approved production release for review (not proof of public availability)
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          python3 -B scripts/publish-google-play.py \
+            --source-run-id "$SOURCE_RUN_ID" --source-sha "$SOURCE_SHA" \
+            --repository "$GITHUB_REPOSITORY" --version-code "$VERSION_CODE" \
+            --release-version "$RELEASE_VERSION" --aab signed-aab/app-release.aab
+
+      - name: Preserve publication evidence, including uncertain outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-play-publish-evidence-${{ github.run_id }}
+          path: |
+            source-evidence.json
+            publish-evidence.json
+          if-no-files-found: warn

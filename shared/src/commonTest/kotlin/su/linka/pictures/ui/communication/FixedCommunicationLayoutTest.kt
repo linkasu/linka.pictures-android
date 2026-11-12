@@ -9,12 +9,23 @@ import kotlin.test.assertTrue
 
 class FixedCommunicationLayoutTest {
     @Test fun phraseTargetsCurrentWindowAndShrinksOnlyToKeepWholeGrid() {
-        assertEquals(512f, fitCommunicationPhrase(80f, 1600f) { it <= 600f })
+        assertEquals(320f, fitCommunicationPhrase(80f, 1600f) { it <= 600f })
         val compact = assertNotNull(fitCommunicationPhrase(80f, 800f) { it <= 150f })
         assertTrue(compact <= 150f && compact > 149.99f)
         assertNull(fitCommunicationPhrase(120f, 800f) { it <= 119f })
-        assertNull(fitCommunicationPhrase(160f, 400f) { true })
+        assertEquals(160f, fitCommunicationPhrase(160f, 400f) { true })
         assertNull(fitCommunicationPhrase(80f, Float.NaN) { true })
+    }
+
+    @Test fun everyMessagePercentageIsATargetButCannotClipAccessibleMinimum() {
+        for (percent in listOf(16, 20, 24, 28, 32)) {
+            assertEquals(1000f * percent / 100f, fitCommunicationPhrase(80f, 1000f, percent) { true })
+            assertEquals(180f, fitCommunicationPhrase(180f, 400f, percent) { true })
+            val fitted = assertNotNull(fitCommunicationPhrase(80f, 1000f, percent) { it <= 150f })
+            assertTrue(fitted <= 150f && fitted > 149.99f)
+        }
+        assertNull(fitCommunicationPhrase(80f, 1000f, 18) { true })
+        assertNull(fitCommunicationPhrase(180f, 400f, 16) { it < 180f })
     }
     @Test
     fun keepsWholeCaptionsAndPicturesWithinFixedTouchTargets() {

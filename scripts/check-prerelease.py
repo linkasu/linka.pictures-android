@@ -33,6 +33,18 @@ def load_plist(path):
     return plistlib.loads(path.read_bytes())
 
 
+def validate_scene_manifest(info):
+    manifest = info.get('UIApplicationSceneManifest', {})
+    scenes = manifest.get('UISceneConfigurations', {}).get('UIWindowSceneSessionRoleApplication', [])
+    if manifest.get('UIApplicationSupportsMultipleScenes') is not False or len(scenes) != 1:
+        raise ValueError('Require one configured UIWindowScene; iOS 27 traps legacy app lifecycle')
+    scene = scenes[0]
+    delegate = scene.get('UISceneDelegateClassName', '')
+    if (not scene.get('UISceneConfigurationName') or not delegate.endswith('.SceneDelegate')
+            or delegate == '.SceneDelegate' or 'UISceneStoryboardFile' in scene):
+        raise ValueError('Require module-qualified SceneDelegate for programmatic window creation')
+
+
 def validate_aab_signature_result(returncode, output):
     # jarsigner returns zero for unsigned archives too; self-signed chain warnings are allowed.
     if returncode != 0 or not re.search(r'^jar verified\.$', output, re.M) or 'unsigned' in output.lower():
@@ -50,6 +62,7 @@ def check_aab(path):
 def check_app(app):
     info = load_plist(app / 'Info.plist')
     validate_ios(info['CFBundleIdentifier'], info['CFBundleShortVersionString'], info['CFBundleVersion'])
+    validate_scene_manifest(info)
     assert set(info['UISupportedInterfaceOrientations~ipad']) == {
         'UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown',
         'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight'}, 'iPad multitasking orientations missing'
@@ -79,6 +92,7 @@ def check_app(app):
 
 
 def check():
+    validate_scene_manifest(load_plist(ROOT / 'iosApp/Info.plist'))
     project = json.loads(subprocess.check_output(['plutil', '-convert', 'json', '-o', '-',
         str(ROOT / 'iosApp/LinkaPokazhi.xcodeproj/project.pbxproj')]))['objects'] if sys.platform == 'darwin' else None
     if project:
@@ -93,11 +107,14 @@ def check():
         assert settings['Release']['CURRENT_PROJECT_VERSION'] == '$(RELEASE_BUILD_NUMBER)'
         assert settings['Release']['IOS_BUNDLE_ID'] == 'su.linka.pictures'
         assert settings['Release']['RELEASE_VERSION'] == '2.0.0'
-        assert settings['Release']['RELEASE_BUILD_NUMBER'] == '1'
+        assert settings['Release']['RELEASE_BUILD_NUMBER'] == '2'
         resources = next(project[key] for key in target['buildPhases'] if project[key]['isa'] == 'PBXResourcesBuildPhase')
         paths = {project[project[key]['fileRef']].get('path', project[project[key]['fileRef']].get('name')) for key in resources['files']}
         assert {'Assets.xcassets', 'PrivacyInfo.xcprivacy', 'InfoPlist.strings'} <= paths
         assert any('compose-resources' in path for path in paths)
+        sources = next(project[key] for key in target['buildPhases'] if project[key]['isa'] == 'PBXSourcesBuildPhase')
+        source_paths = {project[project[key]['fileRef']]['path'] for key in sources['files']}
+        assert {'main.swift', 'SceneDelegate.swift'} <= source_paths, 'Scene delegate missing from app target'
     scheme = ET.parse(ROOT / 'iosApp/LinkaPokazhi.xcodeproj/xcshareddata/xcschemes/LinkaPokazhi.xcscheme')
     assert scheme.find('ArchiveAction').get('buildConfiguration') == 'Release'
     assert scheme.find('.//BuildActionEntry').get('buildForArchiving') == 'YES'
@@ -114,7 +131,7 @@ def check():
         assert 'compileSdk 36' in gradle and 'minSdk 21' in gradle
     assert 'targetSdk 36' in (ROOT / 'app/build.gradle').read_text()
     properties = (ROOT / 'gradle.properties').read_text().splitlines()
-    assert 'ANDROID_VERSION_CODE=6' in properties and 'RELEASE_VERSION=2.0.0' in properties
+    assert 'ANDROID_VERSION_CODE=7' in properties and 'RELEASE_VERSION=2.0.1' in properties
     signing_gate = (ROOT / 'app/build.gradle').read_text().split("tasks.register('verifyReleaseSigning') {", 1)[1].split('tasks.configureEach', 1)[0]
     assert 'dependsOn verifyReleaseMetadata' in signing_gate
     assert 'if (!hasReleaseSigningConfig)' in signing_gate and 'throw new GradleException' in signing_gate

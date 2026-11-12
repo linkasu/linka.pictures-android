@@ -33,7 +33,7 @@
     <string name="compose_a_message">Compose a message</string>
     <string name="speak_immediately">Speak immediately</string>
     <string name="reload_settings_discard_input">Reload settings (discard input)</string>
-    <string name="text_scale_is_not_supported">Text scale is not supported</string>
+    <string name="display_settings_not_supported">Display settings are not supported</string>
     <string name="could_not_open_the_board_return_to">Could not open the board. Return to board selection.</string>
     <string name="assistant_protection">Assistant protection</string>
     <string name="choose_another_scale_or_board_in_the">Choose another scale or board in the adult section. The current board and message have not changed.</string>
@@ -363,6 +363,8 @@
     <string name="card_appearance">Card appearance</string>
     <string name="high_contrast">High contrast</string>
     <string name="text_scale">Text scale</string>
+    <string name="message_row_height">Message row height</string>
+    <string name="message_row_height_description">The target height is increased when needed to fit text and touch controls.</string>
     <string name="speech">Speech</string>
     <string name="voice_on_this_device">Voice on this device</string>
     <string name="language">Language</string>

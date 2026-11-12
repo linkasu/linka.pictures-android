@@ -54,7 +54,8 @@ def command(args, env):
 
 def toolchain(env):
     result = {'xcode': command(['xcodebuild', '-version'], env)}
-    require(result['xcode'].startswith('Xcode 27.2\n'), 'Xcode27.2 required')
+    version = re.match(r'Xcode (\d+)(?:\.\d+)*\n', result['xcode'])
+    require(version and int(version[1]) >= 26, 'Xcode 26 or newer required')
     for sdk, _ in TARGETS.values():
         result[sdk] = {key: command(['xcrun', '--sdk', sdk, option], env).strip()
                        for key, option in [('path', '--show-sdk-path'), ('version', '--show-sdk-version')]}

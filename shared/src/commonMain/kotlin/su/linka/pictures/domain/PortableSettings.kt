@@ -19,9 +19,15 @@ data class PortableSettings(
     val highContrast: Boolean = false,
     val languageTag: String = "ru-RU",
     val boards: Map<BoardId, BoardPresentation> = emptyMap(),
+    val messageRowPercent: Int = 20,
 ) {
     init {
         require(textScale.isFinite() && textScale in 0.5f..3f)
         require(languageTag.isNotBlank() && languageTag.length <= 128)
+        require(messageRowPercent in allowedMessageRowPercents)
+    }
+
+    companion object {
+        val allowedMessageRowPercents: Set<Int> = setOf(16, 20, 24, 28, 32)
     }
 }

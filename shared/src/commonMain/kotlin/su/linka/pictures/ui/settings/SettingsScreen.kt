@@ -128,6 +128,7 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     validateSettings: suspend (PortableSettings) -> String?,
     onResult: suspend (OperationResult<Long>, PortableSettings) -> Unit) {
     var scale by remember { mutableStateOf(snapshot.value.textScale.toString()) }
+    var messageRowPercent by remember { mutableStateOf(snapshot.value.messageRowPercent) }
     var language by remember { mutableStateOf(snapshot.value.languageTag) }
     var contrast by remember { mutableStateOf(snapshot.value.highContrast) }
     var boards by remember { mutableStateOf(snapshot.value.boards) }
@@ -135,6 +136,7 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     var committed by remember { mutableStateOf(false) }
     var authorize by remember { mutableStateOf(false) }
     var voiceMenu by remember { mutableStateOf(false) }
+    var messageRowMenu by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf<PortableSettings?>(null) }
     var input by remember { mutableStateOf<SettingsInput?>(null) }
     var editingValue by remember { mutableStateOf("") }
@@ -161,6 +163,16 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     ProductSection(stringResource(Res.string.card_appearance)) {
         SettingsSwitch(stringResource(Res.string.high_contrast), contrast, editable) { contrast = it }
         SettingsRow(stringResource(Res.string.text_scale), scale, editable) { editingValue = scale; input = SettingsInput.TEXT_SCALE }
+        Box {
+            SettingsRow(stringResource(Res.string.message_row_height), "$messageRowPercent%", editable) { messageRowMenu = true }
+            DropdownMenu(messageRowMenu, { messageRowMenu = false }) {
+                PortableSettings.allowedMessageRowPercents.forEach { percent ->
+                    DropdownMenuItem(onClick = { messageRowPercent = percent; messageRowMenu = false }, enabled = editable,
+                        modifier = Modifier.semantics { selected = messageRowPercent == percent }) { Text("$percent%") }
+                }
+            }
+        }
+        Text(stringResource(Res.string.message_row_height_description), style = MaterialTheme.typography.body2)
         SettingsPreview(scale.toFloatOrNull() ?: snapshot.value.textScale, snapshot.value.textScale, contrast)
     }
     ProductSection(stringResource(Res.string.speech)) {
@@ -180,7 +192,8 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
                 busy = true
                 scope.launch {
                     try {
-                        val proposed = PortableSettings(editingValue.toFloat(), contrast, language, boards)
+                        val proposed = snapshot.value.copy(textScale = editingValue.toFloat(), highContrast = contrast,
+                            languageTag = language, boards = boards, messageRowPercent = messageRowPercent)
                         layoutNotice = currentValidation(proposed)
                         if (layoutNotice == null) { scale = editingValue; input = null }
                     } finally { busy = false }
@@ -217,13 +230,15 @@ private fun SettingsForm(snapshot: SettingsSnapshot, controller: LibraryControll
     if (!valid) Text(stringResource(Res.string.enter_a_scale_from_0_5_to))
     Text(stringResource(Res.string.other_boards_are_checked_before_opening_all))
     Button(onClick = {
-        val value = PortableSettings(parsed!!, contrast, language, boards)
+        val value = snapshot.value.copy(textScale = parsed!!, highContrast = contrast,
+            languageTag = language, boards = boards, messageRowPercent = messageRowPercent)
         authorize = needsLibraryAuthorization(gate?.check(ProtectedAction.CHANGE_SETTINGS, capability, owner))
         if (authorize) pending = value else save(value)
     }, enabled = editable && valid) { Text(stringResource(Res.string.save_settings)) }
     if (authorize) ProductDialog(stringResource(Res.string.saving_settings), { if (!busy) { authorize = false; pending = null } }, actions = {
         TextButton(onClick = {
-            val value = pending ?: PortableSettings(parsed!!, contrast, language, boards)
+            val value = pending ?: snapshot.value.copy(textScale = parsed!!, highContrast = contrast,
+                languageTag = language, boards = boards, messageRowPercent = messageRowPercent)
             save(value)
         }, enabled = enabled && !busy && !committed) { Text(stringResource(Res.string.save_settings)) }
         TextButton(onClick = { authorize = false; pending = null }, enabled = !busy) { Text(stringResource(Res.string.cancel)) }

@@ -33,7 +33,7 @@
     <string name="compose_a_message">Составлять сообщение</string>
     <string name="speak_immediately">Говорить сразу</string>
     <string name="reload_settings_discard_input">Перечитать настройки (отбросить ввод)</string>
-    <string name="text_scale_is_not_supported">Масштаб не поддерживается</string>
+    <string name="display_settings_not_supported">Настройки отображения не поддерживаются</string>
     <string name="could_not_open_the_board_return_to">Не удалось открыть набор. Вернитесь к выбору набора.</string>
     <string name="assistant_protection">Защита помощника</string>
     <string name="choose_another_scale_or_board_in_the">Выберите другой масштаб или набор во взрослом разделе. Текущая доска и сообщение не изменены.</string>
@@ -363,6 +363,8 @@
     <string name="card_appearance">Оформление карточек</string>
     <string name="high_contrast">Высокий контраст</string>
     <string name="text_scale">Масштаб текста</string>
+    <string name="message_row_height">Высота строки сообщения</string>
+    <string name="message_row_height_description">Целевая высота увеличивается, если это нужно для текста и удобного нажатия.</string>
     <string name="speech">Озвучивание</string>
     <string name="voice_on_this_device">Голос на этом устройстве</string>
     <string name="language">Язык</string>

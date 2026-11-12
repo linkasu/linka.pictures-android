@@ -61,17 +61,70 @@ class BackupCodecTest {
         val rig = CodecTestRig(); val store = BackupTestStore(rig)
         val old = header(fixture(rig, store)) { root ->
             JsonObject(root - "organization").with("version", JsonPrimitive("1.0")).with("settings",
-                root.getValue("settings").jsonObject.with("boards", buildJsonObject {
+                JsonObject(root.getValue("settings").jsonObject - "messageRowPercent").with("boards", buildJsonObject {
                     put("board", buildJsonObject { put("showPageButtons", false) })
                 }))
         }
         val restored = codec(rig, store).read(rig.input(syntheticZip(old))).value()
         assertEquals(PageNavigation.NONE, restored.settings.boards.getValue(BoardId("board")).navigation)
         assertFalse(restored.settings.boards.getValue(BoardId("board")).dragToCompose)
+        assertEquals(20, restored.settings.messageRowPercent)
         restored.close(); clean(rig, store)
         val invalid = header(old) { root -> root.with("settings", root.getValue("settings").jsonObject.with("untrusted", JsonPrimitive(true))) }
         failed(codec(rig, store).read(rig.input(syntheticZip(invalid))), ProblemCode.INVALID_DATA)
         clean(rig, store)
+    }
+
+    @Test fun backup11UsesFrozenSettingsAndDefaultsMessageRowPercent() = runTest {
+        val rig = CodecTestRig(); val store = BackupTestStore(rig)
+        val old = header(fixture(rig, store)) { root ->
+            root.with("version", JsonPrimitive("1.1")).with("settings",
+                JsonObject(root.getValue("settings").jsonObject - "messageRowPercent").with("boards", buildJsonObject {
+                    put("board", buildJsonObject { put("navigation", "SIDE"); put("dragToCompose", true) })
+                })).with("organization", backupJson.encodeToJsonElement(LibraryOrganization.serializer(),
+                    LibraryOrganization(listOf(LibraryFolder(FolderId("family"), "Семья")), mapOf(BoardId("board") to FolderId("family")))))
+        }
+        val restored = codec(rig, store).read(rig.input(syntheticZip(old))).value()
+        assertEquals(20, restored.settings.messageRowPercent)
+        assertEquals(BoardPresentation(PageNavigation.SIDE, true), restored.settings.boards.getValue(BoardId("board")))
+        assertEquals(FolderId("family"), restored.organization.placements[BoardId("board")])
+        restored.close(); clean(rig, store)
+        val created = store.created; val prepares = rig.prepares
+        val invalid = listOf(
+            header(old) { it.with("untrusted", JsonPrimitive(true)) },
+            header(old) { it.with("settings", it.getValue("settings").jsonObject.with("messageRowPercent", JsonPrimitive(20))) },
+            header(old) { it.with("settings", it.getValue("settings").jsonObject.with("untrusted", JsonPrimitive(true))) },
+            header(old) { it.with("settings", it.getValue("settings").jsonObject.with("boards", buildJsonObject {
+                put("board", buildJsonObject { put("navigation", "SIDE"); put("showPageButtons", true) })
+            })) },
+        )
+        for (bad in invalid) {
+            failed(codec(rig, store).read(rig.input(syntheticZip(bad))), ProblemCode.INVALID_DATA)
+            assertEquals(created, store.created); assertEquals(prepares, rig.prepares); clean(rig, store)
+        }
+    }
+
+    @Test fun backup12WritesVersionAndRoundTripsExactMessageRowPercent() = runTest {
+        for (percent in PortableSettings.allowedMessageRowPercents) {
+            val rig = CodecTestRig(); val store = BackupTestStore(rig)
+            val source = TestSnapshot(rig, settings = PortableSettings(messageRowPercent = percent))
+            val output = codec(rig, store).write(source).value()
+            val manifest = boundedJson(entries(rig, output).single { it.name == "manifest.json" }.data.decodeToString())
+            assertEquals("1.2", manifest.getValue("version").jsonPrimitive.content)
+            assertEquals(percent, manifest.getValue("settings").jsonObject.getValue("messageRowPercent").jsonPrimitive.int)
+            val restored = codec(rig, store).read(output).value()
+            assertEquals(source.settings, restored.settings)
+            restored.close(); source.close(); rig.discard(output); clean(rig, store)
+        }
+    }
+
+    @Test fun backup12InvalidMessageRowPercentFailsBeforePrepareOrBuilder() = runTest {
+        val rig = CodecTestRig(); val store = BackupTestStore(rig); val good = fixture(rig, store)
+        for (percent in listOf(JsonPrimitive(0), JsonPrimitive(21), JsonPrimitive(33), JsonPrimitive(20.5), JsonNull)) {
+            val bad = header(good) { it.with("settings", it.getValue("settings").jsonObject.with("messageRowPercent", percent)) }
+            failed(codec(rig, store).read(rig.input(syntheticZip(bad))), ProblemCode.INVALID_DATA)
+            assertEquals(0, store.created); assertEquals(0, rig.prepares); assertEquals(0, rig.inspections); clean(rig, store)
+        }
     }
 
     @Test fun fullInternalRoundTripPreservesRevisionFormsTtsRetainedSettingsAndOnlyExplicitRoots() = runTest {

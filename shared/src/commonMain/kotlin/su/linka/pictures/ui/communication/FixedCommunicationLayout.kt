@@ -20,6 +20,7 @@ import su.linka.pictures.domain.BoardDocument
 import su.linka.pictures.domain.CellKind
 import su.linka.pictures.domain.PageId
 import su.linka.pictures.domain.PageNavigation
+import su.linka.pictures.domain.PortableSettings
 import su.linka.pictures.ui.components.CommunicationCaptionStyle
 import su.linka.pictures.ui.theme.LinkaTypography
 
@@ -66,6 +67,7 @@ internal class CommunicationBoardMeasurer(
         showPageButtons: Boolean = true,
         navigation: PageNavigation = if (showPageButtons) PageNavigation.BOTTOM else PageNavigation.NONE,
         viewportHeight: Float = height,
+        messageRowPercent: Int = 20,
     ): FixedCommunicationBoardLayout? {
         if (!width.isFinite() || !height.isFinite() || width <= 0 || height <= 0 ||
             !textScale.isFinite() || textScale <= 0) return null
@@ -130,7 +132,7 @@ internal class CommunicationBoardMeasurer(
                 page.id to FixedCommunicationPageLayout(cellWidthPx.toDp().value, cellHeightPx.toDp().value, sides)
               }
             }
-            val phraseHeight = fitCommunicationPhrase(minimumPhrase, viewportHeight) { pagesFor(it) != null } ?: return null
+            val phraseHeight = fitCommunicationPhrase(minimumPhrase, viewportHeight, messageRowPercent) { pagesFor(it) != null } ?: return null
             val pages = pagesFor(phraseHeight) ?: return null
             val gridHeight = height - toolbar - phraseHeight - footerHeight - 1f
             return FixedCommunicationBoardLayout(toolbar, phraseHeight, footerHeight, actionWidth, gridHeight, pages)
@@ -139,10 +141,10 @@ internal class CommunicationBoardMeasurer(
 }
 
 /** Keep the target when possible; otherwise give the grid back only the space it needs. */
-internal fun fitCommunicationPhrase(minimum: Float, viewportHeight: Float, fits: (Float) -> Boolean): Float? {
-    if (!viewportHeight.isFinite() || viewportHeight <= 0 || !fits(minimum)) return null
-    val target = viewportHeight * .32f
-    if (minimum > target) return null
+internal fun fitCommunicationPhrase(minimum: Float, viewportHeight: Float, percent: Int = 20, fits: (Float) -> Boolean): Float? {
+    if (!minimum.isFinite() || minimum < 0 || !viewportHeight.isFinite() || viewportHeight <= 0 ||
+        percent !in PortableSettings.allowedMessageRowPercents || !fits(minimum)) return null
+    val target = maxOf(minimum, viewportHeight * percent / 100f)
     if (fits(target)) return target
     var low = minimum
     var high = target

@@ -3,8 +3,6 @@ import UIKit
 import CryptoKit
 
 final class BootstrapAppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
-
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         IdentitySignatureVerifier.shared.initialize { key, message, signature in
@@ -15,11 +13,6 @@ final class BootstrapAppDelegate: UIResponder, UIApplicationDelegate {
             guard let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: data(key)) else { return KotlinBoolean(bool: false) }
             return KotlinBoolean(bool: publicKey.isValidSignature(data(signature), for: data(message)))
         }
-        let controller = MainViewControllerKt.MainViewController()
-        let window = UIWindow(frame: UIScreen.main.bounds)
-        window.rootViewController = controller
-        window.makeKeyAndVisible()
-        self.window = window
         return true
     }
 }

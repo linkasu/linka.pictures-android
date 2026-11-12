@@ -20,7 +20,7 @@ def main():
     builder = runpy.run_path(str(project / 'scripts/build-ios-audio-decoder.py'))
     outputs = builder['OUTPUTS']
     seed = outputs['output_root'](args.published_root)
-    env = dict(os.environ, DEVELOPER_DIR=builder['PREFLIGHT']['DEVELOPER'])
+    env = builder['PREFLIGHT']['developer_environment']()
     _, valid = outputs['inspect'](seed, project, builder['FLAGS'], env)
     assert valid, 'explicit seed must be current'
     base = Path(tempfile.mkdtemp(prefix='producer-selfcheck-', dir=project / 'build/ios-ffmpeg-preflight'))

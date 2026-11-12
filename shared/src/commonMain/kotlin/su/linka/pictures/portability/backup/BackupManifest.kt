@@ -11,12 +11,12 @@ data class BackupManifest(
     val settings: PortableSettings,
     val counts: SnapshotCounts,
     val format: String = "su.linka.pictures.backup",
-    val version: String = "1.1",
+    val version: String = "1.2",
     val organization: LibraryOrganization = LibraryOrganization(),
 ) {
     init {
         require(revision >= 0)
-        require(format == "su.linka.pictures.backup" && version == "1.1")
+        require(format == "su.linka.pictures.backup" && version == "1.2")
     }
 }
 

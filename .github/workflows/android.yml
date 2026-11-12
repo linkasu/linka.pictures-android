@@ -9,12 +9,12 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      run_cloud_tests:
-        description: Run Firebase Test Lab (may incur charges)
+      run_e2e_tests:
+        description: Run deterministic tests on a GitHub-hosted Android emulator
         type: boolean
         default: false
       sign_release:
-        description: Sign release on main only after successful cloud tests
+        description: Sign release on main only after successful Android E2E tests
         type: boolean
         default: false
       android_version_code:
@@ -47,9 +47,28 @@ jobs:
       - name: Check prerelease packaging configuration
         run: python3 -B scripts/check-prerelease.py
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check store publishers without credentials or API calls
+        run: |
+          python3 -m pip install --disable-pip-version-check cryptography==46.0.3
+          python3 -B scripts/test-publish-google-play.py
+          python3 -B scripts/test-publish-rustore.py
+          python3 -B scripts/test-submit-ios-review.py
+          python3 -B scripts/check-ios-release-workflow.py
+          python3 -B scripts/test-ios-audio-decoder-def.py
+
+      - name: Check iOS scene manifest and simulator matrix logic
+        run: |
+          python3 -B scripts/test-ios-scene-manifest.py
+          python3 -B scripts/test-ios-simulator-matrix-unit.py
+          python3 -B scripts/test-ios-verification-pipeline-unit.py
+
       - name: Explain blocked signing request
-        if: github.event_name == 'workflow_dispatch' && inputs.sign_release && !inputs.run_cloud_tests
-        run: echo 'Release signing BLOCKED — run_cloud_tests must also be enabled; no signed release will be produced.' >> "$GITHUB_STEP_SUMMARY"
+        if: github.event_name == 'workflow_dispatch' && inputs.sign_release && !inputs.run_e2e_tests
+        run: echo 'Release signing BLOCKED — run_e2e_tests must also be enabled; no signed release will be produced.' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
@@ -104,68 +123,70 @@ jobs:
           name: android-apks
           path: artifacts
 
-  firebase-test:
+  android-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build
-    if: github.event_name == 'workflow_dispatch' && inputs.run_cloud_tests && needs['build'].result == 'success'
+    if: (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_e2e_tests)) && needs['build'].result == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
-          name: android-apks
-          path: artifacts
+          distribution: temurin
+          java-version: '17'
 
-      - name: Inspect downloaded artifacts
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Enable KVM on the disposable GitHub runner
         run: |
-          echo "Artifacts directory structure:"
-          ls -R artifacts
-          echo "APK files found:"
-          find artifacts -name '*.apk' -print
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v1
+      # This is a 4 KB runtime smoke, not proof of 16 KB runtime compatibility.
+      # Unscripted exploration must not submit signup/OTP to production Identity.
+      - name: Run deterministic startup, message layout and isolated migration tests
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          project_id: ${{ secrets.PROJECT_ID }}
-          credentials_json: ${{ secrets.FIREBASE_KEY }}
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          force-avd-creation: true
+          emulator-boot-timeout: 600
+          # Fold into one shell so the EXIT trap runs before the action stops the emulator.
+          script: >-
+            trap 'status=$?; trap - EXIT;
+            if adb shell test -d /sdcard/Android/data/su.linka.pictures.development/files/message-row-layout/; then
+            mkdir -p artifacts/e2e && adb pull /sdcard/Android/data/su.linka.pictures.development/files/message-row-layout/ artifacts/e2e/;
+            capture_status=$?; if [ "$status" -eq 0 ]; then status=$capture_status; fi;
+            fi; exit "$status"' EXIT;
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&
+            ./gradlew :shared:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+      - name: Upload instrumentation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-reports
+          path: |
+            artifacts/e2e/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            shared/build/reports/androidTests/
+            shared/build/outputs/androidTest-results/
 
-      - name: Configure project
-        run: gcloud config set project ${{ secrets.PROJECT_ID }}
-
-      - name: Run Firebase Test Lab instrumentation
-        run: |
-          gcloud firebase test android run \
-            --type instrumentation \
-            --app artifacts/debug/app-debug.apk \
-            --test artifacts/androidTest/debug/app-debug-androidTest.apk \
-            --test-targets "class su.linka.pictures.activity.DevelopmentStartupTest" \
-            --device model=MediumPhone_ps16k.arm,version=36,locale=en,orientation=portrait \
-            --environment-variables expected_page_size=16384 \
-            --num-flaky-test-attempts=0 \
-            --timeout 10m
-
-      - name: Run real isolated migration integration tests
-        run: |
-          gcloud firebase test android run \
-            --type instrumentation \
-            --app artifacts/shared/shared-debug-androidTest.apk \
-            --test artifacts/shared/shared-debug-androidTest.apk \
-            --test-targets "class su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest" \
-            --device model=redfin,version=30,locale=en,orientation=portrait \
-            --num-flaky-test-attempts=0 \
-            --timeout 15m
-
-      # Unscripted Robo could submit signup/OTP to production Identity; use deterministic tests only.
   bundle-release:
     runs-on: ubuntu-latest
-    needs: [build, firebase-test]
-    if: github.event_name == 'workflow_dispatch' && inputs.sign_release && inputs.run_cloud_tests && github.ref == 'refs/heads/main' && needs['build'].result == 'success' && needs['firebase-test'].result == 'success'
+    needs: [build, android-e2e]
+    if: github.event_name == 'workflow_dispatch' && inputs.sign_release && inputs.run_e2e_tests && github.ref == 'refs/heads/main' && needs['build'].result == 'success' && needs['android-e2e'].result == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

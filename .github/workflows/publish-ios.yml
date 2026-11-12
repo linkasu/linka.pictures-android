@@ -1,0 +1,280 @@
+name: Publish iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful iOS CI run for the current main commit
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-ios
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      IOS_BUNDLE_ID: su.linka.pictures
+      RELEASE_VERSION: 2.0.0
+      RELEASE_BUILD_NUMBER: '2'
+      DEVELOPMENT_TEAM: 29HEQ626X2
+      RELEASE_DIR: ${{ github.workspace }}/build/ios-release
+      LINKA_FFMPEG_WORK_ROOT: ${{ github.workspace }}/build/ios-ffmpeg-preflight
+    steps:
+      - name: Set owned temporary directory
+        run: echo "SIGNING_DIR=$RUNNER_TEMP/ios-signing-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Gate on pinned successful phone and tablet CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          python3 -B scripts/check-ios-release-workflow.py
+          mkdir -p "$RELEASE_DIR"
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          def api(path, *flags):
+              return json.loads(subprocess.check_output(['gh', 'api', path, *flags], text=True))
+          run_id = os.environ['SOURCE_RUN_ID']
+          assert re.fullmatch(r'[1-9][0-9]*', run_id), 'Expected a numeric CI run ID'
+          repo = os.environ['GITHUB_REPOSITORY']
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert sha == os.environ['GITHUB_SHA'] == api(f'repos/{repo}/commits/main')['sha'], 'Current main changed; run CI again'
+          run = api(f'repos/{repo}/actions/runs/{run_id}')
+          assert run['repository']['full_name'] == repo
+          assert run['path'] == '.github/workflows/ios.yml'
+          assert run['event'] in ('push', 'workflow_dispatch')
+          assert run['head_branch'] == 'main' and run['head_sha'] == sha
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          pages = api(f'repos/{repo}/actions/runs/{run_id}/attempts/{run["run_attempt"]}/jobs?per_page=100', '--paginate', '--slurp')
+          jobs = [job for page in pages for job in page['jobs']]
+          assert {j['name'] for j in jobs} == {'simulator-tests (phone)', 'simulator-tests (tablet)'}, 'Unexpected or missing CI jobs'
+          assert len(jobs) == 2 and all(j['status'] == 'completed' and j['conclusion'] == 'success' and j['head_sha'] == sha for j in jobs)
+          latest = api(f'repos/{repo}/actions/runs/{run_id}')
+          assert latest['run_attempt'] == run['run_attempt'] and latest['status'] == 'completed' and latest['conclusion'] == 'success', 'CI attempt changed during gate'
+          Path(os.environ['RELEASE_DIR'], 'source-ci.json').write_text(json.dumps(dict(sha=sha, run=run, jobs=jobs), indent=2))
+          PY
+
+      - name: Check selected Xcode and producer tools
+        run: |
+          xcodebuild -version | tee "$RELEASE_DIR/xcode-version.txt"
+          xcrun --find altool
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          version = Path(os.environ['RELEASE_DIR'], 'xcode-version.txt').read_text()
+          assert int(re.search(r'Xcode (\d+)', version)[1]) >= 26, version
+          PY
+          if ! command -v gpgv >/dev/null; then brew install gnupg; fi
+          gpgv --version | tee "$RELEASE_DIR/gpgv-version.txt"
+          echo "GPGV=$(command -v gpgv)" >> "$GITHUB_ENV"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release framework and stage Compose resources
+        env:
+          CONFIGURATION: Release
+          PLATFORM_NAME: iphoneos
+          ARCHS: arm64
+          BUILT_PRODUCTS_DIR: ${{ github.workspace }}/shared/build/compose/ios/iosArm64
+          UNLOCALIZED_RESOURCES_FOLDER_PATH: .
+        run: ./gradlew :shared:linkReleaseFrameworkIosArm64 :shared:syncComposeResourcesForIos
+
+      - name: Install and validate temporary signing material
+        env:
+          P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          PROFILE_NAME: ${{ vars.IOS_PROVISION_PROFILE_NAME }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import base64, datetime, hashlib, json, os, plistlib, re, subprocess
+          from pathlib import Path
+          root = Path(os.environ['SIGNING_DIR'])
+          root.mkdir(mode=0o700)
+          def call(*args):
+              return subprocess.check_output(args)
+          password = call('openssl', 'rand', '-base64', '32').decode().strip()
+          print(f'::add-mask::{password}', flush=True)
+          (root / 'password').write_text(password)
+          (root / 'search-list.json').write_text(json.dumps(re.findall(r'"([^"\n]+)"', call('security', 'list-keychains', '-d', 'user').decode())))
+          p12, profile, keychain = root / 'distribution.p12', root / 'profile.mobileprovision', root / 'signing.keychain-db'
+          p12.write_bytes(base64.b64decode(os.environ['P12_BASE64'], validate=True))
+          profile.write_bytes(base64.b64decode(os.environ['PROFILE_BASE64'], validate=True))
+          data = plistlib.loads(call('security', 'cms', '-D', '-i', str(profile)))
+          team, bundle = os.environ['DEVELOPMENT_TEAM'], os.environ['IOS_BUNDLE_ID']
+          entitlements = data['Entitlements']
+          assert data['TeamIdentifier'] == [team] and data['Name'] == os.environ['PROFILE_NAME']
+          assert entitlements['application-identifier'] == f'{team}.{bundle}'
+          assert entitlements['com.apple.developer.team-identifier'] == team
+          assert entitlements.get('get-task-allow') is False
+          assert not data.get('ProvisionedDevices') and not data.get('ProvisionsAllDevices'), 'Require App Store distribution profile'
+          assert data['ExpirationDate'] > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+          assert re.fullmatch(r'[0-9A-Fa-f-]{36}', data['UUID'])
+          certificate = call('openssl', 'pkcs12', '-in', str(p12), '-passin', 'env:P12_PASSWORD', '-clcerts', '-nokeys')
+          der = subprocess.check_output(['openssl', 'x509', '-outform', 'DER'], input=certificate)
+          assert der in data['DeveloperCertificates'], 'Certificate is not authorized by profile'
+          subprocess.run(['openssl', 'x509', '-checkend', '0', '-noout'], input=certificate, check=True)
+          subject = subprocess.check_output(['openssl', 'x509', '-noout', '-subject', '-nameopt', 'RFC2253'], input=certificate).decode()
+          assert f'OU={team}' in subject and 'CN=Apple Distribution:' in subject
+          subprocess.run(['security', 'create-keychain', '-p', password, str(keychain)], check=True)
+          subprocess.run(['security', 'set-keychain-settings', '-lut', '21600', str(keychain)], check=True)
+          subprocess.run(['security', 'unlock-keychain', '-p', password, str(keychain)], check=True)
+          subprocess.run(['security', 'import', str(p12), '-k', str(keychain), '-P', os.environ['P12_PASSWORD'], '-T', '/usr/bin/codesign', '-T', '/usr/bin/security'], check=True)
+          subprocess.run(['security', 'set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:', '-s', '-k', password, str(keychain)], check=True, stdout=subprocess.DEVNULL)
+          identities = call('security', 'find-identity', '-v', '-p', 'codesigning', str(keychain)).decode()
+          assert hashlib.sha1(der).hexdigest().upper() in identities, 'Private key and profile certificate do not match'
+          previous = json.loads((root / 'search-list.json').read_text())
+          subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', str(keychain), *previous], check=True)
+          paths = [Path.home() / directory / f'{data["UUID"]}.mobileprovision' for directory in ('Library/MobileDevice/Provisioning Profiles', 'Library/Developer/Xcode/UserData/Provisioning Profiles')]
+          assert all(not path.exists() for path in paths), 'Do not overwrite an existing profile'
+          (root / 'installed-profiles.json').write_text(json.dumps([str(p) for p in paths]))
+          for path in paths:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(profile.read_bytes())
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'PROFILE_NAME={data["Name"]}\n')
+          PY
+
+      - name: Archive with manual distribution signing
+        run: |
+          xcodebuild archive -project iosApp/LinkaPokazhi.xcodeproj -scheme LinkaPokazhi -configuration Release -destination 'generic/platform=iOS' -archivePath "$RELEASE_DIR/LinkaPokazhi.xcarchive" CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" IOS_BUNDLE_ID="$IOS_BUNDLE_ID" RELEASE_VERSION="$RELEASE_VERSION" RELEASE_BUILD_NUMBER="$RELEASE_BUILD_NUMBER" | tee "$RELEASE_DIR/archive.log"
+
+      - name: Verify archive and matching application dSYM
+        run: |
+          app="$RELEASE_DIR/LinkaPokazhi.xcarchive/Products/Applications/LinkaPokazhi.app"
+          python3 -B scripts/check-prerelease.py --app "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -d --entitlements :- "$app" > "$RELEASE_DIR/app-entitlements.plist"
+          python3 - <<'PY'
+          import os, plistlib, subprocess
+          from pathlib import Path
+          root = Path(os.environ['RELEASE_DIR'])
+          archive = root / 'LinkaPokazhi.xcarchive'
+          app = archive / 'Products/Applications/LinkaPokazhi.app'
+          info = plistlib.loads((app / 'Info.plist').read_bytes())
+          assert (info['CFBundleIdentifier'], info['CFBundleShortVersionString'], info['CFBundleVersion']) == (os.environ['IOS_BUNDLE_ID'], os.environ['RELEASE_VERSION'], os.environ['RELEASE_BUILD_NUMBER'])
+          entitlements = plistlib.loads((root / 'app-entitlements.plist').read_bytes())
+          assert entitlements.get('get-task-allow') is False
+          assert entitlements['application-identifier'] == f'{os.environ["DEVELOPMENT_TEAM"]}.{os.environ["IOS_BUNDLE_ID"]}'
+          def uuids(path):
+              return {tuple(line.split()[1:3]) for line in subprocess.check_output(['xcrun', 'dwarfdump', '--uuid', str(path)], text=True).splitlines()}
+          binary = app / info['CFBundleExecutable']
+          symbols = archive / 'dSYMs/LinkaPokazhi.app.dSYM/Contents/Resources/DWARF' / info['CFBundleExecutable']
+          assert symbols.is_file() and uuids(binary) and uuids(binary) == uuids(symbols), 'Application dSYM UUID mismatch'
+          options = dict(method='app-store-connect', destination='export', signingStyle='manual', teamID=os.environ['DEVELOPMENT_TEAM'], signingCertificate='Apple Distribution', provisioningProfiles={os.environ['IOS_BUNDLE_ID']: os.environ['PROFILE_NAME']}, manageAppVersionAndBuildNumber=False)
+          (root / 'ExportOptions.plist').write_bytes(plistlib.dumps(options))
+          PY
+
+      - name: Export exact IPA for upload
+        run: |
+          xcodebuild -exportArchive -archivePath "$RELEASE_DIR/LinkaPokazhi.xcarchive" -exportPath "$RELEASE_DIR/export" -exportOptionsPlist "$RELEASE_DIR/ExportOptions.plist" | tee "$RELEASE_DIR/export.log"
+          python3 - <<'PY'
+          import hashlib, json, os, plistlib, zipfile
+          from pathlib import Path
+          root = Path(os.environ['RELEASE_DIR'])
+          ipas = list((root / 'export').glob('*.ipa'))
+          assert len(ipas) == 1, ipas
+          ipa = ipas[0]
+          with zipfile.ZipFile(ipa) as zipped:
+              infos = [n for n in zipped.namelist() if n.startswith('Payload/') and n.count('/') == 2 and n.endswith('.app/Info.plist')]
+              assert len(infos) == 1, infos
+              info = plistlib.loads(zipped.read(infos[0]))
+              assert (info['CFBundleIdentifier'], info['CFBundleShortVersionString'], info['CFBundleVersion']) == (os.environ['IOS_BUNDLE_ID'], os.environ['RELEASE_VERSION'], os.environ['RELEASE_BUILD_NUMBER'])
+          metadata = dict(source_sha=os.environ['GITHUB_SHA'], source_run_id=os.environ['SOURCE_RUN_ID'], ipa=ipa.name, sha256=hashlib.sha256(ipa.read_bytes()).hexdigest(), bundle=info['CFBundleIdentifier'], version=info['CFBundleShortVersionString'], build=info['CFBundleVersion'])
+          (root / 'release-metadata.json').write_text(json.dumps(metadata, indent=2))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'IPA_PATH={ipa.resolve()}\n')
+          PY
+        env:
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+
+      - name: Upload exact IPA once to App Store Connect
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_PRIVATE_KEY: ${{ secrets.ASC_API_PRIVATE_KEY }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import hashlib, json, os, re
+          from pathlib import Path
+          assert re.fullmatch(r'[A-Z0-9]+', os.environ['ASC_API_KEY_ID'])
+          root = Path(os.environ['SIGNING_DIR'])
+          keys = root / 'private_keys'
+          keys.mkdir(mode=0o700)
+          (keys / f'AuthKey_{os.environ["ASC_API_KEY_ID"]}.p8').write_text(os.environ['ASC_API_PRIVATE_KEY'])
+          metadata = json.loads(Path(os.environ['RELEASE_DIR'], 'release-metadata.json').read_text())
+          assert hashlib.sha256(Path(os.environ['IPA_PATH']).read_bytes()).hexdigest() == metadata['sha256']
+          PY
+          # altool searches ./private_keys; upload this exact exported IPA, without automatic retries.
+          cd "$SIGNING_DIR"
+          xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$ASC_API_KEY_ID" --apiIssuer "$ASC_API_ISSUER_ID" | tee "$RELEASE_DIR/upload.log"
+          echo 'IPA accepted for App Store Connect processing; not submitted to App Review.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove only owned signing material and restore search list
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os, shutil, subprocess, sys
+          from pathlib import Path
+          if not os.environ.get('SIGNING_DIR'):
+              sys.exit(0)
+          root = Path(os.environ['SIGNING_DIR'])
+          if root.exists():
+              try:
+                  previous = root / 'search-list.json'
+                  if previous.exists():
+                      subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', *json.loads(previous.read_text())], check=True)
+              finally:
+                  try:
+                      keychain = root / 'signing.keychain-db'
+                      if keychain.exists():
+                          subprocess.run(['security', 'delete-keychain', str(keychain)], check=True)
+                  finally:
+                      installed = root / 'installed-profiles.json'
+                      if installed.exists():
+                          for path in json.loads(installed.read_text()):
+                              Path(path).unlink(missing_ok=True)
+                      shutil.rmtree(root)
+          PY
+
+      - name: Save exact IPA, archive, dSYMs and visible upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-${{ github.sha }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: |
+            build/ios-release/
+            build/ios-ffmpeg-preflight/*/result.json
+            build/ios-ffmpeg-preflight/*/logs/

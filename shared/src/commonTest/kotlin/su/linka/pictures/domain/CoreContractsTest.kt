@@ -64,6 +64,7 @@ class CoreContractsTest {
     fun backupManifestHasOnlyExplicitLibraryMetadata() {
         val phrase = MessageDraft(listOf(MessagePart.Text(MessagePartId("text"), "CURRENT_MESSAGE_ONLY_MARKER")))
         val snapshot = BackupManifest(1, PortableSettings(), SnapshotCounts(1, 0, 0, 2, 300))
+        assertEquals("1.2", snapshot.version)
         val json = Json.encodeToString(snapshot)
         assertEquals(snapshot, Json.decodeFromString<BackupManifest>(json))
         assertTrue(phrase.parts.isNotEmpty())
@@ -71,6 +72,8 @@ class CoreContractsTest {
         assertFalse(json.contains("parts"))
         assertFalse(json.contains("epoch"))
         assertFailsWith<IllegalArgumentException> { snapshot.copy(version = "2.0") }
+        assertFailsWith<IllegalArgumentException> { snapshot.copy(version = "1.0") }
+        assertFailsWith<IllegalArgumentException> { snapshot.copy(version = "1.1") }
     }
 
     @Test

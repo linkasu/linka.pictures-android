@@ -36,7 +36,8 @@ class SettingsRefreshTest {
         val controller = LibraryController(library, gate)
         var shown = assertIs<OperationResult.Completed<SettingsSnapshot>>(readSettingsSnapshot(library)).value
         val saved = mutableListOf<PortableSettings>()
-        val values = listOf(PortableSettings(highContrast = true), PortableSettings(1.7f, true, "xx-Unknown"))
+        val values = listOf(PortableSettings(highContrast = true, messageRowPercent = 16),
+            PortableSettings(1.7f, true, "xx-Unknown", messageRowPercent = 32))
         values.forEachIndexed { index, value ->
             val previous = shown
             val write = controller.settings("owner", null, value, shown.listing.revision, shown.listing.epoch)
@@ -55,7 +56,7 @@ class SettingsRefreshTest {
 
     @Test fun failedWritesDoNotReadOrReplaceTheCapturedInputAndSnapshot() = runTest { fresh { real, gate ->
         val shown = assertIs<OperationResult.Completed<SettingsSnapshot>>(readSettingsSnapshot(real)).value
-        val entered = PortableSettings(1.8f, true, "en-US")
+        val entered = PortableSettings(1.8f, true, "en-US", messageRowPercent = 28)
         var reads = 0
         val library = object : LibraryStore by real {
             override suspend fun settings(): OperationResult<PortableSettings> { reads++; return real.settings() }
@@ -97,7 +98,7 @@ class SettingsRefreshTest {
             }
         }
         val shown = assertIs<OperationResult.Completed<SettingsSnapshot>>(readSettingsSnapshot(library)).value
-        val value = PortableSettings(1.5f, true, "en-US")
+        val value = PortableSettings(1.5f, true, "en-US", messageRowPercent = 24)
         val write = LibraryController(library, gate).settings("owner", null, value, shown.listing.revision, shown.listing.epoch)
         assertIs<OperationResult.Completed<Long>>(write)
         failRead = true

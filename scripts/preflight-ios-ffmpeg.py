@@ -16,6 +16,7 @@ import struct
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 import uuid
 import wave
@@ -25,11 +26,9 @@ SOURCE = f"https://ffmpeg.org/releases/ffmpeg-{VERSION}.tar.xz"
 KEY = "https://ffmpeg.org/ffmpeg-devel.asc"
 VERIFICATION = "https://ffmpeg.org/download.html"
 FINGERPRINT = "FCF986EA15E6E293A5644F10B4322F04D67658D8"
-DEVELOPER = "/Applications/Xcode.app/Contents/Developer"
 UDID = "DD0F9A3F-DC32-4373-BA08-400FECE3A1CC"
-TEMP = Path("/private/var/folders/l4/r3plyjwj7pz_nq7zz50x04880000gn/T/opencode")
-FIXTURES = TEMP / "p06-legacy-codecs-48acb16b-88d6-49cf-bae0-a1f5bbd35050"
-AMR = TEMP / "p01-amr-fixtures"
+FIXTURES = Path(__file__).resolve().parent / "fixtures/ios-audio"
+AMR = FIXTURES
 EXPECTED = {
     "vorbis": (FIXTURES / "vorbis-first.ogg", 5063, "98305ce0d4bf14c7189c25835e2f87b8a602b462232a4e8e285fae0480cf7208"),
     "mp3": (FIXTURES / "mp3-first.mp3", 2612, "796a8d642760fd8bb1e4e216b5ab2ef02e73dd633bf3a27bfcce6e9450c9b026"),
@@ -57,6 +56,24 @@ FLAGS = [
 def require(condition, message):
     if not condition:
         raise RuntimeError(message)
+
+
+def developer_environment():
+    env = dict(os.environ)
+    if not env.get("DEVELOPER_DIR"):
+        env["DEVELOPER_DIR"] = subprocess.run(
+            ["xcode-select", "-p"], capture_output=True, text=True, check=True, timeout=10
+        ).stdout.strip()
+    require(env["DEVELOPER_DIR"], "selected Xcode developer directory is empty")
+    return env
+
+
+def work_root(project):
+    if os.environ.get("LINKA_FFMPEG_WORK_ROOT"):
+        return Path(os.environ["LINKA_FFMPEG_WORK_ROOT"]).resolve()
+    if project.is_relative_to(Path("/Volumes/data")):
+        return project / "build/ios-ffmpeg-preflight"
+    return Path(tempfile.gettempdir()) / "linka-ios-ffmpeg-preflight"
 
 
 def sha(path):
@@ -117,15 +134,16 @@ def self_test():
 class Preflight:
     def __init__(self):
         self.project = Path(__file__).resolve().parents[1]
-        parent = self.project / "build" / "ios-ffmpeg-preflight"
-        ignored = subprocess.run(["git", "check-ignore", str(parent / "probe")], cwd=self.project,
-                                 capture_output=True, timeout=10)
-        require(ignored.returncode == 0, "build outputs must already be ignored")
+        parent = work_root(self.project)
+        if parent.is_relative_to(self.project):
+            ignored = subprocess.run(["git", "check-ignore", str(parent / "probe")], cwd=self.project,
+                                     capture_output=True, timeout=10)
+            require(ignored.returncode == 0, "build outputs must already be ignored")
         parent.mkdir(parents=True, exist_ok=True)
         self.root = parent / str(uuid.uuid4())
         self.root.mkdir()
         (self.root / "logs").mkdir()
-        self.env = dict(os.environ, DEVELOPER_DIR=DEVELOPER)
+        self.env = developer_environment()
         for key in ("CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS", "LIBRARY_PATH", "CPATH", "PKG_CONFIG_PATH"):
             self.env.pop(key, None)
         self.result = dict(version=VERSION, root=str(self.root), status="RUNNING", commands=[], downloads=[])
@@ -258,31 +276,23 @@ class Preflight:
         require((self.source / "VERSION").read_text().strip() == VERSION, "release VERSION mismatch")
 
     def fixtures(self):
-        manifest = json.loads((FIXTURES / "manifest.json").read_text())
         generator = self.project / "shared/src/androidInstrumentedTest/kotlin/su/linka/pictures/platform/capabilities/generate_legacy_codec_fixtures.py"
         functions = runpy.run_path(str(generator))  # Only definitions; never its host-encoding main().
         samples = array.array("h")
         for frame in range(3200):
             samples.extend(int(6000 * math.sin(2 * math.pi * frequency * frame / 16000)) for frequency in (440, 660))
         require(hashlib.sha256(functions["wav_bytes"](2, samples)).hexdigest() == EXPECTED["wav"][2], "own sine generator mismatch")
-        control = functions["wav_bytes"](1, array.array("h", (100 if n % 2 == 0 else -100 for n in range(1600))))
-        require(hashlib.sha256(control).hexdigest() == manifest["control_wave_sha256"], "independent square-wave control mismatch")
         self.result["wave_generator"] = dict(path=str(generator), sha256=sha(generator),
-            note="tone.wav is stereo sine; manifest control_wave_sha256 is a DIFFERENT mono square-wave control")
-        self.result["fixture_producers"] = {k: manifest[k] for k in ("ffmpeg", "ffprobe", "commands")}
-        manifest_records = {item["name"]: item for item in manifest["fixtures"]}
-        paths = {item for command in manifest["commands"] for item in command if item.startswith(str(TEMP) + "/")}
+            note="pinned repository tone.wav is the independently checked stereo sine")
         target = self.root / "fixtures"
         target.mkdir()
         copied = {}
         for name, (path, size, digest) in EXPECTED.items():
             require(path.is_file() and not path.is_symlink(), f"missing/not-owned fixture: {path}")
-            require(path.resolve().is_relative_to(TEMP.resolve()) and str(path) in paths, "fixture not from approved manifest")
+            require(path.resolve().is_relative_to(FIXTURES), "fixture outside repository fixture directory")
             require(path.stat().st_size <= 65536 and (size is None or path.stat().st_size == size), "fixture size mismatch")
             require(sha(path) == digest, f"fixture SHA mismatch: {name}")
-            if name != "wav":
-                require(manifest_records[name]["sha256"] == digest, "manifest fixture mismatch")
-            else:
+            if name == "wav":
                 with wave.open(str(path)) as wav:
                     require((wav.getnchannels(), wav.getsampwidth(), wav.getframerate(), wav.getnframes()) == (2, 2, 16000, 3200), "WAV generator parameters")
             self.originals[path] = digest
@@ -479,7 +489,8 @@ def main():
     print(task.root, flush=True)
     try:
         _, xcode = task.run(["xcodebuild", "-version"])
-        require(xcode.startswith("Xcode 27.2\n"), "stable Xcode27.2 required")
+        version = re.match(r"Xcode (\d+)(?:\.\d+)*\n", xcode)
+        require(version and int(version[1]) >= 26, "Xcode 26 or newer required")
         task.result["xcode"] = xcode
         if args.verified_source_run:
             task.reuse_source(args.verified_source_run)

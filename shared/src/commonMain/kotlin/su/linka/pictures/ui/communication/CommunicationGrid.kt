@@ -12,6 +12,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.geometry.Offset
@@ -65,7 +66,7 @@ internal fun CommunicationGrid(
     val cellWidth = pageLayout.cellWidth.dp
     val cellHeight = pageLayout.cellHeight.dp
     val gridDescription = stringResource(Res.string.grid_1_s_by_2_s, page.rows, page.columns)
-    Box(modifier) {
+    Box(modifier, contentAlignment = Alignment.Center) {
         Column(
             Modifier.requiredSize(cellWidth * page.columns, cellHeight * page.rows).focusGroup()
                 .semantics {

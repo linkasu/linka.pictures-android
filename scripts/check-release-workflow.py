@@ -13,7 +13,7 @@ def check():
     for event in ('push', 'pull_request'):
         assert f'  {event}:\n    branches:\n      - main\n' in triggers
     assert '  workflow_dispatch:\n    inputs:\n' in triggers
-    for flag in ('run_cloud_tests', 'sign_release'):
+    for flag in ('run_e2e_tests', 'sign_release'):
         block = re.search(rf'^      {flag}:\n((?:        .+\n)+)', triggers, re.M)
         assert block, f'missing manual input: {flag}'
         assert '        type: boolean\n' in block[1]
@@ -25,7 +25,7 @@ def check():
     assert '\npermissions:\n  contents: read\n' in workflow
     jobs = dict(re.findall(r'^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)',
                            workflow.split('\njobs:\n', 1)[1], re.M | re.S))
-    assert set(jobs) == {'build', 'firebase-test', 'bundle-release'}
+    assert set(jobs) == {'build', 'android-e2e', 'bundle-release'}
     assert not re.search(r'^    (if|needs):', jobs['build'], re.M)
     for command in ('python3 -B scripts/check-release-workflow.py',
                      'python3 -B scripts/check-prerelease.py',
@@ -33,34 +33,36 @@ def check():
                      'python3 -B shared/src/commonTest/check_localization.py',
                      './gradlew :app:assembleDebug :app:assembleDebugAndroidTest :shared:assembleDebugAndroidTest'):
         assert command in jobs['build']
-    assert '\n    needs: build\n' in jobs['firebase-test']
-    assert '\n    needs: [build, firebase-test]\n' in jobs['bundle-release']
+    assert '\n    needs: build\n' in jobs['android-e2e']
+    assert '\n    needs: [build, android-e2e]\n' in jobs['bundle-release']
     gates = {}
-    for job in ('firebase-test', 'bundle-release'):
+    for job in ('android-e2e', 'bundle-release'):
         expression = re.search(r'^    if: (.+)$', jobs[job], re.M)[1]
-        tree = ast.parse(expression.replace('&&', ' and '), mode='eval')
-        allowed = (ast.Expression, ast.BoolOp, ast.And, ast.Compare, ast.Eq,
+        tree = ast.parse(expression.replace('&&', ' and ').replace('||', ' or '), mode='eval')
+        allowed = (ast.Expression, ast.BoolOp, ast.And, ast.Or, ast.Compare, ast.Eq,
                    ast.Attribute, ast.Subscript, ast.Name, ast.Load, ast.Constant)
         assert all(isinstance(node, allowed) for node in ast.walk(tree))
         assert all(not node.attr.startswith('_') for node in ast.walk(tree)
                    if isinstance(node, ast.Attribute))
         gates[job] = compile(tree, '<workflow condition>', 'eval')
     count = 0
-    for event, ref, cloud, sign, build, firebase in itertools.product(
+    for event, ref, e2e_enabled, sign, build, e2e in itertools.product(
             ('push', 'pull_request', 'workflow_dispatch'),
             ('refs/heads/main', 'refs/heads/other'), (False, True), (False, True),
             ('success', 'failure', 'cancelled', 'skipped'),
             ('success', 'failure', 'cancelled', 'skipped')):
         context = dict(github=NS(event_name=event, ref=ref),
-                       inputs=NS(run_cloud_tests=cloud, sign_release=sign),
-                       needs={'build': NS(result=build), 'firebase-test': NS(result=firebase)})
+                        inputs=NS(run_e2e_tests=e2e_enabled, sign_release=sign),
+                        needs={'build': NS(result=build), 'android-e2e': NS(result=e2e)})
         for job, gate in gates.items():
-            expected = event == 'workflow_dispatch' and cloud and build == 'success'
+            expected = (event in ('push', 'pull_request') or e2e_enabled) and build == 'success'
             if job == 'bundle-release':
-                expected = expected and sign and ref == 'refs/heads/main' and firebase == 'success'
+                expected = (event == 'workflow_dispatch' and e2e_enabled and sign
+                            and ref == 'refs/heads/main' and build == 'success' and e2e == 'success')
             actual = bool(eval(gate, {'__builtins__': {}}, context))
-            assert actual == expected, (job, event, ref, cloud, sign, build, firebase)
+            assert actual == expected, (job, event, ref, e2e_enabled, sign, build, e2e)
         count += 1
+    assert count == 384, 'Keep exhaustive event/input/result gate coverage'
     release = jobs['bundle-release']
     assert 'ANDROID_VERSION_CODE: ${{ inputs.android_version_code }}' in release
     assert 'RELEASE_VERSION: ${{ inputs.release_version }}' in release
@@ -71,19 +73,34 @@ def check():
     assert signature_check in release
     assert release.index('- name: Decode keystore') < release.index(signed_build)
     assert release.index(signed_build) < release.index(signature_check) < release.index('- name: Upload release bundle')
-    assert '--robo-script' not in workflow
-    assert '--test-targets "class su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest"' in jobs['firebase-test']
-    assert '--test-targets "class su.linka.pictures.activity.DevelopmentStartupTest"' in jobs['firebase-test']
-    cloud_runs = jobs['firebase-test'].split('gcloud firebase test android run')[1:]
-    assert len(cloud_runs) == 2, 'One bounded execution per approved deterministic lane'
-    assert '--type robo' not in workflow, 'Unscripted exploration must not submit production signup/OTP'
-    for run, minutes in zip(cloud_runs, (10, 15)):
-        assert f'--timeout {minutes}m' in run and '--num-flaky-test-attempts=0' in run
-        assert run.count('--timeout ') == 1 and run.count('--num-flaky-test-attempts') == 1
-        assert run.count('--device ') == 1 and '--num-shards' not in run and '--device-ids' not in run
-    assert '--environment-variables expected_page_size=16384' in cloud_runs[0]
-    assert '--device model=MediumPhone_ps16k.arm,version=36,' in cloud_runs[0]
-    assert '--device model=redfin,version=30,' in cloud_runs[1]
+    for forbidden in ('firebase', 'gcloud', 'google-github-actions/', 'run_cloud_tests',
+                      'PROJECT_ID', '--robo-script', '--type robo'):
+        assert forbidden.lower() not in workflow.lower()
+    e2e_job = jobs['android-e2e']
+    assert e2e_job.startswith('    runs-on: ubuntu-latest\n')
+    assert '\n    timeout-minutes: 30\n' in e2e_job
+    assert e2e_job.count('uses: reactivecircus/android-emulator-runner@v2') == 1
+    for setting in ('api-level: 35', 'target: google_apis', 'arch: x86_64',
+                    'profile: pixel_2', 'force-avd-creation: true', 'emulator-boot-timeout: 600'):
+        assert f'          {setting}\n' in e2e_job
+    assert 'sudo udevadm trigger --name-match=kvm' in e2e_job
+    commands = re.findall(r'^            (\./gradlew .+)$', e2e_job, re.M)
+    assert commands == [
+        './gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.activity.DevelopmentStartupTest,su.linka.pictures.activity.MessageRowLayoutTest -Pandroid.testInstrumentationRunnerArguments.expected_page_size=4096 &&',
+        './gradlew :shared:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=su.linka.pictures.bootstrap.AndroidLibraryAdmissionTest',
+    ], 'Exactly three deterministic classes in two sequential tasks; Gradle propagates failures'
+    assert '          script: >-\n' in e2e_job, 'The EXIT trap and tests must share one shell'
+    assert "trap 'status=$?; trap - EXIT;" in e2e_job
+    screenshot_dir = '/sdcard/Android/data/su.linka.pictures.development/files/message-row-layout/'
+    assert f'if adb shell test -d {screenshot_dir}; then' in e2e_job
+    assert f'mkdir -p artifacts/e2e && adb pull {screenshot_dir} artifacts/e2e/;' in e2e_job
+    assert 'capture_status=$?; if [ "$status" -eq 0 ]; then status=$capture_status; fi;' in e2e_job
+    assert 'fi; exit "$status"\' EXIT;' in e2e_job, 'Screenshot collection must preserve test failures'
+    assert '            artifacts/e2e/\n' in e2e_job
+    assert 'name: android-e2e-reports' in e2e_job and 'if: always()' in e2e_job
+    assert 'secrets.' not in e2e_job, 'Emulator tests do not need cloud/account credentials'
+    for forbidden in ('continue-on-error', 'strategy:', 'retry', '|| true', 'connectedCheck'):
+        assert forbidden not in e2e_job, 'No parallel devices, retries, broad exploration or ignored failures'
     assert re.search(r'- name: Clean up keystore\n        if: always\(\)\n'
                      r'        run: rm -f -- "\$\{GITHUB_WORKSPACE\}/ci-release\.jks"', release)
     assert 'rm -rf' not in workflow

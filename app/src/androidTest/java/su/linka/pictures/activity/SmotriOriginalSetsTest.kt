@@ -145,7 +145,7 @@ class SmotriOriginalSetsTest {
             } }
             dismissKeyboard()
             click(UiText.Apply, scroll = true)
-            awaitNamed(UiText.UnsupportedScale)
+            awaitNamed(UiText.UnsupportedDisplaySettings)
             assertFalse("Scale rejection must remain adult-only", exists(UiText.CommunicationMenu))
             capture("fixed-scale-unsupported", stable = false)
             click(UiText.Close)
@@ -181,7 +181,7 @@ class SmotriOriginalSetsTest {
             check(findLibraryBoard(dense.name))
             clickAny(UiText.BoardActions.labels(dense.name))
             click(UiText.Open)
-            awaitNamed(UiText.UnsupportedScale)
+            awaitNamed(UiText.UnsupportedDisplaySettings)
             assertFalse("Rejected board must not enter child mode", exists(UiText.CommunicationMenu))
             assertFalse("Rejection must not start playback", exists(UiText.StopSpeaking))
             capture("fixed-rejected-board", stable = false)
@@ -275,9 +275,9 @@ class SmotriOriginalSetsTest {
             clickAny(UiText.BoardActions.labels(fixture.name))
             click(UiText.Open)
             await("adult rejection or admitted child board") { root ->
-                find(root) { matches(it, UiText.UnsupportedScale.labels + UiText.CommunicationMenu.labels) }
+                find(root) { matches(it, UiText.UnsupportedDisplaySettings.labels + UiText.CommunicationMenu.labels) }
             }
-            if (exists(UiText.UnsupportedScale)) {
+            if (exists(UiText.UnsupportedDisplaySettings)) {
                 assertFalse("Rejected board must remain adult-only", exists(UiText.CommunicationMenu))
                 assertFalse("Rejection must not start playback", exists(UiText.StopSpeaking))
                 capture(capturePrefix + "${fixture.slug}-unsupported", stable = false)

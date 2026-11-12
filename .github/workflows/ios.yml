@@ -1,0 +1,182 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator-tests:
+    runs-on: macos-26
+    timeout-minutes: 40
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        device: [phone, tablet]
+    env:
+      CI_DEVICE_FAMILY: ${{ matrix.device }}
+      LINKA_FFMPEG_WORK_ROOT: ${{ github.workspace }}/build/ios-ffmpeg-preflight
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle wrapper validation
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare verified producer tools
+        run: |
+          if ! command -v gpgv >/dev/null; then brew install gnupg; fi
+          echo "GPGV=$(command -v gpgv)" >> "$GITHUB_ENV"
+
+      - name: Check static iOS contracts
+        if: matrix.device == 'phone'
+        run: |
+          python3 -B scripts/test-ios-scene-manifest.py
+          python3 -B scripts/test-ios-simulator-matrix-unit.py
+          python3 -B scripts/test-ios-verification-pipeline-unit.py
+          python3 -B shared/src/commonTest/check_localization.py
+
+      - name: Select installed stable runtime and create owned Simulator
+        run: |
+          mkdir -p build/ios-ci
+          xcodebuild -version | tee build/ios-ci/xcode-version.txt
+          xcrun simctl list --json > build/ios-ci/inventory.json
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          root = Path('build/ios-ci')
+          xcode = (root / 'xcode-version.txt').read_text()
+          assert int(re.search(r'Xcode (\d+)', xcode)[1]) >= 26, xcode
+          inventory = json.loads((root / 'inventory.json').read_text())
+          runtimes = [r for r in inventory['runtimes'] if r.get('isAvailable')
+                      and '.iOS-' in r['identifier']
+                      and re.fullmatch(r'\d+(?:\.\d+)*', r['version'])
+                      and re.fullmatch(r'\d+[A-Z]\d+', r['buildversion'])]
+          assert runtimes, 'No installed stable iOS runtime; do not download or silently use a beta'
+          runtime = max(runtimes, key=lambda r: tuple(map(int, r['version'].split('.'))))
+          assert int(runtime['version'].split('.')[0]) >= 17, runtime
+          supported = {t['identifier'] for t in runtime['supportedDeviceTypes']}
+          family = 'iPhone' if os.environ['CI_DEVICE_FAMILY'] == 'phone' else 'iPad'
+          types = [t for t in inventory['devicetypes'] if t['identifier'] in supported and t['name'].startswith(family)]
+          assert types, f'No supported {family} type on selected runtime'
+          device_type = types[-1]
+          udid = subprocess.check_output(['xcrun', 'simctl', 'create',
+              f'LINKa-CI-{os.environ["GITHUB_RUN_ID"]}-{family}', device_type['identifier'], runtime['identifier']], text=True).strip()
+          (root / 'owned-device.json').write_text(json.dumps(dict(udid=udid, runtime=runtime, device_type=device_type), indent=2))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'CI_SIMULATOR_UDID={udid}\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f'### iOS {runtime["version"]} ({runtime["buildversion"]}) / {device_type["name"]}\n')
+          PY
+
+      - name: Wait for owned Simulator
+        run: |
+          xcrun simctl boot "$CI_SIMULATOR_UDID"
+          xcrun simctl bootstatus "$CI_SIMULATOR_UDID" -b
+
+      - name: Run native tests once on the owned phone
+        if: matrix.device == 'phone'
+        run: ./gradlew :shared:iosSimulatorArm64Test --device "$CI_SIMULATOR_UDID" --rerun
+
+      - name: Build debug framework and stage Compose resources
+        env:
+          PLATFORM_NAME: iphonesimulator
+          ARCHS: arm64
+          BUILT_PRODUCTS_DIR: ${{ github.workspace }}/shared/build/compose/ios/iosSimulatorArm64
+          UNLOCALIZED_RESOURCES_FOLDER_PATH: .
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 :shared:syncComposeResourcesForIos
+
+      - name: Build product and UI runner with local ad-hoc signing only
+        run: |
+          xcodebuild build -project iosApp/LinkaPokazhi.xcodeproj -scheme LinkaPokazhi -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios-ci/product CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM= | tee build/ios-ci/product-build.log
+          xcodebuild build-for-testing -project iosUiTests/LinkaStartupUITests.xcodeproj -scheme LinkaStartupUITests -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios-ci/ui CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM= | tee build/ios-ci/ui-build.log
+
+      - name: Bind UI runner to this built product
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          products = Path('build/ios-ci/ui/Build/Products')
+          runs = list(products.glob('*.xctestrun'))
+          assert len(runs) == 1, runs
+          path = runs[0]
+          data = plistlib.loads(path.read_bytes())
+          app = Path('build/ios-ci/product/Build/Products/Debug-iphonesimulator/LinkaPokazhi.app').resolve()
+          info = plistlib.loads((app / 'Info.plist').read_bytes())
+          assert info['CFBundleIdentifier'] == 'su.linka.pictures.development', info['CFBundleIdentifier']
+          if 'TestConfigurations' in data:
+              targets = [t for c in data['TestConfigurations'] for t in c['TestTargets']]
+          else:
+              targets = [v for k, v in data.items() if k != '__xctestrun_metadata__' and isinstance(v, dict)]
+          assert len(targets) == 1, targets
+          target = targets[0]
+          assert target.get('IsUITestBundle'), target
+          target['UITargetAppPath'] = str(app)
+          target['UITargetAppBundleIdentifier'] = info['CFBundleIdentifier']
+          target.setdefault('TestingEnvironmentVariables', {})['LINKA_UI_PRODUCT_BUNDLE_ID'] = info['CFBundleIdentifier']
+          path.write_bytes(plistlib.dumps(data))
+          with open(__import__('os').environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'CI_XCTESTRUN={path.resolve()}\n')
+          PY
+          xcrun simctl install "$CI_SIMULATOR_UDID" build/ios-ci/product/Build/Products/Debug-iphonesimulator/LinkaPokazhi.app
+
+      - name: Run cold launch then settings layout UI test without retries
+        run: |
+          set -euo pipefail
+          methods=(MatrixSmokeTests/testColdLaunchAndRelaunch MessageRowLayoutTests/testDefault20Select28SaveRelaunchAndFoodLayout)
+          for method in "${methods[@]}"; do
+            name="${method%%/*}"
+            xcodebuild test-without-building -xctestrun "$CI_XCTESTRUN" -destination "platform=iOS Simulator,id=$CI_SIMULATOR_UDID" -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 "-only-testing:LinkaStartupUITests/$method" -resultBundlePath "build/ios-ci/$name.xcresult" | tee "build/ios-ci/$name.log"
+            xcrun xcresulttool get test-results summary --path "build/ios-ci/$name.xcresult" > "build/ios-ci/$name-summary.json"
+            python3 - "$name" <<'PY'
+          import json, sys
+          from pathlib import Path
+          summary = json.loads(Path(f'build/ios-ci/{sys.argv[1]}-summary.json').read_text())
+          assert summary['result'] == 'Passed', summary
+          assert summary['totalTestCount'] == summary['passedTests'] == 1, summary
+          assert summary['failedTests'] == summary['skippedTests'] == 0, summary
+          assert not summary.get('testFailures'), summary
+          PY
+          done
+
+      - name: Upload logs, exact test summaries and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ci-${{ matrix.device }}
+          path: |
+            build/ios-ci/*.txt
+            build/ios-ci/*.json
+            build/ios-ci/*.log
+            build/ios-ci/*.xcresult/
+            shared/build/reports/tests/iosSimulatorArm64Test/
+            shared/build/test-results/iosSimulatorArm64Test/
+            build/ios-ffmpeg-preflight/*/result.json
+            build/ios-ffmpeg-preflight/*/logs/
+
+      - name: Remove only this job's owned Simulator
+        if: always()
+        run: |
+          if [ -n "${CI_SIMULATOR_UDID:-}" ]; then
+            xcrun simctl shutdown "$CI_SIMULATOR_UDID" || true
+            xcrun simctl delete "$CI_SIMULATOR_UDID"
+          fi
