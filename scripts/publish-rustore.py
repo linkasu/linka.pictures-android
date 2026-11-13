@@ -31,9 +31,14 @@ APP = BASE + '/v1/application/' + PACKAGE
 DETAIL = BASE + '/v2/application/' + PACKAGE
 NEW_CERT = '01e2aa1f93150de38ad38888ca4bcfab56bca9991e3775d53907667802385121'
 OLD_CERT = '28ed911ea1b24c0827a079597200319d73b61f5cdb321bf5ef6bf87b72a1ac52'
+TEMPLATE_ID = 2064943286
+LISTING_FIELDS = ('appName', 'shortDescription', 'fullDescription', 'categories', 'ageLegal',
+                  'paid', 'appType', 'privacyExplanation', 'privacyDataTypes', 'developerContacts')
 
 
 def rustore(path, token='', method='GET', body=None, apk=None):
+    if not (path == BASE + '/auth' or path.startswith(APP + '/') or path.startswith(DETAIL + '/')):
+        raise PublishError('RuStore URL outside approved application endpoints')
     headers = {'Accept': 'application/json'}
     if token:
         headers['Public-Token'] = token
@@ -205,6 +210,151 @@ def preflight(token):
     return active[0]['versionId']
 
 
+def positive_id(value):
+    if not re.fullmatch(r'[1-9][0-9]*', str(value)):
+        raise PublishError('Explicit positive RuStore version ID required')
+    return int(value)
+
+
+def version_detail(token, version_id):
+    try:
+        detail = rustore(DETAIL + '/version/' + str(positive_id(version_id)), token)
+    except PublishError as error:
+        raise PublishError('BLOCKED: RuStore v2 version detail unavailable; no endpoint fallback: ' + str(error)) from None
+    if not isinstance(detail, dict):
+        raise PublishError('BLOCKED: invalid RuStore v2 version detail')
+    return detail
+
+
+def version_history(token):
+    page = rustore(APP + '/version?filterTestingType=ALL&page=0&size=100', token)
+    versions = page.get('content')
+    if (not isinstance(versions, list) or not versions or page.get('totalPages') != 1
+            or page.get('totalElements') != len(versions)):
+        raise PublishError('BLOCKED: require complete single-page RuStore version history')
+    ids = [positive_id(version['versionId']) for version in versions]
+    if len(ids) != len(set(ids)):
+        raise PublishError('BLOCKED: duplicate RuStore version IDs')
+    return versions
+
+
+def field_hash(value):
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                                     separators=(',', ':')).encode()).hexdigest()
+
+
+def detail_evidence(detail):
+    packages = detail.get('packages')
+    if not isinstance(packages, list):
+        raise PublishError('BLOCKED: missing RuStore package inventory')
+    return {'app_id': detail.get('appId'), 'app_name': detail.get('appName'),
+            'package_count': len(packages),
+            'packages': [{key: item.get(key) for key in ('verCode', 'verName')} for item in packages],
+            'field_sha256': {key: field_hash(value) for key, value in sorted(detail.items())}}
+
+
+def inspect(args, evidence):
+    delivery_sha = os.environ.get('GITHUB_SHA', '')
+    if not re.fullmatch(r'[0-9a-f]{40}', delivery_sha):
+        raise PublishError('BLOCKED: exact CI delivery code GITHUB_SHA required for inspection')
+    token = authenticate()
+    versions = version_history(token)
+    template_id = positive_id(args.template_version_id)
+    detail = version_detail(token, template_id)
+    evidence.update(template_version_id=template_id, template=detail_evidence(detail),
+                    delivery_sha=delivery_sha,
+                    versions=[{key: version.get(key) for key in
+                               ('versionId', 'versionStatus', 'versionCode', 'testingType')}
+                              for version in versions],
+                    verified_certificate_sha256={'api24_32': OLD_CERT, 'api33_plus': NEW_CERT},
+                    status='RUSTORE_READ_ONLY_INSPECTION')
+    play.save(evidence, args.evidence)
+    evidence.update(template_listing_sha256=listing_hash(detail),
+                    status='GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED')
+
+
+def listing(detail):
+    if (detail.get('appId') != 2063785208 or detail.get('paid') is not False
+            or detail.get('ageLegal') != '0+' or detail.get('appType') != 'MAIN'
+            or detail.get('categories') != ['tools']
+            or any(not isinstance(detail.get(key), str) or not detail[key].strip()
+                   for key in ('appName', 'shortDescription', 'fullDescription'))):
+        raise PublishError('BLOCKED: listing identity/free/age/required text differs or is missing')
+    return {key: detail[key] for key in LISTING_FIELDS if key in detail}
+
+
+def listing_hash(detail):
+    return field_hash(listing(detail))
+
+
+def validate_inspection(args, evidence):
+    receipt = json.loads(args.inspection.read_text())
+    delivery_sha = os.environ.get('GITHUB_SHA', '')
+    status = 'GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED'
+    if (not re.fullmatch(r'[0-9a-f]{40}', delivery_sha)
+            or receipt.get('status') != status or receipt.get('outcome') != status
+            or receipt.get('delivery_sha') != delivery_sha
+            or receipt.get('source_sha') != args.source_sha
+            or receipt.get('google_run_id') != args.google_run_id
+            or receipt.get('package') != PACKAGE or receipt.get('version_code') != 7
+            or receipt.get('release_version') != '2.0.1' or receipt.get('app_id') != 2063785208
+            or receipt.get('template_version_id') != positive_id(args.template_version_id)
+            or not re.fullmatch(r'[0-9a-f]{64}', evidence.get('apk_sha256', ''))
+            or receipt.get('apk_sha256') != evidence['apk_sha256']
+            or not re.fullmatch(r'[0-9a-f]{64}', receipt.get('template_listing_sha256', ''))):
+        raise PublishError('BLOCKED: require successful matching inspection receipt for this code/source/Google run/APK/template')
+    return receipt['template_listing_sha256']
+
+
+def draft_preflight(args, token, inspected_listing_hash):
+    draft_id = positive_id(args.draft_id)
+    template_id = positive_id(args.template_version_id)
+    if draft_id == template_id:
+        raise PublishError('BLOCKED: target must be a separate duplicated draft, not the template')
+    versions = version_history(token)
+    targets = [version for version in versions if positive_id(version['versionId']) == draft_id]
+    if len(targets) != 1 or targets[0].get('versionStatus') != 'DRAFT' or targets[0].get('testingType') is not None:
+        raise PublishError('BLOCKED: target must be the production DRAFT in complete history')
+    safe = {'ACTIVE', 'PREVIOUS_ACTIVE', 'ARCHIVED', 'DELETED_DRAFT'}
+    for version in versions:
+        if positive_id(version['versionId']) != draft_id:
+            if version.get('versionStatus') not in safe or int(version.get('versionCode', 7)) >= 7:
+                raise PublishError('BLOCKED: another draft/review/pending/unknown or version >=7 exists')
+    template = version_detail(token, template_id)
+    if listing_hash(template) != inspected_listing_hash:
+        raise PublishError('BLOCKED: template listing changed since verified inspection')
+    target = version_detail(token, draft_id)
+    if listing(target) != listing(template):
+        raise PublishError('BLOCKED: duplicated draft listing/privacy/contacts differ from template')
+    if target.get('packages') != []:
+        raise PublishError('BLOCKED: target package inventory must be explicitly empty; never overwrite APK')
+    if target.get('publishType') != 'INSTANTLY' or target.get('partialValue') not in (100, -1):
+        raise PublishError('BLOCKED: set instant 100% publication in console before upload')
+    return draft_id, target
+
+
+def publish_draft(args, evidence):
+    inspected_listing_hash = validate_inspection(args, evidence)
+    token = authenticate()
+    draft_id, before = draft_preflight(args, token, inspected_listing_hash)
+    evidence.update(rustore_version_id=draft_id, template_version_id=positive_id(args.template_version_id),
+                    template_listing_sha256=inspected_listing_hash, delivery_sha=os.environ['GITHUB_SHA'],
+                    draft_before_upload=detail_evidence(before), status='APK_UPLOAD_RESULT_UNKNOWN')
+    play.save(evidence, args.evidence)
+    version_url = APP + '/version/' + str(draft_id)
+    rustore(version_url + '/apk?servicesType=Unknown&isMainApk=true', token, 'POST', apk=args.apk)
+    after = version_detail(token, draft_id)
+    packages = after.get('packages', [])
+    if (len(packages) != 1 or packages[0].get('verCode') != 7 or packages[0].get('verName') != '2.0.1'
+            or listing(after) != listing(before) or after.get('publishType') != 'INSTANTLY'
+            or after.get('partialValue') not in (100, -1)):
+        raise PublishError('BLOCKED: uploaded draft APK/listing/publication settings mismatch; no commit')
+    evidence.update(draft_after_upload=detail_evidence(after), status='COMMIT_RESULT_UNKNOWN')
+    play.save(evidence, args.evidence)
+    rustore(version_url + '/commit?priorityUpdate=0', token, 'POST')
+    evidence['status'] = 'SUBMITTED_FOR_REVIEW_NOT_PROOF_OF_PUBLICATION'
+
+
 def publish(args, evidence):
     token = authenticate()
     evidence['inherited_active_version_id'] = preflight(token)
@@ -238,28 +388,43 @@ def main():
     parser.add_argument('--source-sha', required=True)
     parser.add_argument('--repository', required=True)
     parser.add_argument('--receipt', type=Path, default=Path('google-receipt/publish-evidence.json'))
+    parser.add_argument('--inspection', type=Path, default=Path('inspection/rustore-publish-evidence.json'))
     parser.add_argument('--evidence', type=Path, default=Path('rustore-publish-evidence.json'))
     parser.add_argument('--apk', type=Path, default=Path('google-universal.apk'))
     parser.add_argument('--apksigner', default='apksigner')
     parser.add_argument('--aapt', default='aapt')
+    parser.add_argument('--draft-id')
+    parser.add_argument('--template-version-id', default=str(TEMPLATE_ID))
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--verify-source-only', action='store_true')
     mode.add_argument('--prepare', action='store_true')
     mode.add_argument('--publish', action='store_true')
+    mode.add_argument('--inspect', action='store_true')
+    mode.add_argument('--publish-draft', action='store_true')
     args = parser.parse_args()
+    if args.publish_draft and args.draft_id is None:
+        parser.error('--publish-draft requires --draft-id')
     evidence = {'status': 'PREPARE_NO_API_CALLS', 'package': PACKAGE,
                 'version_code': 7, 'release_version': '2.0.1', 'app_id': 2063785208}
     result = 0
     try:
-        if args.verify_source_only or args.publish:
+        if args.publish_draft:
+            positive_id(args.draft_id)
+            positive_id(args.template_version_id)
+        if args.verify_source_only or args.publish or args.inspect or args.publish_draft:
             evidence.update(verify_source(args))
             evidence['status'] = 'SOURCE_VERIFIED'
-        if args.publish:
+        if args.publish or args.inspect or args.publish_draft:
             validate_receipt(json.loads(args.receipt.read_text()), args.source_sha)
             download_apk(args, evidence)
             evidence['status'] = 'GOOGLE_APK_VERIFIED'
             play.save(evidence, args.evidence)
-            publish(args, evidence)
+            if args.inspect:
+                inspect(args, evidence)
+            elif args.publish_draft:
+                publish_draft(args, evidence)
+            else:
+                publish(args, evidence)
         elif not args.verify_source_only:
             evidence['planned_actions'] = [
                 'Verify successful Google publish run, current main SHA and committed-for-review receipt',

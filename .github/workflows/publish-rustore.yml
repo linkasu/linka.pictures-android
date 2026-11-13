@@ -7,6 +7,20 @@ on:
         description: Successful main publish-android run at current main SHA
         required: true
         type: string
+      mode:
+        description: Inspect only, or upload once into an explicitly prepared empty draft
+        type: choice
+        required: true
+        default: inspect
+        options: [inspect, publish-draft]
+      draft_id:
+        description: Explicit empty RuStore draft ID (publish-draft only)
+        type: string
+        required: false
+      inspection_run_id:
+        description: Successful inspect run at this exact delivery commit (publish-draft only)
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -18,12 +32,14 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fix/rustore-draft-delivery-20261113'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       GOOGLE_RUN_ID: ${{ inputs.google_publish_run_id }}
-      SOURCE_SHA: ${{ github.sha }}
+      SOURCE_SHA: 1fec1cdeb842f170eddfa08436a595941b2be29a
+      DELIVERY_MODE: ${{ inputs.mode }}
+      DRAFT_ID: ${{ inputs.draft_id }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -38,11 +54,13 @@ jobs:
         run: python3 -m pip install cryptography==46.0.3
 
       - name: Offline safety tests
-        run: python3 -B scripts/test-publish-rustore.py
+        run: |
+          python3 -B scripts/test-publish-rustore.py
+          python3 -B scripts/check-rustore-delivery.py --self-test
 
       - name: Verify exact successful Google publication source before store credentials
         run: |
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -B scripts/check-rustore-delivery.py
           python3 -B scripts/publish-rustore.py --verify-source-only \
             --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \
             --repository "$GITHUB_REPOSITORY" --evidence rustore-source-evidence.json
@@ -66,6 +84,33 @@ jobs:
           module.validate_receipt(json.loads(Path('google-receipt/publish-evidence.json').read_text()), os.environ['SOURCE_SHA'])
           PY
 
+      - name: Validate the prior inspection before allowing draft upload
+        if: inputs.mode == 'publish-draft'
+        env:
+          INSPECTION_RUN_ID: ${{ inputs.inspection_run_id }}
+        run: |
+          python3 -B - <<'PY'
+          import json, os, re, subprocess
+          run_id = os.environ['INSPECTION_RUN_ID']
+          assert re.fullmatch(r'[1-9][0-9]*', run_id)
+          repo = os.environ['GITHUB_REPOSITORY']
+          run = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/actions/runs/{run_id}'], text=True))
+          assert run['path'] == '.github/workflows/publish-rustore.yml'
+          assert run['head_branch'] == 'fix/rustore-draft-delivery-20261113'
+          assert run['head_sha'] == os.environ['GITHUB_SHA']
+          assert run['event'] == 'workflow_dispatch' and run['conclusion'] == 'success' and run['status'] == 'completed'
+          assert run['repository']['full_name'] == run['head_repository']['full_name'] == repo
+          PY
+
+      - name: Download the verified inspection receipt
+        if: inputs.mode == 'publish-draft'
+        uses: actions/download-artifact@v4
+        with:
+          name: rustore-publish-evidence-${{ inputs.inspection_run_id }}
+          path: inspection
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.inspection_run_id }}
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -86,13 +131,19 @@ jobs:
           create_credentials_file: false
           export_environment_variables: false
 
-      - name: Download and verify Google APK, stop on existing RuStore moderation, submit once
+      - name: Inspect without mutation, or upload into the explicitly selected empty draft once
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           RUSTORE_API_KEY_ID: ${{ secrets.RUSTORE_API_KEY_ID }}
           RUSTORE_API_PRIVATE_KEY: ${{ secrets.RUSTORE_API_PRIVATE_KEY }}
         run: |
-          python3 -B scripts/publish-rustore.py --publish \
+          args=(--inspect)
+          if [ "$DELIVERY_MODE" = publish-draft ]; then
+            args=(--publish-draft --draft-id "$DRAFT_ID")
+          elif [ "$DELIVERY_MODE" != inspect ]; then
+            exit 1
+          fi
+          python3 -B scripts/publish-rustore.py "${args[@]}" \
             --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \
             --repository "$GITHUB_REPOSITORY" \
             --aapt "$ANDROID_HOME/build-tools/35.0.0/aapt" \

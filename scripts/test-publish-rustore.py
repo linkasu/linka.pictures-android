@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline checks only: no store, GitHub, credentials or APK downloads."""
 import base64
+import copy
 import importlib.util
 import json
 import os
@@ -17,6 +18,176 @@ spec.loader.exec_module(r)
 
 
 class SafetyTests(unittest.TestCase):
+    def setUp(self):
+        environment = patch.dict(os.environ, GITHUB_SHA='d' * 40)
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def draft_fixture(self):
+        args = SimpleNamespace(draft_id='43', template_version_id=str(r.TEMPLATE_ID),
+                               apk=Path('synthetic.apk'), source_sha='a' * 40, google_run_id='123')
+        versions = [dict(versionId=r.TEMPLATE_ID, versionStatus='DELETED_DRAFT', versionCode=6),
+                    dict(versionId=43, versionStatus='DRAFT', versionCode=0, testingType=None)]
+        page = dict(content=versions, totalPages=1, totalElements=2)
+        detail = dict(appId=2063785208, appName='Линка', shortDescription='Картинки',
+                      fullDescription='Общение', paid=False, ageLegal='0+', appType='MAIN',
+                      categories=['tools'], privacyExplanation='synthetic-private',
+                      privacyDataTypes=[], developerContacts={'email': 'synthetic-private'},
+                      packages=[], publishType='INSTANTLY', partialValue=100)
+        return args, page, copy.deepcopy(detail), detail
+
+    def inspection_receipt(self, args, template):
+        return dict(status='GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED',
+                    outcome='GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED', delivery_sha='d' * 40,
+                    source_sha=args.source_sha, google_run_id=args.google_run_id,
+                    apk_sha256='f' * 64, package=r.PACKAGE, version_code=7, release_version='2.0.1',
+                    app_id=2063785208, template_version_id=r.TEMPLATE_ID,
+                    template_listing_sha256=r.listing_hash(template))
+
+    def test_inspection_receipt_must_match_every_delivery_identity_before_auth(self):
+        args, _, template, _ = self.draft_fixture()
+        receipt = self.inspection_receipt(args, template)
+        with tempfile.TemporaryDirectory() as directory:
+            args.inspection = Path(directory) / 'inspection.json'
+            evidence = {'apk_sha256': 'f' * 64}
+            args.inspection.write_text(json.dumps(receipt))
+            self.assertEqual(r.validate_inspection(args, evidence), r.listing_hash(template))
+            for key, value in [('status', 'FAILED'), ('outcome', 'FAILED'), ('delivery_sha', 'b' * 40),
+                               ('source_sha', 'b' * 40), ('google_run_id', '124'), ('apk_sha256', 'e' * 64),
+                               ('template_version_id', 42), ('template_listing_sha256', ''),
+                               ('package', 'other'), ('version_code', 6)]:
+                args.inspection.write_text(json.dumps(dict(receipt, **{key: value})))
+                with self.subTest(key=key), patch.object(r, 'authenticate') as auth:
+                    with self.assertRaises(r.PublishError):
+                        r.publish_draft(args, evidence)
+                    auth.assert_not_called()
+            args.inspection.unlink()
+            with patch.object(r, 'authenticate') as auth:
+                with self.assertRaises(OSError):
+                    r.publish_draft(args, evidence)
+                auth.assert_not_called()
+
+    def test_inspect_gets_history_and_v2_detail_without_mutations_or_private_values(self):
+        args, page, template, _ = self.draft_fixture()
+        evidence = {'apk_sha256': 'a' * 64}
+        template.update(jwe='synthetic-private', moderationInfo='synthetic-private')
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(r, 'authenticate', return_value='synthetic-token'), \
+                patch.object(r, 'rustore', side_effect=[page, template]) as api:
+            args.evidence = Path(directory) / 'evidence.json'
+            r.inspect(args, evidence)
+            self.assertNotIn('synthetic-private', args.evidence.read_text())
+        self.assertEqual(api.call_count, 2)
+        self.assertTrue(all(len(call.args) == 2 for call in api.call_args_list))
+        self.assertEqual(api.call_args.args[0], r.DETAIL + '/version/' + str(r.TEMPLATE_ID))
+        self.assertEqual(evidence['status'], 'GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED')
+        self.assertEqual(evidence['template']['app_name'], 'Линка')
+        self.assertEqual(evidence['verified_certificate_sha256']['api24_32'], r.OLD_CERT)
+        self.assertNotIn('synthetic-private', json.dumps(evidence))
+        self.assertIn('developerContacts', evidence['template']['field_sha256'])
+
+    def test_draft_blockers_prevent_every_mutation(self):
+        cases = ['wrong_app', 'wrong_state', 'pending', 'other_draft', 'existing_apk',
+                 'metadata', 'missing_privacy', 'missing_name', 'settings', 'same_id', 'incomplete',
+                 'template_changed_since_inspect']
+        for case in cases:
+            args, page, template, target = self.draft_fixture()
+            if case == 'wrong_app':
+                target['appId'] = 1
+            elif case == 'wrong_state':
+                page['content'][1]['versionStatus'] = 'MODERATION'
+            elif case in ('pending', 'other_draft'):
+                page['content'][0]['versionStatus'] = 'MODERATION' if case == 'pending' else 'DRAFT'
+            elif case == 'existing_apk':
+                target['packages'] = [{'verCode': 6}]
+            elif case == 'metadata':
+                target['fullDescription'] = 'Changed'
+            elif case == 'missing_privacy':
+                del target['privacyExplanation']
+            elif case == 'missing_name':
+                target['appName'] = ' '
+            elif case == 'settings':
+                target['partialValue'] = 50
+            elif case == 'same_id':
+                args.draft_id = args.template_version_id
+            elif case == 'incomplete':
+                page['totalPages'] = 2
+            elif case == 'template_changed_since_inspect':
+                template['fullDescription'] = 'Changed after inspect'
+            with self.subTest(case=case), patch.object(r, 'authenticate', return_value='synthetic-token'), \
+                    patch.object(r, 'validate_inspection', return_value=r.listing_hash(self.draft_fixture()[2])), \
+                    patch.object(r, 'rustore', side_effect=[page, template, target]) as api:
+                with self.assertRaises(r.PublishError):
+                    r.publish_draft(args, {})
+                self.assertTrue(all(len(call.args) == 2 for call in api.call_args_list))
+
+    def test_targeted_draft_upload_and_commit_once_with_unknown_journals(self):
+        for failure in (None, 'upload', 'commit', 'metadata_after'):
+            args, page, template, target = self.draft_fixture()
+            after = dict(target, packages=[dict(verCode=7, verName='2.0.1')])
+            if failure == 'metadata_after':
+                after['developerContacts'] = {'email': 'changed'}
+            responses = [page, template, target,
+                         r.PublishError('Unknown upload') if failure == 'upload' else {}, after,
+                         r.PublishError('Unknown commit') if failure == 'commit' else {}]
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(r, 'authenticate', return_value='synthetic-token'), \
+                    patch.object(r, 'rustore', side_effect=responses) as api:
+                args.evidence = Path(directory) / 'evidence.json'
+                args.inspection = Path(directory) / 'inspection.json'
+                args.inspection.write_text(json.dumps(self.inspection_receipt(args, template)))
+                evidence = {'apk_sha256': 'f' * 64}
+                if failure:
+                    with self.assertRaises(r.PublishError):
+                        r.publish_draft(args, evidence)
+                else:
+                    r.publish_draft(args, evidence)
+                    self.assertEqual(evidence['status'], 'SUBMITTED_FOR_REVIEW_NOT_PROOF_OF_PUBLICATION')
+                mutations = [call for call in api.call_args_list if len(call.args) > 2]
+                self.assertEqual(len(mutations), 1 if failure in ('upload', 'metadata_after') else 2)
+                self.assertEqual(mutations[0].args, (r.APP + '/version/43/apk?servicesType=Unknown&isMainApk=true',
+                                                    'synthetic-token', 'POST'))
+                self.assertEqual(json.loads(args.evidence.read_text())['status'],
+                                 'APK_UPLOAD_RESULT_UNKNOWN' if failure in ('upload', 'metadata_after')
+                                 else 'COMMIT_RESULT_UNKNOWN')
+                self.assertNotIn('synthetic-private', args.evidence.read_text())
+                self.assertTrue(all(call.args[2] == 'POST' for call in mutations))
+
+    def test_v2_forbidden_blocks_without_endpoint_fallback(self):
+        with patch.object(r, 'rustore', side_effect=r.PublishError('RuStore HTTP 403')) as api:
+            with self.assertRaisesRegex(r.PublishError, 'BLOCKED: RuStore v2'):
+                r.version_detail('synthetic-token', r.TEMPLATE_ID)
+            api.assert_called_once()
+
+    def test_only_approved_rustore_urls_are_allowed(self):
+        for url in ('https://example.invalid/public/auth', r.BASE + '/v1/application/other/version',
+                    'https://public-api-m.rustore.ru.evil/public/auth'):
+            with self.subTest(url=url), patch.object(r.urllib.request, 'build_opener') as opener:
+                with self.assertRaises(r.PublishError):
+                    r.rustore(url, 'synthetic-token')
+                opener.assert_not_called()
+
+    def test_inspect_and_publish_draft_keep_source_receipt_apk_gates(self):
+        for mode in ('--inspect', '--publish-draft'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                receipt = Path(directory) / 'receipt.json'
+                receipt.write_text('{}')
+                evidence = Path(directory) / 'evidence.json'
+                argv = ['publish-rustore.py', mode, '--draft-id', '43', '--google-run-id', '123',
+                        '--source-sha', 'a' * 40, '--repository', 'owner/repo',
+                        '--receipt', str(receipt), '--evidence', str(evidence)]
+                order = []
+                def mark(name):
+                    return lambda *args: order.append(name) or {}
+                with patch.object(r.sys, 'argv', argv), patch('builtins.print'), \
+                        patch.object(r, 'verify_source', side_effect=mark('source')), \
+                        patch.object(r, 'validate_receipt', side_effect=mark('receipt')), \
+                        patch.object(r, 'download_apk', side_effect=mark('apk')), \
+                        patch.object(r, 'inspect', side_effect=mark('inspect')), \
+                        patch.object(r, 'publish_draft', side_effect=mark('draft')):
+                    self.assertEqual(r.main(), 0)
+                self.assertEqual(order, ['source', 'receipt', 'apk', 'inspect' if mode == '--inspect' else 'draft'])
+
     def test_receipt_requires_success_exact_version_sha(self):
         receipt = dict(status='EDIT_COMMITTED_FOR_REVIEW', outcome='EDIT_COMMITTED_FOR_REVIEW',
                        package=r.PACKAGE, version_code=7, release_version='2.0.1', source_sha='a' * 40)
@@ -83,7 +254,7 @@ class SafetyTests(unittest.TestCase):
         with patch.object(r.urllib.request, 'build_opener') as opener:
             opener.return_value.open.side_effect = error
             with self.assertRaises(r.PublishError) as caught:
-                r.rustore(r.APP, 'synthetic-secret', 'POST', {})
+                r.rustore(r.APP + '/version', 'synthetic-secret', 'POST', {})
             self.assertNotIn('synthetic-secret', str(caught.exception))
             self.assertEqual(opener.return_value.open.call_count, 1)
 
