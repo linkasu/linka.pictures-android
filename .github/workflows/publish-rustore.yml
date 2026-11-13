@@ -21,6 +21,11 @@ on:
         description: Successful inspect run at this exact delivery commit (publish-draft only)
         type: string
         required: false
+      replace_template:
+        description: Authorized single replacement of unpublished 2064943286 using empty clone 2064951505
+        type: boolean
+        default: false
+        required: false
 
 permissions:
   contents: read
@@ -40,6 +45,7 @@ jobs:
       SOURCE_SHA: 1fec1cdeb842f170eddfa08436a595941b2be29a
       DELIVERY_MODE: ${{ inputs.mode }}
       DRAFT_ID: ${{ inputs.draft_id }}
+      REPLACE_TEMPLATE: ${{ inputs.replace_template }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -145,8 +151,16 @@ jobs:
           args=(--inspect)
           if [ "$DELIVERY_MODE" = publish-draft ]; then
             args=(--publish-draft --draft-id "$DRAFT_ID")
+            if [ "$REPLACE_TEMPLATE" = true ]; then
+              test "$DRAFT_ID" = 2064951505
+              args+=(--replace-template)
+            fi
           elif [ "$DELIVERY_MODE" != inspect ]; then
             exit 1
+          elif [ "$REPLACE_TEMPLATE" = true ]; then
+            exit 1
+          elif [ -n "$DRAFT_ID" ]; then
+            args+=(--draft-id "$DRAFT_ID")
           fi
           python3 -B scripts/publish-rustore.py "${args[@]}" \
             --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \

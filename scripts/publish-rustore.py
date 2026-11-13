@@ -33,8 +33,16 @@ DETAIL = BASE + '/v2/application/' + PACKAGE
 NEW_CERT = '01e2aa1f93150de38ad38888ca4bcfab56bca9991e3775d53907667802385121'
 OLD_CERT = '28ed911ea1b24c0827a079597200319d73b61f5cdb321bf5ef6bf87b72a1ac52'
 TEMPLATE_ID = 2064943286
+REPLACEMENT_ID = 2064951505
+ICON_UID = 'f7afbea5-db87-4f02-9863-fad7cebfa881'
+SCREEN_UIDS = {'a809dd3f-1c7e-4bf0-b10d-561597385a81',
+               '348e1826-b350-4e3f-89b9-72687a4fba21',
+               '45577c4c-b111-4b85-b80b-8e01a7355a32'}
 LISTING_FIELDS = ('appName', 'shortDescription', 'fullDescription', 'categories', 'ageLegal',
-                  'paid', 'appType', 'privacyExplanation', 'privacyDataTypes', 'developerContacts')
+                  'paid', 'priceValue', 'appType', 'privacyExplanation', 'privacyDataTypes',
+                  'developerContacts', 'inAppPurchaseTypes', 'markings', 'faq', 'seoTagIds',
+                  'moderInfo', 'shortDescriptionTv', 'fullDescriptionTv', 'iconUidTv',
+                  'video', 'backgroundVideo')
 
 
 def rustore_ssl_context():
@@ -72,9 +80,9 @@ def rustore(path, token='', method='GET', body=None, apk=None):
         if len(raw) > play.MAX_JSON:
             raise PublishError('RuStore response too large; inspect remote state, do not retry')
         result = json.loads(raw)
-        if result.get('code') != 'OK':
+        if not isinstance(result, dict) or result.get('code') != 'OK':
             raise PublishError('RuStore rejected request; inspect console, do not blindly retry')
-        return result['body']
+        return result.get('body')
     except urllib.error.HTTPError as error:
         code = error.code
         error.close()
@@ -106,7 +114,7 @@ def authenticate():
         raise PublishError('Invalid RuStore RSA private key; credential not logged') from None
     body = rustore(BASE + '/auth', method='POST', body={
         'keyId': key_id, 'timestamp': timestamp, 'signature': base64.b64encode(signature).decode()})
-    token = body.get('jwe')
+    token = body.get('jwe') if isinstance(body, dict) else None
     if not isinstance(token, str) or not token:
         raise PublishError('Missing RuStore authorization token')
     return token
@@ -233,6 +241,8 @@ def verify_apk(args, evidence=None):
 
 def preflight(token):
     page = rustore(APP + '/version?filterTestingType=ALL&page=0&size=100', token)
+    if not isinstance(page, dict):
+        raise PublishError('Require RuStore version history response body')
     versions = page.get('content', [])
     if (page.get('totalPages') != 1 or page.get('totalElements') != len(versions)
             or not versions):
@@ -245,7 +255,7 @@ def preflight(token):
     if len(active) != 1:
         raise PublishError('Require one active production version to inherit existing listing/privacy')
     detail = rustore(DETAIL + '/version/' + str(int(active[0]['versionId'])), token)
-    if (detail.get('appId') != 2063785208 or detail.get('paid') is not False
+    if (not isinstance(detail, dict) or detail.get('appId') != 2063785208 or detail.get('paid') is not False
             or detail.get('ageLegal') != '0+' or detail.get('appType') != 'MAIN'
             or detail.get('categories') != ['tools']):
         raise PublishError('Active app identity/free/age metadata differs; inspect console')
@@ -270,6 +280,8 @@ def version_detail(token, version_id):
 
 def version_history(token):
     page = rustore(APP + '/version?filterTestingType=ALL&page=0&size=100', token)
+    if not isinstance(page, dict):
+        raise PublishError('BLOCKED: missing RuStore version history')
     versions = page.get('content')
     if (not isinstance(versions, list) or not versions or page.get('totalPages') != 1
             or page.get('totalElements') != len(versions)):
@@ -283,6 +295,29 @@ def version_history(token):
 def field_hash(value):
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
                                      separators=(',', ':')).encode()).hexdigest()
+
+
+def media_snapshot(detail):
+    files, packages = detail.get('fileUids'), detail.get('packages')
+    if detail.get('iconUid') != ICON_UID or not isinstance(files, list) or not isinstance(packages, list):
+        raise PublishError('BLOCKED: missing or changed template icon/media inventory')
+    binaries = {item.get('apkUid') for item in packages}
+    media = {}
+    for item in files:
+        if not isinstance(item, dict) or not isinstance(item.get('fileUid'), str):
+            raise PublishError('BLOCKED: invalid RuStore media entry')
+        uid = item['fileUid']
+        if uid not in SCREEN_UIDS | {ICON_UID}:
+            if uid in binaries or str(item.get('type', '')).upper() in ('APK', 'AAB'):
+                continue
+            raise PublishError('BLOCKED: unexpected non-binary template media')
+        if uid in media:
+            raise PublishError('BLOCKED: duplicate template media UID')
+        media[uid] = {key: item.get(key) for key in
+                      ('fileUid', 'type', 'ordinal', 'orientation', 'deviceType')}
+    if not SCREEN_UIDS.issubset(media):
+        raise PublishError('BLOCKED: missing template screenshots')
+    return {'iconUid': ICON_UID, 'files': [media[uid] for uid in sorted(media)]}
 
 
 def detail_evidence(detail):
@@ -311,8 +346,14 @@ def inspect(args, evidence):
                     verified_certificate_sha256={'api24_32': OLD_CERT, 'api33_plus': NEW_CERT},
                     status='RUSTORE_READ_ONLY_INSPECTION')
     play.save(evidence, args.evidence)
+    snapshot = media_snapshot(detail)
     evidence.update(template_listing_sha256=listing_hash(detail),
+                    template_media=snapshot, template_media_sha256=field_hash(snapshot),
                     status='GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED')
+    if getattr(args, 'draft_id', None):
+        check_args = argparse.Namespace(**(vars(args) | {'replace_template': True}))
+        draft_id, target, _ = draft_preflight(check_args, token, evidence)
+        evidence.update(inspected_draft_id=draft_id, draft=detail_evidence(target))
 
 
 def listing(detail):
@@ -343,57 +384,111 @@ def validate_inspection(args, evidence):
             or receipt.get('template_version_id') != positive_id(args.template_version_id)
             or not re.fullmatch(r'[0-9a-f]{64}', evidence.get('apk_sha256', ''))
             or receipt.get('apk_sha256') != evidence['apk_sha256']
-            or not re.fullmatch(r'[0-9a-f]{64}', receipt.get('template_listing_sha256', ''))):
+            or not re.fullmatch(r'[0-9a-f]{64}', receipt.get('template_listing_sha256', ''))
+             or not re.fullmatch(r'[0-9a-f]{64}', receipt.get('template_media_sha256', ''))):
         raise PublishError('BLOCKED: require successful matching inspection receipt for this code/source/Google run/APK/template')
-    return receipt['template_listing_sha256']
+    if getattr(args, 'replace_template', False) and receipt.get('inspected_draft_id') != REPLACEMENT_ID:
+        raise PublishError('BLOCKED: authorized empty replacement draft was not verified by inspection')
+    return receipt
 
 
-def draft_preflight(args, token, inspected_listing_hash):
+def draft_preflight(args, token, receipt):
     draft_id = positive_id(args.draft_id)
     template_id = positive_id(args.template_version_id)
     if draft_id == template_id:
         raise PublishError('BLOCKED: target must be a separate duplicated draft, not the template')
+    replace = getattr(args, 'replace_template', False)
+    if replace and (template_id != TEMPLATE_ID or draft_id != REPLACEMENT_ID):
+        raise PublishError('BLOCKED: replacement authorized only for pinned template and duplicated draft IDs')
     versions = version_history(token)
     targets = [version for version in versions if positive_id(version['versionId']) == draft_id]
     if len(targets) != 1 or targets[0].get('versionStatus') != 'DRAFT' or targets[0].get('testingType') is not None:
         raise PublishError('BLOCKED: target must be the production DRAFT in complete history')
     safe = {'ACTIVE', 'PREVIOUS_ACTIVE', 'ARCHIVED', 'DELETED_DRAFT'}
+    if replace:
+        sources = [version for version in versions if positive_id(version['versionId']) == TEMPLATE_ID]
+        if (len(versions) != 2 or len(sources) != 1
+                or sources[0].get('versionStatus') != 'MODERATION'
+                or sources[0].get('versionCode') != 6 or sources[0].get('testingType') is not None):
+            raise PublishError('BLOCKED: replacement requires exactly source 6 in MODERATION and target DRAFT')
     for version in versions:
-        if positive_id(version['versionId']) != draft_id:
+        if positive_id(version['versionId']) != draft_id and not replace:
             if version.get('versionStatus') not in safe or int(version.get('versionCode', 7)) >= 7:
                 raise PublishError('BLOCKED: another draft/review/pending/unknown or version >=7 exists')
     template = version_detail(token, template_id)
-    if listing_hash(template) != inspected_listing_hash:
+    if listing_hash(template) != receipt['template_listing_sha256']:
         raise PublishError('BLOCKED: template listing changed since verified inspection')
+    if field_hash(media_snapshot(template)) != receipt['template_media_sha256']:
+        raise PublishError('BLOCKED: template media changed since verified inspection')
+    if replace:
+        packages = template.get('packages')
+        if (not isinstance(packages, list) or len(packages) != 1
+                or packages[0].get('verCode') != 6 or packages[0].get('verName') != '2.0.0'):
+            raise PublishError('BLOCKED: replacement source must contain exactly APK 2.0.0 (6)')
     target = version_detail(token, draft_id)
     if listing(target) != listing(template):
         raise PublishError('BLOCKED: duplicated draft listing/privacy/contacts differ from template')
+    if media_snapshot(target) != media_snapshot(template):
+        raise PublishError('BLOCKED: duplicated draft media differ from template')
     if target.get('packages') != []:
         raise PublishError('BLOCKED: target package inventory must be explicitly empty; never overwrite APK')
     if target.get('publishType') != 'INSTANTLY' or target.get('partialValue') not in (100, -1):
         raise PublishError('BLOCKED: set instant 100% publication in console before upload')
-    return draft_id, target
+    return draft_id, target, targets[0]
 
 
 def publish_draft(args, evidence):
-    inspected_listing_hash = validate_inspection(args, evidence)
+    receipt = validate_inspection(args, evidence)
     token = authenticate()
-    draft_id, before = draft_preflight(args, token, inspected_listing_hash)
+    draft_id, before, target_history = draft_preflight(args, token, receipt)
     evidence.update(rustore_version_id=draft_id, template_version_id=positive_id(args.template_version_id),
-                    template_listing_sha256=inspected_listing_hash, delivery_sha=os.environ['GITHUB_SHA'],
-                    draft_before_upload=detail_evidence(before), status='APK_UPLOAD_RESULT_UNKNOWN')
+                    template_listing_sha256=receipt['template_listing_sha256'],
+                    template_media_sha256=receipt['template_media_sha256'], template_media=media_snapshot(before),
+                    delivery_sha=os.environ['GITHUB_SHA'], draft_before_upload=detail_evidence(before))
+    if getattr(args, 'replace_template', False):
+        evidence['status'] = 'TEMPLATE_DELETE_RESULT_UNKNOWN'
+        play.save(evidence, args.evidence)
+        rustore(APP + '/version/' + str(TEMPLATE_ID), token, 'DELETE')
+        versions = version_history(token)
+        remaining = [v for v in versions if positive_id(v['versionId']) == draft_id]
+        deleted = [v for v in versions if positive_id(v['versionId']) == TEMPLATE_ID]
+        if (remaining != [target_history] or len(versions) != 1 + len(deleted)
+                or any(v.get('versionStatus') != 'DELETED_DRAFT' or v.get('versionCode') != 6
+                       or v.get('testingType') is not None for v in deleted)):
+            raise PublishError('BLOCKED: source deletion not confirmed or target history changed; no upload')
+        # A hard-deleted source has no v2 detail; the authenticated inspection pins its hashes.
+        current = version_detail(token, draft_id)
+        if (listing_hash(current) != receipt['template_listing_sha256']
+                or field_hash(media_snapshot(current)) != receipt['template_media_sha256']
+                or current.get('packages') != [] or current.get('publishType') != 'INSTANTLY'
+                or current.get('partialValue') not in (100, -1)):
+            raise PublishError('BLOCKED: target changed after template deletion; no upload')
+        evidence['template_deletion_confirmed'] = True
+    evidence['status'] = 'APK_UPLOAD_RESULT_UNKNOWN'
     play.save(evidence, args.evidence)
     version_url = APP + '/version/' + str(draft_id)
     rustore(version_url + '/apk?servicesType=Unknown&isMainApk=true', token, 'POST', apk=args.apk)
     after = version_detail(token, draft_id)
     packages = after.get('packages', [])
     if (len(packages) != 1 or packages[0].get('verCode') != 7 or packages[0].get('verName') != '2.0.1'
-            or listing(after) != listing(before) or after.get('publishType') != 'INSTANTLY'
+            or listing(after) != listing(before) or media_snapshot(after) != media_snapshot(before)
+            or after.get('publishType') != 'INSTANTLY'
             or after.get('partialValue') not in (100, -1)):
         raise PublishError('BLOCKED: uploaded draft APK/listing/publication settings mismatch; no commit')
     evidence.update(draft_after_upload=detail_evidence(after), status='COMMIT_RESULT_UNKNOWN')
     play.save(evidence, args.evidence)
     rustore(version_url + '/commit?priorityUpdate=0', token, 'POST')
+    committed = version_detail(token, draft_id)
+    committed_packages = committed.get('packages')
+    if (committed.get('versionStatus') not in ('MODERATION', 'ACTIVE')
+            or not isinstance(committed_packages, list) or len(committed_packages) != 1
+            or committed_packages[0].get('verCode') != 7 or committed_packages[0].get('verName') != '2.0.1'
+            or listing_hash(committed) != receipt['template_listing_sha256']
+            or field_hash(media_snapshot(committed)) != receipt['template_media_sha256']
+            or committed.get('publishType') != 'INSTANTLY' or committed.get('partialValue') not in (100, -1)):
+        raise PublishError('BLOCKED: commit readback does not confirm approved APK/listing/media/state')
+    evidence['draft_after_commit'] = detail_evidence(committed)
+    evidence['rustore_version_status'] = committed['versionStatus']
     evidence['status'] = 'SUBMITTED_FOR_REVIEW_NOT_PROOF_OF_PUBLICATION'
 
 
@@ -412,7 +507,7 @@ def publish(args, evidence):
     play.save(evidence, args.evidence)
     version_url = APP + '/version/' + str(version_id)
     rustore(version_url + '/apk?servicesType=Unknown&isMainApk=true', token, 'POST', apk=args.apk)
-    detail = rustore(DETAIL + '/version/' + str(version_id), token)
+    detail = version_detail(token, version_id)
     packages = detail.get('packages', [])
     if (len(packages) != 1 or packages[0].get('verCode') != 7
             or packages[0].get('verName') != '2.0.1'
@@ -436,6 +531,7 @@ def main():
     parser.add_argument('--apksigner', default='apksigner')
     parser.add_argument('--aapt', default='aapt')
     parser.add_argument('--draft-id')
+    parser.add_argument('--replace-template', action='store_true')
     parser.add_argument('--template-version-id', default=str(TEMPLATE_ID))
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--verify-source-only', action='store_true')
@@ -446,6 +542,9 @@ def main():
     args = parser.parse_args()
     if args.publish_draft and args.draft_id is None:
         parser.error('--publish-draft requires --draft-id')
+    if args.replace_template and (not args.publish_draft or args.template_version_id != str(TEMPLATE_ID)
+                                  or args.draft_id != str(REPLACEMENT_ID)):
+        parser.error('--replace-template requires --publish-draft and the exact authorized template/draft IDs')
     evidence = {'status': 'PREPARE_NO_API_CALLS', 'package': PACKAGE,
                 'version_code': 7, 'release_version': '2.0.1', 'app_id': 2063785208}
     result = 0
