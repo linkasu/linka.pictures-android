@@ -38,6 +38,12 @@ ICON_UID = 'f7afbea5-db87-4f02-9863-fad7cebfa881'
 SCREEN_UIDS = {'a809dd3f-1c7e-4bf0-b10d-561597385a81',
                '348e1826-b350-4e3f-89b9-72687a4fba21',
                '45577c4c-b111-4b85-b80b-8e01a7355a32'}
+MEDIA_PATHS = {
+    ICON_UID: '2026/11/9/2a/apk/2063785208/content/ICON/' + ICON_UID + '.png',
+    'a809dd3f-1c7e-4bf0-b10d-561597385a81': '2026/11/9/27/apk/2063785208/content/SCREENSHOT/a809dd3f-1c7e-4bf0-b10d-561597385a81.png',
+    '348e1826-b350-4e3f-89b9-72687a4fba21': '2026/11/9/d3/apk/2063785208/content/SCREENSHOT/348e1826-b350-4e3f-89b9-72687a4fba21.png',
+    '45577c4c-b111-4b85-b80b-8e01a7355a32': '2026/11/9/e1/apk/2063785208/content/SCREENSHOT/45577c4c-b111-4b85-b80b-8e01a7355a32.png',
+}
 LISTING_FIELDS = ('appName', 'shortDescription', 'fullDescription', 'categories', 'ageLegal',
                   'paid', 'priceValue', 'appType', 'privacyExplanation', 'privacyDataTypes',
                   'developerContacts', 'inAppPurchaseTypes', 'markings', 'faq', 'seoTagIds',
@@ -299,16 +305,17 @@ def field_hash(value):
 
 def media_snapshot(detail):
     files, packages = detail.get('fileUids'), detail.get('packages')
-    if detail.get('iconUid') != ICON_UID or not isinstance(files, list) or not isinstance(packages, list):
+    if detail.get('iconUid') not in (ICON_UID, MEDIA_PATHS[ICON_UID]) or not isinstance(files, list) or not isinstance(packages, list):
         raise PublishError('BLOCKED: missing or changed template icon/media inventory')
     binaries = {item.get('apkUid') for item in packages}
     media = {}
     for item in files:
         if not isinstance(item, dict) or not isinstance(item.get('fileUid'), str):
             raise PublishError('BLOCKED: invalid RuStore media entry')
-        uid = item['fileUid']
+        raw_uid = item['fileUid']
+        uid = next((uid for uid, path in MEDIA_PATHS.items() if raw_uid in (uid, path)), raw_uid)
         if uid not in SCREEN_UIDS | {ICON_UID}:
-            if uid in binaries or str(item.get('type', '')).upper() in ('APK', 'AAB'):
+            if raw_uid in binaries or str(item.get('type', '')).upper() in ('APK', 'AAB'):
                 continue
             raise PublishError('BLOCKED: unexpected non-binary template media')
         if uid in media:
@@ -317,7 +324,7 @@ def media_snapshot(detail):
                       ('fileUid', 'type', 'ordinal', 'orientation', 'deviceType')}
     if not SCREEN_UIDS.issubset(media):
         raise PublishError('BLOCKED: missing template screenshots')
-    return {'iconUid': ICON_UID, 'files': [media[uid] for uid in sorted(media)]}
+    return {'iconUid': detail['iconUid'], 'files': [media[uid] for uid in sorted(media)]}
 
 
 def detail_evidence(detail):

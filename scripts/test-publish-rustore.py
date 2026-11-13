@@ -238,6 +238,24 @@ class SafetyTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(r.PublishError):
                 r.media_snapshot(detail)
 
+    def test_media_accepts_exact_observed_rustore_storage_paths_not_arbitrary_suffixes(self):
+        _, _, source, target = self.replacement_fixture()
+        for detail in (source, target):
+            detail['iconUid'] = r.MEDIA_PATHS[r.ICON_UID]
+            for item in detail['fileUids']:
+                if item['fileUid'] in r.MEDIA_PATHS:
+                    item['fileUid'] = r.MEDIA_PATHS[item['fileUid']]
+        self.assertEqual(r.media_snapshot(source), r.media_snapshot(target))
+        self.assertEqual(r.media_snapshot(target)['iconUid'], r.MEDIA_PATHS[r.ICON_UID])
+        for change in ('icon', 'screen'):
+            changed = copy.deepcopy(target)
+            if change == 'icon':
+                changed['iconUid'] = 'other/' + r.ICON_UID + '.png'
+            else:
+                changed['fileUids'][0]['fileUid'] = 'other/' + sorted(r.SCREEN_UIDS)[0] + '.png'
+            with self.subTest(change=change), self.assertRaises(r.PublishError):
+                r.media_snapshot(changed)
+
     def test_replacement_blockers_prevent_delete_and_upload(self):
         for case in ('wrong_target', 'wrong_source', 'source_state', 'source_code', 'source_testing',
                      'source_apk', 'source_apk_name', 'extra_apk', 'other_pending', 'other_active',
