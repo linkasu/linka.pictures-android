@@ -214,6 +214,43 @@ class SafetyTests(unittest.TestCase):
         template['fileUids'].append(dict(fileUid='old-apk', type='APK', fileUrl='synthetic-private'))
         return args, page, template, target
 
+    def test_restore_only_missing_clone_privacy_once_then_read_back_without_delete_or_upload(self):
+        for case in ('success', 'unknown', 'other_change', 'already_present', 'not_persisted'):
+            args, page, source, target = self.replacement_fixture()
+            missing = copy.deepcopy(target)
+            del missing['privacyExplanation']
+            if case == 'other_change':
+                missing['fullDescription'] = 'unexpected change'
+            if case == 'already_present':
+                missing = target
+            responses = [source, page, source, missing,
+                         r.PublishError('Unknown PATCH') if case == 'unknown' else None,
+                         page, source, missing if case == 'not_persisted' else target]
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(r, 'authenticate', return_value='synthetic-token'), \
+                    patch.object(r, 'rustore', side_effect=responses) as api:
+                args.evidence = Path(directory) / 'evidence.json'
+                evidence = {}
+                if case == 'success':
+                    r.prepare_clone(args, evidence)
+                    self.assertEqual(evidence['status'], 'CLONE_PRIVACY_RESTORED_NO_UPLOAD_OR_DELETE')
+                else:
+                    with self.assertRaises(r.PublishError):
+                        r.prepare_clone(args, evidence)
+                mutations = [call for call in api.call_args_list if len(call.args) > 2]
+                self.assertEqual(len(mutations), 0 if case in ('other_change', 'already_present') else 1)
+                for call in mutations:
+                    self.assertEqual(call.args, (r.DETAIL + '/version/' + str(r.REPLACEMENT_ID), 'synthetic-token', 'PATCH'))
+                    self.assertEqual(call.kwargs, {'body': {'privacyExplanation': source['privacyExplanation']}})
+                self.assertTrue(all('apk' not in call.kwargs for call in api.call_args_list))
+
+    def test_listing_optional_null_and_absent_are_equivalent_but_privacy_text_is_not(self):
+        _, _, source, target = self.replacement_fixture()
+        source['faq'] = None
+        self.assertEqual(r.listing_hash(source), r.listing_hash(target))
+        del target['privacyExplanation']
+        self.assertNotEqual(r.listing_hash(source), r.listing_hash(target))
+
     def test_media_snapshot_preserves_public_ids_and_metadata_but_not_urls_or_binaries(self):
         _, _, source, target = self.replacement_fixture()
         self.assertEqual(r.media_snapshot(source), r.media_snapshot(target))

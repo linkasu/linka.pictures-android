@@ -12,7 +12,7 @@ on:
         type: choice
         required: true
         default: inspect
-        options: [inspect, publish-draft]
+        options: [inspect, prepare-clone, publish-draft]
       draft_id:
         description: Explicit empty RuStore draft ID (publish-draft only)
         type: string
@@ -155,6 +155,10 @@ jobs:
               test "$DRAFT_ID" = 2064951505
               args+=(--replace-template)
             fi
+          elif [ "$DELIVERY_MODE" = prepare-clone ]; then
+            test "$REPLACE_TEMPLATE" != true
+            test "$DRAFT_ID" = 2064951505
+            args=(--prepare-clone --draft-id "$DRAFT_ID")
           elif [ "$DELIVERY_MODE" != inspect ]; then
             exit 1
           elif [ "$REPLACE_TEMPLATE" = true ]; then

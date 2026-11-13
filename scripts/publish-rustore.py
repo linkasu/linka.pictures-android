@@ -370,7 +370,7 @@ def listing(detail):
             or any(not isinstance(detail.get(key), str) or not detail[key].strip()
                    for key in ('appName', 'shortDescription', 'fullDescription'))):
         raise PublishError('BLOCKED: listing identity/free/age/required text differs or is missing')
-    return {key: detail[key] for key in LISTING_FIELDS if key in detail}
+    return {key: detail.get(key) for key in LISTING_FIELDS}
 
 
 def listing_hash(detail):
@@ -399,7 +399,7 @@ def validate_inspection(args, evidence):
     return receipt
 
 
-def draft_preflight(args, token, receipt):
+def draft_preflight(args, token, receipt, restore_privacy=False):
     draft_id = positive_id(args.draft_id)
     template_id = positive_id(args.template_version_id)
     if draft_id == template_id:
@@ -433,7 +433,14 @@ def draft_preflight(args, token, receipt):
                 or packages[0].get('verCode') != 6 or packages[0].get('verName') != '2.0.0'):
             raise PublishError('BLOCKED: replacement source must contain exactly APK 2.0.0 (6)')
     target = version_detail(token, draft_id)
-    if listing(target) != listing(template):
+    comparable = target
+    if restore_privacy:
+        if (not replace or target.get('privacyExplanation') not in (None, '')
+                or not isinstance(template.get('privacyExplanation'), str)
+                or not template['privacyExplanation'].strip()):
+            raise PublishError('BLOCKED: restore only the missing privacy explanation in the exact empty clone')
+        comparable = dict(target, privacyExplanation=template['privacyExplanation'])
+    if listing(comparable) != listing(template):
         raise PublishError('BLOCKED: duplicated draft listing/privacy/contacts differ from template')
     if media_snapshot(target) != media_snapshot(template):
         raise PublishError('BLOCKED: duplicated draft media differ from template')
@@ -442,6 +449,25 @@ def draft_preflight(args, token, receipt):
     if target.get('publishType') != 'INSTANTLY' or target.get('partialValue') not in (100, -1):
         raise PublishError('BLOCKED: set instant 100% publication in console before upload')
     return draft_id, target, targets[0]
+
+
+def prepare_clone(args, evidence):
+    check_args = argparse.Namespace(**(vars(args) | {'replace_template': True}))
+    if args.draft_id != str(REPLACEMENT_ID) or args.template_version_id != str(TEMPLATE_ID):
+        raise PublishError('BLOCKED: restore only the exact authorized clone')
+    token = authenticate()
+    source = version_detail(token, TEMPLATE_ID)
+    receipt = dict(template_listing_sha256=listing_hash(source),
+                   template_media_sha256=field_hash(media_snapshot(source)))
+    draft_id, _, _ = draft_preflight(check_args, token, receipt, restore_privacy=True)
+    evidence.update(rustore_version_id=draft_id, status='CLONE_PRIVACY_PATCH_RESULT_UNKNOWN')
+    play.save(evidence, args.evidence)
+    rustore(DETAIL + '/version/' + str(draft_id), token, 'PATCH',
+            body={'privacyExplanation': source['privacyExplanation']})
+    draft_preflight(check_args, token, receipt)
+    evidence.update(status='CLONE_PRIVACY_RESTORED_NO_UPLOAD_OR_DELETE',
+                    template_listing_sha256=receipt['template_listing_sha256'],
+                    template_media_sha256=receipt['template_media_sha256'])
 
 
 def publish_draft(args, evidence):
@@ -546,6 +572,7 @@ def main():
     mode.add_argument('--publish', action='store_true')
     mode.add_argument('--inspect', action='store_true')
     mode.add_argument('--publish-draft', action='store_true')
+    mode.add_argument('--prepare-clone', action='store_true')
     args = parser.parse_args()
     if args.publish_draft and args.draft_id is None:
         parser.error('--publish-draft requires --draft-id')
@@ -559,10 +586,10 @@ def main():
         if args.publish_draft:
             positive_id(args.draft_id)
             positive_id(args.template_version_id)
-        if args.verify_source_only or args.publish or args.inspect or args.publish_draft:
+        if args.verify_source_only or args.publish or args.inspect or args.publish_draft or args.prepare_clone:
             evidence.update(verify_source(args))
             evidence['status'] = 'SOURCE_VERIFIED'
-        if args.publish or args.inspect or args.publish_draft:
+        if args.publish or args.inspect or args.publish_draft or args.prepare_clone:
             validate_receipt(json.loads(args.receipt.read_text()), args.source_sha)
             download_apk(args, evidence)
             evidence['status'] = 'GOOGLE_APK_VERIFIED'
@@ -571,6 +598,8 @@ def main():
                 inspect(args, evidence)
             elif args.publish_draft:
                 publish_draft(args, evidence)
+            elif args.prepare_clone:
+                prepare_clone(args, evidence)
             else:
                 publish(args, evidence)
         elif not args.verify_source_only:
