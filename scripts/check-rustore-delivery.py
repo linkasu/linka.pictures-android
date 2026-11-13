@@ -13,7 +13,8 @@ BRANCH = 'fix/rustore-draft-delivery-20261113'
 REPO = 'linkasu/linka.pictures-android'
 GOOGLE_RUN = '43308623148'
 ALLOWED = {'.github/workflows/publish-rustore.yml', 'scripts/publish-rustore.py',
-           'scripts/test-publish-rustore.py', 'scripts/check-rustore-delivery.py'}
+           'scripts/test-publish-rustore.py', 'scripts/check-rustore-delivery.py',
+           'scripts/certificates/russian-trusted-root-ca.pem'}
 
 
 def check(env, checkout, main, delivery, compare):

@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import ssl
 import subprocess
 import sys
 import urllib.error
@@ -36,6 +37,17 @@ LISTING_FIELDS = ('appName', 'shortDescription', 'fullDescription', 'categories'
                   'paid', 'appType', 'privacyExplanation', 'privacyDataTypes', 'developerContacts')
 
 
+def rustore_ssl_context():
+    # Official HTTPS source: https://gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt
+    pem = Path(__file__).with_name('certificates').joinpath('russian-trusted-root-ca.pem').read_text()
+    digest = hashlib.sha256(ssl.PEM_cert_to_DER_cert(pem)).hexdigest()
+    if digest != 'd26d2d0231b7c39f92cc738512ba54103519e4405d68b5bd703e9788ca8ecf31':
+        raise PublishError('RuStore CA fingerprint changed; explicit trust review required')
+    context = ssl.create_default_context()
+    context.load_verify_locations(cadata=pem)
+    return context
+
+
 def rustore(path, token='', method='GET', body=None, apk=None):
     if not (path == BASE + '/auth' or path.startswith(APP + '/') or path.startswith(DETAIL + '/')):
         raise PublishError('RuStore URL outside approved application endpoints')
@@ -54,7 +66,8 @@ def rustore(path, token='', method='GET', body=None, apk=None):
         headers['Content-Type'] = 'application/json'
     try:
         req = urllib.request.Request(path, data=data, headers=headers, method=method)
-        with urllib.request.build_opener(play.NoRedirect).open(req, timeout=180) as response:
+        opener = urllib.request.build_opener(play.NoRedirect, urllib.request.HTTPSHandler(context=rustore_ssl_context()))
+        with opener.open(req, timeout=180) as response:
             raw = response.read(play.MAX_JSON + 1)
         if len(raw) > play.MAX_JSON:
             raise PublishError('RuStore response too large; inspect remote state, do not retry')
@@ -66,8 +79,14 @@ def rustore(path, token='', method='GET', body=None, apk=None):
         code = error.code
         error.close()
         raise PublishError(f'RuStore HTTP {code}; inspect console, do not blindly retry') from None
-    except (OSError, ValueError, KeyError, TypeError):
-        raise PublishError('RuStore result unknown; inspect console, do not retry') from None
+    except urllib.error.URLError as error:
+        raise PublishError('RuStore transport failed: ' + type(error.reason).__name__ + '; no mutation retry') from None
+    except json.JSONDecodeError as error:
+        raise PublishError(f'RuStore non-JSON response at position {error.pos}; no mutation retry') from None
+    except KeyError as error:
+        raise PublishError('RuStore response is missing field ' + str(error.args[0]) + '; no mutation retry') from None
+    except (OSError, ValueError, TypeError) as error:
+        raise PublishError('RuStore result unknown: ' + type(error).__name__ + '; inspect console, do not retry') from None
 
 
 def authenticate():

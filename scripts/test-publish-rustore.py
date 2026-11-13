@@ -5,6 +5,7 @@ import copy
 import importlib.util
 import json
 import os
+import ssl
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -18,6 +19,18 @@ spec.loader.exec_module(r)
 
 
 class SafetyTests(unittest.TestCase):
+    def test_rustore_ca_is_pinned_and_does_not_disable_tls_or_hostname_checks(self):
+        before = set(ssl.create_default_context().get_ca_certs(binary_form=True))
+        context = r.rustore_ssl_context()
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertEqual(set(ssl.create_default_context().get_ca_certs(binary_form=True)), before)
+        self.assertIn('d26d2d0231b7c39f92cc738512ba54103519e4405d68b5bd703e9788ca8ecf31',
+                      {r.hashlib.sha256(cert).hexdigest() for cert in context.get_ca_certs(binary_form=True)})
+        with patch.object(Path, 'read_text', return_value='-----BEGIN CERTIFICATE-----\nZmFrZQ==\n-----END CERTIFICATE-----'):
+            with self.assertRaises((r.PublishError, ValueError)):
+                r.rustore_ssl_context()
+
     def test_sdk_range_signers_match_real_apksigner31_output_without_accepting_stamp(self):
         text = (f'Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: {r.NEW_CERT}\n'
                 f'Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: {r.OLD_CERT}\n'
