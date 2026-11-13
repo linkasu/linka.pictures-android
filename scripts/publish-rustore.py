@@ -147,7 +147,14 @@ def select_universal(metadata):
 def download_apk(args, evidence):
     token = os.environ.get('ACCESS_TOKEN', '')
     base = play.BASE + PACKAGE + '/generatedApks/7'
-    download_id, cert = select_universal(play.request(base, token))
+    generated = play.request(base, token)
+    evidence['google_generated_variants'] = [
+        dict(certificate_sha256=group.get('certificateSha256Hash'),
+             universal_available=bool(group.get('generatedUniversalApk', {}).get('downloadId')),
+             standalone=[{k: value for k, value in apk.items() if k != 'downloadId'}
+                         for apk in group.get('generatedStandaloneApks', [])])
+        for group in generated.get('generatedApks', [])]
+    download_id, cert = select_universal(generated)
     url = base + '/downloads/' + urllib.parse.quote(download_id, safe='') + ':download?alt=media'
     try:
         req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + token})
@@ -163,12 +170,14 @@ def download_apk(args, evidence):
             raise PublishError('Empty generated APK')
     except (OSError, ValueError):
         raise PublishError('Google APK download failed; URL and credential not logged') from None
-    verify_apk(args)
     evidence['apk_sha256'] = hashlib.sha256(args.apk.read_bytes()).hexdigest()
     evidence['generated_certificate_sha256'] = cert
+    evidence['status'] = 'GOOGLE_APK_DOWNLOADED_NOT_YET_VERIFIED'
+    play.save(evidence, args.evidence)
+    verify_apk(args, evidence)
 
 
-def verify_apk(args):
+def verify_apk(args, evidence=None):
     commands = [
         ([args.aapt, 'dump', 'badging', str(args.apk)], None),
         ([args.apksigner, 'verify', '--verbose', '--print-certs', '--min-sdk-version', '24',
@@ -183,7 +192,11 @@ def verify_apk(args):
         if cert:
             hashes = re.findall(r'^Signer #[0-9]+ certificate SHA-256 digest: ([0-9a-f]+)$',
                                 result.stdout, re.M | re.I)
-            if [value.lower() for value in hashes] != [cert]:
+            actual = [value.lower() for value in hashes]
+            if evidence is not None:
+                evidence.setdefault('observed_signers', []).append(dict(
+                    sdk='24-32' if cert == OLD_CERT else '33+', sha256=actual))
+            if actual != [cert]:
                 raise PublishError('APK signing lineage does not match approved API24-32/API33+ certificates')
         elif not re.search(r"^package: name='su\.linka\.pictures' versionCode='7' versionName='2\.0\.1'(?: |$)", result.stdout, re.M):
             raise PublishError('APK package/version is not approved 2.0.1 (7)')
