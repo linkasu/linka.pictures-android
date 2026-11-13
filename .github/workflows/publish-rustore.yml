@@ -117,9 +117,14 @@ jobs:
           java-version: '17'
 
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
 
-      - name: Install Android verification tools (no app build)
-        run: sdkmanager 'build-tools;35.0.0'
+      - name: Verify Android verification tools (no app build)
+        run: |
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
 
       - name: Authenticate Google generated-APK download
         id: auth
