@@ -177,6 +177,18 @@ def download_apk(args, evidence):
     verify_apk(args, evidence)
 
 
+def signer_hashes(text, minimum_sdk):
+    legacy = re.findall(r'^Signer #[0-9]+ certificate SHA-256 digest: ([0-9a-f]{64})$', text, re.M | re.I)
+    ranges = [(int(low), int(high), digest.lower()) for low, high, digest in re.findall(
+        r'^Signer \(minSdkVersion=([0-9]+), maxSdkVersion=([0-9]+)\) certificate SHA-256 digest: ([0-9a-f]{64})$',
+        text, re.M | re.I)]
+    if ranges:
+        if legacy or sorted(ranges) != [(24, 32, OLD_CERT), (33, 2147483647, NEW_CERT)]:
+            raise PublishError('APK SDK signing ranges differ from approved lineage')
+        return [digest for low, high, digest in ranges if low <= minimum_sdk <= high]
+    return [digest.lower() for digest in legacy]
+
+
 def verify_apk(args, evidence=None):
     commands = [
         ([args.aapt, 'dump', 'badging', str(args.apk)], None),
@@ -190,9 +202,7 @@ def verify_apk(args, evidence=None):
         if result.returncode:
             raise PublishError('APK verification failed; no upload or re-signing')
         if cert:
-            hashes = re.findall(r'^Signer #[0-9]+ certificate SHA-256 digest: ([0-9a-f]+)$',
-                                result.stdout, re.M | re.I)
-            actual = [value.lower() for value in hashes]
+            actual = signer_hashes(result.stdout, 24 if cert == OLD_CERT else 33)
             if evidence is not None:
                 evidence.setdefault('observed_signers', []).append(dict(
                     sdk='24-32' if cert == OLD_CERT else '33+', sha256=actual))

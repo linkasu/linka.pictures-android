@@ -18,6 +18,18 @@ spec.loader.exec_module(r)
 
 
 class SafetyTests(unittest.TestCase):
+    def test_sdk_range_signers_match_real_apksigner31_output_without_accepting_stamp(self):
+        text = (f'Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: {r.NEW_CERT}\n'
+                f'Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: {r.OLD_CERT}\n'
+                'Source Stamp Signer certificate SHA-256 digest: ' + 'f' * 64 + '\n')
+        self.assertEqual(r.signer_hashes(text, 24), [r.OLD_CERT])
+        self.assertEqual(r.signer_hashes(text, 33), [r.NEW_CERT])
+        for changed in (text.replace(r.NEW_CERT, 'f' * 64), text.replace('maxSdkVersion=32', 'maxSdkVersion=33'),
+                        text + f'Signer #1 certificate SHA-256 digest: {r.OLD_CERT}\n'):
+            with self.assertRaises(r.PublishError):
+                r.signer_hashes(changed, 33)
+        self.assertEqual(r.signer_hashes('Source Stamp Signer certificate SHA-256 digest: ' + r.NEW_CERT, 33), [])
+
     def setUp(self):
         environment = patch.dict(os.environ, GITHUB_SHA='d' * 40)
         environment.start()
