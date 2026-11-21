@@ -4,22 +4,22 @@ on:
   workflow_dispatch:
     inputs:
       google_publish_run_id:
-        description: Successful main publish-android run at current main SHA
+        description: Successful Google publish run (recovery is pinned to 44898012150)
         required: true
         type: string
       mode:
-        description: Inspect only, or upload once into an explicitly prepared empty draft
+        description: Inspect/upload empty draft, or reconcile/commit the already accepted pinned upload
         type: choice
         required: true
         default: inspect
-        options: [inspect, publish-draft]
+        options: [inspect, publish-draft, recover-inspect, recover-commit]
       draft_id:
-        description: Explicit empty RuStore draft ID (publish-draft only)
+        description: Explicit authorized RuStore draft ID
         type: string
         required: true
         default: '2064951505'
       inspection_run_id:
-        description: Successful inspect run at this exact delivery commit (publish-draft only)
+        description: Successful matching inspect or recover-inspect run at this delivery commit
         type: string
         required: false
 
@@ -38,7 +38,8 @@ jobs:
     timeout-minutes: 20
     env:
       GOOGLE_RUN_ID: ${{ inputs.google_publish_run_id }}
-      SOURCE_SHA: ${{ github.sha }}
+      SOURCE_SHA: ${{ (inputs.mode == 'recover-inspect' || inputs.mode == 'recover-commit') && '184f19f433acc5a81f24bfb2549c7df0756fbdb2' || github.sha }}
+      RECOVERY: ${{ inputs.mode == 'recover-inspect' || inputs.mode == 'recover-commit' }}
       DELIVERY_MODE: ${{ inputs.mode }}
       DRAFT_ID: ${{ inputs.draft_id }}
       GH_TOKEN: ${{ github.token }}
@@ -62,9 +63,12 @@ jobs:
 
       - name: Verify exact successful Google publication source before store credentials
         run: |
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$DRAFT_ID" = 2064951505
+          args=()
+          if [ "$RECOVERY" = true ]; then args=(--recovery); fi
           python3 -B scripts/publish-rustore.py --verify-source-only \
+            "${args[@]}" \
             --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \
             --repository "$GITHUB_REPOSITORY" --evidence rustore-source-evidence.json
 
@@ -88,7 +92,7 @@ jobs:
           PY
 
       - name: Validate the prior inspection before allowing draft upload
-        if: inputs.mode == 'publish-draft'
+        if: inputs.mode == 'publish-draft' || inputs.mode == 'recover-commit'
         env:
           INSPECTION_RUN_ID: ${{ inputs.inspection_run_id }}
         run: |
@@ -106,13 +110,22 @@ jobs:
           PY
 
       - name: Download the verified inspection receipt
-        if: inputs.mode == 'publish-draft'
+        if: inputs.mode == 'publish-draft' || inputs.mode == 'recover-commit'
         uses: actions/download-artifact@v4
         with:
           name: rustore-publish-evidence-${{ inputs.inspection_run_id }}
           path: inspection
           github-token: ${{ github.token }}
           run-id: ${{ inputs.inspection_run_id }}
+
+      - name: Download only the pinned original single-upload evidence
+        if: inputs.mode == 'recover-inspect' || inputs.mode == 'recover-commit'
+        uses: actions/download-artifact@v4
+        with:
+          name: rustore-publish-evidence-44899101916
+          path: failed-upload
+          github-token: ${{ github.token }}
+          run-id: '44899101916'
 
       - uses: actions/setup-java@v4
         with:
@@ -140,14 +153,18 @@ jobs:
           create_credentials_file: false
           export_environment_variables: false
 
-      - name: Inspect without mutation, or upload into the explicitly selected empty draft once
+      - name: Inspect, upload an empty draft, or recover only the existing upload
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           RUSTORE_API_KEY_ID: ${{ secrets.RUSTORE_API_KEY_ID }}
           RUSTORE_API_PRIVATE_KEY: ${{ secrets.RUSTORE_API_PRIVATE_KEY }}
         run: |
           args=(--inspect --draft-id "$DRAFT_ID")
-          if [ "$DELIVERY_MODE" = publish-draft ]; then
+          if [ "$DELIVERY_MODE" = recover-inspect ]; then
+            args=(--recovery --inspect --draft-id "$DRAFT_ID")
+          elif [ "$DELIVERY_MODE" = recover-commit ]; then
+            args=(--recovery --publish-draft --draft-id "$DRAFT_ID")
+          elif [ "$DELIVERY_MODE" = publish-draft ]; then
             args=(--publish-draft --draft-id "$DRAFT_ID")
           elif [ "$DELIVERY_MODE" != inspect ]; then
             exit 1

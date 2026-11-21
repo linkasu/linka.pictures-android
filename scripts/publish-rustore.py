@@ -36,6 +36,10 @@ NEW_CERT = '01e2aa1f93150de38ad38888ca4bcfab56bca9991e3775d53907667802385121'
 OLD_CERT = '28ed911ea1b24c0827a079597200319d73b61f5cdb321bf5ef6bf87b72a1ac52'
 TEMPLATE_ID = 2064943286
 REPLACEMENT_ID = 2064951505
+RECOVERY_SOURCE = '184f19f433acc5a81f24bfb2549c7df0756fbdb2'
+RECOVERY_UPLOAD_RUN = '44899101916'
+RECOVERY_GOOGLE_RUN = '44898012150'
+RECOVERY_APK = '45b7f0fe7d3791f250ce52d12265ab3698b6679a8493b93199d37c7344a96596'
 ICON_UID = 'f7afbea5-db87-4f02-9863-fad7cebfa881'
 SCREEN_UIDS = {'a809dd3f-1c7e-4bf0-b10d-561597385a81',
                '348e1826-b350-4e3f-89b9-72687a4fba21',
@@ -151,8 +155,37 @@ def verify_source(args):
             or run.get('repository', {}).get('full_name') != args.repository
             or run.get('head_repository', {}).get('full_name') != args.repository):
         raise PublishError('Require successful Google publication workflow at exact main checkout SHA')
-    if play.request(root + '/branches/main', token).get('commit', {}).get('sha') != args.source_sha:
+    delivery_sha = os.environ.get('GITHUB_SHA', '')
+    recovery = getattr(args, 'recovery', False)
+    expected_main = delivery_sha if recovery else args.source_sha
+    if play.request(root + '/branches/main', token).get('commit', {}).get('sha') != expected_main:
         raise PublishError('Checkout must still be current main')
+    if recovery:
+        if (args.source_sha != RECOVERY_SOURCE or args.google_run_id != RECOVERY_GOOGLE_RUN
+                or args.repository != 'linkasu/linka.pictures-android'
+                or os.environ.get('GITHUB_RUN_ATTEMPT') != '1'
+                or not re.fullmatch(r'[0-9a-f]{40}', delivery_sha)):
+            raise PublishError('BLOCKED: recovery is pinned to the original upload/source and first CI attempt')
+        comparison = play.request(root + '/compare/' + RECOVERY_SOURCE + '...' + delivery_sha, token)
+        allowed = {'scripts/publish-rustore.py', 'scripts/test-publish-rustore.py',
+                   '.github/workflows/publish-rustore.yml'}
+        files = comparison.get('files', [])
+        if (comparison.get('status') != 'ahead' or not files
+                or any(item.get('filename') not in allowed or item.get('status') != 'modified' for item in files)):
+            raise PublishError('BLOCKED: recovery delivery may change only the publisher, its tests and workflow')
+        upload = play.request(root + '/actions/runs/' + RECOVERY_UPLOAD_RUN, token)
+        if (upload.get('path') != '.github/workflows/publish-rustore.yml'
+                or upload.get('head_sha') != RECOVERY_SOURCE or upload.get('head_branch') != 'main'
+                or upload.get('event') != 'workflow_dispatch' or upload.get('status') != 'completed'
+                or upload.get('conclusion') != 'failure' or upload.get('run_attempt') != 1
+                or upload.get('repository', {}).get('full_name') != args.repository
+                or upload.get('head_repository', {}).get('full_name') != args.repository):
+            raise PublishError('BLOCKED: original single-upload CI provenance differs')
+        prior = play.request(root + '/actions/runs/' + RECOVERY_UPLOAD_RUN + '/artifacts?per_page=100', token)
+        matches = [item for item in prior.get('artifacts', [])
+                   if item.get('name') == 'rustore-publish-evidence-' + RECOVERY_UPLOAD_RUN]
+        if prior.get('total_count', 0) > 100 or len(matches) != 1 or matches[0].get('expired') is not False:
+            raise PublishError('BLOCKED: original upload evidence missing, duplicate or expired')
     artifacts = play.request(root + '/actions/runs/' + args.google_run_id + '/artifacts?per_page=100', token)
     name = 'google-play-publish-evidence-' + args.google_run_id
     found = [item for item in artifacts.get('artifacts', []) if item.get('name') == name]
@@ -371,7 +404,8 @@ def listing_hash(detail):
 def validate_inspection(args, evidence):
     receipt = json.loads(args.inspection.read_text())
     delivery_sha = os.environ.get('GITHUB_SHA', '')
-    status = 'GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED'
+    recovery = getattr(args, 'recovery', False)
+    status = 'EXISTING_UPLOAD_RECONCILED' if recovery else 'GOOGLE_APK_VERIFIED_AND_RUSTORE_INSPECTED'
     if (not re.fullmatch(r'[0-9a-f]{40}', delivery_sha)
             or receipt.get('status') != status or receipt.get('outcome') != status
             or receipt.get('delivery_sha') != delivery_sha
@@ -387,10 +421,12 @@ def validate_inspection(args, evidence):
         raise PublishError('BLOCKED: require successful matching inspection receipt for this code/source/Google run/APK/template')
     if receipt.get('inspected_draft_id') != REPLACEMENT_ID:
         raise PublishError('BLOCKED: authorized empty replacement draft was not verified by inspection')
+    if recovery and receipt.get('recovery_upload_run_id') != RECOVERY_UPLOAD_RUN:
+        raise PublishError('BLOCKED: recovery inspection must bind the original upload run')
     return receipt
 
 
-def draft_preflight(args, token, receipt):
+def draft_preflight(args, token, receipt, uploaded=False):
     draft_id = positive_id(args.draft_id)
     template_id = positive_id(args.template_version_id)
     if template_id != TEMPLATE_ID or draft_id != REPLACEMENT_ID:
@@ -399,6 +435,8 @@ def draft_preflight(args, token, receipt):
     targets = [version for version in versions if positive_id(version['versionId']) == draft_id]
     if len(targets) != 1 or targets[0].get('versionStatus') != 'DRAFT' or targets[0].get('testingType') is not None:
         raise PublishError('BLOCKED: target must be the production DRAFT in complete history')
+    if targets[0].get('versionCode') != (VERSION_CODE if uploaded else -1):
+        raise PublishError('BLOCKED: draft history must identify the expected empty or already-uploaded version')
     sources = [version for version in versions if positive_id(version['versionId']) == TEMPLATE_ID]
     if (len(versions) != 2 or len(sources) != 1
             or sources[0].get('versionStatus') != 'REJECTED_BY_MODERATOR'
@@ -418,7 +456,14 @@ def draft_preflight(args, token, receipt):
         raise PublishError('BLOCKED: duplicated draft listing/privacy/contacts differ from template')
     if media_snapshot(target) != media_snapshot(template):
         raise PublishError('BLOCKED: duplicated draft media differ from template')
-    if target.get('packages') != []:
+    packages = target.get('packages')
+    if uploaded:
+        # RuStore hides API-uploaded packages until commit; history must already identify code8.
+        if (not isinstance(packages, list) or (packages != [] and
+                (len(packages) != 1 or packages[0].get('verCode') != VERSION_CODE
+                 or packages[0].get('verName') != RELEASE_VERSION))):
+            raise PublishError('BLOCKED: pending uploaded package inventory differs')
+    elif packages != []:
         raise PublishError('BLOCKED: target package inventory must be explicitly empty; never overwrite APK')
     if target.get('publishType') != 'INSTANTLY' or target.get('partialValue') not in (100, -1):
         raise PublishError('BLOCKED: set instant 100% publication in console before upload')
@@ -437,14 +482,48 @@ def publish_draft(args, evidence):
     play.save(evidence, args.evidence)
     version_url = APP + '/version/' + str(draft_id)
     rustore(version_url + '/apk?servicesType=Unknown&isMainApk=true', token, 'POST', apk=args.apk)
-    after = version_detail(token, draft_id)
-    packages = after.get('packages', [])
-    if (len(packages) != 1 or packages[0].get('verCode') != VERSION_CODE or packages[0].get('verName') != RELEASE_VERSION
-            or listing(after) != listing(before) or media_snapshot(after) != media_snapshot(before)
-            or after.get('publishType') != 'INSTANTLY'
-            or after.get('partialValue') not in (100, -1)):
-        raise PublishError('BLOCKED: uploaded draft APK/listing/publication settings mismatch; no commit')
-    evidence.update(draft_after_upload=detail_evidence(after), status='COMMIT_RESULT_UNKNOWN')
+    evidence['status'] = 'APK_UPLOAD_ACCEPTED'
+    play.save(evidence, args.evidence)
+    _, after, _ = draft_preflight(args, token, receipt, uploaded=True)
+    evidence['draft_after_upload'] = detail_evidence(after)
+    commit_draft(args, token, draft_id, receipt, evidence)
+
+
+def recover_existing_upload(args, evidence):
+    prior = json.loads(args.failed_upload.read_text())
+    if (prior.get('status') != 'APK_UPLOAD_RESULT_UNKNOWN'
+            or prior.get('outcome') != 'FAILED_OR_UNCERTAIN_DO_NOT_BLINDLY_RERUN'
+            or prior.get('error') != 'BLOCKED: uploaded draft APK/listing/publication settings mismatch; no commit'
+            or prior.get('source_sha') != RECOVERY_SOURCE or prior.get('delivery_sha') != RECOVERY_SOURCE
+            or args.source_sha != RECOVERY_SOURCE or prior.get('google_run_id') != RECOVERY_GOOGLE_RUN
+            or args.google_run_id != RECOVERY_GOOGLE_RUN
+            or prior.get('package') != PACKAGE or prior.get('app_id') != 2063785208
+            or prior.get('version_code') != VERSION_CODE or prior.get('release_version') != RELEASE_VERSION
+            or prior.get('rustore_version_id') != REPLACEMENT_ID or prior.get('template_version_id') != TEMPLATE_ID
+            or prior.get('apk_sha256') != RECOVERY_APK or evidence.get('apk_sha256') != RECOVERY_APK
+            or prior.get('draft_before_upload', {}).get('package_count') != 0
+            or prior.get('draft_before_upload', {}).get('packages') != []):
+        raise PublishError('BLOCKED: recovery requires the exact accepted upload stopped before commit')
+    if args.publish_draft:
+        receipt = validate_inspection(args, evidence)
+        if any(receipt.get(key) != prior.get(key) for key in ('template_listing_sha256', 'template_media_sha256')):
+            raise PublishError('BLOCKED: recovery inspection and original listing/media differ')
+    token = authenticate()
+    draft_id, target, history = draft_preflight(args, token, prior, uploaded=True)
+    evidence.update(delivery_sha=os.environ['GITHUB_SHA'], recovery_upload_run_id=RECOVERY_UPLOAD_RUN,
+                    rustore_version_id=draft_id, template_version_id=TEMPLATE_ID,
+                    template_listing_sha256=prior['template_listing_sha256'],
+                    template_media_sha256=prior['template_media_sha256'], template_media=media_snapshot(target),
+                    inspected_draft_id=draft_id, draft=detail_evidence(target),
+                    history_version_code=history['versionCode'], status='EXISTING_UPLOAD_RECONCILED')
+    play.save(evidence, args.evidence)
+    if args.publish_draft:
+        commit_draft(args, token, draft_id, prior, evidence)
+
+
+def commit_draft(args, token, draft_id, receipt, evidence):
+    version_url = APP + '/version/' + str(draft_id)
+    evidence['status'] = 'COMMIT_RESULT_UNKNOWN'
     play.save(evidence, args.evidence)
     rustore(version_url + '/commit?priorityUpdate=0', token, 'POST')
     committed = version_detail(token, draft_id)
@@ -473,6 +552,9 @@ def main():
     parser.add_argument('--apksigner', default='apksigner')
     parser.add_argument('--aapt', default='aapt')
     parser.add_argument('--draft-id')
+    parser.add_argument('--recovery', action='store_true',
+                        help='Reconcile or commit only the pinned previously accepted upload; never upload')
+    parser.add_argument('--failed-upload', type=Path, default=Path('failed-upload/rustore-publish-evidence.json'))
     parser.add_argument('--template-version-id', default=str(TEMPLATE_ID))
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--verify-source-only', action='store_true')
@@ -482,6 +564,8 @@ def main():
     args = parser.parse_args()
     if args.publish_draft and args.draft_id is None:
         parser.error('--publish-draft requires --draft-id')
+    if args.recovery and not (args.verify_source_only or args.inspect or args.publish_draft):
+        parser.error('--recovery requires source verification, inspection or commit mode')
     evidence = {'status': 'PREPARE_NO_API_CALLS', 'package': PACKAGE,
                 'version_code': VERSION_CODE, 'release_version': RELEASE_VERSION, 'app_id': 2063785208}
     result = 0
@@ -497,7 +581,9 @@ def main():
             download_apk(args, evidence)
             evidence['status'] = 'GOOGLE_APK_VERIFIED'
             play.save(evidence, args.evidence)
-            if args.inspect:
+            if args.recovery:
+                recover_existing_upload(args, evidence)
+            elif args.inspect:
                 inspect(args, evidence)
             elif args.publish_draft:
                 publish_draft(args, evidence)
