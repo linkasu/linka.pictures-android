@@ -105,6 +105,151 @@ class SafetyTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(r.PublishError):
                 r.validate_receipt(dict(receipt, **{key: value}), 'a' * 40)
 
+    def test_uploaded_draft_can_hide_packages_but_must_have_code8_in_history(self):
+        args, page, source, target = self.fixture()
+        page['content'][1]['versionCode'] = 8
+        receipt = self.receipt(args, source)
+        with patch.object(r, 'rustore', side_effect=[page, source, target]):
+            self.assertEqual(r.draft_preflight(args, 'token', receipt, uploaded=True)[0], r.REPLACEMENT_ID)
+        for case in ('wrong_code', 'missing_packages', 'wrong_apk', 'metadata'):
+            changed_page, changed_target = copy.deepcopy(page), copy.deepcopy(target)
+            if case == 'wrong_code':
+                changed_page['content'][1]['versionCode'] = 7
+            elif case == 'missing_packages':
+                del changed_target['packages']
+            elif case == 'wrong_apk':
+                changed_target['packages'] = [dict(verCode=7, verName='2.0.1')]
+            else:
+                changed_target['privacyExplanation'] = 'changed'
+            with self.subTest(case=case), patch.object(r, 'rustore',
+                    side_effect=[changed_page, source, changed_target]), self.assertRaises(r.PublishError):
+                r.draft_preflight(args, 'token', receipt, uploaded=True)
+
+    def test_pending_hidden_upload_never_counts_as_empty_draft_for_reupload(self):
+        args, page, source, target = self.fixture()
+        page['content'][1]['versionCode'] = 8
+        with patch.object(r, 'rustore', side_effect=[page, source, target]), self.assertRaises(r.PublishError):
+            r.draft_preflight(args, 'token', self.receipt(args, source))
+
+    def recovery_fixture(self, directory):
+        args, page, source, target = self.fixture()
+        args.source_sha, args.google_run_id = r.RECOVERY_SOURCE, r.RECOVERY_GOOGLE_RUN
+        args.recovery, args.publish_draft = True, False
+        args.failed_upload = Path(directory) / 'failed.json'
+        args.inspection = Path(directory) / 'inspection.json'
+        args.evidence = Path(directory) / 'evidence.json'
+        prior = dict(self.receipt(args, source), status='APK_UPLOAD_RESULT_UNKNOWN',
+                     outcome='FAILED_OR_UNCERTAIN_DO_NOT_BLINDLY_RERUN',
+                     error='BLOCKED: uploaded draft APK/listing/publication settings mismatch; no commit',
+                     delivery_sha=r.RECOVERY_SOURCE, rustore_version_id=r.REPLACEMENT_ID,
+                     apk_sha256=r.RECOVERY_APK, draft_before_upload=dict(package_count=0, packages=[]))
+        args.failed_upload.write_text(json.dumps(prior))
+        page['content'][1]['versionCode'] = 8
+        return args, page, source, target, prior
+
+    def test_recovery_inspect_is_read_only_then_same_receipt_allows_only_one_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args, page, source, target, _ = self.recovery_fixture(directory)
+            evidence = dict(apk_sha256=r.RECOVERY_APK, source_sha=args.source_sha,
+                            google_run_id=args.google_run_id, package=r.PACKAGE, version_code=8,
+                            release_version='2.0.2', app_id=2063785208)
+            with patch.object(r, 'authenticate', return_value='token'), \
+                    patch.object(r, 'rustore', side_effect=[page, source, target]) as api:
+                r.recover_existing_upload(args, evidence)
+            self.assertTrue(all(len(call.args) == 2 for call in api.call_args_list))
+            evidence['outcome'] = evidence['status']
+            args.inspection.write_text(json.dumps(evidence))
+            args.publish_draft = True
+            committed = dict(target, packages=[dict(verCode=8, verName='2.0.2')],
+                             versionStatus='TAKEN_FOR_MODERATION')
+            for failure in (None, 'commit', 'readback'):
+                def respond(url, token, method='GET', **kwargs):
+                    if method == 'POST':
+                        self.assertEqual(url, r.APP + '/version/' + str(r.REPLACEMENT_ID) + '/commit?priorityUpdate=0')
+                        self.assertEqual(json.loads(args.evidence.read_text())['status'], 'COMMIT_RESULT_UNKNOWN')
+                        if failure == 'commit':
+                            raise r.PublishError('Unknown commit')
+                    response = next(responses)
+                    if isinstance(response, Exception):
+                        raise response
+                    return response
+                responses = iter([page, source, target, None,
+                                  r.PublishError('Unknown readback') if failure == 'readback' else committed])
+                current = dict(apk_sha256=r.RECOVERY_APK)
+                with self.subTest(failure=failure), patch.object(r, 'authenticate', return_value='token'), \
+                        patch.object(r, 'rustore', side_effect=respond) as api:
+                    if failure:
+                        with self.assertRaises(r.PublishError):
+                            r.recover_existing_upload(args, current)
+                        self.assertEqual(current['status'], 'COMMIT_RESULT_UNKNOWN')
+                    else:
+                        r.recover_existing_upload(args, current)
+                        self.assertEqual(current['status'], 'SUBMITTED_FOR_REVIEW_NOT_PROOF_OF_PUBLICATION')
+                methods = [call.args[2] if len(call.args) > 2 else 'GET' for call in api.call_args_list]
+                self.assertEqual(methods.count('POST'), 1)
+                self.assertNotIn('synthetic-private', args.evidence.read_text())
+
+    def test_recovery_prior_receipt_and_inspection_mismatches_block_before_auth(self):
+        for case in ('unknown_upload', 'commit_started', 'wrong_apk', 'wrong_source', 'wrong_draft',
+                     'wrong_google', 'no_empty_before', 'inspection_other_delivery', 'inspection_other_upload'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                args, _, source, _, prior = self.recovery_fixture(directory)
+                args.publish_draft = True
+                receipt = dict(self.receipt(args, source), status='EXISTING_UPLOAD_RECONCILED',
+                               outcome='EXISTING_UPLOAD_RECONCILED', apk_sha256=r.RECOVERY_APK,
+                               recovery_upload_run_id=r.RECOVERY_UPLOAD_RUN)
+                if case == 'unknown_upload':
+                    prior['error'] = 'Unknown upload'
+                elif case == 'commit_started':
+                    prior['status'] = 'COMMIT_RESULT_UNKNOWN'
+                elif case == 'wrong_apk':
+                    prior['apk_sha256'] = '0' * 64
+                elif case == 'wrong_source':
+                    prior['source_sha'] = 'b' * 40
+                elif case == 'wrong_draft':
+                    prior['rustore_version_id'] = 42
+                elif case == 'wrong_google':
+                    prior['google_run_id'] = '42'
+                elif case == 'no_empty_before':
+                    prior['draft_before_upload']['package_count'] = 1
+                elif case == 'inspection_other_delivery':
+                    receipt['delivery_sha'] = 'b' * 40
+                else:
+                    receipt['recovery_upload_run_id'] = '42'
+                args.failed_upload.write_text(json.dumps(prior))
+                args.inspection.write_text(json.dumps(receipt))
+                with patch.object(r, 'authenticate') as auth, self.assertRaises(r.PublishError):
+                    r.recover_existing_upload(args, {'apk_sha256': r.RECOVERY_APK})
+                auth.assert_not_called()
+
+    def test_recovery_source_requires_original_upload_and_delivery_only_diff(self):
+        args = SimpleNamespace(google_run_id=r.RECOVERY_GOOGLE_RUN, source_sha=r.RECOVERY_SOURCE,
+                               repository='linkasu/linka.pictures-android', recovery=True)
+        google = dict(path='.github/workflows/publish-android.yml', head_branch='main',
+                      head_sha=r.RECOVERY_SOURCE, event='workflow_dispatch', status='completed', conclusion='success',
+                      repository={'full_name': args.repository}, head_repository={'full_name': args.repository})
+        upload = dict(google, path='.github/workflows/publish-rustore.yml', conclusion='failure', run_attempt=1)
+        compare = dict(status='ahead', files=[dict(filename='scripts/publish-rustore.py', status='modified')])
+        artifact = lambda name: dict(total_count=1, artifacts=[dict(name=name, id=42, expired=False)])
+        for case in (None, 'app_changed', 'upload_pending', 'repeated_upload', 'rerun', 'wrong_main'):
+            comparison, run = copy.deepcopy(compare), copy.deepcopy(upload)
+            if case == 'app_changed':
+                comparison['files'].append(dict(filename='app/build.gradle.kts', status='modified'))
+            elif case == 'upload_pending':
+                run['status'] = 'in_progress'
+            elif case == 'repeated_upload':
+                run['run_attempt'] = 2
+            responses = [google, {'commit': {'sha': 'b' * 40 if case == 'wrong_main' else 'd' * 40}},
+                         comparison, run, artifact('rustore-publish-evidence-' + r.RECOVERY_UPLOAD_RUN),
+                         artifact('google-play-publish-evidence-' + r.RECOVERY_GOOGLE_RUN)]
+            with self.subTest(case=case), patch.dict(os.environ, GITHUB_RUN_ATTEMPT='2' if case == 'rerun' else '1'), \
+                    patch.object(r.play, 'request', side_effect=responses):
+                if case:
+                    with self.assertRaises(r.PublishError):
+                        r.verify_source(args)
+                else:
+                    self.assertEqual(r.verify_source(args)['source_sha'], r.RECOVERY_SOURCE)
+
     def test_inspect_checks_clone_with_only_reads_and_sanitizes_evidence(self):
         args, page, source, target = self.fixture()
         with tempfile.TemporaryDirectory() as directory, \
@@ -180,12 +325,16 @@ class SafetyTests(unittest.TestCase):
                 self.assertTrue(all(len(call.args) == 2 for call in api.call_args_list))
 
     def test_upload_commit_once_with_intent_journals_and_no_delete_create_or_edit(self):
-        for failure in (None, 'upload', 'uploaded_listing', 'uploaded_media', 'uploaded_version',
+        for failure in (None, 'hidden_packages', 'upload', 'uploaded_listing', 'uploaded_media', 'uploaded_version',
                         'commit', 'readback', 'not_committed', 'committed_version', 'committed_listing'):
             args, page, source, target = self.fixture()
             after = dict(copy.deepcopy(target), packages=[dict(verCode=8, verName='2.0.2')])
+            uploaded_page = copy.deepcopy(page)
+            uploaded_page['content'][1]['versionCode'] = 8
             committed = dict(copy.deepcopy(after), versionStatus='TAKEN_FOR_MODERATION')
-            if failure == 'uploaded_listing':
+            if failure == 'hidden_packages':
+                after['packages'] = []
+            elif failure == 'uploaded_listing':
                 after['developerContacts'] = {'email': 'changed'}
             elif failure == 'uploaded_media':
                 after['fileUids'][0]['orientation'] = 'PORTRAIT'
@@ -198,7 +347,8 @@ class SafetyTests(unittest.TestCase):
             elif failure == 'committed_listing':
                 committed['fullDescription'] = 'changed'
             responses = iter([page, source, target,
-                              r.PublishError('Unknown upload') if failure == 'upload' else None, after,
+                              r.PublishError('Unknown upload') if failure == 'upload' else None,
+                              uploaded_page, source, after,
                               r.PublishError('Unknown commit') if failure == 'commit' else None,
                               r.PublishError('Unknown readback') if failure == 'readback' else committed])
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory, \
@@ -216,7 +366,7 @@ class SafetyTests(unittest.TestCase):
                         raise response
                     return response
                 with patch.object(r, 'rustore', side_effect=respond) as api:
-                    if failure:
+                    if failure and failure != 'hidden_packages':
                         with self.assertRaises(r.PublishError):
                             r.publish_draft(args, evidence)
                     else:
@@ -224,7 +374,7 @@ class SafetyTests(unittest.TestCase):
                         self.assertEqual(evidence['rustore_version_status'], 'TAKEN_FOR_MODERATION')
                         self.assertEqual(evidence['status'], 'SUBMITTED_FOR_REVIEW_NOT_PROOF_OF_PUBLICATION')
                 methods = [call.args[2] if len(call.args) > 2 else 'GET' for call in api.call_args_list]
-                self.assertEqual(methods, ['GET', 'GET', 'GET', 'POST', 'GET', 'POST', 'GET'][:len(methods)])
+                self.assertEqual(methods, ['GET', 'GET', 'GET', 'POST', 'GET', 'GET', 'GET', 'POST', 'GET'][:len(methods)])
                 self.assertEqual(methods.count('POST'), 1 if failure in
                                  ('upload', 'uploaded_listing', 'uploaded_media', 'uploaded_version') else 2)
                 self.assertNotIn('synthetic-private', args.evidence.read_text())
@@ -351,14 +501,17 @@ class SafetyTests(unittest.TestCase):
             api.assert_called_once()
 
     def test_cli_preserves_source_receipt_apk_order_and_prepare_is_offline(self):
-        for mode in ('--inspect', '--publish-draft', '--prepare'):
-            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+        for mode, recovery in (('--inspect', False), ('--publish-draft', False), ('--prepare', False),
+                               ('--inspect', True), ('--publish-draft', True)):
+            with self.subTest(mode=mode, recovery=recovery), tempfile.TemporaryDirectory() as directory:
                 receipt = Path(directory) / 'receipt.json'
                 receipt.write_text('{}')
                 evidence = Path(directory) / 'evidence.json'
                 argv = ['publish-rustore.py', mode, '--draft-id', str(r.REPLACEMENT_ID),
                         '--google-run-id', '123', '--source-sha', 'a' * 40, '--repository', 'owner/repo',
-                        '--receipt', str(receipt), '--evidence', str(evidence)]
+                         '--receipt', str(receipt), '--evidence', str(evidence)]
+                if recovery:
+                    argv.append('--recovery')
                 order = []
                 def mark(name):
                     return lambda *args: order.append(name) or {}
@@ -367,10 +520,29 @@ class SafetyTests(unittest.TestCase):
                         patch.object(r, 'validate_receipt', side_effect=mark('receipt')), \
                         patch.object(r, 'download_apk', side_effect=mark('apk')), \
                         patch.object(r, 'inspect', side_effect=mark('inspect')), \
-                        patch.object(r, 'publish_draft', side_effect=mark('draft')):
+                        patch.object(r, 'publish_draft', side_effect=mark('draft')), \
+                        patch.object(r, 'recover_existing_upload', side_effect=mark('recovery')):
                     self.assertEqual(r.main(), 0)
                 self.assertEqual(order, [] if mode == '--prepare' else
-                                 ['source', 'receipt', 'apk', 'inspect' if mode == '--inspect' else 'draft'])
+                                 ['source', 'receipt', 'apk', 'recovery' if recovery else
+                                  'inspect' if mode == '--inspect' else 'draft'])
+
+    def test_workflow_recovery_modes_preserve_provenance_receipts_and_single_writer(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/publish-rustore.yml').read_text()
+        for required in ('options: [inspect, publish-draft, recover-inspect, recover-commit]',
+                         "github.ref == 'refs/heads/main'", 'cancel-in-progress: false',
+                         'group: publish-su.linka.pictures-rustore',
+                         "inputs.mode == 'publish-draft' || inputs.mode == 'recover-commit'",
+                         'args=(--recovery --inspect --draft-id "$DRAFT_ID")',
+                         'args=(--recovery --publish-draft --draft-id "$DRAFT_ID")',
+                         'run-id: \'44899101916\'', 'name: rustore-publish-evidence-44899101916',
+                         "run['head_sha'] == os.environ['GITHUB_SHA']"):
+            self.assertIn(required, workflow)
+        source = Path(__file__).with_name('publish-rustore.py').read_text()
+        recovery = source.split('def recover_existing_upload(', 1)[1].split('\ndef commit_draft(', 1)[0]
+        self.assertNotIn('publish_draft(', recovery)
+        self.assertNotIn('apk=args.apk', recovery)
+        self.assertEqual(workflow.count('google-github-actions/auth@'), 1)
 
     def test_old_mutating_cli_modes_are_removed_before_any_service(self):
         for mode in ('--replace-template', '--prepare-clone', '--publish'):
