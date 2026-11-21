@@ -28,7 +28,9 @@ def check():
     assert set(jobs) == {'build', 'android-e2e', 'bundle-release'}
     assert not re.search(r'^    (if|needs):', jobs['build'], re.M)
     for command in ('python3 -B scripts/check-release-workflow.py',
-                     'python3 -B scripts/check-prerelease.py',
+                      'python3 -B scripts/check-prerelease.py',
+                      'python3 -B scripts/check-android-launcher.py',
+                      'python3 -B scripts/test-check-android-launcher.py',
                      './gradlew :shared:jvmTest :app:testDebugUnitTest :app:testReleaseUnitTest :app:lint :shared:lint :app:verifyReleaseSafety :app:verifyUiSelectors',
                      'python3 -B shared/src/commonTest/check_localization.py',
                      './gradlew :app:assembleDebug :app:assembleDebugAndroidTest :shared:assembleDebugAndroidTest'):
@@ -67,12 +69,15 @@ def check():
     assert 'ANDROID_VERSION_CODE: ${{ inputs.android_version_code }}' in release
     assert 'RELEASE_VERSION: ${{ inputs.release_version }}' in release
     assert release.index('run: ./gradlew :app:verifyReleaseMetadata') < release.index('- name: Decode keystore')
-    signed_build = 'run: ./gradlew :app:verifyReleaseSigning :app:verifyReleaseSafety :app:bundleRelease'
+    signed_build = 'run: ./gradlew :app:verifyReleaseSigning :app:verifyReleaseSafety :app:bundleRelease :app:assembleRelease'
     signature_check = 'run: python3 -B scripts/check-prerelease.py --aab app/build/outputs/bundle/release/app-release.aab'
     assert signed_build in release
     assert signature_check in release
     assert release.index('- name: Decode keystore') < release.index(signed_build)
     assert release.index(signed_build) < release.index(signature_check) < release.index('- name: Upload release bundle')
+    assert release.index('--apk app/build/outputs/apk/release/app-release.apk') < release.index('- name: Upload release bundle')
+    assert 'name: android-release-apk' in release
+    assert "packages: 'build-tools;35.0.0'" in release
     for forbidden in ('firebase', 'gcloud', 'google-github-actions/', 'run_cloud_tests',
                       'PROJECT_ID', '--robo-script', '--type robo'):
         assert forbidden.lower() not in workflow.lower()

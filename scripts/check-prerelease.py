@@ -131,7 +131,7 @@ def check():
         assert 'compileSdk 36' in gradle and 'minSdk 21' in gradle
     assert 'targetSdk 36' in (ROOT / 'app/build.gradle').read_text()
     properties = (ROOT / 'gradle.properties').read_text().splitlines()
-    assert 'ANDROID_VERSION_CODE=7' in properties and 'RELEASE_VERSION=2.0.1' in properties
+    assert 'ANDROID_VERSION_CODE=8' in properties and 'RELEASE_VERSION=2.0.2' in properties
     signing_gate = (ROOT / 'app/build.gradle').read_text().split("tasks.register('verifyReleaseSigning') {", 1)[1].split('tasks.configureEach', 1)[0]
     assert 'dependsOn verifyReleaseMetadata' in signing_gate
     assert 'if (!hasReleaseSigningConfig)' in signing_gate and 'throw new GradleException' in signing_gate

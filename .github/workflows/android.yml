@@ -45,7 +45,10 @@ jobs:
         run: python3 -B scripts/check-release-workflow.py
 
       - name: Check prerelease packaging configuration
-        run: python3 -B scripts/check-prerelease.py
+        run: |
+          python3 -B scripts/check-prerelease.py
+          python3 -B scripts/check-android-launcher.py
+          python3 -B scripts/test-check-android-launcher.py
 
       - uses: actions/setup-python@v5
         with:
@@ -229,14 +232,19 @@ jobs:
           ANDROID_VERSION_CODE: ${{ inputs.android_version_code }}
           RELEASE_VERSION: ${{ inputs.release_version }}
 
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
+
       - name: Decode keystore
         run: |
           echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${GITHUB_WORKSPACE}/ci-release.jks"
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: Verify privacy gate and build signed release bundle
-        run: ./gradlew :app:verifyReleaseSigning :app:verifyReleaseSafety :app:bundleRelease
+      - name: Verify privacy gate and build signed release bundle and validation APK
+        run: ./gradlew :app:verifyReleaseSigning :app:verifyReleaseSafety :app:bundleRelease :app:assembleRelease
         env:
           ANDROID_VERSION_CODE: ${{ inputs.android_version_code }}
           RELEASE_VERSION: ${{ inputs.release_version }}
@@ -248,11 +256,23 @@ jobs:
       - name: Verify release bundle cryptographic signature
         run: python3 -B scripts/check-prerelease.py --aab app/build/outputs/bundle/release/app-release.aab
 
+      - name: Verify packaged release launcher pixels and adaptive resources
+        run: |
+          python3 -B scripts/check-android-launcher.py \
+            --apk app/build/outputs/apk/release/app-release.apk \
+            --aapt "$ANDROID_HOME/build-tools/35.0.0/aapt"
+
       - name: Upload release bundle
         uses: actions/upload-artifact@v4
         with:
           name: android-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
+
+      - name: Preserve release APK for launcher verification only
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
 
       - name: Clean up keystore
         if: always()

@@ -16,6 +16,8 @@ import urllib.parse
 import urllib.request
 
 PACKAGE = 'su.linka.pictures'
+VERSION_CODE = 8
+RELEASE_VERSION = '2.0.2'
 BASE = 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/'
 MAX_FILE = 512 * 1024 * 1024
 MAX_JSON = 4 * 1024 * 1024
@@ -69,8 +71,9 @@ def request(url, token, method='GET', body=None, file=None):
 
 
 def validate_inputs(args):
-    if args.package != PACKAGE or args.version_code != 7 or args.release_version != '2.0.1':
-        raise PublishError('This approved lane allows only su.linka.pictures 2.0.1 (7)')
+    if (args.package != PACKAGE or args.version_code != VERSION_CODE
+            or args.release_version != RELEASE_VERSION):
+        raise PublishError('This approved lane allows only su.linka.pictures 2.0.2 (8)')
     if not re.fullmatch(r'[1-9][0-9]*', args.source_run_id):
         raise PublishError('Explicit positive source_run_id required')
     if not re.fullmatch(r'[0-9a-f]{40}', args.source_sha):
@@ -100,11 +103,14 @@ def verify_source(args):
     artifacts = request(root + '/artifacts?per_page=100', token)
     if artifacts.get('total_count', 0) > 100:
         raise PublishError('Too many artifacts; refusing incomplete validation')
-    matching = [a for a in artifacts.get('artifacts', []) if a.get('name') == 'android-release-aab']
-    if len(matching) != 1 or matching[0].get('expired') is not False:
-        raise PublishError('Require exactly one unexpired android-release-aab artifact')
-    return {'artifact_id': matching[0]['id'], 'artifact_digest': matching[0].get('digest'),
-            'source_run_id': args.source_run_id, 'source_sha': args.source_sha}
+    receipt = {'source_run_id': args.source_run_id, 'source_sha': args.source_sha}
+    for name, prefix in (('android-release-aab', ''), ('android-release-apk', 'apk_')):
+        matching = [a for a in artifacts.get('artifacts', []) if a.get('name') == name]
+        if len(matching) != 1 or matching[0].get('expired') is not False:
+            raise PublishError(f'Require exactly one unexpired {name} artifact')
+        receipt[prefix + 'artifact_id'] = matching[0]['id']
+        receipt[prefix + 'artifact_digest'] = matching[0].get('digest')
+    return receipt
 
 
 def production_release(track, version_code, release_version):
@@ -121,7 +127,7 @@ def production_release(track, version_code, release_version):
     return {'track': 'production', 'releases': [{
         'versionCodes': [str(version_code)], 'status': 'completed',
         'name': f'{release_version} ({version_code})',
-        'releaseNotes': [{'language': 'ru-RU', 'text': 'Высота строки сообщения по умолчанию — 20%. В настройках доступны 16%, 20%, 24%, 28% и 32%.\nСетка карточек центрируется в области общения.\nУлучшена совместимость резервных копий; существующие наборы и черновики сохраняются.'}],
+        'releaseNotes': [{'language': 'ru-RU', 'text': 'Исправлена иконка приложения: значок на устройстве теперь соответствует оформлению в магазине.\nСуществующие наборы, записи и черновики сохраняются.'}],
     }]}
 
 
@@ -130,6 +136,41 @@ def save(evidence, path):
     temporary = path.with_suffix('.tmp')
     temporary.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + '\n')
     temporary.replace(path)
+
+
+def inventory(response, kind):
+    """Keep only validated codes/statuses, never arbitrary API metadata."""
+    if (not isinstance(response, dict) or set(response) - {kind, 'kind'}
+            or not isinstance(response.get(kind, []), list)):
+        raise PublishError('Malformed Play inventory response')
+    observed = []
+    for item in response.get(kind, []):
+        if not isinstance(item, dict):
+            raise PublishError('Malformed Play inventory entry')
+        if kind == 'tracks':
+            if (not isinstance(item.get('track'), str) or not item['track']
+                    or not isinstance(item.get('releases', []), list)):
+                raise PublishError('Malformed Play track inventory')
+            releases = item.get('releases', [])
+        else:
+            releases = [{'versionCodes': [item.get('versionCode')]}]
+        for release in releases:
+            if not isinstance(release, dict):
+                raise PublishError('Malformed Play release inventory')
+            codes = release.get('versionCodes')
+            status = release.get('status') if kind == 'tracks' else 'AVAILABLE'
+            if (not isinstance(codes, list) or not codes
+                    or status not in ('draft', 'inProgress', 'halted', 'completed', 'AVAILABLE')
+                    or (kind == 'tracks' and status == 'AVAILABLE')):
+                raise PublishError('Malformed Play release codes/status')
+            validated = []
+            for code in codes:
+                if (type(code) not in (int, str)
+                        or not re.fullmatch(r'[1-9][0-9]*', str(code))):
+                    raise PublishError('Malformed Play versionCode')
+                validated.append(int(code))
+            observed.append({'version_codes': validated, 'status': status})
+    return observed
 
 
 def publish(args, evidence):
@@ -144,6 +185,18 @@ def publish(args, evidence):
     evidence.update(edit_id=edit_id, status='EDIT_CREATED')
     save(evidence, args.evidence)
     edit_url = base + '/edits/' + edit_id
+    evidence.update(status='INVENTORY_READ_PENDING', observed_inventory={})
+    save(evidence, args.evidence)
+    for kind in ('tracks', 'bundles', 'apks'):
+        evidence['observed_inventory'][kind] = inventory(request(edit_url + '/' + kind, token), kind)
+        save(evidence, args.evidence)
+    if any(code >= args.version_code for entries in evidence['observed_inventory'].values()
+           for entry in entries for code in entry['version_codes']):
+        evidence['status'] = 'BLOCKED_VERSION_CODE_OCCUPIED'
+        save(evidence, args.evidence)
+        raise PublishError('Play tracks, bundles or APKs already contain this or a newer version')
+    evidence['status'] = 'INVENTORY_VERIFIED'
+    save(evidence, args.evidence)
     track = request(edit_url + '/tracks/production', token)
     release = production_release(track, args.version_code, args.release_version)
     evidence['status'] = 'BUNDLE_UPLOAD_PENDING'
