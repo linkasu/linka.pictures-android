@@ -4,7 +4,7 @@ import AppKit
 import Foundation
 
 let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-let source = root.appendingPathComponent("app/src/debug/ic_launcher-playstore.png")
+let source = root.appendingPathComponent("app/src/main/ic_launcher-playstore.png")
 guard let image = NSImage(contentsOf: source),
       let context = CGContext(data: nil, width: 1024, height: 1024, bitsPerComponent: 8,
           bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),

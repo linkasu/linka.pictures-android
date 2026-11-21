@@ -12,19 +12,15 @@ on:
         type: choice
         required: true
         default: inspect
-        options: [inspect, prepare-clone, publish-draft]
+        options: [inspect, publish-draft]
       draft_id:
         description: Explicit empty RuStore draft ID (publish-draft only)
         type: string
-        required: false
+        required: true
+        default: '2064951505'
       inspection_run_id:
         description: Successful inspect run at this exact delivery commit (publish-draft only)
         type: string
-        required: false
-      replace_template:
-        description: Authorized single replacement of unpublished 2064943286 using empty clone 2064951505
-        type: boolean
-        default: false
         required: false
 
 permissions:
@@ -37,15 +33,14 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/fix/rustore-draft-delivery-20261113'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       GOOGLE_RUN_ID: ${{ inputs.google_publish_run_id }}
-      SOURCE_SHA: 1fec1cdeb842f170eddfa08436a595941b2be29a
+      SOURCE_SHA: ${{ github.sha }}
       DELIVERY_MODE: ${{ inputs.mode }}
       DRAFT_ID: ${{ inputs.draft_id }}
-      REPLACE_TEMPLATE: ${{ inputs.replace_template }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -62,11 +57,13 @@ jobs:
       - name: Offline safety tests
         run: |
           python3 -B scripts/test-publish-rustore.py
-          python3 -B scripts/check-rustore-delivery.py --self-test
+          python3 -B scripts/check-android-launcher.py
+          python3 -B scripts/test-check-android-launcher.py
 
       - name: Verify exact successful Google publication source before store credentials
         run: |
-          python3 -B scripts/check-rustore-delivery.py
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$DRAFT_ID" = 2064951505
           python3 -B scripts/publish-rustore.py --verify-source-only \
             --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \
             --repository "$GITHUB_REPOSITORY" --evidence rustore-source-evidence.json
@@ -102,7 +99,7 @@ jobs:
           repo = os.environ['GITHUB_REPOSITORY']
           run = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/actions/runs/{run_id}'], text=True))
           assert run['path'] == '.github/workflows/publish-rustore.yml'
-          assert run['head_branch'] == 'fix/rustore-draft-delivery-20261113'
+          assert run['head_branch'] == 'main'
           assert run['head_sha'] == os.environ['GITHUB_SHA']
           assert run['event'] == 'workflow_dispatch' and run['conclusion'] == 'success' and run['status'] == 'completed'
           assert run['repository']['full_name'] == run['head_repository']['full_name'] == repo
@@ -131,6 +128,7 @@ jobs:
         run: |
           test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          python3 -B scripts/check-android-launcher.py
 
       - name: Authenticate Google generated-APK download
         id: auth
@@ -148,23 +146,11 @@ jobs:
           RUSTORE_API_KEY_ID: ${{ secrets.RUSTORE_API_KEY_ID }}
           RUSTORE_API_PRIVATE_KEY: ${{ secrets.RUSTORE_API_PRIVATE_KEY }}
         run: |
-          args=(--inspect)
+          args=(--inspect --draft-id "$DRAFT_ID")
           if [ "$DELIVERY_MODE" = publish-draft ]; then
             args=(--publish-draft --draft-id "$DRAFT_ID")
-            if [ "$REPLACE_TEMPLATE" = true ]; then
-              test "$DRAFT_ID" = 2064951505
-              args+=(--replace-template)
-            fi
-          elif [ "$DELIVERY_MODE" = prepare-clone ]; then
-            test "$REPLACE_TEMPLATE" != true
-            test "$DRAFT_ID" = 2064951505
-            args=(--prepare-clone --draft-id "$DRAFT_ID")
           elif [ "$DELIVERY_MODE" != inspect ]; then
             exit 1
-          elif [ "$REPLACE_TEMPLATE" = true ]; then
-            exit 1
-          elif [ -n "$DRAFT_ID" ]; then
-            args+=(--draft-id "$DRAFT_ID")
           fi
           python3 -B scripts/publish-rustore.py "${args[@]}" \
             --google-run-id "$GOOGLE_RUN_ID" --source-sha "$SOURCE_SHA" \
