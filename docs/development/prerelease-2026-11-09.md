@@ -1,5 +1,111 @@
 # Релиз 2.0.0: фактическая подготовка 9 ноября 2026
 
+## Последнее подтверждённое состояние магазинов
+
+Этот раздел заменяет устаревшие статусы экспорта, политики и Simulator ниже.
+Пользователь разрешил завершение, отправку на модерацию и публикацию.
+
+### Все три магазина приняли отправку
+
+Следующие фактические статусы заменяют описания черновиков ниже:
+
+- **App Store:** iOS `2.0.0 (1)` — **Waiting for Review**. Подтверждена заявка
+  `78035660-6455-4bee-8d0d-c0c7f9db42ad`, один App Version item, не draft.
+  До отправки сохранена `Automatically release this version`.
+  Категория Utilities; возраст4+ рассчитан анкетой, без Kids Category. Assistant
+  protection заявлен как parental controls; нет age assurance, web browsing,
+  social feed, широкого UGC, сетевого чата, рекламы или mature content.
+  Шесть App Privacy типов опубликованы: email и userID — functionality;
+  deviceID — functionality/analytics; product interaction и other diagnostics —
+  analytics; other data (роль владельца) — functionality. Все linked, trackingNo;
+  локальные изображения/аудио/текст не обозначены серверным сбором.
+  Privacy/deletion URLs сохранены. Приняты обязательный настоящий iPhone6.3
+  screenshot2622×1206, дополнительный iPhone6.9 и два iPad13 screenshot entries.
+  Review contacts реальные; Sign-in required выключен, guest-функции описаны в notes.
+  Бесплатно,174 страны без Франции, Mac/Vision выключены; compliance standard/FranceNo.
+  Evidence: `build/prerelease/apple-submitted-20261109.json`.
+  Ссылка: https://appstoreconnect.apple.com/apps/6832546390/distribution/reviewsubmissions/details/78035660-6455-4bee-8d0d-c0c7f9db42ad
+- **Google Play:** подтверждено `Изменения на проверке` для production `2.0.0 (6)`
+  и Data Safety. Декларация AD_ID=No учитывается при проверке. Управляемая публикация
+  выключена; выбран полный rollout 100% после одобрения. Встроенная предварительная
+  проверка завершилась: UI подтверждает «Изменения находятся на рассмотрении».
+  Это **не публичная публикация**.
+  Блокирующих ошибок нет; оставшиеся два предупреждения относятся к отсутствию
+  deobfuscation mapping и native debug symbols. Поддерживаемые устройства не потеряны.
+  Evidence: `build/prerelease/google-play-submitted-20261109.json`.
+- **RuStore:** app `2063785208`, version `2064943286`, `2.0.0(6)` —
+  **Waiting for moderation**, release Automatic, audience100%. Загружен точный
+  Google-signed universal APK6, релизная иконка512 (экспорт существующего app icon,
+  не debug icon), три настоящих Android1920×1080 PNG: communication/library/settings.
+  Образцы получены из APK6 в отдельном AVD API35, без изменения существующих данных.
+  Категория Tools, рейтинг0+, покупок/рекламы нет; политика и deletion anchor в описании.
+  Шесть серверных типов данных дополнены автоматически определённым RuStore типом
+  Voice or sound recordings по RECORD_AUDIO; пояснение явно говорит о локальной записи,
+  а не передаче аудио Identity/Metrics. После одобрения включена автопубликация.
+  Evidence: `build/prerelease/rustore-submitted-20261109.json`.
+- Фактический APK5→APK6 upgrade по-прежнему **не проверен**. Пользователь повторно
+  поручил отправку после явного сообщения об этом ограничении. CI/Firebase и свежий
+  запуск APK6 не подменяют сохранность данных при обновлении опубликованного APK5.
+- Ни один статус выше не означает публичной публикации или одобрения модератора.
+  Live isolated OTP/delete, physical accessibility/audio/Keychain restore и iOS17
+  TTS acceptance остаются неподтверждёнными; missing FFmpeg dSYM не устранён.
+
+- Google Play принял AAB `6 / 2.0.0`; production release 5 остаётся черновиком.
+  Сохранены русские release notes, AD_ID=No и обновлённая Data Safety. Отправка
+  изменений на review и публичный rollout **не подтверждены**; опубликованная версия
+  пока `5 / 1.4`. Два предупреждения выпуска ещё требуют окончательной проверки.
+- Получены настоящие Google-signed universal APK для обеих версий. Проверка
+  `apksigner verify` подтверждает v1/v2/v3/v3.1 и одинаковые сертификаты с ротацией:
+  API33+ `01e2aa1f93150de38ad38888ca4bcfab56bca9991e3775d53907667802385121`,
+  API24–32 `28ed911ea1b24c0827a079597200319d73b61f5cdb321bf5ef6bf87b72a1ac52`.
+  APK5 SHA256 `54cb5880cb014dd9c7f04a6b3a0f5eb72989f66031cdd3ad6d43e22c84ccf198`;
+  APK6 SHA256 `3e70d19d3e1578325ce06043ab16eb6a8e2d7d57dae93575877ac6594a807daf`.
+  Файлы: `build/prerelease/play-store-artifacts-20261109/code{5,6}.apk`.
+  На существующем emulator-5554 обнаружена отладочная 1.4: она не заменялась,
+  её данные не очищались. Отдельный AVD `play_upgrade_20261109` API35/arm64 был
+  создан, но установка APK5 до полной загрузки упала на `PackageManagerInternal.freeStorage`.
+  Перезапуск остановил эмулятор; повторный запуск отказал из-за AVD lock. Блокировки
+  не обходились. Evidence: `build/prerelease/actual-play-upgrade-20261109/evidence.json`.
+  Реальный published-APK upgrade — **BLOCKED / NOT TESTED**, не PASS.
+- Финальный Distribution IPA экспортирован, проверен и успешно загружен через
+  Xcode в App Store Connect: `2.0.0 / build 1`, затем появился в Add Build.
+  SHA256 `180e461ea8d9988d95c4a4237206e69852f76c38c1260e222eb8d21161ea39e4`,
+  файл `build/prerelease/app-store-export-authorized-20261109/LINKa Pictures.ipa`.
+  Это не отправка на App Review. Выбор build 1 выполнен в форме версии, но общий
+  Save после выбора и завершение export-compliance ещё не подтверждены.
+- Причина Xcode `Copy failed` воспроизведена изолированно: дочерний rsync выбирал
+  Homebrew 3.4.4 и не принимал Apple `--extended-attributes`. Process-local
+  `PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin` дал RED→GREEN и успешный upload;
+  глобальные настройки не менялись. Предупреждение отсутствующего FFmpeg dSYM UUID
+  `79ED47C0-3CBB-3F1F-BAD6-ED4A315D3FEF` осталось, не скрывалось.
+- Apple Pricing сохранён и перечитан после reload: бесплатная цена, доступность
+  в 174 странах, France — `Not Available`, Mac/Vision Pro выключены. FFmpeg содержит
+  стандартные AES/DES/Camellia/Twofish, поэтому ответ OS-only недопустим. Франция
+  исключена до оформления French encryption declaration; анкета ещё не закончена.
+  App Privacy, возраст, screenshots и реальные review contacts также не завершены.
+- Политика WordPress page 3 опубликована `2026-11-09T20:38:10`: исходные 6123 символа
+  сохранены, добавлен app-specific раздел (итого 10183). Anonymous-проверка подтвердила
+  доступность `https://linka.su/privacy-policy#linka-pokazhi-account-deletion`, mailto
+  `feedback@linka.su` и запрос без reinstall. Черновик `store-privacy-answers-2026-11-09.md`
+  не является точной копией опубликованной политики.
+- Штатный Simulator Debug без ручной переподписи запущен на новых iPhone 6.9/iPad 13
+  с iOS26.5. Целевой screenshot XCTest **1/1 PASS на каждом**: пять стартовых наборов,
+  пустое сообщение, страница 1/3, девять видимых карточек с декодированными изображениями.
+  Отобраны реальные нетронутые `iphone69-native-communication.png` (2868×1320),
+  `ipad13-native-communication.png` (2752×2064) и `*-standard-library.png` в
+  `build/prerelease/store-screenshots-20261109/`. Ранние `*-standard-root.png` — загрузчики,
+  для магазина не использовать. Звук и physical accessibility этим тестом не проверены.
+- RuStore draft `2063785208` ещё без подтверждённой загрузки APK/модерации.
+  Для него выбран Google-signed APK6, не APK с upload-ключом и не извлечение private key.
+- Ни одного разрешённого live OTP-письма ещё не отправлено; изолированное создание
+  и удаление тестового аккаунта не выполнено. Основной аккаунт не использовался.
+- После перезапуска Chrome DevTools получил `EPERM` при чтении DevToolsActivePort;
+  отказ не обходился. После следующего перезапуска browser/ADB MCP отсутствуют
+  в доступном каталоге. Затем Chrome MCP восстановился, но браузер оказался новым
+  сеансом с одной New Tab; переход в ASC требует штатного входа (`authResult=FAILED`).
+  Статус прерванного нажатия Manage нужно сначала перечитать после входа,
+  а не повторять upload/submission вслепую.
+
 ## Актуализация после первого CI и исследования аудио
 
 Этот раздел заменяет устаревшие статусы ниже, которые оставлены как журнал этапов.
